@@ -32,7 +32,6 @@ export default function StateMap({
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [geoData, setGeoData] = useState<any>(null);
-  const [hoveredState, setHoveredState] = useState<string | null>(null);
 
   // Ingest US Census boundaries
   useEffect(() => {
@@ -67,12 +66,12 @@ export default function StateMap({
     const w = rect.width;
     const h = rect.height;
 
-    // Background fill
-    ctx.fillStyle = "#2a2236";
+    // Background fill — Oceanic Slate
+    ctx.fillStyle = "#0f172a";
     ctx.fillRect(0, 0, w, h);
 
     // Subtle coordinate grid
-    ctx.strokeStyle = "rgba(84, 68, 109, 0.4)";
+    ctx.strokeStyle = "rgba(51, 65, 85, 0.4)";
     ctx.lineWidth = 1;
     for (let x = 0; x < w; x += 40) {
       ctx.beginPath();
@@ -144,23 +143,23 @@ export default function StateMap({
         });
         ctx.closePath();
 
-        // Styling
+        // High readability state styling
         if (isTarget) {
-          ctx.fillStyle = isSelected ? "rgba(229, 128, 181, 0.45)" : "rgba(133, 38, 84, 0.45)";
+          ctx.fillStyle = isSelected ? "rgba(244, 63, 94, 0.40)" : "rgba(225, 29, 72, 0.25)";
           ctx.fill();
-          ctx.strokeStyle = "#e580b5";
+          ctx.strokeStyle = "#f43f5e"; // Rose-red target stroke
           ctx.lineWidth = 2.5;
           ctx.stroke();
         } else if (isAlly) {
-          ctx.fillStyle = isSelected ? "rgba(98, 211, 238, 0.40)" : "rgba(51, 42, 66, 0.70)";
+          ctx.fillStyle = isSelected ? "rgba(56, 189, 248, 0.35)" : "rgba(30, 41, 59, 0.70)";
           ctx.fill();
-          ctx.strokeStyle = isSelected ? "#88f4e2" : "#54446d";
+          ctx.strokeStyle = isSelected ? "#38bdf8" : "#475569";
           ctx.lineWidth = isSelected ? 2.0 : 1.2;
           ctx.stroke();
         } else {
-          ctx.fillStyle = "rgba(40, 32, 52, 0.50)";
+          ctx.fillStyle = "rgba(15, 23, 42, 0.60)";
           ctx.fill();
-          ctx.strokeStyle = "rgba(84, 68, 109, 0.35)";
+          ctx.strokeStyle = "rgba(51, 65, 85, 0.40)";
           ctx.lineWidth = 0.8;
           ctx.stroke();
         }
@@ -171,7 +170,7 @@ export default function StateMap({
       if (stateCode && (isTarget || isAlly)) {
         const [cx, cy] = project(STATE_GEOMETRY[stateCode].center[0], STATE_GEOMETRY[stateCode].center[1]);
         if (cx > 0 && cx < w && cy > 0 && cy < h) {
-          ctx.fillStyle = isSelected ? "#ffd87a" : "#f5effa";
+          ctx.fillStyle = isSelected ? "#38bdf8" : "#cbd5e1";
           ctx.font = `bold ${isSelected ? "13px" : "11px"} monospace`;
           ctx.textAlign = "center";
           ctx.fillText(stateCode, cx, cy);
@@ -180,17 +179,17 @@ export default function StateMap({
     });
 
     // Render Anomaly Pulsing Markers on Georgia
-    anomalies.forEach((anom, idx) => {
+    anomalies.forEach((anom) => {
       const [px, py] = project(anom.coordinates[0], anom.coordinates[1]);
       if (px < 0 || px > w || py < 0 || py > h) return;
 
       const isCritical = anom.severity === "CRITICAL";
-      const color = isCritical ? "#e580b5" : "#ffd87a";
+      const color = isCritical ? "#f43f5e" : "#fb923c"; // Crimson Rose & Crisp Amber
 
       // Pulsing outer aura
       ctx.beginPath();
       ctx.arc(px, py, 14, 0, Math.PI * 2);
-      ctx.fillStyle = isCritical ? "rgba(229, 128, 181, 0.25)" : "rgba(255, 216, 122, 0.25)";
+      ctx.fillStyle = isCritical ? "rgba(244, 63, 94, 0.25)" : "rgba(251, 146, 60, 0.25)";
       ctx.fill();
 
       // Core Marker
@@ -203,7 +202,7 @@ export default function StateMap({
       ctx.stroke();
 
       // Inner label
-      ctx.fillStyle = "#241c2f";
+      ctx.fillStyle = "#ffffff";
       ctx.font = "bold 8px monospace";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
@@ -215,15 +214,15 @@ export default function StateMap({
       const [px, py] = project(comp.coordinates[0], comp.coordinates[1]);
       if (px < 0 || px > w || py < 0 || py > h) return;
 
-      ctx.fillStyle = "#332a42";
-      ctx.strokeStyle = "#62d3ee";
+      ctx.fillStyle = "#1e293b";
+      ctx.strokeStyle = "#38bdf8";
       ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.roundRect ? ctx.roundRect(px - 18, py - 10, 36, 20, 4) : ctx.rect(px - 18, py - 10, 36, 20);
       ctx.fill();
       ctx.stroke();
 
-      ctx.fillStyle = "#62d3ee";
+      ctx.fillStyle = "#38bdf8";
       ctx.font = "bold 9px monospace";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
@@ -249,7 +248,6 @@ export default function StateMap({
     const clickX = e.clientX - rect.left;
     const clickY = e.clientY - rect.top;
 
-    // Check click near anomalies
     const activeCode = selectedState || "GA";
     let minLng = -92.0, maxLng = -75.0, minLat = 24.0, maxLat = 37.5;
     if (activeCode === "TX") {
@@ -290,7 +288,7 @@ export default function StateMap({
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-[480px] min-h-[380px] rounded-xl overflow-hidden border border-[#54446d] bg-[#2a2236] shadow-2xl"
+      className="relative w-full h-[480px] min-h-[380px] rounded-xl overflow-hidden border border-[#28394e] bg-[#0f172a] shadow-2xl"
     >
       <canvas
         ref={canvasRef}
@@ -299,24 +297,24 @@ export default function StateMap({
       />
 
       {/* Overlay Radar Legend */}
-      <div className="absolute top-3 left-3 bg-[#332a42]/90 backdrop-blur-md border border-[#54446d] rounded-lg p-2.5 text-xs text-[#f5effa] font-mono shadow-xl pointer-events-none">
-        <div className="flex items-center space-x-2 text-[#e580b5] font-semibold mb-1">
-          <span className="w-2 h-2 rounded-full bg-[#e580b5] animate-ping"></span>
+      <div className="absolute top-3 left-3 bg-[#131d2c]/90 backdrop-blur-md border border-[#28394e] rounded-lg p-2.5 text-xs text-[#f8fafc] font-mono shadow-xl pointer-events-none">
+        <div className="flex items-center space-x-2 text-[#38bdf8] font-semibold mb-1">
+          <span className="w-2 h-2 rounded-full bg-[#10b981] animate-ping"></span>
           <span>GEORGIA 3-PILLAR VECTOR RADAR</span>
         </div>
-        <div>Active Sensor Feeds: <span className="text-[#88f4e2] font-bold">7,030+ Live Streams</span></div>
-        <div>Active Target: <span className="text-[#ffd87a] font-bold">{selectedState ? STATE_GEOMETRY[selectedState]?.name || selectedState : "Georgia"}</span></div>
-        <div>Anomalies Filtered: <span className="text-[#e580b5] font-bold">{anomalies.length} Vectors</span></div>
+        <div>Active Sensor Feeds: <span className="text-[#10b981] font-bold">7,030+ Live Streams</span></div>
+        <div>Active Target: <span className="text-[#38bdf8] font-bold">{selectedState ? STATE_GEOMETRY[selectedState]?.name || selectedState : "Georgia"}</span></div>
+        <div>Anomalies Filtered: <span className="text-[#f43f5e] font-bold">{anomalies.length} Vectors</span></div>
       </div>
 
-      <div className="absolute bottom-3 right-3 bg-[#332a42]/90 backdrop-blur-md border border-[#54446d] rounded-lg p-2.5 text-[11px] text-[#baaed3] font-mono shadow-xl flex items-center space-x-4 pointer-events-none">
+      <div className="absolute bottom-3 right-3 bg-[#131d2c]/90 backdrop-blur-md border border-[#28394e] rounded-lg p-2.5 text-[11px] text-[#94a3b8] font-mono shadow-xl flex items-center space-x-4 pointer-events-none">
         <div className="flex items-center space-x-1.5">
-          <span className="w-2.5 h-2.5 rounded-full bg-[#e580b5] border border-white"></span>
-          <span className="text-[#f5effa]">Georgia Anomaly Vector</span>
+          <span className="w-2.5 h-2.5 rounded-full bg-[#f43f5e] border border-white"></span>
+          <span className="text-[#f8fafc]">Georgia Anomaly Vector</span>
         </div>
         <div className="flex items-center space-x-1.5">
-          <span className="w-2.5 h-2.5 rounded-sm bg-[#62d3ee]"></span>
-          <span className="text-[#f5effa]">Competitor Exploit Node</span>
+          <span className="w-2.5 h-2.5 rounded-sm bg-[#38bdf8]"></span>
+          <span className="text-[#f8fafc]">Competitor Exploit Node</span>
         </div>
       </div>
     </div>

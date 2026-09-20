@@ -48,31 +48,31 @@ export default function Navbar() {
   ];
 
   return (
-    <header className="sticky top-0 z-50 bg-[#332a42]/95 backdrop-blur-md border-b border-[#54446d] text-[#f5effa]">
+    <header className="sticky top-0 z-50 bg-[#161d28]/95 backdrop-blur-md border-b border-[#28394e] text-[#f1f5f9]">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 gap-2">
           
           {/* Brand Identity with Responsive Rotating Circular Emblem */}
           <div className="flex items-center space-x-2 sm:space-x-3 shrink-0">
             <Link href="/" className="flex items-center space-x-2 sm:space-x-3 group">
-              <div className="relative w-9 h-9 sm:w-10 sm:h-10 md:w-11 md:h-11 shrink-0 rounded-full overflow-hidden p-0.5 border border-[#ffd87a] bg-[#241c2f] emblem-nav-hover shadow-lg">
+              <div className="relative w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 shrink-0 rounded-full overflow-hidden p-0.5 border border-[#38bdf8] bg-[#0b121b] emblem-nav-hover shadow-lg">
                 <Image
                   src="/assets/brain-lab-emblem-64.png"
                   alt="Brain Lab by Liliya emblem"
-                  width={44}
-                  height={44}
-                  className="w-full h-full object-contain rounded-full"
+                  width={40}
+                  height={40}
+                  className="w-full h-full object-cover rounded-full"
                   priority
                 />
               </div>
 
               <div className="flex flex-col">
                 <div className="flex items-center space-x-1.5">
-                  <span className="font-bold text-sm sm:text-base md:text-lg tracking-wider text-[#f5effa] font-mono group-hover:text-[#ffd87a] transition-colors whitespace-nowrap">
-                    BRAIN LAB <span className="text-[#ffd87a] text-xs font-normal">BY LILIYA</span>
+                  <span className="font-bold text-sm sm:text-base md:text-lg tracking-wider text-[#f8fafc] font-mono group-hover:text-[#38bdf8] transition-colors whitespace-nowrap">
+                    BRAIN LAB <span className="text-[#38bdf8] text-xs font-normal">BY LILIYA</span>
                   </span>
                 </div>
-                <span className="text-[9px] sm:text-[10px] text-[#baaed3] font-mono tracking-tight hidden xl:inline truncate max-w-[280px]">
+                <span className="text-[9px] sm:text-[10px] text-[#94a3b8] font-mono tracking-tight hidden xl:inline truncate max-w-[280px]">
                   Post-Doctorate Cognitive Market Intelligence
                 </span>
               </div>
@@ -90,8 +90,8 @@ export default function Navbar() {
                   href={link.href}
                   className={`flex items-center space-x-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
                     isActive
-                      ? "bg-[#54446d] text-[#ffd87a] border border-[#e580b5]/50 shadow-sm font-bold"
-                      : "text-[#baaed3] hover:text-[#f5effa] hover:bg-[#3b304d]"
+                      ? "bg-[#1e293b] text-[#38bdf8] border border-[#38bdf8]/50 shadow-sm font-bold"
+                      : "text-[#94a3b8] hover:text-[#f8fafc] hover:bg-[#1e293b]/70"
                   }`}
                 >
                   <Icon className="w-3.5 h-3.5" />
@@ -103,14 +103,14 @@ export default function Navbar() {
 
           {/* Mobile Menu Button & Live Indicator */}
           <div className="flex items-center space-x-2">
-            <div className="hidden 2xl:flex items-center space-x-2 font-mono text-[11px] bg-[#2a2236] border border-[#54446d] px-2.5 py-1 rounded-full shrink-0">
-              <span className="inline-block w-2 h-2 rounded-full bg-[#88f4e2] animate-ping"></span>
-              <span className="text-[#62d3ee] font-semibold">CRYSTAL TELEMETRY</span>
+            <div className="hidden 2xl:flex items-center space-x-2 font-mono text-[11px] bg-[#0b121b] border border-[#28394e] px-2.5 py-1 rounded-full shrink-0">
+              <span className="inline-block w-2 h-2 rounded-full bg-[#10b981] animate-ping"></span>
+              <span className="text-[#38bdf8] font-semibold">24/7 TELEMETRY LIVE</span>
             </div>
 
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden p-2 rounded-lg bg-[#2a2236] border border-[#54446d] text-[#ffd87a] hover:text-white"
+              className="lg:hidden p-2 rounded-lg bg-[#1e293b] border border-[#28394e] text-[#f8fafc] hover:text-[#38bdf8]"
               aria-label="Toggle Navigation Menu"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -122,7 +122,7 @@ export default function Navbar() {
 
       {/* Mobile Drawer Menu */}
       {mobileMenuOpen && (
-        <div className="lg:hidden border-t border-[#54446d] bg-[#282034]/98 backdrop-blur-xl px-4 pt-3 pb-5 space-y-1 max-h-[80vh] overflow-y-auto">
+        <div className="lg:hidden border-t border-[#28394e] bg-[#0f172a]/98 backdrop-blur-xl px-4 pt-3 pb-5 space-y-1 max-h-[80vh] overflow-y-auto">
           <div className="grid grid-cols-2 gap-1.5 pb-2">
             {navLinks.map((link) => {
               const Icon = link.icon;
@@ -134,8 +134,8 @@ export default function Navbar() {
                   onClick={() => setMobileMenuOpen(false)}
                   className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
                     isActive
-                      ? "bg-[#54446d] text-[#ffd87a] border border-[#e580b5]/50 font-bold"
-                      : "text-[#baaed3] hover:text-white hover:bg-[#332a42]"
+                      ? "bg-[#1e293b] text-[#38bdf8] border border-[#38bdf8]/50 font-bold"
+                      : "text-[#94a3b8] hover:text-white hover:bg-[#1e293b]"
                   }`}
                 >
                   <Icon className="w-4 h-4 shrink-0" />

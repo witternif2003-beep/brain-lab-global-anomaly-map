@@ -282,3 +282,18 @@ The **Brain Lab by Liliya** Global Anomaly Map platform has been built, compiled
 - **Continuous 24/7 Deployment Synchronization:**
   - Committed to GitHub `witternif2003-beep/brain-lab-global-anomaly-map` (commit `f5a613b`).
   - Deployed to Vercel production edge: [https://brain-lab-six.vercel.app](https://brain-lab-six.vercel.app) (confirmed `HTTP 200 OK`).
+
+---
+
+## 1/10th Scale Longitudinal-Only Rotating Emblem & Dynamic Pulsing Glow
+
+- **Circular Seal Precision Crop (`IMG_6394.jpeg`):**
+  - Generated transparent alpha-masked circular asset chain isolating the inner circular seal (American bald eagle + compass star + golden ring) and discarding outer rectangular boundaries.
+  - Formatted responsive sizes: `public/assets/brain-lab-emblem.png`, `512`, `256`, `128`, `64`, `32`.
+- **1/10th Scale Longitudinal (Y-Axis) Rotation:**
+  - Scaled hero rotating emblem down to 1/10th original size (`w-6 h-6 sm:w-7 sm:h-7`).
+  - Replaced 2D planar rotation with **3D longitudinal meridian rotation** (`transform: rotateY(0deg) -> rotateY(360deg)`), producing a coin-flip spin along its vertical meridian.
+  - Added multi-spectral pulsing glow animation (`@keyframes glowing-pulse`) cycling gold, electric aqua, and magenta drop-shadows.
+- **Production Pipeline Deployment:**
+  - Pushed to GitHub repository `witternif2003-beep/brain-lab-global-anomaly-map` (commit `315a581`).
+  - Deployed to Vercel production edge: [https://brain-lab-six.vercel.app](https://brain-lab-six.vercel.app).

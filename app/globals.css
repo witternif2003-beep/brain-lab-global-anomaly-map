@@ -3,29 +3,22 @@
 @tailwind utilities;
 
 :root {
-  --crystal-base: #2a2236;
-  --crystal-surface: #332a42;
-  --crystal-card: #3b304d;
-  --crystal-border: #54446d;
-  --crystal-lavender: #baaed3;
-  --crystal-pink: #e580b5;
-  --crystal-rose: #c68d90;
-  --crystal-cyan: #62d3ee;
-  --crystal-aqua: #88f4e2;
-  --crystal-gold: #ffd87a;
-  --crystal-amber: #e5bca8;
-  --crystal-light: #f5effa;
-
-  --brand-navy: #2d243a;
-  --brand-gold: #ffd87a;
-  --brand-red: #e580b5;
-  --brand-silver: #baaed3;
+  --color-slate-bg: #0b1320;
+  --color-slate-surface: #131d2c;
+  --color-slate-card: #182438;
+  --color-slate-border: #28394e;
+  
+  --anomaly-critical: #f43f5e;
+  --anomaly-high: #fb923c;
+  --anomaly-medium: #facc15;
+  --anomaly-cyan: #38bdf8;
+  --anomaly-emerald: #10b981;
 }
 
 html, body {
   min-height: 100%;
-  background-color: #241c2f;
-  color: #f5effa;
+  background-color: #0b1320;
+  color: #f8fafc;
   -webkit-text-size-adjust: 100%;
 }
 
@@ -34,32 +27,28 @@ body {
   padding-right: env(safe-area-inset-right);
   padding-bottom: env(safe-area-inset-bottom);
   padding-left: env(safe-area-inset-left);
-  background: radial-gradient(circle at 50% 0%, #3e3052 0%, #282034 60%, #1e1828 100%);
+  background: radial-gradient(circle at 50% 0%, #19273c 0%, #0f1827 60%, #0b1320 100%);
   background-attachment: fixed;
 }
 
-.maplibregl-canvas {
-  outline: none;
-}
-
-/* Custom scrollbars themed after crystal facets */
+/* Custom scrollbars themed after oceanic telemetry radar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #2a2236;
+  background: #0b1320;
 }
 ::-webkit-scrollbar-thumb {
-  background: #54446d;
+  background: #28394e;
   border-radius: 3px;
-  border: 1px solid #6b578a;
+  border: 1px solid #334862;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #856ea9;
+  background: #38bdf8;
 }
 
-/* Longitudinal Y-axis rotation (3D globe coin flip along vertical meridian) */
+/* Longitudinal Y-axis rotation (3D coin flip along vertical meridian) */
 @keyframes longitudinal-spin {
   from {
     transform: rotateY(0deg);
@@ -72,14 +61,14 @@ body {
 /* Vibrant pulsing glow animation for the emblem */
 @keyframes glowing-pulse {
   0%, 100% {
-    filter: drop-shadow(0 0 6px rgba(255, 216, 122, 0.85))
-            drop-shadow(0 0 14px rgba(98, 211, 238, 0.70))
-            drop-shadow(0 0 24px rgba(229, 128, 181, 0.60));
+    filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.9))
+            drop-shadow(0 0 14px rgba(16, 185, 129, 0.7))
+            drop-shadow(0 0 22px rgba(251, 146, 60, 0.5));
   }
   50% {
-    filter: drop-shadow(0 0 14px rgba(255, 216, 122, 1))
-            drop-shadow(0 0 28px rgba(98, 211, 238, 0.95))
-            drop-shadow(0 0 42px rgba(229, 128, 181, 0.85));
+    filter: drop-shadow(0 0 12px rgba(56, 189, 248, 1))
+            drop-shadow(0 0 24px rgba(16, 185, 129, 0.95))
+            drop-shadow(0 0 36px rgba(251, 146, 60, 0.8));
   }
 }
 
@@ -94,7 +83,7 @@ body {
 }
 .emblem-nav-hover:hover {
   transform: scale(1.08);
-  filter: drop-shadow(0 0 10px rgba(255, 216, 122, 0.9)) drop-shadow(0 0 18px rgba(98, 211, 238, 0.8));
+  filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.9)) drop-shadow(0 0 18px rgba(16, 185, 129, 0.8));
 }
 
 @keyframes gradient-drift {
