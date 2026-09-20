@@ -75,7 +75,7 @@ export default function RecommendationsHubPage() {
         title="POST-DOCTORATE P1/TIER-1 VALIDATED COMPETITOR RECOMMENDATIONS HUB"
         description="Comprehensive, peer-reviewed strategic exploit catalog delivering continuous, mathematically verified intervention directives. Empirically targeted at Georgia's structural policy cliffs, power queue bottlenecks, and port dwell friction across 7 regional competitor states."
         rightElement={
-          <div className="bg-[#131d2c] px-4 py-2.5 rounded-xl border border-[#28394e] text-right shadow-lg">
+          <div className="glass-panel px-4 py-2.5 rounded-xl border border-white/10 text-right shadow-lg">
             <div className="text-[10px] text-[#94a3b8]">RECOMMENDATION MATRIX</div>
             <div className="text-[#10b981] font-bold text-lg flex items-center justify-end space-x-1">
               <span>{TOTAL_RECOMMENDATIONS_COUNT.toLocaleString()}+</span>
@@ -87,7 +87,7 @@ export default function RecommendationsHubPage() {
       />
 
       {/* Filter and Export Toolbar */}
-      <div className="bg-[#131d2c] border border-[#28394e] rounded-2xl p-4 sm:p-5 shadow-xl space-y-4">
+      <div className="glass-panel border border-white/10 rounded-2xl p-4 sm:p-5 shadow-xl space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           
           <div className="flex flex-wrap items-center gap-2">
@@ -98,14 +98,14 @@ export default function RecommendationsHubPage() {
                 placeholder="Search objectives, vulnerabilities..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="bg-[#0b1320] border border-[#28394e] pl-8 pr-3 py-1.5 rounded-lg text-xs text-[#f8fafc] focus:outline-none focus:border-[#38bdf8] w-56 sm:w-64"
+                className="glass-card border border-white/10 pl-8 pr-3 py-1.5 rounded-lg text-xs text-[#f8fafc] focus:outline-none focus:border-[#38bdf8] w-56 sm:w-64"
               />
             </div>
 
             <select
               value={selectedState}
               onChange={(e) => setSelectedState(e.target.value)}
-              className="bg-[#0b1320] border border-[#28394e] px-3 py-1.5 rounded-lg text-xs text-[#cbd5e1] focus:outline-none focus:border-[#38bdf8]"
+              className="glass-card border border-white/10 px-3 py-1.5 rounded-lg text-xs text-[#cbd5e1] focus:outline-none focus:border-[#38bdf8]"
             >
               <option value="ALL">All Competitor States</option>
               <option value="North Carolina">North Carolina (NC)</option>
@@ -120,7 +120,7 @@ export default function RecommendationsHubPage() {
             <select
               value={selectedSector}
               onChange={(e) => setSelectedSector(e.target.value)}
-              className="bg-[#0b1320] border border-[#28394e] px-3 py-1.5 rounded-lg text-xs text-[#cbd5e1] focus:outline-none focus:border-[#38bdf8]"
+              className="glass-card border border-white/10 px-3 py-1.5 rounded-lg text-xs text-[#cbd5e1] focus:outline-none focus:border-[#38bdf8]"
             >
               <option value="ALL">All Target Sectors</option>
               <option value="Maritime & Intermodal Logistics">Maritime & Logistics</option>
@@ -149,10 +149,10 @@ export default function RecommendationsHubPage() {
         {filteredRecs.map((rec) => (
           <div
             key={rec.recId}
-            className="bg-[#131d2c] border border-[#28394e] hover:border-[#38bdf8]/60 rounded-2xl p-5 space-y-4 shadow-xl transition-all"
+            className="glass-panel border border-white/10 hover:border-[#38bdf8]/60 rounded-2xl p-5 space-y-4 shadow-xl transition-all"
           >
             {/* Header Card */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#28394e] pb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-3">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="px-2.5 py-0.5 rounded bg-[#1e293b] text-[#38bdf8] border border-[#38bdf8]/40 text-xs font-bold">
                   {rec.targetCompetitorState.toUpperCase()}
@@ -160,7 +160,7 @@ export default function RecommendationsHubPage() {
                 <span className="text-white font-bold text-sm sm:text-base">
                   {rec.strategicObjective}
                 </span>
-                <span className="px-2 py-0.5 rounded bg-[#0b1320] text-[#94a3b8] border border-[#28394e] text-[10px]">
+                <span className="px-2 py-0.5 rounded glass-card text-[#94a3b8] border border-white/10 text-[10px]">
                   {rec.targetSector}
                 </span>
               </div>
@@ -169,18 +169,18 @@ export default function RecommendationsHubPage() {
 
             {/* Vulnerability Anchor & Telemetry Trigger */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-              <div className="bg-[#0b1320] p-3.5 rounded-xl border border-[#28394e] space-y-1">
+              <div className="glass-card p-3.5 rounded-xl border border-white/10 space-y-1">
                 <span className="text-[#f43f5e] font-bold block text-[10px]">GEORGIA STRUCTURAL VULNERABILITY ANCHOR:</span>
                 <p className="text-[#cbd5e1] font-sans leading-relaxed">{rec.georgiaStructuralVulnerabilityAnchor}</p>
               </div>
-              <div className="bg-[#0b1320] p-3.5 rounded-xl border border-[#28394e] space-y-1">
+              <div className="glass-card p-3.5 rounded-xl border border-white/10 space-y-1">
                 <span className="text-[#38bdf8] font-bold block text-[10px]">REAL-TIME TELEMETRY TRIGGER THRESHOLD:</span>
                 <p className="text-[#cbd5e1] font-sans leading-relaxed">{rec.telemetryTriggerThreshold}</p>
               </div>
             </div>
 
             {/* Intervention Mechanics & Financial Yield */}
-            <div className="bg-[#0f172a] border border-[#28394e] p-4 rounded-xl space-y-2 text-xs">
+            <div className="glass-card border border-white/10 p-4 rounded-xl space-y-2 text-xs">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                 <div className="flex items-center space-x-2">
                   <span className="px-2 py-0.5 rounded bg-[#1e293b] text-[#10b981] font-bold text-[11px] border border-[#10b981]/30">

@@ -42,22 +42,22 @@ export default function ThreatGlobe3D() {
 
       ctx.clearRect(0, 0, w, h);
 
-      // Deep oceanic background gradient
+      // Deep space background gradient
       const bgGrad = ctx.createRadialGradient(centerX, centerY, radius * 0.2, centerX, centerY, radius * 1.5);
-      bgGrad.addColorStop(0, "#131d2c");
-      bgGrad.addColorStop(0.7, "#0f172a");
-      bgGrad.addColorStop(1, "#0b1320");
+      bgGrad.addColorStop(0, "rgba(21, 36, 56, 0.4)");
+      bgGrad.addColorStop(0.7, "rgba(13, 21, 34, 0.8)");
+      bgGrad.addColorStop(1, "rgba(7, 12, 20, 0.95)");
       ctx.fillStyle = bgGrad;
       ctx.fillRect(0, 0, w, h);
 
       // Outer Glowing Halo
-      const haloGrad = ctx.createRadialGradient(centerX, centerY, radius * 0.95, centerX, centerY, radius * 1.18);
-      haloGrad.addColorStop(0, "rgba(56, 189, 248, 0.35)");
+      const haloGrad = ctx.createRadialGradient(centerX, centerY, radius * 0.95, centerX, centerY, radius * 1.25);
+      haloGrad.addColorStop(0, "rgba(56, 189, 248, 0.40)");
       haloGrad.addColorStop(0.5, "rgba(16, 185, 129, 0.15)");
       haloGrad.addColorStop(1, "rgba(0, 0, 0, 0)");
       ctx.fillStyle = haloGrad;
       ctx.beginPath();
-      ctx.arc(centerX, centerY, radius * 1.18, 0, Math.PI * 2);
+      ctx.arc(centerX, centerY, radius * 1.25, 0, Math.PI * 2);
       ctx.fill();
 
       // Globe Base Sphere with 3D Shading
@@ -82,7 +82,7 @@ export default function ThreatGlobe3D() {
       ctx.clip();
 
       // Draw Latitudinal Grid Lines (Parallels)
-      ctx.strokeStyle = "rgba(71, 85, 105, 0.35)";
+      ctx.strokeStyle = "rgba(71, 85, 105, 0.4)";
       ctx.lineWidth = 1;
       for (let lat = -60; lat <= 60; lat += 20) {
         const y = centerY + Math.sin((lat * Math.PI) / 180) * radius;
@@ -99,7 +99,7 @@ export default function ThreatGlobe3D() {
         const cosLon = Math.cos(radLon);
 
         if (cosLon > -0.2) {
-          ctx.strokeStyle = `rgba(56, 189, 248, ${Math.max(0.08, cosLon * 0.4)})`;
+          ctx.strokeStyle = `rgba(56, 189, 248, ${Math.max(0.1, cosLon * 0.45)})`;
           ctx.beginPath();
           ctx.ellipse(centerX, centerY, Math.abs(xOffset), radius, 0, 0, Math.PI * 2);
           ctx.stroke();
@@ -194,50 +194,50 @@ export default function ThreatGlobe3D() {
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-[520px] rounded-2xl overflow-hidden border border-[#28394e] bg-[#0b1320] shadow-2xl flex flex-col items-center justify-center font-mono"
+      className="relative w-full h-[520px] rounded-2xl overflow-hidden glass-panel flex flex-col items-center justify-center font-mono"
     >
       <canvas
         ref={canvasRef}
         className="w-full h-full block cursor-grab active:cursor-grabbing"
       />
 
-      {/* Threat Globe Controls Header */}
-      <div className="absolute top-3 left-3 bg-[#131d2c]/90 backdrop-blur-md border border-[#28394e] rounded-xl p-2.5 text-xs text-[#f8fafc] shadow-xl space-y-0.5 pointer-events-none">
+      {/* Threat Globe Controls Header - Floating Glass Island (Top-Left) */}
+      <div className="absolute top-4 left-4 glass-card rounded-xl p-3 text-xs text-[#f8fafc] space-y-1 pointer-events-none z-10">
         <div className="flex items-center space-x-2 text-[#38bdf8] font-bold">
-          <Globe className="w-3.5 h-3.5 animate-spin" />
-          <span>3D COMMON OPERATING PICTURE (COP)</span>
+          <Globe className="w-4 h-4 animate-spin text-[#38bdf8]" />
+          <span>3D COMMON OPERATING PICTURE</span>
         </div>
         <div className="text-[10px] text-[#94a3b8]">Projection: Real-Time Vector Sphere</div>
         <div className="text-[10px] text-[#94a3b8]">Target: Georgia 159 Counties</div>
       </div>
 
-      {/* Threat Globe Orbit Pause/Rotate Buttons */}
-      <div className="absolute top-3 right-3 flex items-center space-x-1.5 bg-[#131d2c]/90 backdrop-blur-md border border-[#28394e] rounded-xl p-1.5 shadow-xl">
+      {/* Threat Globe Controls (Top-Right) */}
+      <div className="absolute top-4 right-4 flex items-center space-x-1.5 glass-card rounded-xl p-1.5 z-10">
         <button
           onClick={() => setIsRotating(!isRotating)}
-          className="flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-[#1e293b] hover:bg-[#334155] text-xs text-[#f8fafc] transition-all font-bold"
+          className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-[#38bdf8]/15 hover:bg-[#38bdf8]/25 text-[#38bdf8] border border-[#38bdf8]/30 text-xs transition-all font-bold"
         >
           {isRotating ? <Pause className="w-3 h-3 text-[#fb923c]" /> : <Play className="w-3 h-3 text-[#10b981]" />}
           <span className="text-[11px]">{isRotating ? "Pause" : "Play"}</span>
         </button>
         <button
           onClick={() => setRotationAngle((prev) => prev - 0.2)}
-          className="p-1 rounded-lg bg-[#1e293b] hover:bg-[#334155] text-[#94a3b8] hover:text-[#f8fafc]"
+          className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-[#94a3b8] hover:text-[#f8fafc] border border-white/10"
           title="Rotate Sphere"
         >
-          <RotateCw className="w-3 h-3" />
+          <RotateCw className="w-3.5 h-3.5" />
         </button>
       </div>
 
-      {/* Threat Globe Legend at Bottom */}
-      <div className="absolute bottom-3 left-3 right-3 bg-[#131d2c]/90 backdrop-blur-md border border-[#28394e] rounded-xl px-3 py-2 text-[10px] text-[#94a3b8] flex flex-wrap items-center justify-between gap-2 pointer-events-none">
+      {/* Threat Globe Legend - Floating Glass Island (Bottom-Left) */}
+      <div className="absolute bottom-4 left-4 glass-card rounded-xl px-3 py-2 text-[10px] text-[#94a3b8] flex flex-wrap items-center gap-3 pointer-events-none z-10">
         <div className="flex items-center space-x-1.5">
-          <span className="w-2 h-2 rounded-full bg-[#f43f5e] animate-ping"></span>
+          <span className="w-2.5 h-2.5 rounded-full bg-[#f43f5e] animate-ping"></span>
           <span className="text-[#f43f5e] font-bold">Active GA Anomalies</span>
         </div>
         <div className="flex items-center space-x-1.5">
-          <span className="w-2 h-2 rounded-full bg-[#38bdf8]"></span>
-          <span className="text-[#38bdf8]">Competitor Relocation Allies</span>
+          <span className="w-2.5 h-2.5 rounded-full bg-[#38bdf8]"></span>
+          <span className="text-[#38bdf8]">Competitor Allies</span>
         </div>
       </div>
     </div>

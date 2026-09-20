@@ -6,7 +6,7 @@ export default function ComplianceNotice() {
   return (
     <aside
       aria-label="Compliance and Affiliation Notice"
-      className="bg-[#131d2c] border-b border-[#28394e] text-xs text-[#94a3b8] px-3 sm:px-4 py-2"
+      className="bg-[#0b1320]/80 backdrop-blur-md border-b border-white/10 text-xs text-[#94a3b8] px-3 sm:px-4 py-2"
     >
       <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1 sm:gap-2">
         <div className="flex items-center space-x-2">

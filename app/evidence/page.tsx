@@ -23,7 +23,7 @@ export default function EvidencePage() {
         title="PUBLIC-SOURCE EVIDENCE CARDS & PROVENANCE"
         description="Every card complies with open-records standards: official dataset IDs, verified timestamps, primary URLs, and Admiralty System credibility ratings (A1 / A2)."
         rightElement={
-          <div className="bg-slate-950 px-4 py-2.5 rounded-xl border border-slate-800 text-right shadow-lg">
+          <div className="glass-card px-4 py-2.5 rounded-xl border border-white/10 text-right shadow-lg">
             <div className="text-[10px] text-slate-500">TOTAL EVIDENCE CARDS</div>
             <div className="text-emerald-400 font-bold text-lg">{EVIDENCE_CARDS.length} AUDITED</div>
           </div>
@@ -31,7 +31,7 @@ export default function EvidencePage() {
       />
 
       {/* Pillar Selector Filter */}
-      <div className="flex items-center space-x-2 overflow-x-auto bg-slate-950 p-2 rounded-xl border border-slate-800 text-xs">
+      <div className="flex items-center space-x-2 overflow-x-auto glass-card p-2 rounded-xl border border-white/10 text-xs">
         <span className="text-slate-500 px-2">Filter by Pillar:</span>
         {pillars.map((p) => (
           <button
@@ -40,7 +40,7 @@ export default function EvidencePage() {
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
               selectedPillar === p
                 ? "bg-emerald-600 text-white shadow"
-                : "text-slate-400 hover:text-white hover:bg-slate-900"
+                : "text-slate-400 hover:text-white hover:glass-panel"
             }`}
           >
             {p}
@@ -53,7 +53,7 @@ export default function EvidencePage() {
         {filtered.map((card) => (
           <div
             key={card.id}
-            className="bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-xl p-4 shadow-xl flex flex-col justify-between space-y-3 transition-all"
+            className="glass-panel border border-white/10 hover:border-slate-700 rounded-xl p-4 shadow-xl flex flex-col justify-between space-y-3 transition-all"
           >
             <div className="space-y-2">
               <div className="flex items-center justify-between text-[10px]">
@@ -67,7 +67,7 @@ export default function EvidencePage() {
                 {card.title}
               </h3>
 
-              <div className="bg-slate-950 p-3 rounded-lg border border-slate-800/80 space-y-1 text-xs">
+              <div className="glass-card p-3 rounded-lg border border-white/10/80 space-y-1 text-xs">
                 <div className="flex justify-between text-slate-400 text-[11px]">
                   <span>Observed Telemetry Value:</span>
                   <span className="text-white font-bold">{card.value} {card.unit || ""}</span>
@@ -89,7 +89,7 @@ export default function EvidencePage() {
               )}
             </div>
 
-            <div className="border-t border-slate-800 pt-2.5 text-[10px] text-slate-400 flex items-center justify-between">
+            <div className="border-t border-white/10 pt-2.5 text-[10px] text-slate-400 flex items-center justify-between">
               <span>License: {card.license}</span>
               <a
                 href={card.sourceUrl}

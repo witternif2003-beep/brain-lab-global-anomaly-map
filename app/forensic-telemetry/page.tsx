@@ -61,7 +61,7 @@ export default function ForensicTelemetryPage() {
         title="POST-DOCTORATE REAL-TIME TELEMETRY ENGINE & DEDICATED GEORGIA FORENSICS"
         description="Autonomous ingestion fabric continuously scanning 7,000+ verified Tier-1 data streams across ADS-B, AIS, CelesTrak, FIRMS, FERC-714, and SEC EDGAR. Delivers continuous, high-frequency forensic telemetry on Georgia individual elites, corporations, and critical assets with tailored competitor profit recommendations."
         rightElement={
-          <div className="bg-slate-950 px-4 py-2.5 rounded-xl border border-slate-800 text-right shadow-lg">
+          <div className="glass-card px-4 py-2.5 rounded-xl border border-white/10 text-right shadow-lg">
             <div className="text-[10px] text-slate-500">CONTINUOUS STREAM INGEST</div>
             <div className="text-emerald-400 font-bold text-lg flex items-center justify-end space-x-1.5">
               <span>{streamCount.toLocaleString()}</span>
@@ -89,7 +89,7 @@ export default function ForensicTelemetryPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {TELEMETRY_STREAM_PIPELINE.map((cat) => (
-            <div key={cat.id} className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2 text-xs hover:border-slate-700 transition-all">
+            <div key={cat.id} className="glass-card p-4 rounded-xl border border-white/10 space-y-2 text-xs hover:border-slate-700 transition-all">
               <div className="flex items-center justify-between">
                 <span className="px-2 py-0.5 rounded bg-sky-500/15 text-sky-300 font-bold text-[10px]">
                   {cat.ingestProtocol}
@@ -112,9 +112,9 @@ export default function ForensicTelemetryPage() {
       </div>
 
       {/* Georgia State Individual & Corporate Forensic Section */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-5">
+      <div className="glass-panel border border-white/10 rounded-2xl p-6 shadow-2xl space-y-5">
         
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-4">
           <div>
             <h3 className="text-base sm:text-lg font-bold text-white flex items-center space-x-2">
               <ShieldAlert className="w-5 h-5 text-rose-500" />
@@ -133,14 +133,14 @@ export default function ForensicTelemetryPage() {
                 placeholder="Search entity, county, evidence..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="bg-slate-950 border border-slate-800 pl-8 pr-3 py-1.5 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-sky-500"
+                className="glass-card border border-white/10 pl-8 pr-3 py-1.5 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-sky-500"
               />
             </div>
 
             <select
               value={selectedEntityFilter}
               onChange={(e) => setSelectedEntityFilter(e.target.value)}
-              className="bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-lg text-xs text-slate-300 focus:outline-none"
+              className="glass-card border border-white/10 px-3 py-1.5 rounded-lg text-xs text-slate-300 focus:outline-none"
             >
               <option value="ALL">All Entity Types</option>
               <option value="Corporate Enterprise">Corporate Enterprise</option>
@@ -151,7 +151,7 @@ export default function ForensicTelemetryPage() {
             <select
               value={selectedStateFilter}
               onChange={(e) => setSelectedStateFilter(e.target.value)}
-              className="bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-lg text-xs text-slate-300 focus:outline-none"
+              className="glass-card border border-white/10 px-3 py-1.5 rounded-lg text-xs text-slate-300 focus:outline-none"
             >
               <option value="ALL">All Exploiting States</option>
               <option value="North Carolina">North Carolina (NC)</option>
@@ -170,7 +170,7 @@ export default function ForensicTelemetryPage() {
           {filteredAnomalies.map((anom) => (
             <div
               key={anom.id}
-              className="bg-slate-950 border border-slate-800 hover:border-slate-700 rounded-xl p-5 space-y-4 transition-all"
+              className="glass-card border border-white/10 hover:border-slate-700 rounded-xl p-5 space-y-4 transition-all"
             >
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-900 pb-3">
                 <div className="flex flex-wrap items-center gap-2">
@@ -180,7 +180,7 @@ export default function ForensicTelemetryPage() {
                   </span>
                   <span className="text-white font-bold text-sm sm:text-base">{anom.entityName}</span>
                   <span className="text-slate-400 text-xs font-mono">[{anom.county}]</span>
-                  <span className="px-2 py-0.5 rounded bg-slate-900 text-sky-400 border border-slate-800 text-[10px]">
+                  <span className="px-2 py-0.5 rounded glass-panel text-sky-400 border border-white/10 text-[10px]">
                     {anom.entityType}
                   </span>
                 </div>
@@ -189,11 +189,11 @@ export default function ForensicTelemetryPage() {
 
               {/* Primary Evidence & Trigger */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                <div className="bg-slate-900/60 p-3 rounded-lg border border-slate-800 space-y-1">
+                <div className="glass-panel/60 p-3 rounded-lg border border-white/10 space-y-1">
                   <span className="text-rose-400 font-bold block text-[10px]">PRIMARY TELEMETRY OBSERVATION:</span>
                   <p className="text-slate-200 font-sans leading-relaxed">{anom.primaryTelemetryEvidence}</p>
                 </div>
-                <div className="bg-slate-900/60 p-3 rounded-lg border border-slate-800 space-y-1">
+                <div className="glass-panel/60 p-3 rounded-lg border border-white/10 space-y-1">
                   <span className="text-sky-400 font-bold block text-[10px]">STATUTORY / SENSOR TRIGGER:</span>
                   <p className="text-slate-200 font-sans leading-relaxed">{anom.statutoryOrFinancialTrigger}</p>
                 </div>

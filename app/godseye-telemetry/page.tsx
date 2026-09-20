@@ -16,7 +16,7 @@ export default function GodsEyeTelemetryPage() {
         title="GODSEYE LIVE COMMON OPERATING PICTURE & REAL-TIME TELEMETRY"
         description="Comprehensive integration inspired by the open-source GodsEYE.network protocol. Fuses ADS-B aviation, maritime AIS transponders, CelesTrak satellites, NASA FIRMS thermal hotspots, USGS seismic telemetry, and public DOT traffic cameras into an interactive operational map."
         rightElement={
-          <div className="bg-slate-950 px-4 py-2.5 rounded-xl border border-slate-800 text-right shadow-lg">
+          <div className="glass-card px-4 py-2.5 rounded-xl border border-white/10 text-right shadow-lg">
             <div className="text-[10px] text-slate-500">INTELLIGENCE PLATFORM</div>
             <div className="text-sky-400 font-bold text-lg">23+ LAYERS • 60K+ ENTITIES</div>
           </div>
@@ -27,8 +27,8 @@ export default function GodsEyeTelemetryPage() {
       <GodsEyeMap />
 
       {/* Comprehensive GodsEye Ingestion Architecture Matrix */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+      <div className="glass-panel border border-white/10 rounded-2xl p-6 shadow-2xl space-y-4">
+        <div className="flex items-center justify-between border-b border-white/10 pb-3">
           <h3 className="text-sm font-bold text-white flex items-center space-x-2">
             <Database className="w-4 h-4 text-emerald-400" />
             <span>GODSEYE INGESTION PROTOCOL & GEORGIA TELEMETRY RELEVANCE</span>
@@ -38,9 +38,9 @@ export default function GodsEyeTelemetryPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {GODSEYE_INTEL_LAYERS.map((layer) => (
-            <div key={layer.id} className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+            <div key={layer.id} className="glass-card p-4 rounded-xl border border-white/10 space-y-2">
               <div className="flex items-center justify-between text-[10px]">
-                <span className="px-2 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-800 font-bold">
+                <span className="px-2 py-0.5 rounded glass-panel text-slate-300 border border-white/10 font-bold">
                   {layer.category}
                 </span>
                 <span className="text-emerald-400 font-bold">{layer.updateCadence}</span>

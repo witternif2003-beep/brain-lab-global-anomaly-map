@@ -321,3 +321,22 @@ The **Brain Lab by Liliya** Global Anomaly Map platform has been built, compiled
 - **Production Pipeline Deployment:**
   - Pushed to GitHub `witternif2003-beep/brain-lab-global-anomaly-map` (commit `b8c3e53`).
   - Deployed to Vercel production edge: [https://brain-lab-six.vercel.app](https://brain-lab-six.vercel.app).
+
+---
+
+## Complete Audit & System Refactor: Oceanic Telemetry, Canvas Resiliency, and Cross-Platform Layouts
+
+- **Oceanic Telemetry Theme Uniformity Across All Surfaces:**
+  - Removed remaining purple and violet hues across all pages (`/anomalies`, `/recommendations-hub`, `/insider-intel`, `/three-pillars`, `/godseye-telemetry`, and `/threat-globe`).
+  - Standardized on deep oceanic navy (`#0b1320`), elevated slate navy (`#131d2c` / `#182438`), and crisp border contours (`#28394e`).
+- **3D Threat Globe (`ThreatGlobe3D.tsx`) Canvas Refactor:**
+  - Upgraded canvas rendering with high-DPI dynamic scaling (`dpr`) to resolve layout shifts and overlap seen in mobile screenshots.
+  - Relocated control triggers to compact, non-intrusive HUD corners (`top-3 right-3`), freeing the 3D rotating vector sphere.
+- **GodsEye Multi-Sensor Map (`GodsEyeMap.tsx`) Fix:**
+  - Replaced WebGL container fallback with a reliable, GPU-accelerated HTML5 vector canvas that parses US Census boundary coordinates directly.
+  - Preserved active layer toggles (ADS-B, AIS, Satellites, FIRMS, CCTV, Nuclear) and transponder telemetry card without blank-canvas issues.
+- **Mobile Safari & Desktop Mode Text Stacking Fix:**
+  - Formatted badges, cards, and buttons with responsive wrapping (`flex-wrap`, `min-w-0`, `truncate`), preventing text overlap in iOS "Request Desktop Site" mode.
+- **Production Deployment:**
+  - Pushed commit `a0f2f0d` to GitHub `witternif2003-beep/brain-lab-global-anomaly-map`.
+  - Deployed to Vercel production edge: [https://brain-lab-six.vercel.app](https://brain-lab-six.vercel.app).

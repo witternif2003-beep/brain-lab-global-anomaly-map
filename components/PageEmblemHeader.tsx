@@ -18,13 +18,13 @@ export default function PageEmblemHeader({
   rightElement,
 }: PageEmblemHeaderProps) {
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#131d2c] via-[#0f172a] to-[#0b1320] border border-[#28394e] p-5 sm:p-6 shadow-2xl">
+    <div className="relative overflow-hidden rounded-2xl glass-panel p-5 sm:p-6 shadow-2xl">
       <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
         
-        {/* Left Section with 1/10th Longitudinal Rotating Emblem */}
+        {/* Left Section with 1/10th Scale Longitudinal Rotating Emblem */}
         <div className="flex items-start sm:items-center space-x-3.5">
           <div className="relative shrink-0" style={{ perspective: "600px" }}>
-            <div className="relative w-8 h-8 sm:w-9 sm:h-9 rounded-full p-0.5 bg-[#0b121b] border border-[#38bdf8] shadow-lg emblem-longitudinal-pulse flex items-center justify-center overflow-hidden">
+            <div className="relative w-8 h-8 sm:w-9 sm:h-9 rounded-full p-0.5 bg-[#0b121b]/80 border border-[#38bdf8]/60 shadow-lg emblem-longitudinal-pulse flex items-center justify-center overflow-hidden">
               <Image
                 src="/assets/brain-lab-emblem.png"
                 alt="Brain Lab by Liliya emblem"
@@ -37,7 +37,7 @@ export default function PageEmblemHeader({
           </div>
 
           <div className="space-y-1.5">
-            <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#1e293b] text-[#38bdf8] border border-[#38bdf8]/40 shadow-sm">
+            <div className="inline-flex items-center space-x-1.5 px-3 py-0.5 rounded-full text-[10px] font-semibold glass-pill text-[#38bdf8] shadow-sm">
               {badgeIcon && <span>{badgeIcon}</span>}
               <span className="font-mono tracking-wide">{badgeText}</span>
             </div>

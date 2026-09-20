@@ -53,22 +53,22 @@ export default function BotPipelinePage() {
 
       {/* Discovery Pipeline Architecture Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl">
+        <div className="glass-panel border border-white/10 p-4 rounded-xl">
           <div className="text-slate-500 text-[10px]">DISCOVERY FREQUENCY</div>
           <div className="text-emerald-400 font-bold text-sm">CONTINUOUS REAL-TIME</div>
           <div className="text-[10px] text-slate-400 mt-1">Multi-Threaded Web Crawl</div>
         </div>
-        <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl">
+        <div className="glass-panel border border-white/10 p-4 rounded-xl">
           <div className="text-slate-500 text-[10px]">CIRCULAR DETECTION</div>
           <div className="text-sky-400 font-bold text-sm">GRAPH DEPENDENCY MAP</div>
           <div className="text-[10px] text-slate-400 mt-1">Filters Echo-Chamber Loops</div>
         </div>
-        <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl">
+        <div className="glass-panel border border-white/10 p-4 rounded-xl">
           <div className="text-slate-500 text-[10px]">SINGLE-SOURCE FLAG</div>
           <div className="text-amber-400 font-bold text-sm">AUTO-CONCORDANCE</div>
           <div className="text-[10px] text-slate-400 mt-1">Requires 2+ Corroborations</div>
         </div>
-        <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl">
+        <div className="glass-panel border border-white/10 p-4 rounded-xl">
           <div className="text-slate-500 text-[10px]">DECAY WEIGHTING</div>
           <div className="text-rose-400 font-bold text-sm">TEMPORAL SCORING</div>
           <div className="text-[10px] text-slate-400 mt-1">Stale Data Downgraded</div>
@@ -76,8 +76,8 @@ export default function BotPipelinePage() {
       </div>
 
       {/* Discovered Sources Table */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+      <div className="glass-panel border border-white/10 rounded-2xl p-5 shadow-2xl space-y-4">
+        <div className="flex items-center justify-between border-b border-white/10 pb-3">
           <h3 className="text-sm font-bold text-white flex items-center space-x-2">
             <GitBranch className="w-4 h-4 text-emerald-400" />
             <span>AUTONOMOUSLY VERIFIED SOURCES INGESTION QUEUE</span>
@@ -87,7 +87,7 @@ export default function BotPipelinePage() {
 
         <div className="space-y-3">
           {sources.map((src) => (
-            <div key={src.id} className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+            <div key={src.id} className="glass-card p-4 rounded-xl border border-white/10 space-y-2">
               <div className="flex items-center justify-between text-[10px]">
                 <span className="text-slate-400">{src.category} • First Ingest: {new Date(src.firstDiscovered).toLocaleTimeString()}</span>
                 <div className="flex items-center space-x-2">

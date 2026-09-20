@@ -37,7 +37,7 @@ export default function SourcesPage() {
         title="VALIDATED PUBLIC-SOURCE INGESTION STREAMS & DATA FABRIC"
         description="Public-source data streams continuously ingested, normalized to OCSF ontology, and evaluated through LSTM-AE dynamic thresholding and NATO/Admiralty credibility grading (A1/A2)."
         rightElement={
-          <div className="bg-slate-950 px-4 py-2.5 rounded-xl border border-slate-800 text-right shadow-lg">
+          <div className="glass-card px-4 py-2.5 rounded-xl border border-white/10 text-right shadow-lg">
             <div className="text-[10px] text-slate-500">SYNCHRONIZED STREAMS</div>
             <div className="text-emerald-400 font-bold text-lg">{TELEMETRY_STREAMS.length} ACTIVE PIPELINES</div>
           </div>
@@ -45,7 +45,7 @@ export default function SourcesPage() {
       />
 
       {/* Filter and Search Bar */}
-      <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-3">
+      <div className="glass-card p-3 rounded-xl border border-white/10 space-y-3">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="relative w-full sm:w-80">
             <Search className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
@@ -54,7 +54,7 @@ export default function SourcesPage() {
               placeholder="Search streams by keyword, protocol or endpoint..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-800 rounded-lg pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500"
+              className="w-full glass-panel border border-white/10 rounded-lg pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500"
             />
           </div>
 
@@ -73,7 +73,7 @@ export default function SourcesPage() {
               className={`px-2.5 py-1 rounded text-[11px] font-semibold transition-all whitespace-nowrap ${
                 selectedCategory === cat
                   ? "bg-sky-500 text-black shadow"
-                  : "bg-slate-900 text-slate-400 hover:text-white"
+                  : "glass-panel text-slate-400 hover:text-white"
               }`}
             >
               {cat}
@@ -87,7 +87,7 @@ export default function SourcesPage() {
         {filtered.map((stream) => (
           <div
             key={stream.id}
-            className="bg-slate-900 border border-slate-800 hover:border-slate-700 p-4 rounded-xl shadow-xl flex flex-col justify-between space-y-3 transition-all"
+            className="glass-panel border border-white/10 hover:border-slate-700 p-4 rounded-xl shadow-xl flex flex-col justify-between space-y-3 transition-all"
           >
             <div className="space-y-2">
               <div className="flex items-center justify-between text-[10px]">
@@ -101,7 +101,7 @@ export default function SourcesPage() {
                 {stream.name}
               </h3>
 
-              <div className="bg-slate-950 p-2.5 rounded border border-slate-800 text-[11px] space-y-1">
+              <div className="glass-card p-2.5 rounded border border-white/10 text-[11px] space-y-1">
                 <div className="text-slate-400 flex justify-between">
                   <span>Category:</span>
                   <span className="text-slate-200">{stream.category}</span>
@@ -125,7 +125,7 @@ export default function SourcesPage() {
               </div>
             </div>
 
-            <div className="border-t border-slate-800 pt-2 flex items-center justify-between text-[10px]">
+            <div className="border-t border-white/10 pt-2 flex items-center justify-between text-[10px]">
               <span className="text-slate-400">Allies: {stream.exploitingStates.join(", ")}</span>
               <a
                 href={stream.endpoint}

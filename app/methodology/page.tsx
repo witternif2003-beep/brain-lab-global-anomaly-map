@@ -15,13 +15,13 @@ export default function MethodologyPage() {
       />
 
       {/* Section 1: Machine Learning Architecture */}
-      <div className="bg-slate-900/80 border border-slate-800 p-6 rounded-2xl space-y-4 shadow-xl">
-        <h2 className="text-base font-bold text-white flex items-center space-x-2 border-b border-slate-800 pb-2">
+      <div className="glass-panel/80 border border-white/10 p-6 rounded-2xl space-y-4 shadow-xl">
+        <h2 className="text-base font-bold text-white flex items-center space-x-2 border-b border-white/10 pb-2">
           <Cpu className="w-5 h-5 text-sky-400" />
           <span>1. HYBRID TELEMETRY ANOMALY DETECTION PIPELINE</span>
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-sans">
-          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+          <div className="glass-card p-4 rounded-xl border border-white/10 space-y-2">
             <span className="font-mono text-sky-400 font-bold block text-sm">LSTM-AE + LSTD-Detect</span>
             <p className="text-slate-300 text-xs">
               Stacked Long Short-Term Memory Autoencoders learn baseline normal dynamics from 100+ public feeds. Employs non-parametric dynamic thresholding to track non-stationary economic regimes without manual calibration.
@@ -29,7 +29,7 @@ export default function MethodologyPage() {
             <div className="text-[11px] font-mono text-slate-500">NASA SMAP/MSL F1: 0.81</div>
           </div>
 
-          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+          <div className="glass-card p-4 rounded-xl border border-white/10 space-y-2">
             <span className="font-mono text-emerald-400 font-bold block text-sm">STGNN (Spatial-Temporal)</span>
             <p className="text-slate-300 text-xs">
               Spatio-Temporal Graph Neural Networks model intermodal rail, berth, and maritime vessel dwell couplings at the Port of Savannah and Port of Brunswick, isolating physical bottlenecks before editorial reporting.
@@ -37,7 +37,7 @@ export default function MethodologyPage() {
             <div className="text-[11px] font-mono text-slate-500">Deployment F1: 0.986</div>
           </div>
 
-          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+          <div className="glass-card p-4 rounded-xl border border-white/10 space-y-2">
             <span className="font-mono text-amber-400 font-bold block text-sm">Isolation Forest + XGBoost</span>
             <p className="text-slate-300 text-xs">
               Ensemble decision forest isolates extreme point anomalies across tax collection variance, county-level corporate registrations, and workforce layoffs (WARN Act notices).
@@ -48,8 +48,8 @@ export default function MethodologyPage() {
       </div>
 
       {/* Section 2: Admiralty System Credibility Grading */}
-      <div className="bg-slate-900/80 border border-slate-800 p-6 rounded-2xl space-y-4 shadow-xl">
-        <h2 className="text-base font-bold text-white flex items-center space-x-2 border-b border-slate-800 pb-2">
+      <div className="glass-panel/80 border border-white/10 p-6 rounded-2xl space-y-4 shadow-xl">
+        <h2 className="text-base font-bold text-white flex items-center space-x-2 border-b border-white/10 pb-2">
           <Shield className="w-5 h-5 text-amber-400" />
           <span>2. ADMIRALTY SYSTEM (CATS) SOURCE VERIFICATION</span>
         </h2>
@@ -58,7 +58,7 @@ export default function MethodologyPage() {
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+          <div className="glass-card p-4 rounded-xl border border-white/10 space-y-2">
             <div className="font-bold text-amber-300 font-mono">SOURCE RELIABILITY (A–F)</div>
             <ul className="space-y-1 text-slate-400 text-[11px]">
               <li><strong className="text-white">A: Completely Reliable</strong> — Official state statute, primary ports telemetry.</li>
@@ -68,7 +68,7 @@ export default function MethodologyPage() {
             </ul>
           </div>
 
-          <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
+          <div className="glass-card p-4 rounded-xl border border-white/10 space-y-2">
             <div className="font-bold text-sky-300 font-mono">INFORMATION CREDIBILITY (1–6)</div>
             <ul className="space-y-1 text-slate-400 text-[11px]">
               <li><strong className="text-white">1: Confirmed by Other Sources</strong> — Multi-sensor concordance verified.</li>
@@ -81,8 +81,8 @@ export default function MethodologyPage() {
       </div>
 
       {/* Section 3: Legal & Public Record Boundary Statement */}
-      <div className="bg-slate-900/80 border border-slate-800 p-6 rounded-2xl space-y-3 font-sans text-xs text-slate-300 leading-relaxed shadow-xl">
-        <h2 className="text-base font-bold text-white flex items-center space-x-2 font-mono border-b border-slate-800 pb-2">
+      <div className="glass-panel/80 border border-white/10 p-6 rounded-2xl space-y-3 font-sans text-xs text-slate-300 leading-relaxed shadow-xl">
+        <h2 className="text-base font-bold text-white flex items-center space-x-2 font-mono border-b border-white/10 pb-2">
           <BookOpen className="w-5 h-5 text-emerald-400" />
           <span>3. COMPLIANCE & LEGAL BOUNDARY STATEMENT</span>
         </h2>

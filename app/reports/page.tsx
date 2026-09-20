@@ -74,8 +74,8 @@ DISCLAIMER: Emblem used for identification purposes only. Not affiliated with an
                 onClick={() => setSelectedReport(rep)}
                 className={`p-4 rounded-xl border cursor-pointer transition-all space-y-2 ${
                   selectedReport.id === rep.id
-                    ? "bg-slate-900 border-sky-500 shadow-xl"
-                    : "bg-slate-950/80 border-slate-800/80 hover:border-slate-700 hover:bg-slate-900/60"
+                    ? "glass-panel border-sky-500 shadow-xl"
+                    : "glass-card/80 border-white/10/80 hover:border-slate-700 hover:glass-panel/60"
                 }`}
               >
                 <div className="flex items-center justify-between text-[10px]">
@@ -102,9 +102,9 @@ DISCLAIMER: Emblem used for identification purposes only. Not affiliated with an
 
         {/* Right Column: Full Intelligence Dossier Reader */}
         <div className="lg:col-span-7">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-5 sticky top-20">
+          <div className="glass-panel border border-white/10 rounded-2xl p-6 shadow-2xl space-y-5 sticky top-20">
             
-            <div className="border-b border-slate-800 pb-4 space-y-2">
+            <div className="border-b border-white/10 pb-4 space-y-2">
               <div className="flex items-center justify-between text-xs">
                 <span className="px-2.5 py-1 rounded bg-sky-500/20 text-sky-300 border border-sky-500/40 font-bold">
                   {selectedReport.pillar}
@@ -125,7 +125,7 @@ DISCLAIMER: Emblem used for identification purposes only. Not affiliated with an
             {/* Executive Abstract */}
             <div className="space-y-2">
               <h4 className="text-xs font-bold text-slate-300">EXECUTIVE SUMMARY</h4>
-              <p className="text-xs text-slate-300 font-sans leading-relaxed bg-slate-950 p-4 rounded-xl border border-slate-800">
+              <p className="text-xs text-slate-300 font-sans leading-relaxed glass-card p-4 rounded-xl border border-white/10">
                 {selectedReport.summary}
               </p>
             </div>
@@ -146,7 +146,7 @@ DISCLAIMER: Emblem used for identification purposes only. Not affiliated with an
               </h4>
               <div className="space-y-2">
                 {selectedReport.competitorActionItems.map((item, idx) => (
-                  <div key={idx} className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs space-y-1">
+                  <div key={idx} className="glass-card p-3 rounded-xl border border-white/10 text-xs space-y-1">
                     <div className="flex items-center justify-between text-sky-300 font-bold">
                       <span>{item.state} Action Directive</span>
                       <span className="text-emerald-400 font-semibold">{item.roiProjected}</span>
@@ -160,7 +160,7 @@ DISCLAIMER: Emblem used for identification purposes only. Not affiliated with an
             </div>
 
             {/* Primary Source Audits */}
-            <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 text-xs space-y-1.5">
+            <div className="glass-card p-3.5 rounded-xl border border-white/10 text-xs space-y-1.5">
               <div className="text-slate-400 font-bold">CORROBORATING PRIMARY SOURCE PROVENANCE</div>
               <ul className="list-disc list-inside text-slate-300 text-[11px] space-y-0.5">
                 {selectedReport.primarySources.map((s, i) => (

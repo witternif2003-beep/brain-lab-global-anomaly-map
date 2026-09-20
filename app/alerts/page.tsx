@@ -51,7 +51,7 @@ export default function AlertsPage() {
         title="REAL-TIME TELEMETRY ANOMALY ALERT DISPATCH ENGINE"
         description="Automated outward alerting integrating webhook dispatch pipelines for Discord, Telegram, and Slack. Transmits high-confidence Admiralty A1/A2 economic anomalies immediately upon detection."
         rightElement={
-          <div className="bg-slate-950 px-4 py-2.5 rounded-xl border border-slate-800 text-right shadow-lg">
+          <div className="glass-card px-4 py-2.5 rounded-xl border border-white/10 text-right shadow-lg">
             <div className="text-[10px] text-slate-500">DISPATCH STATUS</div>
             <div className="text-emerald-400 font-bold text-lg">WEBHOOK PIPELINE ACTIVE</div>
           </div>
@@ -62,7 +62,7 @@ export default function AlertsPage() {
         
         {/* Left Column: Dispatch Configuration */}
         <div className="lg:col-span-5 space-y-4">
-          <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-4 shadow-xl">
+          <div className="glass-panel border border-white/10 p-5 rounded-2xl space-y-4 shadow-xl">
             <h3 className="text-sm font-bold text-white flex items-center space-x-2">
               <Send className="w-4 h-4 text-sky-400" />
               <span>CONFIGURE ALERT DESTINATION</span>
@@ -78,7 +78,7 @@ export default function AlertsPage() {
                   className={`py-2 rounded-lg text-xs font-bold transition-all ${
                     targetChannel === platform
                       ? "bg-sky-500 text-black shadow"
-                      : "bg-slate-950 text-slate-400 hover:text-white border border-slate-800"
+                      : "glass-card text-slate-400 hover:text-white border border-white/10"
                   }`}
                 >
                   {platform}
@@ -95,17 +95,17 @@ export default function AlertsPage() {
                   type="text"
                   value={webhookUrl}
                   onChange={(e) => setWebhookUrl(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-sky-500"
+                  className="w-full glass-card border border-white/10 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-sky-500"
                 />
               </div>
 
               <div className="space-y-2 text-xs text-slate-400">
                 <div className="flex items-center space-x-2">
-                  <input type="checkbox" defaultChecked className="rounded bg-slate-950 border-slate-800 text-sky-500" />
+                  <input type="checkbox" defaultChecked className="rounded glass-card border-white/10 text-sky-500" />
                   <span>Dispatch Critical (Z &gt; 2.5σ) anomalies immediately</span>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <input type="checkbox" defaultChecked className="rounded bg-slate-950 border-slate-800 text-sky-500" />
+                  <input type="checkbox" defaultChecked className="rounded glass-card border-white/10 text-sky-500" />
                   <span>Enforce Admiralty A1/A2 confirmation gate</span>
                 </div>
               </div>
@@ -140,7 +140,7 @@ export default function AlertsPage() {
 
           <div className="space-y-2.5">
             {mockAlertLogs.map((log) => (
-              <div key={log.id} className="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-2 shadow-md">
+              <div key={log.id} className="glass-panel border border-white/10 p-4 rounded-xl space-y-2 shadow-md">
                 <div className="flex items-center justify-between text-[10px]">
                   <span className="text-slate-400">{log.timestamp}</span>
                   <div className="flex items-center space-x-2">

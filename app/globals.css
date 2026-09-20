@@ -2,11 +2,37 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer utilities {
+  /* Modern Transparent Glassmorphism Tokens */
+  .glass-panel {
+    background: rgba(19, 29, 44, 0.65);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(56, 189, 248, 0.15);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  }
+
+  .glass-card {
+    background: rgba(15, 23, 42, 0.55);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.25);
+  }
+
+  .glass-pill {
+    background: rgba(30, 41, 59, 0.50);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(56, 189, 248, 0.20);
+  }
+}
+
 :root {
-  --color-slate-bg: #0b1320;
-  --color-slate-surface: #131d2c;
-  --color-slate-card: #182438;
-  --color-slate-border: #28394e;
+  --color-slate-bg: #070c14;
+  --color-slate-surface: rgba(19, 29, 44, 0.65);
+  --color-slate-card: rgba(15, 23, 42, 0.55);
+  --color-slate-border: rgba(56, 189, 248, 0.15);
   
   --anomaly-critical: #f43f5e;
   --anomaly-high: #fb923c;
@@ -17,9 +43,10 @@
 
 html, body {
   min-height: 100%;
-  background-color: #0b1320;
+  background-color: #070c14;
   color: #f8fafc;
   -webkit-text-size-adjust: 100%;
+  overflow-x: hidden;
 }
 
 body {
@@ -27,25 +54,25 @@ body {
   padding-right: env(safe-area-inset-right);
   padding-bottom: env(safe-area-inset-bottom);
   padding-left: env(safe-area-inset-left);
-  background: radial-gradient(circle at 50% 0%, #19273c 0%, #0f1827 60%, #0b1320 100%);
+  background: radial-gradient(circle at 50% 0%, #152438 0%, #0d1522 50%, #070c14 100%);
   background-attachment: fixed;
 }
 
-/* Custom scrollbars themed after oceanic telemetry radar */
+/* Custom scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #0b1320;
+  background: rgba(7, 12, 20, 0.8);
 }
 ::-webkit-scrollbar-thumb {
-  background: #28394e;
+  background: rgba(56, 189, 248, 0.25);
   border-radius: 3px;
-  border: 1px solid #334862;
+  border: 1px solid rgba(56, 189, 248, 0.1);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #38bdf8;
+  background: rgba(56, 189, 248, 0.6);
 }
 
 /* Longitudinal Y-axis rotation (3D coin flip along vertical meridian) */

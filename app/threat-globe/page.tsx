@@ -16,7 +16,7 @@ export default function ThreatGlobePage() {
         title="3D THREAT GLOBE COMMON OPERATING PICTURE (COP)"
         description="Physical multi-source signal correlation projected onto an interactive 3D geospatial sphere. Correlates Port of Savannah logistics bottlenecks, legislative tax sunsets (HB 463), and consumer macro debt spikes before editorial news cycles emerge."
         rightElement={
-          <div className="bg-slate-950 px-4 py-2.5 rounded-xl border border-slate-800 text-right shadow-lg">
+          <div className="glass-card px-4 py-2.5 rounded-xl border border-white/10 text-right shadow-lg">
             <div className="text-[10px] text-slate-500">LIVE ORBIT FEED</div>
             <div className="text-emerald-400 font-bold text-lg">ONLINE • 100+ FEEDS</div>
           </div>
@@ -28,7 +28,7 @@ export default function ThreatGlobePage() {
 
       {/* Under-Globe Telemetry Breakdown */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-2">
+        <div className="glass-panel border border-white/10 p-4 rounded-xl space-y-2">
           <div className="flex items-center space-x-2 text-rose-400 text-xs font-bold">
             <ShieldAlert className="w-4 h-4" />
             <span>Pillar 1: Logistics Infrastructure</span>
@@ -38,7 +38,7 @@ export default function ThreatGlobePage() {
           </p>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-2">
+        <div className="glass-panel border border-white/10 p-4 rounded-xl space-y-2">
           <div className="flex items-center space-x-2 text-sky-400 text-xs font-bold">
             <Cpu className="w-4 h-4" />
             <span>Pillar 2: Incentive Parity (HB 463)</span>
@@ -48,7 +48,7 @@ export default function ThreatGlobePage() {
           </p>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-2">
+        <div className="glass-panel border border-white/10 p-4 rounded-xl space-y-2">
           <div className="flex items-center space-x-2 text-amber-400 text-xs font-bold">
             <TrendingUp className="w-4 h-4" />
             <span>Pillar 3: Consumer & Labor Distress</span>
