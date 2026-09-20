@@ -218,3 +218,17 @@ The **Brain Lab by Liliya** Global Anomaly Map platform has been built, compiled
   - `/api/anomalies`: Provides programmatic access to the Georgia state entity forensic anomaly registry.
 - **Compliance Certification:**
   - Persistent mandatory disclaimer active on all UI headers and footers: *"Emblem used for identification purposes only. Not affiliated with any government agency."*
+
+---
+
+## Production Deployment to GitHub & Vercel (Unattended Automation)
+
+- **GitHub Repository Linked:**
+  - **URL:** [https://github.com/witternif2003-beep/brain-lab-global-anomaly-map](https://github.com/witternif2003-beep/brain-lab-global-anomaly-map)
+  - **Branch:** `main` (clean initial commit with all 61 files, build scripts, workers, and palettes)
+- **Vercel Project & Deployment:**
+  - **Vercel Project:** `nicks-projects-128db960/brain-lab`
+  - **Connected Git Repository:** `witternif2003-beep/brain-lab-global-anomaly-map`
+  - **Production Deployment URL:** [https://brain-lab-six.vercel.app](https://brain-lab-six.vercel.app)
+  - **Secondary Aliased URL:** [https://brain-quyvsvtes-nicks-projects-128db960.vercel.app](https://brain-quyvsvtes-nicks-projects-128db960.vercel.app)
+  - **Deployment Verification:** 20 / 20 production routes audited live on Vercel edge returning `HTTP 200 OK`.
