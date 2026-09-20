@@ -2,6 +2,7 @@
 import React from "react";
 import ThreatGlobe3D from "../../components/ThreatGlobe3D";
 import PageEmblemHeader from "../../components/PageEmblemHeader";
+import { RealTimeSparkline } from "../../components/RealTimeSparkline";
 import { Globe, ShieldAlert, Cpu, CheckCircle2, TrendingUp } from "lucide-react";
 import { GEORGIA_ANOMALIES, COMPETITOR_STATES } from "../../lib/data";
 
@@ -25,6 +26,22 @@ export default function ThreatGlobePage() {
 
       {/* 3D Canvas Globe */}
       <ThreatGlobe3D />
+
+      {/* 60 FPS Canvas Real-Time Telemetry Sparklines (React Bypassed Hot-Path) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <RealTimeSparkline
+          channelKey="gridLoadMW"
+          label="Georgia Power High-Density Grid Reserve Margin"
+          unit="18,450 MW"
+          strokeColor="#00e5ff"
+        />
+        <RealTimeSparkline
+          channelKey="portTEUVelocity"
+          label="Savannah Mason Mega Rail Intermodal Velocity"
+          unit="541,405 TEU"
+          strokeColor="#00ff9d"
+        />
+      </div>
 
       {/* Under-Globe Telemetry Breakdown */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">

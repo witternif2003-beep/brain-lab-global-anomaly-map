@@ -1,239 +1,311 @@
+/* =========================================
+   1. CASCADE LAYER DECLARATION
+   Order determines precedence (first = lowest)
+   ========================================= */
+@layer reset, tokens, base, layout, components, utilities, overrides;
+
+/* =========================================
+   2. VIEW TRANSITIONS API
+   ========================================= */
+@view-transition {
+  navigation: auto;
+}
+
+::view-transition-group(app-header) {
+  animation-duration: 300ms;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+::view-transition-group(threat-globe) {
+  animation-duration: 450ms;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+::view-transition-old(root) {
+  animation: fade-out 200ms ease-out;
+}
+
+::view-transition-new(root) {
+  animation: fade-in 250ms ease-in;
+}
+
+@keyframes fade-out {
+  to { opacity: 0; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* =========================================
-   1. PARAMETRIC OKLCH TOKEN SYSTEM
-   ========================================= */
-:root {
-  /* Theme Parameters — change these two values to reshape entire palette */
-  --theme-hue: 250;          /* Deep intelligence blue-violet */
-  --theme-chroma: 0.18;      /* Vibrant yet contrast-balanced */
-
-  /* Surface Scale — 10 perceptually uniform steps */
-  --surface-1: oklch(8% 0.015 var(--theme-hue));
-  --surface-2: oklch(11% 0.02 var(--theme-hue));
-  --surface-3: oklch(14% 0.025 var(--theme-hue));
-  --surface-4: oklch(17% 0.03 var(--theme-hue));
-  --surface-5: oklch(20% 0.035 var(--theme-hue));
-  --surface-6: oklch(24% 0.04 var(--theme-hue));
-  --surface-7: oklch(28% 0.045 var(--theme-hue));
-  --surface-8: oklch(33% 0.05 var(--theme-hue));
-  --surface-9: oklch(40% 0.05 var(--theme-hue));
-  --surface-10: oklch(50% 0.05 var(--theme-hue));
-
-  /* Text Hierarchy — Uniform Perceptual Lightness */
-  --text-primary: oklch(96% 0.01 var(--theme-hue));
-  --text-secondary: oklch(82% 0.02 var(--theme-hue));
-  --text-tertiary: oklch(68% 0.025 var(--theme-hue));
-  --text-disabled: oklch(50% 0.01 var(--theme-hue));
-
-  /* Accent & Semantic Palette */
-  --accent: oklch(68% var(--theme-chroma) var(--theme-hue));
-  --accent-hover: oklch(74% var(--theme-chroma) var(--theme-hue));
-  --accent-muted: oklch(58% calc(var(--theme-chroma) * 0.7) var(--theme-hue));
-
-  --success: oklch(68% 0.19 152);
-  --warning: oklch(76% 0.18 84);
-  --error: oklch(62% 0.22 25);
-  --info: oklch(68% 0.16 235);
-
-  /* Glass Surfaces — OKLCH with Alpha */
-  --glass-bg: oklch(22% 0.035 var(--theme-hue) / 0.65);
-  --glass-bg-heavy: oklch(18% 0.035 var(--theme-hue) / 0.85);
-  --glass-border: oklch(100% 0 0 / 0.14);
-  --glass-border-hover: oklch(100% 0 0 / 0.28);
-  --glass-shadow: 0 8px 32px 0 oklch(0% 0 0 / 0.45);
-
-  /* Dynamic Viewport Fluid Font Scale (Dynamic dvw units) */
-  --fs-xs:   clamp(0.75rem,  0.72rem + 0.15dvw, 0.8125rem);  /* 12–13px */
-  --fs-sm:   clamp(0.8125rem,0.78rem + 0.18dvw, 0.875rem);   /* 13–14px */
-  --fs-base: clamp(1rem,     0.95rem + 0.25dvw, 1.125rem);   /* 16–18px */
-  --fs-lg:   clamp(1.125rem, 1.06rem + 0.32dvw, 1.25rem);    /* 18–20px */
-  --fs-xl:   clamp(1.25rem,  1.15rem + 0.50dvw, 1.50rem);    /* 20–24px */
-  --fs-2xl:  clamp(1.5rem,   1.32rem + 0.90dvw, 2rem);       /* 24–32px */
-  --fs-3xl:  clamp(2rem,     1.7rem  + 1.50dvw, 2.75rem);    /* 32–44px */
-
-  /* Blur settings */
-  --glass-blur: 16px;
-  --glass-sat: 160%;
-}
-
-/* iOS Font Scale Shift — Escalates fonts up by one full step to survive 980px viewport trap */
-html[data-platform="ios"] {
-  --fs-xs:   clamp(0.875rem, 0.84rem + 0.16dvw, 0.9375rem);  /* 14–15px */
-  --fs-sm:   clamp(1rem,     0.95rem + 0.20dvw, 1.0625rem);  /* 16–17px */
-  --fs-base: clamp(1.125rem, 1.06rem + 0.32dvw, 1.1875rem);  /* 18–19px */
-  --fs-lg:   clamp(1.25rem,  1.17rem + 0.40dvw, 1.375rem);   /* 20–22px */
-  --fs-xl:   clamp(1.5rem,   1.36rem + 0.65dvw, 1.75rem);    /* 24–28px */
-  --fs-2xl:  clamp(1.875rem, 1.65rem + 1.10dvw, 2.375rem);   /* 30–38px */
-  --fs-3xl:  clamp(2.5rem,   2.10rem + 1.85dvw, 3.25rem);    /* 40–52px */
-
-  --glass-blur: 12px;
-  --glass-sat:  150%;
-}
-
-@media (max-width: 768px) {
+@layer tokens {
   :root {
-    --glass-blur: 10px;
-    --glass-sat:  140%;
+    /* Theme Parameters — change these two values to reshape entire palette */
+    --theme-hue: 250;          /* Deep intelligence blue-violet */
+    --theme-chroma: 0.18;      /* Vibrant yet contrast-balanced */
+
+    /* Surface Scale — 12 steps */
+    --surface-1: oklch(8% 0.015 var(--theme-hue));
+    --surface-2: oklch(11% 0.02 var(--theme-hue));
+    --surface-3: oklch(14% 0.025 var(--theme-hue));
+    --surface-4: oklch(17% 0.03 var(--theme-hue));
+    --surface-5: oklch(20% 0.035 var(--theme-hue));
+    --surface-6: oklch(24% 0.04 var(--theme-hue));
+    --surface-7: oklch(28% 0.045 var(--theme-hue));
+    --surface-8: oklch(33% 0.05 var(--theme-hue));
+    --surface-9: oklch(40% 0.05 var(--theme-hue));
+    --surface-10: oklch(50% 0.05 var(--theme-hue));
+    --surface-11: oklch(62% 0.04 var(--theme-hue));
+    --surface-12: oklch(75% 0.03 var(--theme-hue));
+
+    /* Text Hierarchy — Uniform Perceptual Lightness */
+    --text-primary: oklch(96% 0.01 var(--theme-hue));
+    --text-secondary: oklch(82% 0.02 var(--theme-hue));
+    --text-tertiary: oklch(68% 0.025 var(--theme-hue));
+    --text-disabled: oklch(50% 0.01 var(--theme-hue));
+
+    /* Accent & Semantic Palette */
+    --accent: oklch(68% var(--theme-chroma) var(--theme-hue));
+    --accent-hover: oklch(74% var(--theme-chroma) var(--theme-hue));
+    --accent-muted: oklch(58% calc(var(--theme-chroma) * 0.7) var(--theme-hue));
+
+    --success: oklch(68% 0.19 152);
+    --warning: oklch(76% 0.18 84);
+    --error: oklch(62% 0.22 25);
+    --info: oklch(68% 0.16 235);
+
+    /* Glass Surfaces — OKLCH with Alpha */
+    --glass-bg: oklch(22% 0.035 var(--theme-hue) / 0.65);
+    --glass-bg-heavy: oklch(18% 0.035 var(--theme-hue) / 0.85);
+    --glass-border: oklch(100% 0 0 / 0.14);
+    --glass-border-hover: oklch(100% 0 0 / 0.28);
+    --glass-shadow: 0 8px 32px 0 oklch(0% 0 0 / 0.45);
+
+    /* Dynamic Viewport Fluid Font Scale (Dynamic dvw units) */
+    --fs-xs:   clamp(0.75rem,  0.72rem + 0.15dvw, 0.8125rem);  /* 12–13px */
+    --fs-sm:   clamp(0.8125rem,0.78rem + 0.18dvw, 0.875rem);   /* 13–14px */
+    --fs-base: clamp(1rem,     0.95rem + 0.25dvw, 1.125rem);   /* 16–18px */
+    --fs-lg:   clamp(1.125rem, 1.06rem + 0.32dvw, 1.25rem);    /* 18–20px */
+    --fs-xl:   clamp(1.25rem,  1.15rem + 0.50dvw, 1.50rem);    /* 20–24px */
+    --fs-2xl:  clamp(1.5rem,   1.32rem + 0.90dvw, 2rem);       /* 24–32px */
+    --fs-3xl:  clamp(2rem,     1.7rem  + 1.50dvw, 2.75rem);    /* 32–44px */
+
+    /* Blur Settings */
+    --glass-blur: 16px;
+    --glass-sat: 160%;
+  }
+
+  /* iOS Font Scale Shift */
+  html[data-platform="ios"] {
+    --fs-xs:   clamp(0.875rem, 0.84rem + 0.16dvw, 0.9375rem);  /* 14–15px */
+    --fs-sm:   clamp(1rem,     0.95rem + 0.20dvw, 1.0625rem);  /* 16–17px */
+    --fs-base: clamp(1.125rem, 1.06rem + 0.32dvw, 1.1875rem);  /* 18–19px */
+    --fs-lg:   clamp(1.25rem,  1.17rem + 0.40dvw, 1.375rem);   /* 20–22px */
+    --fs-xl:   clamp(1.5rem,   1.36rem + 0.65dvw, 1.75rem);    /* 24–28px */
+    --fs-2xl:  clamp(1.875rem, 1.65rem + 1.10dvw, 2.375rem);   /* 30–38px */
+    --fs-3xl:  clamp(2.5rem,   2.10rem + 1.85dvw, 3.25rem);    /* 40–52px */
+
+    --glass-blur: 12px;
+    --glass-sat:  150%;
+  }
+
+  @media (max-width: 768px) {
+    :root {
+      --glass-blur: 10px;
+      --glass-sat:  140%;
+    }
   }
 }
 
-html {
-  font-family: "Inter", system-ui, -apple-system, "SF Pro Text", sans-serif;
-  font-feature-settings: "cv11", "ss01";
-  font-optical-sizing: auto;
-  -webkit-font-smoothing: antialiased;
-  -webkit-text-size-adjust: 100%;
-  text-size-adjust: 100%;
+@layer base {
+  html {
+    font-family: "Inter", system-ui, -apple-system, "SF Pro Text", sans-serif;
+    font-feature-settings: "cv11", "ss01";
+    font-optical-sizing: auto;
+    -webkit-font-smoothing: antialiased;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    min-height: 100dvh;
+    background-color: var(--surface-1);
+    color: var(--text-primary);
+    font-size: var(--fs-base);
+    line-height: 1.65;
+    overflow-x: hidden;
+    padding-top: env(safe-area-inset-top);
+    padding-right: env(safe-area-inset-right);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    background: radial-gradient(circle at 50% 0%, var(--surface-3) 0%, var(--surface-2) 50%, var(--surface-1) 100%);
+    background-attachment: fixed;
+  }
+
+  h1 { font-size: var(--fs-3xl); font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; text-shadow: 0 1px 3px oklch(0% 0 0 / 0.5); }
+  h2 { font-size: var(--fs-2xl); font-weight: 600; letter-spacing: -0.015em; line-height: 1.2; text-shadow: 0 1px 2px oklch(0% 0 0 / 0.4); }
+  h3 { font-size: var(--fs-xl);  font-weight: 600; line-height: 1.3; text-shadow: 0 1px 2px oklch(0% 0 0 / 0.4); }
+
+  /* Enforce 16px min on form controls so iOS Safari never auto-zooms */
+  input, textarea, select {
+    font-size: max(16px, var(--fs-base)) !important;
+    font-family: inherit;
+  }
 }
 
-body {
-  min-height: 100dvh;
-  background-color: var(--surface-1);
-  color: var(--text-primary);
-  font-size: var(--fs-base);
-  line-height: 1.65;
-  overflow-x: hidden;
-  padding-top: env(safe-area-inset-top);
-  padding-right: env(safe-area-inset-right);
-  padding-bottom: env(safe-area-inset-bottom);
-  padding-left: env(safe-area-inset-left);
-  background: radial-gradient(circle at 50% 0%, var(--surface-3) 0%, var(--surface-2) 50%, var(--surface-1) 100%);
-  background-attachment: fixed;
-}
+@layer layout {
+  /* =========================================
+     CONTAINER QUERY WIDGET SYSTEM (FLAT)
+     ========================================= */
+  .page-grid {
+    container-type: inline-size;
+    container-name: page;
+  }
 
-/* Headings Fluid Sizing with contrast shadow */
-h1 { font-size: var(--fs-3xl); font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; text-shadow: 0 1px 3px oklch(0% 0 0 / 0.5); }
-h2 { font-size: var(--fs-2xl); font-weight: 600; letter-spacing: -0.015em; line-height: 1.2; text-shadow: 0 1px 2px oklch(0% 0 0 / 0.4); }
-h3 { font-size: var(--fs-xl);  font-weight: 600; line-height: 1.3; text-shadow: 0 1px 2px oklch(0% 0 0 / 0.4); }
+  .widget-container {
+    container-type: inline-size;
+    container-name: widget;
+  }
 
-/* Enforce 16px min on form controls so iOS Safari never auto-zooms */
-input, textarea, select {
-  font-size: max(16px, var(--fs-base)) !important;
-  font-family: inherit;
-}
-
-/* =========================================
-   2. CONTAINER QUERY WIDGET SYSTEM
-   ========================================= */
-.widget-container {
-  container-type: inline-size;
-  container-name: widget;
-}
-
-.widget {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.75rem;
-}
-
-@container widget (min-width: 400px) {
   .widget {
-    grid-template-columns: auto 1fr;
-    align-items: center;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  @container widget (min-width: 400px) {
+    .widget {
+      grid-template-columns: auto 1fr;
+      align-items: center;
+    }
+  }
+
+  @container widget (min-width: 768px) {
+    .widget {
+      grid-template-columns: auto 1fr auto;
+      padding: 1.25rem;
+    }
+  }
+
+  /* =========================================
+     OVERSCROLL BEHAVIOR CONTROL
+     ========================================= */
+  .telemetry-feed {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+
+  .app-sidebar {
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
   }
 }
 
-@container widget (min-width: 768px) {
-  .widget {
-    grid-template-columns: auto 1fr auto;
-    padding: 1.25rem;
-  }
-}
-
-/* =========================================
-   3. GLASS ENGINE — 3-LAYER ACCESSIBILITY DEFENSE
-   ========================================= */
-.glass-panel {
-  background: var(--surface-4);
-  border-radius: 20px;
-  position: relative;
-  overflow: hidden;
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--glass-shadow);
-  transition: border-color 200ms ease, transform 200ms ease;
-}
-
-@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+@layer components {
+  /* =========================================
+     GLASS ENGINE — 3-LAYER ACCESSIBILITY DEFENSE
+     ========================================= */
   .glass-panel {
-    background: var(--glass-bg);
-    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
-    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
+    background: var(--surface-4);
+    border-radius: 20px;
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+    contain: paint style;
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    transition: border-color 200ms ease, transform 200ms ease;
   }
-}
 
-.glass-card {
-  background: var(--surface-3);
-  border-radius: 14px;
-  border: 1px solid var(--glass-border);
-}
+  @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+    .glass-panel {
+      background: var(--glass-bg);
+      backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
+      -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
+    }
+  }
 
-@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
   .glass-card {
-    background: oklch(18% 0.03 var(--theme-hue) / 0.75);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    background: var(--surface-3);
+    border-radius: 14px;
+    border: 1px solid var(--glass-border);
+    isolation: isolate;
   }
-}
 
-.glass-data {
-  background: var(--surface-2);
-  border: 1px solid var(--glass-border);
-  border-radius: 12px;
-}
+  @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+    .glass-card {
+      background: oklch(18% 0.03 var(--theme-hue) / 0.75);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+  }
 
-@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
   .glass-data {
-    background: oklch(14% 0.025 var(--theme-hue) / 0.82);
-    backdrop-filter: blur(10px) saturate(140%);
-    -webkit-backdrop-filter: blur(10px) saturate(140%);
+    background: var(--surface-2);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+  }
+
+  @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+    .glass-data {
+      background: oklch(14% 0.025 var(--theme-hue) / 0.82);
+      backdrop-filter: blur(10px) saturate(140%);
+      -webkit-backdrop-filter: blur(10px) saturate(140%);
+    }
+  }
+
+  /* GPU Paint & Layout Isolation for Canvas Globe */
+  .globe-canvas {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+    touch-action: none;
+    cursor: grab;
+    contain: strict;
+    content-visibility: auto;
   }
 }
 
-/* Layer 3: Accessibility Override — Reduce Transparency */
-@media (prefers-reduced-transparency: reduce) {
-  .glass-panel, .glass-card, .glass-data {
-    background: var(--surface-4) !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-    border: 1px solid var(--text-tertiary) !important;
-    box-shadow: none !important;
+@layer overrides {
+  /* Accessibility: Reduce Transparency Override */
+  @media (prefers-reduced-transparency: reduce) {
+    .glass-panel, .glass-card, .glass-data {
+      background: var(--surface-4) !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      border: 1px solid var(--text-tertiary) !important;
+      box-shadow: none !important;
+    }
   }
-}
 
-/* High Contrast Preference */
-@media (prefers-contrast: more) {
-  :root {
-    --glass-bg: oklch(4% 0 0 / 0.98);
-    --glass-border: oklch(100% 0 0 / 0.45);
-    --text-primary: oklch(100% 0 0);
-    --text-secondary: oklch(90% 0 0);
+  /* Accessibility: High Contrast Override */
+  @media (prefers-contrast: more) {
+    :root {
+      --glass-bg: oklch(4% 0 0 / 0.98);
+      --glass-border: oklch(100% 0 0 / 0.45);
+      --text-primary: oklch(100% 0 0);
+      --text-secondary: oklch(90% 0 0);
+    }
+    .glass-panel, .glass-card, .glass-data {
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      border-width: 2px !important;
+    }
   }
-  .glass-panel, .glass-card, .glass-data {
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
+
+  /* Accessibility: Reduced Motion */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
-}
-
-/* =========================================
-   4. GPU PERFORMANCE OPTIMIZATION
-   ========================================= */
-.globe-canvas {
-  display: block;
-  width: 100% !important;
-  height: 100% !important;
-  touch-action: none;
-  cursor: grab;
-  contain: strict; /* Isolate layout & paint from surrounding DOM */
-  content-visibility: auto;
-}
-
-.telemetry-feed {
-  contain: content;
-  overflow-y: auto;
-  scrollbar-width: thin;
 }
 
 /* Longitudinal Y-axis rotation (3D coin flip along vertical meridian) */

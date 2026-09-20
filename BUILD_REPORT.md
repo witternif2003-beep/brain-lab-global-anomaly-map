@@ -450,3 +450,22 @@ The **Brain Lab by Liliya** Global Anomaly Map platform has been built, compiled
 4. **Pipeline 4 — Autonomous Queue Worker & Hardened CI/CD Deployment**:
    - Added `/api/cron/ingest` running on Edge runtime to advance ingestion states (`verifying` -> `accepted`) every 15 minutes via `vercel.json` crons.
    - Hardened GitHub Actions CI/CD pipeline in `.github/workflows/deploy.yml` with `workflow_dispatch` trigger for automated zero-downtime production deployment.
+
+## Update: Native Cascade Layers, View Transitions, 60fps Canvas Ring-Buffer & Overscroll Containment
+
+### Architecture Implementations
+1. **Native Cascade Layers (`@layer`)**:
+   - Structured styling hierarchy: `@layer reset, tokens, base, layout, components, utilities, overrides;`.
+   - Controls specificity ordering without `!important` across tokens, layout, and component boundaries.
+
+2. **Cross-Document View Transitions (`@view-transition`)**:
+   - Enabled native browser navigation animations via `@view-transition { navigation: auto; }`.
+   - Preserves persistent element continuity (`::view-transition-group(app-header)` and `::view-transition-group(threat-globe)`).
+
+3. **60 FPS Canvas Telemetry Hot-Path (`lib/telemetry-renderer.ts` & `components/RealTimeSparkline.tsx`)**:
+   - React is completely bypassed during high-frequency sensor updates.
+   - `TelemetryCanvasRenderer` renders directly onto an isolated HTML5 canvas via `requestAnimationFrame` driven by vanilla `useTelemetryStore.subscribe()`.
+   - Sparklines integrated into `/threat-globe` rendering real-time grid load and TEU intermodal velocity.
+
+4. **Scroll Chaining Prevention (`overscroll-behavior: contain`)**:
+   - Implemented `overscroll-behavior: contain` on `.telemetry-feed` and `overscroll-behavior-y: contain` on `.app-sidebar` to prevent pull-to-refresh and parent page scroll hijacking.
