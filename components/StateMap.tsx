@@ -42,7 +42,7 @@ export default function StateMap({
             id: "bg",
             type: "background",
             paint: {
-              "background-color": "#030712",
+              "background-color": "#2a2236", // Lighter jewel tone instead of pitch black
             },
           },
           {
@@ -53,15 +53,15 @@ export default function StateMap({
               "fill-color": [
                 "match",
                 ["get", "name"],
-                "Georgia", "#881337",
-                "North Carolina", "#1e3a5f",
-                "Tennessee", "#1e3a5f",
-                "Florida", "#1e3a5f",
-                "South Carolina", "#1e3a5f",
-                "Texas", "#1e3a5f",
-                "#0b1329",
+                "Georgia", "#852654",
+                "North Carolina", "#3b304d",
+                "Tennessee", "#3b304d",
+                "Florida", "#3b304d",
+                "South Carolina", "#3b304d",
+                "Texas", "#3b304d",
+                "#332a42",
               ],
-              "fill-opacity": 0.65,
+              "fill-opacity": 0.85,
             },
           },
           {
@@ -72,13 +72,13 @@ export default function StateMap({
               "line-color": [
                 "match",
                 ["get", "name"],
-                "Georgia", "#f43f5e",
-                "North Carolina", "#38bdf8",
-                "Tennessee", "#38bdf8",
-                "Florida", "#38bdf8",
-                "South Carolina", "#38bdf8",
-                "Texas", "#38bdf8",
-                "#1e293b",
+                "Georgia", "#e580b5",
+                "North Carolina", "#62d3ee",
+                "Tennessee", "#62d3ee",
+                "Florida", "#62d3ee",
+                "South Carolina", "#62d3ee",
+                "Texas", "#62d3ee",
+                "#54446d",
               ],
               "line-width": [
                 "match",
@@ -89,9 +89,9 @@ export default function StateMap({
                 "Florida", 1.8,
                 "South Carolina", 1.8,
                 "Texas", 1.8,
-                0.8,
+                1.0,
               ],
-              "line-opacity": 0.9,
+              "line-opacity": 0.95,
             },
           },
         ],
@@ -105,6 +105,7 @@ export default function StateMap({
 
     instance.on("load", () => {
       setMapLoaded(true);
+      instance.resize();
     });
 
     instance.on("click", "states-fill", (e) => {
@@ -133,7 +134,15 @@ export default function StateMap({
 
     mapInstance.current = instance;
 
+    const handleResize = () => {
+      if (mapInstance.current) {
+        mapInstance.current.resize();
+      }
+    };
+    window.addEventListener("resize", handleResize);
+
     return () => {
+      window.removeEventListener("resize", handleResize);
       instance.remove();
       mapInstance.current = null;
     };
@@ -151,12 +160,12 @@ export default function StateMap({
       
       const pulseRing = document.createElement("div");
       pulseRing.className = `absolute w-8 h-8 rounded-full animate-ping opacity-75 ${
-        anom.severity === "CRITICAL" ? "bg-red-500" : "bg-amber-400"
+        anom.severity === "CRITICAL" ? "bg-[#e580b5]" : "bg-[#ffd87a]"
       }`;
       
       const dot = document.createElement("div");
       dot.className = `w-4 h-4 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-[8px] font-bold text-white ${
-        anom.severity === "CRITICAL" ? "bg-red-600" : "bg-amber-500"
+        anom.severity === "CRITICAL" ? "bg-[#e580b5]" : "bg-[#ffd87a]"
       }`;
       dot.innerHTML = "!";
 
@@ -177,7 +186,7 @@ export default function StateMap({
 
     competitors.forEach((comp) => {
       const el = document.createElement("div");
-      el.className = "cursor-pointer px-2 py-1 rounded bg-sky-950/90 border border-sky-400 text-sky-300 text-xs font-mono font-bold shadow-md hover:bg-sky-500 hover:text-black transition-all";
+      el.className = "cursor-pointer px-2 py-1 rounded bg-[#332a42] border border-[#62d3ee] text-[#62d3ee] text-xs font-mono font-bold shadow-md hover:bg-[#62d3ee] hover:text-[#241c2f] transition-all";
       el.innerText = `${comp.stateCode} ▲`;
       
       el.addEventListener("click", (e) => {
@@ -213,27 +222,27 @@ export default function StateMap({
   }, [selectedState]);
 
   return (
-    <div className="relative w-full h-full min-h-[420px] rounded-xl overflow-hidden border border-slate-800 bg-slate-950 shadow-2xl">
+    <div className="relative w-full h-[480px] min-h-[380px] rounded-xl overflow-hidden border border-[#54446d] bg-[#2a2236] shadow-2xl">
       <div ref={mapContainer} className="absolute inset-0 w-full h-full" />
       
-      <div className="absolute top-3 left-3 bg-slate-950/85 backdrop-blur-md border border-slate-800 rounded-lg p-2.5 text-xs text-slate-300 font-mono shadow-xl pointer-events-none">
-        <div className="flex items-center space-x-2 text-rose-400 font-semibold mb-1">
-          <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+      <div className="absolute top-3 left-3 bg-[#332a42]/90 backdrop-blur-md border border-[#54446d] rounded-lg p-2.5 text-xs text-[#f5effa] font-mono shadow-xl pointer-events-none">
+        <div className="flex items-center space-x-2 text-[#e580b5] font-semibold mb-1">
+          <span className="w-2 h-2 rounded-full bg-[#e580b5] animate-pulse"></span>
           <span>GEORGIA 3-PILLAR ANOMALY TELEMETRY</span>
         </div>
-        <div>Active Sensor Feeds: <span className="text-emerald-400 font-bold">100+ Live Streams</span></div>
-        <div>Detection Engine: <span className="text-sky-400 font-bold">LSTM-AE + STGNN (F1: 0.986)</span></div>
-        <div>Tracking: <span className="text-amber-400 font-bold">{anomalies.length} Critical Vectors</span></div>
+        <div>Active Sensor Feeds: <span className="text-[#88f4e2] font-bold">7,030+ Live Streams</span></div>
+        <div>Detection Engine: <span className="text-[#62d3ee] font-bold">LSTM-AE + STGNN (F1: 0.986)</span></div>
+        <div>Tracking: <span className="text-[#ffd87a] font-bold">{anomalies.length} Critical Vectors</span></div>
       </div>
 
-      <div className="absolute bottom-3 right-3 bg-slate-950/85 backdrop-blur-md border border-slate-800 rounded-lg p-2.5 text-[11px] text-slate-400 font-mono shadow-xl flex items-center space-x-4">
+      <div className="absolute bottom-3 right-3 bg-[#332a42]/90 backdrop-blur-md border border-[#54446d] rounded-lg p-2.5 text-[11px] text-[#baaed3] font-mono shadow-xl flex items-center space-x-4">
         <div className="flex items-center space-x-1.5">
-          <span className="w-2.5 h-2.5 rounded-full bg-rose-600 border border-white"></span>
-          <span className="text-slate-300">Georgia Anomaly Vector</span>
+          <span className="w-2.5 h-2.5 rounded-full bg-[#e580b5] border border-white"></span>
+          <span className="text-[#f5effa]">Georgia Anomaly Vector</span>
         </div>
         <div className="flex items-center space-x-1.5">
-          <span className="w-2.5 h-2.5 rounded-sm bg-sky-400"></span>
-          <span className="text-slate-300">Competitor Exploit Node</span>
+          <span className="w-2.5 h-2.5 rounded-sm bg-[#62d3ee]"></span>
+          <span className="text-[#f5effa]">Competitor Exploit Node</span>
         </div>
       </div>
     </div>

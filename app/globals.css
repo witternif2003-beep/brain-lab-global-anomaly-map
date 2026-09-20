@@ -3,30 +3,30 @@
 @tailwind utilities;
 
 :root {
-  --crystal-dark: #120e18;
-  --crystal-deep: #1e1828;
-  --crystal-violet: #3a2e4c;
-  --crystal-amethyst: #624d77;
-  --crystal-lavender: #9f94ba;
-  --crystal-pink: #d66ea5;
-  --crystal-rose: #b3797c;
-  --crystal-cyan: #5ecbe6;
-  --crystal-aqua: #7ef0dc;
-  --crystal-gold: #ffd269;
-  --crystal-amber: #dfac97;
+  --crystal-base: #2a2236;
+  --crystal-surface: #332a42;
+  --crystal-card: #3b304d;
+  --crystal-border: #54446d;
+  --crystal-lavender: #baaed3;
+  --crystal-pink: #e580b5;
+  --crystal-rose: #c68d90;
+  --crystal-cyan: #62d3ee;
+  --crystal-aqua: #88f4e2;
+  --crystal-gold: #ffd87a;
+  --crystal-amber: #e5bca8;
   --crystal-light: #f5effa;
 
-  --brand-navy: #1e1828;
-  --brand-gold: #ffd269;
-  --brand-red: #d66ea5;
-  --brand-silver: #9f94ba;
+  --brand-navy: #2d243a;
+  --brand-gold: #ffd87a;
+  --brand-red: #e580b5;
+  --brand-silver: #baaed3;
 }
 
 html, body {
-  height: 100%;
-  overscroll-behavior: none;
-  background-color: #120e18;
+  min-height: 100%;
+  background-color: #241c2f;
   color: #f5effa;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
@@ -34,7 +34,7 @@ body {
   padding-right: env(safe-area-inset-right);
   padding-bottom: env(safe-area-inset-bottom);
   padding-left: env(safe-area-inset-left);
-  background: radial-gradient(circle at 50% 0%, #291e38 0%, #120e18 70%);
+  background: radial-gradient(circle at 50% 0%, #3e3052 0%, #282034 60%, #1e1828 100%);
   background-attachment: fixed;
 }
 
@@ -48,18 +48,18 @@ body {
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #16121e;
+  background: #2a2236;
 }
 ::-webkit-scrollbar-thumb {
-  background: #4c3e57;
+  background: #54446d;
   border-radius: 3px;
-  border: 1px solid #6f546b;
+  border: 1px solid #6b578a;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #7f6e8e;
+  background: #856ea9;
 }
 
-/* Dynamic rotating glowing neon white emblem animations with diamond prismatic flare */
+/* Dynamic rotating glowing neon emblem animations with diamond prismatic flare */
 @keyframes emblem-spin {
   from {
     transform: rotate(0deg);
@@ -71,16 +71,16 @@ body {
 
 @keyframes neon-glow-pulse {
   0%, 100% {
-    filter: drop-shadow(0 0 10px rgba(245, 239, 250, 0.9))
-            drop-shadow(0 0 20px rgba(214, 110, 165, 0.7))
-            drop-shadow(0 0 35px rgba(94, 203, 230, 0.6))
-            drop-shadow(0 0 45px rgba(255, 210, 105, 0.5));
+    filter: drop-shadow(0 0 12px rgba(245, 239, 250, 0.95))
+            drop-shadow(0 0 24px rgba(229, 128, 181, 0.75))
+            drop-shadow(0 0 38px rgba(98, 211, 238, 0.65))
+            drop-shadow(0 0 50px rgba(255, 216, 122, 0.55));
   }
   50% {
-    filter: drop-shadow(0 0 16px rgba(245, 239, 250, 1))
-            drop-shadow(0 0 32px rgba(214, 110, 165, 0.95))
-            drop-shadow(0 0 50px rgba(94, 203, 230, 0.85))
-            drop-shadow(0 0 65px rgba(255, 210, 105, 0.75));
+    filter: drop-shadow(0 0 18px rgba(245, 239, 250, 1))
+            drop-shadow(0 0 34px rgba(229, 128, 181, 0.95))
+            drop-shadow(0 0 52px rgba(98, 211, 238, 0.85))
+            drop-shadow(0 0 68px rgba(255, 216, 122, 0.8));
   }
 }
 
@@ -94,6 +94,27 @@ body {
 .emblem-nav-hover:hover {
   transform: scale(1.05);
   filter: drop-shadow(0 0 12px rgba(245, 239, 250, 0.9))
-         drop-shadow(0 0 20px rgba(214, 110, 165, 0.8))
-         drop-shadow(0 0 30px rgba(94, 203, 230, 0.7));
+         drop-shadow(0 0 20px rgba(229, 128, 181, 0.8))
+         drop-shadow(0 0 30px rgba(98, 211, 238, 0.7));
+}
+
+@keyframes gradient-drift {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50%      { transform: translate3d(-1%, -1%, 0) scale(1.03); }
+}
+.animate-gradient-drift {
+  animation: gradient-drift 40s ease-in-out infinite;
+  will-change: transform;
+}
+
+@supports (animation-timeline: scroll()) {
+  .scroll-aware {
+    animation: gradient-drift linear;
+    animation-timeline: scroll(root);
+    animation-range: 0% 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-gradient-drift { animation: none; }
 }
