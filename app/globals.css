@@ -2,8 +2,50 @@
 @tailwind components;
 @tailwind utilities;
 
+/* =========================================
+   1. PARAMETRIC OKLCH TOKEN SYSTEM
+   ========================================= */
 :root {
-  /* Dynamic Viewport Fluid Font Scale — Base (12 / 14 / 16 / 18 / 20 / 24 / 32 / 44) */
+  /* Theme Parameters — change these two values to reshape entire palette */
+  --theme-hue: 250;          /* Deep intelligence blue-violet */
+  --theme-chroma: 0.18;      /* Vibrant yet contrast-balanced */
+
+  /* Surface Scale — 10 perceptually uniform steps */
+  --surface-1: oklch(8% 0.015 var(--theme-hue));
+  --surface-2: oklch(11% 0.02 var(--theme-hue));
+  --surface-3: oklch(14% 0.025 var(--theme-hue));
+  --surface-4: oklch(17% 0.03 var(--theme-hue));
+  --surface-5: oklch(20% 0.035 var(--theme-hue));
+  --surface-6: oklch(24% 0.04 var(--theme-hue));
+  --surface-7: oklch(28% 0.045 var(--theme-hue));
+  --surface-8: oklch(33% 0.05 var(--theme-hue));
+  --surface-9: oklch(40% 0.05 var(--theme-hue));
+  --surface-10: oklch(50% 0.05 var(--theme-hue));
+
+  /* Text Hierarchy — Uniform Perceptual Lightness */
+  --text-primary: oklch(96% 0.01 var(--theme-hue));
+  --text-secondary: oklch(82% 0.02 var(--theme-hue));
+  --text-tertiary: oklch(68% 0.025 var(--theme-hue));
+  --text-disabled: oklch(50% 0.01 var(--theme-hue));
+
+  /* Accent & Semantic Palette */
+  --accent: oklch(68% var(--theme-chroma) var(--theme-hue));
+  --accent-hover: oklch(74% var(--theme-chroma) var(--theme-hue));
+  --accent-muted: oklch(58% calc(var(--theme-chroma) * 0.7) var(--theme-hue));
+
+  --success: oklch(68% 0.19 152);
+  --warning: oklch(76% 0.18 84);
+  --error: oklch(62% 0.22 25);
+  --info: oklch(68% 0.16 235);
+
+  /* Glass Surfaces — OKLCH with Alpha */
+  --glass-bg: oklch(22% 0.035 var(--theme-hue) / 0.65);
+  --glass-bg-heavy: oklch(18% 0.035 var(--theme-hue) / 0.85);
+  --glass-border: oklch(100% 0 0 / 0.14);
+  --glass-border-hover: oklch(100% 0 0 / 0.28);
+  --glass-shadow: 0 8px 32px 0 oklch(0% 0 0 / 0.45);
+
+  /* Dynamic Viewport Fluid Font Scale (Dynamic dvw units) */
   --fs-xs:   clamp(0.75rem,  0.72rem + 0.15dvw, 0.8125rem);  /* 12–13px */
   --fs-sm:   clamp(0.8125rem,0.78rem + 0.18dvw, 0.875rem);   /* 13–14px */
   --fs-base: clamp(1rem,     0.95rem + 0.25dvw, 1.125rem);   /* 16–18px */
@@ -12,29 +54,9 @@
   --fs-2xl:  clamp(1.5rem,   1.32rem + 0.90dvw, 2rem);       /* 24–32px */
   --fs-3xl:  clamp(2rem,     1.7rem  + 1.50dvw, 2.75rem);    /* 32–44px */
 
-  /* Performance Glass Tokens (Desktop Defaults) */
-  --glass-blur:   20px;
-  --glass-sat:    170%;
-  --glass-fill:   rgba(255, 255, 255, 0.05);
-  --glass-border: rgba(255, 255, 255, 0.12);
-  --glass-hi:     rgba(255, 255, 255, 0.16);
-  --surface-data: rgba(8, 12, 20, 0.78);
-
-  /* High-Contrast Palette */
-  --void:           #04060c;
-  --text-primary:   #eef2f7;   /* 17:1 on void */
-  --text-secondary: #b6c2d2;   /* 9:1 */
-  --text-muted:     #8595a8;   /* 5:1 AA */
-  --neon-cyan:      #00e5ff;
-  --neon-emerald:   #00ff9d;
-  --neon-amber:     #ffb800;
-  --neon-rose:      #ff3d71;
-
-  --anomaly-critical: #f43f5e;
-  --anomaly-high: #fb923c;
-  --anomaly-medium: #facc15;
-  --anomaly-cyan: #38bdf8;
-  --anomaly-emerald: #10b981;
+  /* Blur settings */
+  --glass-blur: 16px;
+  --glass-sat: 160%;
 }
 
 /* iOS Font Scale Shift — Escalates fonts up by one full step to survive 980px viewport trap */
@@ -69,7 +91,7 @@ html {
 
 body {
   min-height: 100dvh;
-  background-color: var(--void);
+  background-color: var(--surface-1);
   color: var(--text-primary);
   font-size: var(--fs-base);
   line-height: 1.65;
@@ -78,14 +100,14 @@ body {
   padding-right: env(safe-area-inset-right);
   padding-bottom: env(safe-area-inset-bottom);
   padding-left: env(safe-area-inset-left);
-  background: radial-gradient(circle at 50% 0%, #152438 0%, #0d1522 50%, #04060c 100%);
+  background: radial-gradient(circle at 50% 0%, var(--surface-3) 0%, var(--surface-2) 50%, var(--surface-1) 100%);
   background-attachment: fixed;
 }
 
-/* Headings Fluid Sizing */
-h1 { font-size: var(--fs-3xl); font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; }
-h2 { font-size: var(--fs-2xl); font-weight: 600; letter-spacing: -0.015em; line-height: 1.2; }
-h3 { font-size: var(--fs-xl);  font-weight: 600; line-height: 1.3; }
+/* Headings Fluid Sizing with contrast shadow */
+h1 { font-size: var(--fs-3xl); font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; text-shadow: 0 1px 3px oklch(0% 0 0 / 0.5); }
+h2 { font-size: var(--fs-2xl); font-weight: 600; letter-spacing: -0.015em; line-height: 1.2; text-shadow: 0 1px 2px oklch(0% 0 0 / 0.4); }
+h3 { font-size: var(--fs-xl);  font-weight: 600; line-height: 1.3; text-shadow: 0 1px 2px oklch(0% 0 0 / 0.4); }
 
 /* Enforce 16px min on form controls so iOS Safari never auto-zooms */
 input, textarea, select {
@@ -93,106 +115,125 @@ input, textarea, select {
   font-family: inherit;
 }
 
-@layer utilities {
-  /* Performance-Tiered Glass Tokens */
-  .glass-chrome {
-    background: var(--glass-fill);
-    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
-    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
-    border: 1px solid var(--glass-border);
-    box-shadow: inset 0 1px 0 0 var(--glass-hi), 0 8px 32px rgba(0, 0, 0, 0.4);
-    border-radius: 16px;
-  }
+/* =========================================
+   2. CONTAINER QUERY WIDGET SYSTEM
+   ========================================= */
+.widget-container {
+  container-type: inline-size;
+  container-name: widget;
+}
 
-  .glass-data {
-    background: var(--surface-data);
-    -webkit-backdrop-filter: blur(12px) saturate(140%);
-    backdrop-filter: blur(12px) saturate(140%);
-    border: 1px solid var(--glass-border);
-    box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.08), 0 4px 16px rgba(0, 0, 0, 0.5);
-    border-radius: 12px;
-  }
+.widget {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
 
+@container widget (min-width: 400px) {
+  .widget {
+    grid-template-columns: auto 1fr;
+    align-items: center;
+  }
+}
+
+@container widget (min-width: 768px) {
+  .widget {
+    grid-template-columns: auto 1fr auto;
+    padding: 1.25rem;
+  }
+}
+
+/* =========================================
+   3. GLASS ENGINE — 3-LAYER ACCESSIBILITY DEFENSE
+   ========================================= */
+.glass-panel {
+  background: var(--surface-4);
+  border-radius: 20px;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  transition: border-color 200ms ease, transform 200ms ease;
+}
+
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
   .glass-panel {
-    background: rgba(10, 14, 22, 0.82);
-    -webkit-backdrop-filter: blur(16px) saturate(150%);
-    backdrop-filter: blur(16px) saturate(150%);
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.18), 0 16px 48px rgba(0, 0, 0, 0.6);
-    border-radius: 20px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
   }
+}
 
+.glass-card {
+  background: var(--surface-3);
+  border-radius: 14px;
+  border: 1px solid var(--glass-border);
+}
+
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
   .glass-card {
-    background: rgba(12, 17, 28, 0.72);
-    -webkit-backdrop-filter: blur(12px);
+    background: oklch(18% 0.03 var(--theme-hue) / 0.75);
     backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.10);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
-  }
-
-  .glass-pill {
-    background: rgba(22, 32, 48, 0.60);
-    -webkit-backdrop-filter: blur(8px);
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(56, 189, 248, 0.25);
+    -webkit-backdrop-filter: blur(12px);
   }
 }
 
-/* Fallback for browsers without backdrop-filter */
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .glass-chrome { background: rgba(8, 12, 20, 0.94); }
-  .glass-data   { background: rgba(4, 6, 12, 0.96); }
-  .glass-panel  { background: rgba(4, 6, 12, 0.98); }
-  .glass-card   { background: rgba(8, 12, 20, 0.96); }
+.glass-data {
+  background: var(--surface-2);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
 }
 
-/* Respect iOS "Reduce Transparency" */
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .glass-data {
+    background: oklch(14% 0.025 var(--theme-hue) / 0.82);
+    backdrop-filter: blur(10px) saturate(140%);
+    -webkit-backdrop-filter: blur(10px) saturate(140%);
+  }
+}
+
+/* Layer 3: Accessibility Override — Reduce Transparency */
 @media (prefers-reduced-transparency: reduce) {
-  .glass-chrome, .glass-data, .glass-panel, .glass-card {
+  .glass-panel, .glass-card, .glass-data {
+    background: var(--surface-4) !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
-    background: rgba(8, 12, 20, 0.97) !important;
+    border: 1px solid var(--text-tertiary) !important;
+    box-shadow: none !important;
   }
 }
 
 /* High Contrast Preference */
 @media (prefers-contrast: more) {
   :root {
-    --surface-data: rgba(0, 0, 0, 0.96);
-    --glass-fill: rgba(0, 0, 0, 0.92);
-    --glass-border: rgba(255, 255, 255, 0.38);
-    --text-muted: #b0c0d4;
+    --glass-bg: oklch(4% 0 0 / 0.98);
+    --glass-border: oklch(100% 0 0 / 0.45);
+    --text-primary: oklch(100% 0 0);
+    --text-secondary: oklch(90% 0 0);
   }
-  .glass-chrome, .glass-data, .glass-panel, .glass-card {
+  .glass-panel, .glass-card, .glass-data {
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
   }
 }
 
-/* Reduced Motion */
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
+/* =========================================
+   4. GPU PERFORMANCE OPTIMIZATION
+   ========================================= */
+.globe-canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  touch-action: none;
+  cursor: grab;
+  contain: strict; /* Isolate layout & paint from surrounding DOM */
+  content-visibility: auto;
 }
 
-/* Custom scrollbars */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: rgba(7, 12, 20, 0.8);
-}
-::-webkit-scrollbar-thumb {
-  background: rgba(56, 189, 248, 0.25);
-  border-radius: 3px;
-  border: 1px solid rgba(56, 189, 248, 0.1);
-}
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(56, 189, 248, 0.6);
+.telemetry-feed {
+  contain: content;
+  overflow-y: auto;
+  scrollbar-width: thin;
 }
 
 /* Longitudinal Y-axis rotation (3D coin flip along vertical meridian) */

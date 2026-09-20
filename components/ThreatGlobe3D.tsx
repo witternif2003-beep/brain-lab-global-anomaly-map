@@ -381,7 +381,7 @@ export default function ThreatGlobe3D() {
       >
         <canvas
           ref={canvasRef}
-          className="w-full h-full block cursor-grab active:cursor-grabbing"
+          className="globe-canvas block"
         />
 
         {/* Minimal Peripheral Non-Colliding Status Badges */}
