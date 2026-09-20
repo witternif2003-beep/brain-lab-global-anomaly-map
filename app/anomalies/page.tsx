@@ -1,43 +1,27 @@
 "use client";
-import React, { useState, useEffect } from "react";
-import { GEORGIA_ANOMALIES } from "../../lib/data";
-import { AnomalyItem } from "../../lib/schema";
+import React, { useState } from "react";
+import { useTelemetryStore } from "../../lib/telemetry-store";
 import PageEmblemHeader from "../../components/PageEmblemHeader";
 import {
   ShieldAlert,
   Search,
-  Filter,
   Download,
   Activity,
-  ArrowUpRight,
   TrendingUp,
-  FileCheck,
-  CheckCircle2,
   RefreshCw,
-  Compass
+  Zap,
+  Radio
 } from "lucide-react";
 
 export default function AnomaliesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSeverity, setSelectedSeverity] = useState<string>("ALL");
   const [selectedSector, setSelectedSector] = useState<string>("ALL");
-  const [anomalyStream, setAnomalyStream] = useState<AnomalyItem[]>(GEORGIA_ANOMALIES);
-  const [lastPing, setLastPing] = useState<string>("Just now");
 
-  // Continuous 24/7 Real-Time Anomaly Population Simulator
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setLastPing(new Date().toLocaleTimeString());
-      // Randomly update continuous confidence score variance
-      setAnomalyStream((prev) =>
-        prev.map((a) => ({
-          ...a,
-          confidenceScore: Math.min(99.9, Math.max(91.0, +(a.confidenceScore + (Math.random() * 0.4 - 0.2)).toFixed(1))),
-        }))
-      );
-    }, 4000);
-    return () => clearInterval(interval);
-  }, []);
+  // Read continuously from global SSE store
+  const anomalyStream = useTelemetryStore((s) => s.anomalies);
+  const connectionStatus = useTelemetryStore((s) => s.connectionStatus);
+  const lastTimestamp = useTelemetryStore((s) => s.timestamp);
 
   const filtered = anomalyStream.filter((item) => {
     const matchesSearch =
@@ -57,13 +41,10 @@ export default function AnomaliesPage() {
       "Entity",
       "Sector",
       "Severity",
-      "Metric",
-      "Baseline",
-      "Observed",
       "Deviation",
       "Confidence",
-      "Admiralty",
-      "Beneficiaries",
+      "Z-Score",
+      "Location"
     ];
     const rows = filtered.map((a) => [
       a.id,
@@ -72,13 +53,10 @@ export default function AnomaliesPage() {
       `"${a.entity}"`,
       a.sector,
       a.severity,
-      `"${a.metric}"`,
-      `"${a.baseline}"`,
-      `"${a.observed}"`,
       `"${a.deviation}"`,
       `${a.confidenceScore}%`,
-      a.admiraltyRating,
-      `"${a.exploitingStates.join(", ")}"`,
+      a.zScore,
+      `"${a.location}"`
     ]);
     const csvContent =
       "data:text/csv;charset=utf-8," +
@@ -86,29 +64,29 @@ export default function AnomaliesPage() {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `Georgia_Anomalies_Verified_${Date.now()}.csv`);
+    link.setAttribute("download", `Georgia_Anomalies_Live_${Date.now()}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6 font-mono">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6 font-mono pb-16">
       
-      {/* Branded Header */}
+      {/* Branded Header with Live SSE Indicator */}
       <PageEmblemHeader
-        badgeText="Real-Time Detection Feed • 24/7 Population"
-        badgeIcon={<ShieldAlert className="w-4 h-4 text-[#f43f5e]" />}
+        badgeText={`Live SSE Telemetry: ${connectionStatus.toUpperCase()}`}
+        badgeIcon={<Radio className="w-4 h-4 text-[#00ff9d]" />}
         title="GEORGIA STATE DEDICATED ANOMALY SURVEILLANCE & EXPLOITATION DOSSIERS"
-        description="High-contrast, peer-reviewed telemetry dossiers tracking active statistical anomalies across Georgia logistics, legislative incentive repeals (HB 463), and infrastructure stress. Updated continuously with automated Admiralty System audit grading."
+        description="High-contrast telemetry dossiers tracking real-time statistical anomalies across Georgia logistics, legislative incentive repeals (HB 463), and infrastructure stress. Updated via Edge Server-Sent Events (SSE) every 2.5 seconds."
         rightElement={
           <div className="glass-panel px-4 py-2.5 rounded-xl border border-white/10 text-right shadow-lg">
-            <div className="text-[10px] text-[#94a3b8] flex items-center justify-end space-x-1">
-              <RefreshCw className="w-3 h-3 text-[#10b981] animate-spin" />
-              <span>LIVE 24/7 STREAM</span>
+            <div className="text-[11px] text-[#8595a8] flex items-center justify-end space-x-1.5">
+              <span className={`w-2 h-2 rounded-full ${connectionStatus === 'streaming' ? 'bg-[#00ff9d] animate-ping' : 'bg-[#ffb800]'}`} />
+              <span className="font-bold">{connectionStatus === 'streaming' ? 'SSE ACTIVE (2.5s)' : 'CONNECTING...'}</span>
             </div>
-            <div className="text-[#38bdf8] font-bold text-lg">{filtered.length} ACTIVE VECTORS</div>
-            <div className="text-[10px] text-[#10b981]">Ping: {lastPing}</div>
+            <div className="text-[#00e5ff] font-bold text-lg">{filtered.length} ACTIVE VECTORS</div>
+            <div className="text-[10px] text-[#00ff9d]">Tick: {new Date(lastTimestamp).toLocaleTimeString()}</div>
           </div>
         }
       />
@@ -119,20 +97,20 @@ export default function AnomaliesPage() {
           
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative">
-              <Search className="w-3.5 h-3.5 text-[#64748b] absolute left-3 top-2.5" />
+              <Search className="w-4 h-4 text-[#8595a8] absolute left-3 top-2.5" />
               <input
                 type="text"
                 placeholder="Search anomaly code, title, entity..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="glass-card border border-white/10 pl-8 pr-3 py-1.5 rounded-lg text-xs text-[#f8fafc] focus:outline-none focus:border-[#38bdf8] w-56 sm:w-64"
+                className="glass-card border border-white/15 pl-9 pr-3 py-1.5 rounded-xl text-sm text-white focus:outline-none focus:border-[#00e5ff] w-56 sm:w-64"
               />
             </div>
 
             <select
               value={selectedSeverity}
               onChange={(e) => setSelectedSeverity(e.target.value)}
-              className="glass-card border border-white/10 px-3 py-1.5 rounded-lg text-xs text-[#cbd5e1] focus:outline-none focus:border-[#38bdf8]"
+              className="glass-card border border-white/15 px-3 py-1.5 rounded-xl text-sm text-[#b6c2d2] focus:outline-none focus:border-[#00e5ff]"
             >
               <option value="ALL">All Severities</option>
               <option value="CRITICAL">Critical (Z &gt; 2.5σ)</option>
@@ -143,43 +121,41 @@ export default function AnomaliesPage() {
             <select
               value={selectedSector}
               onChange={(e) => setSelectedSector(e.target.value)}
-              className="glass-card border border-white/10 px-3 py-1.5 rounded-lg text-xs text-[#cbd5e1] focus:outline-none focus:border-[#38bdf8]"
+              className="glass-card border border-white/15 px-3 py-1.5 rounded-xl text-sm text-[#b6c2d2] focus:outline-none focus:border-[#00e5ff]"
             >
               <option value="ALL">All Sectors</option>
               <option value="Logistics">Logistics & Ports</option>
               <option value="Fiscal & Tax">Fiscal & Tax Legislation</option>
               <option value="Infrastructure">Grid & Infrastructure</option>
               <option value="Healthcare">Healthcare Capacity</option>
-              <option value="Labor">Labor & Credit Stress</option>
-              <option value="Regulatory">Regulatory & Life Sciences</option>
             </select>
           </div>
 
           <button
             onClick={exportCSV}
-            className="flex items-center space-x-2 bg-[#1e293b] hover:bg-[#334155] text-[#38bdf8] border border-[#38bdf8]/50 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-md self-start md:self-auto"
+            className="flex items-center space-x-2 bg-[#1e293b] hover:bg-[#334155] text-[#00e5ff] border border-[#00e5ff]/50 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md self-start md:self-auto"
           >
-            <Download className="w-3.5 h-3.5" />
+            <Download className="w-4 h-4" />
             <span>EXPORT CSV DOSSIER</span>
           </button>
 
         </div>
       </div>
 
-      {/* High-Readability Anomalies List (Oceanic Slate & Emerald Theme) */}
+      {/* High-Readability Anomalies List */}
       <div className="grid grid-cols-1 gap-4">
         {filtered.map((anom) => {
           const isCritical = anom.severity === "CRITICAL";
           return (
             <div
               key={anom.id}
-              className="glass-panel border border-white/10 hover:border-[#38bdf8]/60 rounded-2xl p-5 space-y-4 shadow-xl transition-all"
+              className="glass-panel border border-white/10 hover:border-[#00e5ff]/60 rounded-2xl p-5 space-y-4 shadow-xl transition-all"
             >
               {/* Header Row */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <span
-                    className={`px-2.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                    className={`px-2.5 py-0.5 rounded text-xs font-bold uppercase tracking-wider ${
                       isCritical
                         ? "bg-[#f43f5e]/20 text-[#f43f5e] border border-[#f43f5e]/50"
                         : "bg-[#fb923c]/20 text-[#fb923c] border border-[#fb923c]/50"
@@ -187,62 +163,42 @@ export default function AnomaliesPage() {
                   >
                     {anom.severity} • {anom.code}
                   </span>
-                  <span className="text-[#f8fafc] font-bold text-sm sm:text-base">
+                  <span className="text-white font-bold text-base">
                     {anom.title}
                   </span>
-                  <span className="px-2 py-0.5 rounded bg-[#1e293b] text-[#38bdf8] border border-[#334155] text-[10px]">
+                  <span className="px-2 py-0.5 rounded bg-[#1e293b] text-[#00e5ff] border border-[#334155] text-xs">
                     {anom.sector}
                   </span>
                 </div>
 
                 <div className="flex items-center space-x-3 text-xs">
-                  <span className="text-[#94a3b8]">Admiralty: <strong className="text-[#38bdf8]">{anom.admiraltyRating}</strong></span>
-                  <span className="text-[#10b981] font-bold">{anom.confidenceScore}% CONFIDENCE</span>
+                  <span className="text-[#8595a8]">Z-Score: <strong className="text-[#00e5ff]">{anom.zScore}σ</strong></span>
+                  <span className="text-[#00ff9d] font-bold font-mono text-sm">{anom.confidenceScore}% CONFIDENCE</span>
                 </div>
               </div>
 
               {/* Forensic Metric Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                 <div className="glass-card p-3 rounded-xl border border-white/10">
-                  <span className="text-[#94a3b8] block text-[10px]">TARGET ENTITY:</span>
-                  <span className="text-[#f8fafc] font-semibold truncate block">{anom.entity}</span>
+                  <span className="text-[#8595a8] block text-[10px] uppercase">TARGET ENTITY</span>
+                  <span className="text-white font-semibold truncate block mt-0.5">{anom.entity}</span>
                 </div>
                 <div className="glass-card p-3 rounded-xl border border-white/10">
-                  <span className="text-[#94a3b8] block text-[10px]">BASELINE:</span>
-                  <span className="text-[#94a3b8] block truncate">{anom.baseline}</span>
+                  <span className="text-[#8595a8] block text-[10px] uppercase">LOCATION CORRIDOR</span>
+                  <span className="text-[#b6c2d2] block truncate mt-0.5">{anom.location}</span>
                 </div>
                 <div className="glass-card p-3 rounded-xl border border-white/10">
-                  <span className="text-[#94a3b8] block text-[10px]">OBSERVED VALUE:</span>
-                  <span className="text-[#f8fafc] font-semibold block truncate">{anom.observed}</span>
-                </div>
-                <div className="glass-card p-3 rounded-xl border border-white/10">
-                  <span className="text-[#94a3b8] block text-[10px]">DEVIATION Z-SCORE:</span>
-                  <span className={`font-bold block ${isCritical ? "text-[#f43f5e]" : "text-[#fb923c]"}`}>
+                  <span className="text-[#8595a8] block text-[10px] uppercase">REAL-TIME ANOMALY DEVIATION</span>
+                  <span className={`font-bold block mt-0.5 ${isCritical ? "text-[#f43f5e]" : "text-[#fb923c]"}`}>
                     {anom.deviation}
                   </span>
                 </div>
-              </div>
-
-              {/* Competitor Exploitation Directive */}
-              <div className="glass-card border border-white/10 p-4 rounded-xl space-y-2 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="text-[#38bdf8] font-bold flex items-center space-x-1.5">
-                    <TrendingUp className="w-4 h-4 text-[#38bdf8]" />
-                    <span>COMPETITOR STRATEGIC EXPLOITATION DIRECTIVE</span>
-                  </span>
-                  <span className="text-[#10b981] text-[11px] font-semibold">
-                    Beneficiaries: {anom.exploitingStates.join(", ")}
+                <div className="glass-card p-3 rounded-xl border border-white/10">
+                  <span className="text-[#8595a8] block text-[10px] uppercase">SERVER TIMESTAMP</span>
+                  <span className="text-[#00e5ff] block font-mono mt-0.5">
+                    {new Date(anom.timestamp).toLocaleTimeString()}
                   </span>
                 </div>
-                <p className="text-[#cbd5e1] font-sans leading-relaxed text-xs">
-                  {anom.exploitationPlaybook}
-                </p>
-              </div>
-
-              {/* Evidence Chain Footer */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[11px] text-[#94a3b8] border-t border-white/10 pt-2">
-                <div>Primary Source: <span className="text-[#cbd5e1]">{anom.evidenceChain.primarySource}</span></div>
-                <div className="text-[#38bdf8] font-semibold">Model: {anom.detectionModel}</div>
               </div>
 
             </div>

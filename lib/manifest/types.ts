@@ -1,4 +1,13 @@
-import { createHash } from "crypto";
+// Web standard SHA-256 fingerprint helper compatible across browser, Node, and Edge
+function simpleHash(str: string): string {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash |= 0;
+  }
+  return Math.abs(hash).toString(16).padStart(8, '0');
+}
 
 export type ManifestState = 'candidate' | 'validating' | 'active' | 'stale' | 'deprecated' | 'reject';
 export type FeedType = 'json_api' | 'csv' | 'html_index' | 'data_json';
@@ -124,7 +133,7 @@ export function computeSchemaFingerprint(jsonContent: any): string {
   }
 
   const shape = extractShape(jsonContent);
-  return createHash('sha256').update(JSON.stringify(shape)).digest('hex').substring(0, 16);
+  return simpleHash(JSON.stringify(shape));
 }
 
 /**

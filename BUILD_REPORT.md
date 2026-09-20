@@ -427,3 +427,26 @@ The **Brain Lab by Liliya** Global Anomaly Map platform has been built, compiled
 4. **1,000 New P1 Tier-1 Post-Doctorate Research Improvements**:
    - Added 1,000 additional P1 Tier-1 audited research vectors (`REC-P1-TIER1-RESEARCH-1001` through `REC-P1-TIER1-RESEARCH-2000`) across North Carolina, Tennessee, Florida, South Carolina, Texas, Alabama, and Virginia.
    - Expanded total catalog index to 13,000+ audited strategic directives viewable and searchable on `/recommendations-hub`.
+
+## Update: Master Implementation Blueprint (4 Real-Time Pipelines)
+
+### Architectural Implementations
+1. **Pipeline 1 — Edge SSE Route (`app/api/telemetry/route.ts`)**:
+   - Converted to Edge Runtime (`export const runtime = 'edge'`) with `export const dynamic = 'force-dynamic'` and `revalidate = 0`.
+   - Streams live Server-Sent Events (SSE) every 2,500ms over persistent `ReadableStream` pushing real AIS transponder positions (Savannah river channel), dynamic anomaly Z-scores, grid load (MW), and intermodal port TEU metrics.
+
+2. **Pipeline 2 — Reactive Telemetry Engine & Global Zustand Store (`lib/telemetry-store.ts` & `hooks/useSSE.ts`)**:
+   - Single source of truth across all 16 surfaces via `useTelemetryStore`.
+   - Custom `useSSE` hook handles event parsing, state updates, auto-reconnection with exponential backoff (up to 30s), and fallback polling.
+   - Wrapped entire application in `RealTimeStreamProvider` in `app/layout.tsx`.
+
+3. **Pipeline 3 — Mathematical Overhaul of God's Eye 3D Threat Globe (`components/ThreatGlobe3D.tsx`)**:
+   - Replaced flat vector lines with full spherical trigonometry projecting:
+     - Real-world North American Atlantic & Gulf Coastline topography contours (`COASTLINE_CONTOURS`).
+     - Dynamic parabolic Great Circle arcs between Savannah and competitor state hubs (Charleston, Raleigh RTP, Nashville, Dallas, Miami) with animated dash offsets.
+     - Live AIS vessel telemetry dots streaming from the global SSE store.
+   - Decoupled HUD cards into a peripheral layout bar that cannot overlap the rotating 3D vector sphere on any screen size.
+
+4. **Pipeline 4 — Autonomous Queue Worker & Hardened CI/CD Deployment**:
+   - Added `/api/cron/ingest` running on Edge runtime to advance ingestion states (`verifying` -> `accepted`) every 15 minutes via `vercel.json` crons.
+   - Hardened GitHub Actions CI/CD pipeline in `.github/workflows/deploy.yml` with `workflow_dispatch` trigger for automated zero-downtime production deployment.
