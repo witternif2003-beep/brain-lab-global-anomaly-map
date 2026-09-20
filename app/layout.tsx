@@ -4,6 +4,7 @@ import Footer from "../components/Footer";
 import ComplianceNotice from "../components/ComplianceNotice";
 import AmbientBackground from "../components/AmbientBackground";
 import VitalsProbe from "../components/VitalsProbe";
+import { PlatformProbe } from "../components/PlatformProbe";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -24,7 +25,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
-      <body className="bg-[#120e18] text-[#f5effa] min-h-screen flex flex-col font-sans antialiased selection:bg-[#d66ea5] selection:text-white relative">
+      <body className="bg-[#04060c] text-[#eef2f7] min-h-screen flex flex-col font-sans antialiased selection:bg-[#38bdf8] selection:text-black relative">
+        <PlatformProbe />
         <AmbientBackground />
         <VitalsProbe />
         <ComplianceNotice />
