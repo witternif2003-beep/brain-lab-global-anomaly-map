@@ -1,7 +1,5 @@
 "use client";
-import React, { useEffect, useRef, useState } from "react";
-import { Map, Marker } from "maplibre-gl";
-import "maplibre-gl/dist/maplibre-gl.css";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { AnomalyItem, CompetitorStateIntel } from "../lib/schema";
 
 interface StateMapProps {
@@ -12,230 +10,306 @@ interface StateMapProps {
   onSelectAnomaly: (anomaly: AnomalyItem) => void;
 }
 
+// Bounding boxes and centroids for US States
+const STATE_GEOMETRY: Record<string, { center: [number, number]; name: string; bounds: [number, number, number, number] }> = {
+  GA: { name: "Georgia", center: [-83.5, 32.8], bounds: [-85.6, 30.3, -80.8, 35.0] },
+  NC: { name: "North Carolina", center: [-79.0, 35.7], bounds: [-84.3, 33.8, -75.4, 36.6] },
+  TN: { name: "Tennessee", center: [-86.5, 35.5], bounds: [-90.3, 34.9, -81.6, 36.7] },
+  FL: { name: "Florida", center: [-81.5, 27.6], bounds: [-87.6, 24.5, -80.0, 31.0] },
+  SC: { name: "South Carolina", center: [-81.1, 33.8], bounds: [-83.3, 32.0, -78.5, 35.2] },
+  TX: { name: "Texas", center: [-99.9, 31.9], bounds: [-106.6, 25.8, -93.5, 36.5] },
+  AL: { name: "Alabama", center: [-86.9, 32.3], bounds: [-88.5, 30.2, -84.9, 35.0] },
+  VA: { name: "Virginia", center: [-78.6, 37.4], bounds: [-83.7, 36.5, -75.2, 39.5] },
+};
+
 export default function StateMap({
   anomalies,
   competitors,
-  selectedState,
+  selectedState = "GA",
   onSelectState,
   onSelectAnomaly,
 }: StateMapProps) {
-  const mapContainer = useRef<HTMLDivElement>(null);
-  const mapInstance = useRef<Map | null>(null);
-  const markersRef = useRef<Marker[]>([]);
-  const [mapLoaded, setMapLoaded] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [geoData, setGeoData] = useState<any>(null);
+  const [hoveredState, setHoveredState] = useState<string | null>(null);
 
+  // Ingest US Census boundaries
   useEffect(() => {
-    if (!mapContainer.current || mapInstance.current) return;
+    fetch("/data/us-states.json")
+      .then((res) => res.json())
+      .then((data) => setGeoData(data))
+      .catch((err) => console.error("Error loading census boundaries:", err));
+  }, []);
 
-    const instance = new Map({
-      container: mapContainer.current,
-      style: {
-        version: 8,
-        sources: {
-          states: {
-            type: "geojson",
-            data: "/data/us-states.json",
-          },
-        },
-        layers: [
-          {
-            id: "bg",
-            type: "background",
-            paint: {
-              "background-color": "#2a2236", // Lighter jewel tone instead of pitch black
-            },
-          },
-          {
-            id: "states-fill",
-            type: "fill",
-            source: "states",
-            paint: {
-              "fill-color": [
-                "match",
-                ["get", "name"],
-                "Georgia", "#852654",
-                "North Carolina", "#3b304d",
-                "Tennessee", "#3b304d",
-                "Florida", "#3b304d",
-                "South Carolina", "#3b304d",
-                "Texas", "#3b304d",
-                "#332a42",
-              ],
-              "fill-opacity": 0.85,
-            },
-          },
-          {
-            id: "states-line",
-            type: "line",
-            source: "states",
-            paint: {
-              "line-color": [
-                "match",
-                ["get", "name"],
-                "Georgia", "#e580b5",
-                "North Carolina", "#62d3ee",
-                "Tennessee", "#62d3ee",
-                "Florida", "#62d3ee",
-                "South Carolina", "#62d3ee",
-                "Texas", "#62d3ee",
-                "#54446d",
-              ],
-              "line-width": [
-                "match",
-                ["get", "name"],
-                "Georgia", 2.5,
-                "North Carolina", 1.8,
-                "Tennessee", 1.8,
-                "Florida", 1.8,
-                "South Carolina", 1.8,
-                "Texas", 1.8,
-                1.0,
-              ],
-              "line-opacity": 0.95,
-            },
-          },
-        ],
-      },
-      center: [-83.5, 32.8],
-      zoom: 5.6,
-      minZoom: 3,
-      maxZoom: 10,
-      attributionControl: false,
-    });
+  // Render vector radar on canvas with high-DPI and smooth projection
+  const render = useCallback(() => {
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
+    if (!canvas || !container || !geoData) return;
 
-    instance.on("load", () => {
-      setMapLoaded(true);
-      instance.resize();
-    });
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
 
-    instance.on("click", "states-fill", (e) => {
-      const feature = e.features?.[0];
-      if (!feature) return;
-      const stateName = feature.properties?.name;
-      const stateMap: Record<string, string> = {
-        "Georgia": "GA",
-        "North Carolina": "NC",
-        "Tennessee": "TN",
-        "Florida": "FL",
-        "South Carolina": "SC",
-        "Texas": "TX",
-      };
-      if (stateMap[stateName]) {
-        onSelectState(stateMap[stateName]);
-      }
-    });
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const rect = container.getBoundingClientRect();
+    const width = Math.floor(rect.width * dpr);
+    const height = Math.floor(rect.height * dpr);
 
-    instance.on("mouseenter", "states-fill", () => {
-      instance.getCanvas().style.cursor = "pointer";
-    });
-    instance.on("mouseleave", "states-fill", () => {
-      instance.getCanvas().style.cursor = "";
-    });
-
-    mapInstance.current = instance;
-
-    const handleResize = () => {
-      if (mapInstance.current) {
-        mapInstance.current.resize();
-      }
-    };
-    window.addEventListener("resize", handleResize);
-
-    return () => {
-      window.removeEventListener("resize", handleResize);
-      instance.remove();
-      mapInstance.current = null;
-    };
-  }, [onSelectState]);
-
-  useEffect(() => {
-    if (!mapInstance.current || !mapLoaded) return;
-
-    markersRef.current.forEach((m) => m.remove());
-    markersRef.current = [];
-
-    anomalies.forEach((anom) => {
-      const el = document.createElement("div");
-      el.className = "group relative cursor-pointer flex items-center justify-center";
-      
-      const pulseRing = document.createElement("div");
-      pulseRing.className = `absolute w-8 h-8 rounded-full animate-ping opacity-75 ${
-        anom.severity === "CRITICAL" ? "bg-[#e580b5]" : "bg-[#ffd87a]"
-      }`;
-      
-      const dot = document.createElement("div");
-      dot.className = `w-4 h-4 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-[8px] font-bold text-white ${
-        anom.severity === "CRITICAL" ? "bg-[#e580b5]" : "bg-[#ffd87a]"
-      }`;
-      dot.innerHTML = "!";
-
-      el.appendChild(pulseRing);
-      el.appendChild(dot);
-
-      el.addEventListener("click", (e) => {
-        e.stopPropagation();
-        onSelectAnomaly(anom);
-      });
-
-      const marker = new Marker({ element: el })
-        .setLngLat(anom.coordinates)
-        .addTo(mapInstance.current!);
-
-      markersRef.current.push(marker);
-    });
-
-    competitors.forEach((comp) => {
-      const el = document.createElement("div");
-      el.className = "cursor-pointer px-2 py-1 rounded bg-[#332a42] border border-[#62d3ee] text-[#62d3ee] text-xs font-mono font-bold shadow-md hover:bg-[#62d3ee] hover:text-[#241c2f] transition-all";
-      el.innerText = `${comp.stateCode} ▲`;
-      
-      el.addEventListener("click", (e) => {
-        e.stopPropagation();
-        onSelectState(comp.stateCode);
-      });
-
-      const marker = new Marker({ element: el })
-        .setLngLat(comp.coordinates)
-        .addTo(mapInstance.current!);
-
-      markersRef.current.push(marker);
-    });
-  }, [anomalies, competitors, mapLoaded, onSelectAnomaly, onSelectState]);
-
-  useEffect(() => {
-    if (!mapInstance.current || !selectedState) return;
-    const centers: Record<string, [number, number]> = {
-      GA: [-83.5, 32.8],
-      NC: [-79.0, 35.7],
-      TN: [-86.5, 35.5],
-      FL: [-81.5, 27.6],
-      SC: [-81.1, 33.8],
-      TX: [-99.9, 31.9],
-    };
-    if (centers[selectedState]) {
-      mapInstance.current.flyTo({
-        center: centers[selectedState],
-        zoom: selectedState === "GA" ? 6.2 : 5.8,
-        essential: true,
-      });
+    if (canvas.width !== width || canvas.height !== height) {
+      canvas.width = width;
+      canvas.height = height;
     }
-  }, [selectedState]);
+
+    ctx.save();
+    ctx.scale(dpr, dpr);
+
+    const w = rect.width;
+    const h = rect.height;
+
+    // Background fill
+    ctx.fillStyle = "#2a2236";
+    ctx.fillRect(0, 0, w, h);
+
+    // Subtle coordinate grid
+    ctx.strokeStyle = "rgba(84, 68, 109, 0.4)";
+    ctx.lineWidth = 1;
+    for (let x = 0; x < w; x += 40) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, h);
+      ctx.stroke();
+    }
+    for (let y = 0; y < h; y += 40) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(w, y);
+      ctx.stroke();
+    }
+
+    // Determine viewport projection bounding box based on selectedState
+    const activeCode = selectedState || "GA";
+    const targetState = STATE_GEOMETRY[activeCode] || STATE_GEOMETRY.GA;
+    
+    // Projection parameters (Equirectangular focused on target region)
+    let minLng = -92.0;
+    let maxLng = -75.0;
+    let minLat = 24.0;
+    let maxLat = 37.5;
+
+    if (activeCode === "TX") {
+      minLng = -108.0;
+      maxLng = -92.0;
+      minLat = 25.0;
+      maxLat = 37.5;
+    } else if (activeCode === "FL") {
+      minLng = -89.0;
+      maxLng = -79.0;
+      minLat = 24.0;
+      maxLat = 32.0;
+    } else if (activeCode === "NC" || activeCode === "VA") {
+      minLng = -85.0;
+      maxLng = -74.0;
+      minLat = 33.0;
+      maxLat = 39.5;
+    }
+
+    const project = (lng: number, lat: number): [number, number] => {
+      const px = ((lng - minLng) / (maxLng - minLng)) * (w - 60) + 30;
+      const py = ((maxLat - lat) / (maxLat - minLat)) * (h - 60) + 30;
+      return [px, py];
+    };
+
+    // Draw state polygons from US Census geojson
+    geoData.features.forEach((feature: any) => {
+      const stateName = feature.properties?.name;
+      const isTarget = stateName === "Georgia";
+      const isSelected = targetState.name === stateName;
+      const isAlly = ["North Carolina", "Tennessee", "Florida", "South Carolina", "Texas", "Alabama", "Virginia"].includes(stateName);
+
+      const geom = feature.geometry;
+      if (!geom) return;
+
+      const polygons = geom.type === "Polygon" ? [geom.coordinates] : geom.type === "MultiPolygon" ? geom.coordinates : [];
+
+      polygons.forEach((ringGroup: any) => {
+        const ring = ringGroup[0];
+        if (!ring || ring.length === 0) return;
+
+        ctx.beginPath();
+        ring.forEach(([lng, lat]: [number, number], idx: number) => {
+          const [px, py] = project(lng, lat);
+          if (idx === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        });
+        ctx.closePath();
+
+        // Styling
+        if (isTarget) {
+          ctx.fillStyle = isSelected ? "rgba(229, 128, 181, 0.45)" : "rgba(133, 38, 84, 0.45)";
+          ctx.fill();
+          ctx.strokeStyle = "#e580b5";
+          ctx.lineWidth = 2.5;
+          ctx.stroke();
+        } else if (isAlly) {
+          ctx.fillStyle = isSelected ? "rgba(98, 211, 238, 0.40)" : "rgba(51, 42, 66, 0.70)";
+          ctx.fill();
+          ctx.strokeStyle = isSelected ? "#88f4e2" : "#54446d";
+          ctx.lineWidth = isSelected ? 2.0 : 1.2;
+          ctx.stroke();
+        } else {
+          ctx.fillStyle = "rgba(40, 32, 52, 0.50)";
+          ctx.fill();
+          ctx.strokeStyle = "rgba(84, 68, 109, 0.35)";
+          ctx.lineWidth = 0.8;
+          ctx.stroke();
+        }
+      });
+
+      // Label states
+      const stateCode = Object.keys(STATE_GEOMETRY).find((k) => STATE_GEOMETRY[k].name === stateName);
+      if (stateCode && (isTarget || isAlly)) {
+        const [cx, cy] = project(STATE_GEOMETRY[stateCode].center[0], STATE_GEOMETRY[stateCode].center[1]);
+        if (cx > 0 && cx < w && cy > 0 && cy < h) {
+          ctx.fillStyle = isSelected ? "#ffd87a" : "#f5effa";
+          ctx.font = `bold ${isSelected ? "13px" : "11px"} monospace`;
+          ctx.textAlign = "center";
+          ctx.fillText(stateCode, cx, cy);
+        }
+      }
+    });
+
+    // Render Anomaly Pulsing Markers on Georgia
+    anomalies.forEach((anom, idx) => {
+      const [px, py] = project(anom.coordinates[0], anom.coordinates[1]);
+      if (px < 0 || px > w || py < 0 || py > h) return;
+
+      const isCritical = anom.severity === "CRITICAL";
+      const color = isCritical ? "#e580b5" : "#ffd87a";
+
+      // Pulsing outer aura
+      ctx.beginPath();
+      ctx.arc(px, py, 14, 0, Math.PI * 2);
+      ctx.fillStyle = isCritical ? "rgba(229, 128, 181, 0.25)" : "rgba(255, 216, 122, 0.25)";
+      ctx.fill();
+
+      // Core Marker
+      ctx.beginPath();
+      ctx.arc(px, py, 6, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Inner label
+      ctx.fillStyle = "#241c2f";
+      ctx.font = "bold 8px monospace";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("!", px, py);
+    });
+
+    // Render Competitor Ally Strategic Anchors
+    competitors.forEach((comp) => {
+      const [px, py] = project(comp.coordinates[0], comp.coordinates[1]);
+      if (px < 0 || px > w || py < 0 || py > h) return;
+
+      ctx.fillStyle = "#332a42";
+      ctx.strokeStyle = "#62d3ee";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.roundRect ? ctx.roundRect(px - 18, py - 10, 36, 20, 4) : ctx.rect(px - 18, py - 10, 36, 20);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = "#62d3ee";
+      ctx.font = "bold 9px monospace";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(`${comp.stateCode} ▲`, px, py);
+    });
+
+    ctx.restore();
+  }, [geoData, selectedState, anomalies, competitors]);
+
+  useEffect(() => {
+    render();
+    const handleResize = () => render();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [render]);
+
+  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
+
+    const rect = container.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
+
+    // Check click near anomalies
+    const activeCode = selectedState || "GA";
+    let minLng = -92.0, maxLng = -75.0, minLat = 24.0, maxLat = 37.5;
+    if (activeCode === "TX") {
+      minLng = -108.0; maxLng = -92.0; minLat = 25.0; maxLat = 37.5;
+    } else if (activeCode === "FL") {
+      minLng = -89.0; maxLng = -79.0; minLat = 24.0; maxLat = 32.0;
+    } else if (activeCode === "NC" || activeCode === "VA") {
+      minLng = -85.0; maxLng = -74.0; minLat = 33.0; maxLat = 39.5;
+    }
+
+    const project = (lng: number, lat: number): [number, number] => {
+      const px = ((lng - minLng) / (maxLng - minLng)) * (rect.width - 60) + 30;
+      const py = ((maxLat - lat) / (maxLat - minLat)) * (rect.height - 60) + 30;
+      return [px, py];
+    };
+
+    // Check anomaly hit
+    for (const anom of anomalies) {
+      const [ax, ay] = project(anom.coordinates[0], anom.coordinates[1]);
+      const dist = Math.hypot(clickX - ax, clickY - ay);
+      if (dist < 18) {
+        onSelectAnomaly(anom);
+        return;
+      }
+    }
+
+    // Check competitor hit
+    for (const comp of competitors) {
+      const [cx, cy] = project(comp.coordinates[0], comp.coordinates[1]);
+      const dist = Math.hypot(clickX - cx, clickY - cy);
+      if (dist < 22) {
+        onSelectState(comp.stateCode);
+        return;
+      }
+    }
+  };
 
   return (
-    <div className="relative w-full h-[480px] min-h-[380px] rounded-xl overflow-hidden border border-[#54446d] bg-[#2a2236] shadow-2xl">
-      <div ref={mapContainer} className="absolute inset-0 w-full h-full" />
-      
+    <div
+      ref={containerRef}
+      className="relative w-full h-[480px] min-h-[380px] rounded-xl overflow-hidden border border-[#54446d] bg-[#2a2236] shadow-2xl"
+    >
+      <canvas
+        ref={canvasRef}
+        onClick={handleCanvasClick}
+        className="w-full h-full block cursor-crosshair"
+      />
+
+      {/* Overlay Radar Legend */}
       <div className="absolute top-3 left-3 bg-[#332a42]/90 backdrop-blur-md border border-[#54446d] rounded-lg p-2.5 text-xs text-[#f5effa] font-mono shadow-xl pointer-events-none">
         <div className="flex items-center space-x-2 text-[#e580b5] font-semibold mb-1">
-          <span className="w-2 h-2 rounded-full bg-[#e580b5] animate-pulse"></span>
-          <span>GEORGIA 3-PILLAR ANOMALY TELEMETRY</span>
+          <span className="w-2 h-2 rounded-full bg-[#e580b5] animate-ping"></span>
+          <span>GEORGIA 3-PILLAR VECTOR RADAR</span>
         </div>
         <div>Active Sensor Feeds: <span className="text-[#88f4e2] font-bold">7,030+ Live Streams</span></div>
-        <div>Detection Engine: <span className="text-[#62d3ee] font-bold">LSTM-AE + STGNN (F1: 0.986)</span></div>
-        <div>Tracking: <span className="text-[#ffd87a] font-bold">{anomalies.length} Critical Vectors</span></div>
+        <div>Active Target: <span className="text-[#ffd87a] font-bold">{selectedState ? STATE_GEOMETRY[selectedState]?.name || selectedState : "Georgia"}</span></div>
+        <div>Anomalies Filtered: <span className="text-[#e580b5] font-bold">{anomalies.length} Vectors</span></div>
       </div>
 
-      <div className="absolute bottom-3 right-3 bg-[#332a42]/90 backdrop-blur-md border border-[#54446d] rounded-lg p-2.5 text-[11px] text-[#baaed3] font-mono shadow-xl flex items-center space-x-4">
+      <div className="absolute bottom-3 right-3 bg-[#332a42]/90 backdrop-blur-md border border-[#54446d] rounded-lg p-2.5 text-[11px] text-[#baaed3] font-mono shadow-xl flex items-center space-x-4 pointer-events-none">
         <div className="flex items-center space-x-1.5">
           <span className="w-2.5 h-2.5 rounded-full bg-[#e580b5] border border-white"></span>
           <span className="text-[#f5effa]">Georgia Anomaly Vector</span>

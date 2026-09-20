@@ -249,3 +249,21 @@ The **Brain Lab by Liliya** Global Anomaly Map platform has been built, compiled
   - Committed changes to GitHub (`witternif2003-beep/brain-lab-global-anomaly-map`).
   - Pushed to production on Vercel: [https://brain-lab-six.vercel.app](https://brain-lab-six.vercel.app).
   - Production build confirmed clean with `HTTP 200 OK`.
+
+---
+
+## iPhone Desktop Mode Viewport & Lighter Complementary Theme Synchronization
+
+- **Elimination of Pitch-Black Surfaces:**
+  - Replaced harsh pitch black (`#030712` / `#120e18`) with a lighter, luminous amethyst jewel slate palette (`#282034` base, `#332a42` elevated surface, and `#3b304d` card facet).
+  - Synchronized `MapLibre GL` canvas background from `#030712` to `#2a2236`, ensuring vector states (Georgia `#852654`, ally states `#3b304d`) render with high clarity.
+- **iPhone Browser "Request Desktop Site" Aspect Ratio Optimization:**
+  - Added `-webkit-text-size-adjust: 100%` and responsive container widths to prevent Mobile Safari layout compression when desktop mode is toggled.
+  - Set `h-[480px] min-h-[380px]` with automated `window.resize` handlers on `StateMap.tsx`, preventing canvas height collapsing.
+  - Bound mobile drawer navigation for touch devices with clean typography and spacing.
+- **Continuous 24/7 Telemetry Ingest & Validation:**
+  - Ingestion pipeline continually updates 7,030+ SOTA streams via background telemetry engine and web worker.
+  - Real-time endpoints `/api/telemetry`, `/api/recommendations`, and `/api/anomalies` operational on edge.
+- **Live Deployment:**
+  - Pushed update commit `4bffa63` to GitHub `witternif2003-beep/brain-lab-global-anomaly-map`.
+  - Deployed to Vercel production: [https://brain-lab-six.vercel.app](https://brain-lab-six.vercel.app) (confirmed `HTTP 200 OK`).
