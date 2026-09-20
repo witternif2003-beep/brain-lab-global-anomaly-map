@@ -89,25 +89,25 @@ export default function AmbientBackground({ className = "" }: { className?: stri
 
   return (
     <div className={`pointer-events-none fixed inset-0 -z-10 overflow-hidden ${className}`} aria-hidden="true">
-      {/* Lighter Amethyst Slate Base (No harsh black) */}
-      <div className="absolute inset-0 bg-[#282034]" />
+      {/* Oceanic Slate Deep Foundation (Clean & Non-Purple) */}
+      <div className="absolute inset-0 bg-[#0b1320]" />
       
-      {/* Prismatic Multi-Gradient Mesh with scroll & animation-timeline support */}
+      {/* Subtle Multi-Gradient Mesh */}
       <div
-        className="absolute inset-0 opacity-70 animate-gradient-drift scroll-aware"
+        className="absolute inset-0 opacity-60 animate-gradient-drift scroll-aware"
         style={{
           background:
-            "radial-gradient(65% 55% at 20% 25%, rgba(98,211,238,0.18), transparent 70%)," +
-            "radial-gradient(60% 60% at 80% 30%, rgba(229,128,181,0.20), transparent 65%)," +
-            "radial-gradient(75% 65% at 50% 95%, rgba(255,216,122,0.15), transparent 70%)",
+            "radial-gradient(65% 55% at 20% 25%, rgba(56,189,248,0.12), transparent 70%)," +
+            "radial-gradient(60% 60% at 80% 30%, rgba(16,185,129,0.10), transparent 65%)," +
+            "radial-gradient(75% 65% at 50% 95%, rgba(251,146,60,0.06), transparent 70%)",
         }}
       />
       
       <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
       
-      {/* Grain Overlay with mix-blend-mode: soft-light */}
+      {/* Ultra-subtle Grain Overlay */}
       <div
-        className="absolute inset-0 mix-blend-soft-light opacity-[0.04]"
+        className="absolute inset-0 mix-blend-soft-light opacity-[0.03]"
         style={{
           backgroundImage:
             "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/></filter><rect width='160' height='160' filter='url(%23n)' opacity='0.9'/></svg>\")",
@@ -120,7 +120,7 @@ export default function AmbientBackground({ className = "" }: { className?: stri
 function drawStaticFrame(canvas: HTMLCanvasElement) {
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
-  ctx.fillStyle = "#282034";
+  ctx.fillStyle = "#0b1320";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 }
 
@@ -134,17 +134,17 @@ function runMainThreadFallback(canvas: HTMLCanvasElement) {
   let w = (canvas.width = Math.floor(window.innerWidth * dpr));
   let h = (canvas.height = Math.floor(window.innerHeight * dpr));
 
-  const particles = Array.from({ length: 60 }, () => ({
+  const particles = Array.from({ length: 50 }, () => ({
     x: Math.random() * w,
     y: Math.random() * h,
-    vx: (Math.random() - 0.5) * 0.5,
-    vy: (Math.random() - 0.5) * 0.5,
+    vx: (Math.random() - 0.5) * 0.4,
+    vy: (Math.random() - 0.5) * 0.4,
     life: 150 + Math.random() * 250,
   }));
 
   const render = () => {
     if (!running) return;
-    ctx.fillStyle = "rgba(40, 32, 52, 0.12)";
+    ctx.fillStyle = "rgba(11, 19, 32, 0.1)";
     ctx.fillRect(0, 0, w, h);
 
     for (const p of particles) {
@@ -156,7 +156,7 @@ function runMainThreadFallback(canvas: HTMLCanvasElement) {
         p.y = Math.random() * h;
         p.life = 150 + Math.random() * 250;
       }
-      ctx.strokeStyle = "rgba(98,211,238,0.3)";
+      ctx.strokeStyle = "rgba(56,189,248,0.25)";
       ctx.beginPath();
       ctx.moveTo(p.x, p.y);
       ctx.lineTo(p.x - p.vx * 4, p.y - p.vy * 4);

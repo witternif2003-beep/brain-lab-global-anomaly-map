@@ -1,16 +1,13 @@
 "use client";
-import React, { useEffect, useRef, useState } from "react";
-import { Map, Marker, NavigationControl } from "maplibre-gl";
-import "maplibre-gl/dist/maplibre-gl.css";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { GODSEYE_INTEL_LAYERS, SAMPLE_LIVE_ENTITIES, LiveTelemetryEntity } from "../lib/godseye-layers";
 import { GEORGIA_ANOMALIES } from "../lib/data";
-import { Plane, Anchor, Satellite, Flame, Activity, WifiOff, Camera, Zap, ShieldAlert, Layers, RefreshCw } from "lucide-react";
+import { ShieldAlert, Layers } from "lucide-react";
 
 export default function GodsEyeMap() {
-  const mapContainer = useRef<HTMLDivElement>(null);
-  const mapInstance = useRef<Map | null>(null);
-  const markersRef = useRef<Marker[]>([]);
-  const [mapLoaded, setMapLoaded] = useState<boolean>(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [geoData, setGeoData] = useState<any>(null);
   const [activeLayers, setActiveLayers] = useState<Record<string, boolean>>({
     "layer-adsb": true,
     "layer-ais": true,
@@ -23,198 +20,242 @@ export default function GodsEyeMap() {
   });
   const [selectedEntity, setSelectedEntity] = useState<LiveTelemetryEntity | null>(SAMPLE_LIVE_ENTITIES[0]);
 
-  // Toggle Layer
+  // Load US Census state boundaries
+  useEffect(() => {
+    fetch("/data/us-states.json")
+      .then((res) => res.json())
+      .then((data) => setGeoData(data))
+      .catch((err) => console.error("Error loading census boundaries:", err));
+  }, []);
+
   const toggleLayer = (layerId: string) => {
     setActiveLayers((prev) => ({ ...prev, [layerId]: !prev[layerId] }));
   };
 
-  useEffect(() => {
-    if (!mapContainer.current || mapInstance.current) return;
+  // High-DPI Vector Canvas Render
+  const render = useCallback(() => {
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
+    if (!canvas || !container || !geoData) return;
 
-    const map = new Map({
-      container: mapContainer.current,
-      style: {
-        version: 8,
-        sources: {
-          states: {
-            type: "geojson",
-            data: "/data/us-states.json",
-          },
-        },
-        layers: [
-          {
-            id: "bg",
-            type: "background",
-            paint: {
-              "background-color": "#02040a", // Deep midnight space tone
-            },
-          },
-          {
-            id: "states-fill",
-            type: "fill",
-            source: "states",
-            paint: {
-              "fill-color": [
-                "match",
-                ["get", "name"],
-                "Georgia", "#3b0717",
-                "#060d1d",
-              ],
-              "fill-opacity": 0.7,
-            },
-          },
-          {
-            id: "states-line",
-            type: "line",
-            source: "states",
-            paint: {
-              "line-color": [
-                "match",
-                ["get", "name"],
-                "Georgia", "#f43f5e",
-                "#1e293b",
-              ],
-              "line-width": [
-                "match",
-                ["get", "name"],
-                "Georgia", 2.2,
-                0.8,
-              ],
-              "line-opacity": 0.9,
-            },
-          },
-        ],
-      },
-      center: [-82.9, 32.5], // Centered on Georgia operational zone
-      zoom: 6.0,
-      minZoom: 3,
-      maxZoom: 14,
-      attributionControl: false,
-    });
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
 
-    map.addControl(new NavigationControl({ showCompass: true }), "top-right");
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const rect = container.getBoundingClientRect();
+    const width = Math.floor(rect.width * dpr);
+    const height = Math.floor(rect.height * dpr);
 
-    map.on("load", () => {
-      setMapLoaded(true);
-    });
+    if (canvas.width !== width || canvas.height !== height) {
+      canvas.width = width;
+      canvas.height = height;
+    }
 
-    mapInstance.current = map;
+    ctx.save();
+    ctx.scale(dpr, dpr);
 
-    return () => {
-      map.remove();
-      mapInstance.current = null;
+    const w = rect.width;
+    const h = rect.height;
+
+    // Background fill — Oceanic Slate
+    ctx.fillStyle = "#0f172a";
+    ctx.fillRect(0, 0, w, h);
+
+    // Subtle coordinate grid
+    ctx.strokeStyle = "rgba(51, 65, 85, 0.4)";
+    ctx.lineWidth = 1;
+    for (let x = 0; x < w; x += 40) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, h);
+      ctx.stroke();
+    }
+    for (let y = 0; y < h; y += 40) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(w, y);
+      ctx.stroke();
+    }
+
+    // Equirectangular projection bounds centered on Georgia and Southeast
+    const minLng = -89.0;
+    const maxLng = -78.0;
+    const minLat = 28.5;
+    const maxLat = 36.5;
+
+    const project = (lng: number, lat: number): [number, number] => {
+      const px = ((lng - minLng) / (maxLng - minLng)) * (w - 40) + 20;
+      const py = ((maxLat - lat) / (maxLat - minLat)) * (h - 40) + 20;
+      return [px, py];
     };
-  }, []);
 
-  // Update entity markers
-  useEffect(() => {
-    if (!mapInstance.current || !mapLoaded) return;
+    // Draw state polygons
+    geoData.features.forEach((feature: any) => {
+      const stateName = feature.properties?.name;
+      const isTarget = stateName === "Georgia";
+      const geom = feature.geometry;
+      if (!geom) return;
 
-    markersRef.current.forEach((m) => m.remove());
-    markersRef.current = [];
+      const polygons = geom.type === "Polygon" ? [geom.coordinates] : geom.type === "MultiPolygon" ? geom.coordinates : [];
 
-    // Filter live entities based on active layer toggles
+      polygons.forEach((ringGroup: any) => {
+        const ring = ringGroup[0];
+        if (!ring || ring.length === 0) return;
+
+        ctx.beginPath();
+        ring.forEach(([lng, lat]: [number, number], idx: number) => {
+          const [px, py] = project(lng, lat);
+          if (idx === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        });
+        ctx.closePath();
+
+        if (isTarget) {
+          ctx.fillStyle = "rgba(244, 63, 94, 0.25)";
+          ctx.fill();
+          ctx.strokeStyle = "#f43f5e";
+          ctx.lineWidth = 2.2;
+          ctx.stroke();
+        } else {
+          ctx.fillStyle = "rgba(30, 41, 59, 0.65)";
+          ctx.fill();
+          ctx.strokeStyle = "rgba(71, 85, 105, 0.5)";
+          ctx.lineWidth = 1.0;
+          ctx.stroke();
+        }
+      });
+    });
+
+    // Render active layer entities
     const activeEntities = SAMPLE_LIVE_ENTITIES.filter((e) => activeLayers[e.layerId]);
-
     activeEntities.forEach((ent) => {
-      const el = document.createElement("div");
-      el.className = "group relative cursor-pointer flex items-center justify-center";
+      const [px, py] = project(ent.lng, ent.lat);
+      if (px < 0 || px > w || py < 0 || py > h) return;
 
-      let color = "#38bdf8";
-      if (ent.layerId === "layer-ais") color = "#06b6d4";
-      if (ent.layerId === "layer-satellites") color = "#c084fc";
-      if (ent.layerId === "layer-cctv") color = "#10b981";
-      if (ent.layerId === "layer-nuclear") color = "#f97316";
+      const isAnomalous = ent.status === "ANOMALOUS";
+      const isSelected = selectedEntity?.id === ent.id;
 
-      // Pulsing outer halo for anomalous units
-      if (ent.status === "ANOMALOUS") {
-        const pulse = document.createElement("div");
-        pulse.className = "absolute w-9 h-9 rounded-full bg-rose-500/80 animate-ping";
-        el.appendChild(pulse);
+      // Outer pulsing ring for anomaly
+      if (isAnomalous) {
+        ctx.beginPath();
+        ctx.arc(px, py, 14, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(244, 63, 94, 0.3)";
+        ctx.fill();
       }
 
-      const iconDiv = document.createElement("div");
-      iconDiv.className = `w-6 h-6 rounded-full border border-white/80 shadow-lg flex items-center justify-center text-[10px] font-bold text-white transition-transform group-hover:scale-125 ${
-        ent.status === "ANOMALOUS" ? "bg-rose-600" : "bg-slate-900"
-      }`;
-      iconDiv.style.borderColor = color;
+      // Marker shape
+      ctx.beginPath();
+      ctx.arc(px, py, isSelected ? 8 : 6, 0, Math.PI * 2);
+      ctx.fillStyle = isAnomalous ? "#f43f5e" : "#38bdf8";
+      ctx.fill();
+      ctx.strokeStyle = isSelected ? "#ffffff" : "#1e293b";
+      ctx.lineWidth = isSelected ? 2 : 1.5;
+      ctx.stroke();
 
-      // Icon symbol representation
-      if (ent.layerId === "layer-adsb") iconDiv.innerHTML = "✈";
-      else if (ent.layerId === "layer-ais") iconDiv.innerHTML = "⚓";
-      else if (ent.layerId === "layer-satellites") iconDiv.innerHTML = "🛰";
-      else if (ent.layerId === "layer-cctv") iconDiv.innerHTML = "📷";
-      else if (ent.layerId === "layer-nuclear") iconDiv.innerHTML = "⚛";
-      else iconDiv.innerHTML = "●";
-
-      el.appendChild(iconDiv);
-
-      el.addEventListener("click", (e) => {
-        e.stopPropagation();
-        setSelectedEntity(ent);
-      });
-
-      const marker = new Marker({ element: el })
-        .setLngLat([ent.lng, ent.lat])
-        .addTo(mapInstance.current!);
-
-      markersRef.current.push(marker);
+      // Label text
+      ctx.fillStyle = "#f8fafc";
+      ctx.font = "bold 9px monospace";
+      ctx.fillText(ent.callsignOrName.split(" ")[0], px + 8, py + 3);
     });
 
-    // Also plot Core Georgia Economic Anomalies
+    // Render core GA anomalies
     GEORGIA_ANOMALIES.forEach((anom) => {
-      const el = document.createElement("div");
-      el.className = "cursor-pointer p-1 rounded-sm bg-rose-950/90 border border-rose-500 text-[9px] font-mono text-white shadow-lg";
-      el.innerHTML = `⚠️ ${anom.code}`;
-      
-      const marker = new Marker({ element: el })
-        .setLngLat(anom.coordinates)
-        .addTo(mapInstance.current!);
+      const [px, py] = project(anom.coordinates[0], anom.coordinates[1]);
+      if (px < 0 || px > w || py < 0 || py > h) return;
 
-      markersRef.current.push(marker);
+      ctx.fillStyle = "#1e293b";
+      ctx.strokeStyle = "#f43f5e";
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.roundRect ? ctx.roundRect(px - 14, py - 8, 28, 16, 3) : ctx.rect(px - 14, py - 8, 28, 16);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = "#f43f5e";
+      ctx.font = "bold 8px monospace";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(anom.code.split("-")[0], px, py);
     });
-  }, [activeLayers, mapLoaded]);
+
+    ctx.restore();
+  }, [geoData, activeLayers, selectedEntity]);
+
+  useEffect(() => {
+    render();
+    const handleResize = () => render();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [render]);
+
+  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
+
+    const rect = container.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
+
+    const minLng = -89.0, maxLng = -78.0, minLat = 28.5, maxLat = 36.5;
+    const project = (lng: number, lat: number): [number, number] => {
+      const px = ((lng - minLng) / (maxLng - minLng)) * (rect.width - 40) + 20;
+      const py = ((maxLat - lat) / (maxLat - minLat)) * (rect.height - 40) + 20;
+      return [px, py];
+    };
+
+    const activeEntities = SAMPLE_LIVE_ENTITIES.filter((e) => activeLayers[e.layerId]);
+    for (const ent of activeEntities) {
+      const [ex, ey] = project(ent.lng, ent.lat);
+      const dist = Math.hypot(clickX - ex, clickY - ey);
+      if (dist < 18) {
+        setSelectedEntity(ent);
+        return;
+      }
+    }
+  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 font-mono">
       
-      {/* Map Surface (8 Cols on Desktop) */}
+      {/* Map Surface (8 Cols) */}
       <div className="lg:col-span-8 flex flex-col space-y-3">
-        <div className="relative w-full h-[580px] rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 shadow-2xl">
-          <div ref={mapContainer} className="absolute inset-0 w-full h-full" />
+        <div
+          ref={containerRef}
+          className="relative w-full h-[580px] rounded-2xl overflow-hidden border border-[#28394e] bg-[#0f172a] shadow-2xl"
+        >
+          <canvas
+            ref={canvasRef}
+            onClick={handleCanvasClick}
+            className="w-full h-full block cursor-crosshair"
+          />
 
-          {/* GodsEye Top-Left HUD Telemetry Overlay */}
-          <div className="absolute top-3 left-3 bg-slate-950/90 backdrop-blur-md border border-slate-800 rounded-xl p-3 text-xs text-slate-300 shadow-xl space-y-1 z-10 pointer-events-none">
-            <div className="flex items-center space-x-2 text-sky-400 font-bold">
-              <span className="w-2.5 h-2.5 rounded-full bg-sky-500 animate-ping"></span>
-              <span>GODSEYE PROTOCOL COMMON OPERATING PICTURE</span>
+          {/* GodsEye HUD Top-Left */}
+          <div className="absolute top-3 left-3 bg-[#131d2c]/90 backdrop-blur-md border border-[#28394e] rounded-xl p-2.5 text-xs text-[#f8fafc] shadow-xl space-y-0.5 pointer-events-none">
+            <div className="flex items-center space-x-2 text-[#38bdf8] font-bold">
+              <span className="w-2 h-2 rounded-full bg-[#10b981] animate-ping"></span>
+              <span>GODSEYE MULTI-LAYER COMMON OPERATING PICTURE</span>
             </div>
-            <div className="text-[11px] text-slate-400">
-              Active Layers: <span className="text-emerald-400 font-bold">{Object.values(activeLayers).filter(Boolean).length} / 8</span> | Tracked Sensor Entities: <span className="text-white font-bold">60,000+ Global</span>
-            </div>
-            <div className="text-[11px] text-slate-400">
-              Operational Zone: <span className="text-rose-400 font-bold">Georgia 159 Counties & Ports Infrastructure</span>
+            <div className="text-[10px] text-[#94a3b8]">
+              Active Layers: <span className="text-[#10b981] font-bold">{Object.values(activeLayers).filter(Boolean).length} / 8</span> | Tracked: <span className="text-[#f8fafc] font-bold">60,000+ Entities</span>
             </div>
           </div>
 
-          {/* Map Layer Legend / Toggles Drawer at Bottom */}
-          <div className="absolute bottom-3 left-3 right-3 bg-slate-950/90 backdrop-blur-md border border-slate-800 rounded-xl p-2.5 z-10 overflow-x-auto shadow-2xl">
-            <div className="flex items-center space-x-2">
-              <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold shrink-0">
+          {/* Layer Filter Toggles at Bottom */}
+          <div className="absolute bottom-3 left-3 right-3 bg-[#131d2c]/90 backdrop-blur-md border border-[#28394e] rounded-xl p-2 z-10 overflow-x-auto shadow-2xl">
+            <div className="flex items-center space-x-1.5">
+              <span className="text-[10px] text-[#94a3b8] uppercase tracking-wider font-bold shrink-0">
                 GodsEye Feeds:
               </span>
               {GODSEYE_INTEL_LAYERS.map((layer) => (
                 <button
                   key={layer.id}
                   onClick={() => toggleLayer(layer.id)}
-                  className={`px-2 py-1 rounded text-[10px] font-bold transition-all whitespace-nowrap flex items-center space-x-1 ${
+                  className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all whitespace-nowrap flex items-center space-x-1 ${
                     activeLayers[layer.id]
-                      ? "bg-slate-800 text-white border shadow-sm"
-                      : "bg-slate-950/60 text-slate-600 border border-slate-900"
+                      ? "bg-[#1e293b] text-[#f8fafc] border border-[#38bdf8]"
+                      : "bg-[#0b1320] text-[#64748b] border border-[#28394e]"
                   }`}
-                  style={{
-                    borderColor: activeLayers[layer.id] ? layer.color : "transparent",
-                  }}
                 >
                   <span
                     className="w-1.5 h-1.5 rounded-full"
@@ -228,21 +269,19 @@ export default function GodsEyeMap() {
         </div>
       </div>
 
-      {/* Side Inspector: Live Telemetry Target Feed (4 Cols) */}
+      {/* Side Inspector (4 Cols) */}
       <div className="lg:col-span-4 space-y-4">
-        
-        {/* Entity Focus Card */}
         {selectedEntity ? (
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl space-y-3">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-              <span className="px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/40 text-[10px] font-bold">
+          <div className="bg-[#131d2c] border border-[#28394e] rounded-2xl p-4 shadow-xl space-y-3">
+            <div className="flex items-center justify-between border-b border-[#28394e] pb-2">
+              <span className="px-2 py-0.5 rounded bg-[#1e293b] text-[#38bdf8] border border-[#38bdf8]/40 text-[10px] font-bold">
                 {selectedEntity.type}
               </span>
               <span
                 className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                   selectedEntity.status === "ANOMALOUS"
-                    ? "bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse"
-                    : "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                    ? "bg-[#f43f5e]/20 text-[#f43f5e] border border-[#f43f5e]/40 animate-pulse"
+                    : "bg-[#10b981]/20 text-[#10b981] border border-[#10b981]/40"
                 }`}
               >
                 {selectedEntity.status}
@@ -251,52 +290,52 @@ export default function GodsEyeMap() {
 
             <div>
               <h3 className="text-sm font-bold text-white">{selectedEntity.callsignOrName}</h3>
-              <div className="text-[11px] text-slate-400 mt-0.5">
-                Source: <span className="text-sky-300">{selectedEntity.source}</span>
+              <div className="text-[11px] text-[#94a3b8] mt-0.5">
+                Source: <span className="text-[#38bdf8]">{selectedEntity.source}</span>
               </div>
             </div>
 
-            <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs space-y-1.5">
-              <div className="flex justify-between text-slate-400">
+            <div className="bg-[#0b1320] p-3 rounded-xl border border-[#28394e] text-xs space-y-1.5">
+              <div className="flex justify-between text-[#94a3b8]">
                 <span>Coordinates:</span>
-                <span className="text-white">{selectedEntity.lat.toFixed(3)}°N, {selectedEntity.lng.toFixed(3)}°W</span>
+                <span className="text-[#f8fafc]">{selectedEntity.lat.toFixed(3)}°N, {selectedEntity.lng.toFixed(3)}°W</span>
               </div>
-              <div className="flex justify-between text-slate-400">
-                <span>Velocity / Speed:</span>
-                <span className="text-emerald-400 font-bold">{selectedEntity.altOrSpeed}</span>
+              <div className="flex justify-between text-[#94a3b8]">
+                <span>Speed / Track:</span>
+                <span className="text-[#10b981] font-bold">{selectedEntity.altOrSpeed}</span>
               </div>
-              <div className="flex justify-between text-slate-400">
+              <div className="flex justify-between text-[#94a3b8]">
                 <span>Heading:</span>
-                <span className="text-white">{selectedEntity.heading}°</span>
+                <span className="text-[#f8fafc]">{selectedEntity.heading}°</span>
               </div>
             </div>
 
             {selectedEntity.anomalyFlag && (
-              <div className="bg-rose-950/30 border border-rose-800/50 p-2.5 rounded-xl text-xs space-y-1">
-                <div className="text-rose-400 font-bold flex items-center space-x-1">
+              <div className="bg-[#f43f5e]/10 border border-[#f43f5e]/30 p-2.5 rounded-xl text-xs space-y-1">
+                <div className="text-[#f43f5e] font-bold flex items-center space-x-1">
                   <ShieldAlert className="w-3.5 h-3.5" />
-                  <span>CRITICAL ANOMALY ALERT</span>
+                  <span>CRITICAL TELEMETRY ALERT</span>
                 </div>
-                <p className="text-rose-200 text-[11px] leading-relaxed">
+                <p className="text-[#f8fafc] text-[11px] leading-relaxed">
                   {selectedEntity.anomalyFlag}
                 </p>
               </div>
             )}
           </div>
         ) : (
-          <div className="p-6 text-center text-slate-500 text-xs border border-dashed border-slate-800 rounded-2xl">
-            Select any entity icon on the map to inspect live transponder telemetry
+          <div className="p-6 text-center text-[#94a3b8] text-xs border border-dashed border-[#28394e] rounded-2xl">
+            Select any entity icon on the radar to inspect transponder telemetry
           </div>
         )}
 
         {/* Live Active Entity Ticker */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl space-y-3">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+        <div className="bg-[#131d2c] border border-[#28394e] rounded-2xl p-4 shadow-xl space-y-3">
+          <div className="flex items-center justify-between border-b border-[#28394e] pb-2">
             <h4 className="text-xs font-bold text-white flex items-center space-x-1.5">
-              <Layers className="w-3.5 h-3.5 text-sky-400" />
-              <span>LIVE ENTITY RADAR STREAM ({SAMPLE_LIVE_ENTITIES.length})</span>
+              <Layers className="w-3.5 h-3.5 text-[#38bdf8]" />
+              <span>LIVE ENTITY RADAR STREAM</span>
             </h4>
-            <span className="text-[10px] text-emerald-400 font-bold">1 Hz Poll</span>
+            <span className="text-[10px] text-[#10b981] font-bold">Continuous 1 Hz</span>
           </div>
 
           <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
@@ -306,21 +345,21 @@ export default function GodsEyeMap() {
                 onClick={() => setSelectedEntity(ent)}
                 className={`p-2 rounded-lg border text-xs cursor-pointer transition-all ${
                   selectedEntity?.id === ent.id
-                    ? "bg-slate-950 border-sky-500"
-                    : "bg-slate-950/60 border-slate-800/80 hover:border-slate-700"
+                    ? "bg-[#1e293b] border-[#38bdf8]"
+                    : "bg-[#0b1320] border-[#28394e] hover:border-[#38bdf8]/50"
                 }`}
               >
                 <div className="flex items-center justify-between text-[10px]">
-                  <span className="text-slate-300 font-bold truncate max-w-[170px]">{ent.callsignOrName}</span>
+                  <span className="text-[#f8fafc] font-bold truncate max-w-[170px]">{ent.callsignOrName}</span>
                   <span
                     className={`font-bold ${
-                      ent.status === "ANOMALOUS" ? "text-rose-400" : "text-emerald-400"
+                      ent.status === "ANOMALOUS" ? "text-[#f43f5e]" : "text-[#10b981]"
                     }`}
                   >
                     {ent.status}
                   </span>
                 </div>
-                <div className="text-[10px] text-slate-500 mt-0.5">{ent.altOrSpeed}</div>
+                <div className="text-[10px] text-[#94a3b8] mt-0.5">{ent.altOrSpeed}</div>
               </div>
             ))}
           </div>

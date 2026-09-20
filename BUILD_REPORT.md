@@ -297,3 +297,27 @@ The **Brain Lab by Liliya** Global Anomaly Map platform has been built, compiled
 - **Production Pipeline Deployment:**
   - Pushed to GitHub repository `witternif2003-beep/brain-lab-global-anomaly-map` (commit `315a581`).
   - Deployed to Vercel production edge: [https://brain-lab-six.vercel.app](https://brain-lab-six.vercel.app).
+
+---
+
+## High-Contrast Oceanic Telemetry Theme & Continuous 24/7 Anomaly Population
+
+- **Palette Transition (Less Purple, High Readability):**
+  - Replaced purple and violet tones with an **Oceanic Telemetry & Military-Grade Intelligence Palette**:
+    - Canvas Background: `#0b1320` (deep oceanic navy)
+    - Card Surfaces: `#131d2c` and elevated `#182438`
+    - Structural Facet Borders: Slate Blue `#28394e`
+    - Text Contrast: Ultra-crisp `#f8fafc` (headings) and `#cbd5e1` / `#94a3b8` (body)
+    - Anomaly Severity Tokens:
+      - Critical: `#f43f5e` (Crimson Rose)
+      - High: `#fb923c` (Crisp Amber)
+      - Telemetry Live / Confirmed: `#10b981` (Emerald)
+      - Strategic Action / Competitors: `#38bdf8` (Electric Sky Blue)
+- **Continuous 24/7 Anomaly Ingest & Population:**
+  - Integrated dynamic interval updates in `/anomalies` actively refreshing confidence calculations, timestamps, and detection variances.
+  - Linked with high-frequency backend endpoints (`/api/anomalies`, `/api/telemetry`, `/api/recommendations`).
+- **Verified Mobile Safari / iOS Desktop Mode:**
+  - Vector canvas and layout containers tested with dynamic sizing constraints to maintain responsiveness when "Request Desktop Site" is active in iOS.
+- **Production Pipeline Deployment:**
+  - Pushed to GitHub `witternif2003-beep/brain-lab-global-anomaly-map` (commit `b8c3e53`).
+  - Deployed to Vercel production edge: [https://brain-lab-six.vercel.app](https://brain-lab-six.vercel.app).

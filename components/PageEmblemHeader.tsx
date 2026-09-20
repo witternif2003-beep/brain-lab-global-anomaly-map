@@ -18,43 +18,35 @@ export default function PageEmblemHeader({
   rightElement,
 }: PageEmblemHeaderProps) {
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#231d2e] via-[#2d223c] to-[#1a1424] border border-[#624d77]/70 p-6 sm:p-8 shadow-2xl">
-      
-      {/* Prismatic Crystal Starburst Glow */}
-      <div className="absolute top-0 right-0 -mr-16 -mt-16 w-80 h-80 rounded-full bg-gradient-to-br from-[#d66ea5]/20 via-[#5ecbe6]/15 to-[#ffd269]/10 blur-3xl pointer-events-none" />
-      <div className="absolute bottom-0 left-1/3 -mb-16 w-64 h-64 rounded-full bg-[#7ef0dc]/10 blur-2xl pointer-events-none" />
-
-      <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#131d2c] via-[#0f172a] to-[#0b1320] border border-[#28394e] p-5 sm:p-6 shadow-2xl">
+      <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
         
-        {/* Left Section with Rotating Glowing Neon Emblem */}
-        <div className="flex items-start sm:items-center space-x-4 sm:space-x-5">
-          <div className="relative shrink-0">
-            {/* Prismatic multi-spectral aura ring */}
-            <div className="absolute -inset-1.5 rounded-full bg-gradient-to-r from-[#d66ea5] via-[#5ecbe6] to-[#ffd269] opacity-70 blur-md animate-pulse"></div>
-            
-            <div className="relative w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full overflow-hidden p-1 bg-[#120e18] border-2 border-[#ffd269] shadow-2xl emblem-rotating-glow">
+        {/* Left Section with 1/10th Longitudinal Rotating Emblem */}
+        <div className="flex items-start sm:items-center space-x-3.5">
+          <div className="relative shrink-0" style={{ perspective: "600px" }}>
+            <div className="relative w-8 h-8 sm:w-9 sm:h-9 rounded-full p-0.5 bg-[#0b121b] border border-[#38bdf8] shadow-lg emblem-longitudinal-pulse flex items-center justify-center overflow-hidden">
               <Image
                 src="/assets/brain-lab-emblem.png"
                 alt="Brain Lab by Liliya emblem"
-                width={96}
-                height={96}
-                className="w-full h-full object-contain"
+                width={36}
+                height={36}
+                className="w-full h-full object-cover rounded-full"
                 priority
               />
             </div>
           </div>
 
-          <div className="space-y-2">
-            <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-semibold bg-[#3a2e4c]/80 text-[#ffd269] border border-[#d66ea5]/40 shadow-sm">
+          <div className="space-y-1.5">
+            <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#1e293b] text-[#38bdf8] border border-[#38bdf8]/40 shadow-sm">
               {badgeIcon && <span>{badgeIcon}</span>}
               <span className="font-mono tracking-wide">{badgeText}</span>
             </div>
 
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-[#f5effa] tracking-tight font-mono leading-tight">
+            <h1 className="text-lg sm:text-xl md:text-2xl font-extrabold text-[#f8fafc] tracking-tight font-mono leading-tight">
               {title}
             </h1>
 
-            <p className="text-xs sm:text-sm text-[#dfac97] max-w-3xl leading-relaxed font-sans">
+            <p className="text-xs text-[#cbd5e1] max-w-3xl leading-relaxed font-sans">
               {description}
             </p>
           </div>
