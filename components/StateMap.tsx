@@ -509,6 +509,10 @@ export default function StateMap({
     map.on('zoom', () => setZoom(map.getZoom()));
     map.on('pitch', () => setPitch(map.getPitch()));
 
+    map.on('error', (e) => {
+      console.error('[maplibre]', e?.error?.message ?? e);
+    });
+
     map.on('load', async () => {
       try {
         if (typeof window !== 'undefined') {

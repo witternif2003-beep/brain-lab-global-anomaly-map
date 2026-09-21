@@ -470,7 +470,7 @@ export default function GodsEyeMap({
     map.on('pitch', () => setPitch(map.getPitch()));
 
     map.on('error', (e) => {
-      console.warn('[GodsEyeMap] MapLibre internal error event:', e?.error || e);
+      console.error('[maplibre]', e?.error?.message ?? e);
     });
 
     map.on('load', async () => {
