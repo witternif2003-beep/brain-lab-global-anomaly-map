@@ -9,6 +9,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { useAnomalyStream, AnomalyFeature } from '../hooks/useAnomalyStream';
 import { registerGeoJSONVTSource, shouldUseTiledRendering } from '../lib/geojson-vt-protocol';
 import { GEORGIA_ANOMALIES } from '../lib/data';
+import MapDebugOverlay from './MapDebugOverlay';
 
 // ─── Constants ────────────────────────────────────────────────────────
 const COMPETITOR_STATES = ['GA', 'NC', 'TN', 'SC', 'FL', 'TX', 'VA', 'AL'] as const;
@@ -621,6 +622,7 @@ export default function GodsEyeMap({
       <div className="lg:col-span-8 flex flex-col space-y-3">
         <div className="relative w-full h-[500px] sm:h-[580px] rounded-2xl overflow-hidden border border-[#28394e] bg-[#0f172a] shadow-2xl">
           <div ref={containerRef} className="absolute inset-0" />
+          <MapDebugOverlay mapRef={mapRef} />
 
           {/* Layer + Focus label bar — glass-morphism style with dark red GA target */}
           <div

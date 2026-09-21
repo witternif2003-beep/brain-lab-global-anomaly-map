@@ -45,6 +45,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { AnomalyItem, CompetitorStateIntel } from '../lib/schema';
 import { useAnomalyStream, AnomalyFeature } from '../hooks/useAnomalyStream';
 import { registerGeoJSONVTSource, shouldUseTiledRendering } from '../lib/geojson-vt-protocol';
+import MapDebugOverlay from './MapDebugOverlay';
 
 interface StateMapProps {
   anomalies: AnomalyItem[];
@@ -638,6 +639,7 @@ export default function StateMap({
       ref={containerRef}
       className="relative w-full h-[480px] min-h-[380px] rounded-xl overflow-hidden border border-[#28394e] bg-[#0f172a] shadow-2xl"
     >
+      <MapDebugOverlay mapRef={mapRef} />
       {/* 3D / Perspective HUD Toggle Button — glass style */}
       <div
         className="absolute top-3 right-3 z-10 flex flex-col items-end gap-1 p-1 rounded-lg"
