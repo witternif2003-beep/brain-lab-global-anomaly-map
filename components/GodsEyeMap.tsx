@@ -568,20 +568,86 @@ export default function GodsEyeMap({
           <div ref={containerRef} className="absolute inset-0" />
 
           {/* Focus State Selector Toolbar */}
-          <div className="absolute top-3 left-3 z-10 flex flex-wrap gap-1 rounded-lg bg-[#0f172a]/90 p-1 backdrop-blur border border-[#28394e]">
-            {(['GA', ...COMPETITOR_STATES.filter((s) => s !== 'GA'), 'ALL'] as const).map((s) => (
-              <button
-                key={s}
-                onClick={() => handleFocusChange(s)}
-                className={`px-2 py-1 text-xs font-bold rounded transition-all ${
-                  activeFocus === s
-                    ? 'bg-rose-600 text-white shadow-md'
-                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                }`}
-              >
-                {s === 'GA' ? 'GA (Target)' : s}
-              </button>
-            ))}
+          <div
+            className="absolute top-3 left-3 z-10 flex flex-wrap gap-1 rounded-lg p-1 border border-[#28394e]"
+            style={{
+              backgroundColor: 'rgba(15, 23, 42, 0.85)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+            }}
+          >
+            {(['GA', 'NC', 'TN', 'FL', 'SC', 'TX', 'VA', 'AL'] as const).map((s) => {
+              const isTarget = s === 'GA';
+              const isActive = activeFocus === s;
+
+              let style: React.CSSProperties = {
+                appearance: 'none',
+                WebkitAppearance: 'none',
+                padding: '6px 12px',
+                fontSize: '11px',
+                fontWeight: 600,
+                borderRadius: '6px',
+                border: '1px solid transparent',
+                cursor: 'pointer',
+                transition: 'all 200ms ease',
+                backgroundColor: 'transparent',
+                outline: 'none',
+                lineHeight: 1.2,
+              };
+
+              if (isTarget) {
+                if (isActive) {
+                  style = {
+                    ...style,
+                    backgroundColor: '#dc2626',
+                    color: '#ffffff',
+                    border: '1px solid #fca5a5',
+                    animation: 'pulse-red 2s ease-in-out infinite',
+                  };
+                } else {
+                  style = {
+                    ...style,
+                    backgroundColor: 'transparent',
+                    color: '#991b1b',
+                    border: '1px solid #7f1d1d',
+                  };
+                }
+              } else {
+                if (isActive) {
+                  style = {
+                    ...style,
+                    backgroundColor: '#0284c7',
+                    color: '#ffffff',
+                    border: '1px solid #7dd3fc',
+                    animation: 'pulse-blue 2s ease-in-out infinite',
+                  };
+                } else {
+                  style = {
+                    ...style,
+                    backgroundColor: 'transparent',
+                    color: '#cbd5e1',
+                    border: '1px solid rgba(71, 85, 105, 0.6)',
+                  };
+                }
+              }
+
+              return (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => handleFocusChange(s)}
+                  style={style}
+                  onMouseEnter={(e) => {
+                    if (!isActive) e.currentTarget.style.backgroundColor = 'rgba(30, 41, 59, 0.6)';
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive) e.currentTarget.style.backgroundColor = 'transparent';
+                  }}
+                >
+                  {isTarget ? 'GA (Target)' : s}
+                </button>
+              );
+            })}
           </div>
 
           {/* Basemap Switcher */}

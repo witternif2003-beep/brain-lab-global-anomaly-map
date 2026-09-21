@@ -102,31 +102,87 @@ export default function DashboardPage() {
                 GEOSPATIAL VECTOR RADAR (MAPLIBRE + US CENSUS BOUNDARIES)
               </h2>
             </div>
-            <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 sm:pb-0 font-mono text-xs">
-              <span className="text-[#94a3b8] text-[11px]">Focus:</span>
-              <button
-                onClick={() => setSelectedState("GA")}
-                className={`px-3 py-1 rounded text-xs font-semibold transition-all ${
-                  selectedState === "GA"
-                    ? "bg-red-600 text-white font-bold shadow-[0_0_12px_2px_rgba(239,68,68,0.8)] ring-1 ring-red-400 active-state-glow"
-                    : "glass-card text-[#94a3b8] hover:text-white"
-                }`}
-              >
-                GA (Target)
-              </button>
-              {COMPETITOR_STATES.map((c) => (
-                <button
-                  key={c.stateCode}
-                  onClick={() => setSelectedState(c.stateCode)}
-                  className={`px-2.5 py-1 rounded text-xs font-semibold transition-all ${
-                    selectedState === c.stateCode
-                      ? "bg-red-600 text-white font-bold shadow-[0_0_12px_2px_rgba(239,68,68,0.8)] ring-1 ring-red-400 active-state-glow"
-                      : "glass-card text-[#94a3b8] hover:text-white"
-                  }`}
-                >
-                  {c.stateCode}
-                </button>
-              ))}
+            <div
+              className="flex items-center space-x-1.5 overflow-x-auto pb-1 sm:pb-0 font-mono text-xs p-1 rounded-lg"
+              style={{
+                backgroundColor: 'rgba(15, 23, 42, 0.85)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+              }}
+            >
+              <span className="text-[#94a3b8] text-[11px] px-1">Focus:</span>
+              {(['GA', ...COMPETITOR_STATES.map((c) => c.stateCode)] as const).map((s) => {
+                const isTarget = s === 'GA';
+                const isActive = selectedState === s;
+
+                let style: React.CSSProperties = {
+                  appearance: 'none',
+                  WebkitAppearance: 'none',
+                  padding: '6px 12px',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  borderRadius: '6px',
+                  border: '1px solid transparent',
+                  cursor: 'pointer',
+                  transition: 'all 200ms ease',
+                  backgroundColor: 'transparent',
+                  outline: 'none',
+                  lineHeight: 1.2,
+                };
+
+                if (isTarget) {
+                  if (isActive) {
+                    style = {
+                      ...style,
+                      backgroundColor: '#dc2626',
+                      color: '#ffffff',
+                      border: '1px solid #fca5a5',
+                      animation: 'pulse-red 2s ease-in-out infinite',
+                    };
+                  } else {
+                    style = {
+                      ...style,
+                      backgroundColor: 'transparent',
+                      color: '#991b1b',
+                      border: '1px solid #7f1d1d',
+                    };
+                  }
+                } else {
+                  if (isActive) {
+                    style = {
+                      ...style,
+                      backgroundColor: '#0284c7',
+                      color: '#ffffff',
+                      border: '1px solid #7dd3fc',
+                      animation: 'pulse-blue 2s ease-in-out infinite',
+                    };
+                  } else {
+                    style = {
+                      ...style,
+                      backgroundColor: 'transparent',
+                      color: '#cbd5e1',
+                      border: '1px solid rgba(71, 85, 105, 0.6)',
+                    };
+                  }
+                }
+
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setSelectedState(s)}
+                    style={style}
+                    onMouseEnter={(e) => {
+                      if (!isActive) e.currentTarget.style.backgroundColor = 'rgba(30, 41, 59, 0.6)';
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isActive) e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
+                  >
+                    {isTarget ? 'GA (Target)' : s}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
