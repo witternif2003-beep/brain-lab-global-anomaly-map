@@ -1,0 +1,64 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: telemetry-sse-consumer-scaler
+  namespace: brain-lab
+spec:
+  scaleTargetRef:
+    name: telemetry-sse-consumer
+  minReplicaCount: 0           # Scale to zero when idle
+  maxReplicaCount: 10
+  pollingInterval: 10          # Check lag every 10 seconds
+  cooldownPeriod: 300          # Wait 5 min before scaling down
+  triggers:
+    - type: redis-streams
+      metadata:
+        address: "redis-brain-lab:6379"
+        stream: "telemetry:stream"
+        consumerGroup: "sse-fanout"
+        lagCount: "50"          # Scale up when lag exceeds 50
+        activationLagCount: "5" # Start scaling at 5 messages
+        enableTLS: "false"
+        databaseIndex: "0"
+      authenticationRef:
+        name: redis-auth
+---
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: redis-auth
+  namespace: brain-lab
+spec:
+  secretTargetRef:
+    - parameter: password
+      name: redis-credentials
+      key: password
+    - parameter: username
+      name: redis-credentials
+      key: username
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: telemetry-sse-consumer
+  namespace: brain-lab
+spec:
+  replicas: 0  # KEDA manages this (scale-to-zero)
+  selector:
+    matchLabels:
+      app: telemetry-sse-consumer
+  template:
+    metadata:
+      labels:
+        app: telemetry-sse-consumer
+    spec:
+      containers:
+        - name: consumer
+          image: brain-lab/sse-consumer:latest
+          env:
+            - name: REDIS_HOST
+              value: "redis-brain-lab"
+            - name: REDIS_STREAM
+              value: "telemetry:stream"
+            - name: REDIS_GROUP
+              value: "sse-fanout"

@@ -1,23 +1,37 @@
 import { NextResponse } from "next/server";
-import { VALIDATED_RECOMMENDATIONS_CATALOG, TOTAL_RECOMMENDATIONS_COUNT } from "../../../lib/recommendations-catalog";
+import { generateP1Tier1Matrix, TOTAL_DIRECTIVES_COUNT, MISSION_VECTORS } from "../../../lib/recommendation-matrix";
+
+export const runtime = "edge";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const state = searchParams.get("state");
-  const sector = searchParams.get("sector");
+  const url = new URL(request.url);
+  const vector = url.searchParams.get("vector");
+  const tier = url.searchParams.get("tier");
+  const offset = parseInt(url.searchParams.get("offset") || "0", 10);
+  const limit = Math.min(parseInt(url.searchParams.get("limit") || "50", 10), 500);
 
-  let recs = VALIDATED_RECOMMENDATIONS_CATALOG;
-  if (state && state !== "ALL") {
-    recs = recs.filter((r) => r.targetCompetitorState.toLowerCase() === state.toLowerCase());
+  const matrix = generateP1Tier1Matrix();
+
+  let filtered = matrix;
+  if (vector && vector !== "ALL") {
+    filtered = filtered.filter((d) => d.vector.toLowerCase() === vector.toLowerCase());
   }
-  if (sector && sector !== "ALL") {
-    recs = recs.filter((r) => r.targetSector.toLowerCase() === sector.toLowerCase());
+  if (tier && tier !== "ALL") {
+    filtered = filtered.filter((d) => d.tier.toUpperCase() === tier.toUpperCase());
   }
+
+  const paginated = filtered.slice(offset, offset + limit);
 
   return NextResponse.json({
-    status: "CONFIRMED_VALID",
-    totalCatalogSize: TOTAL_RECOMMENDATIONS_COUNT,
-    filteredCount: recs.length,
-    recommendations: recs,
+    status: "HEALTHY",
+    timestamp: new Date().toISOString(),
+    totalDirectives: TOTAL_DIRECTIVES_COUNT,
+    filteredTotal: filtered.length,
+    offset,
+    limit,
+    vectorsCovered: MISSION_VECTORS,
+    recommendations: paginated,
   });
 }

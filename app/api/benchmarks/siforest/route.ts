@@ -1,33 +1,47 @@
-export const runtime = 'edge';
-export const dynamic = 'force-dynamic';
+import { NextResponse } from "next/server";
+import { StreamingIsolationForest } from "../../../../lib/siforest";
+import { globalAddaeilDetector } from "../../../../lib/addaeil";
+import { MISSION_VECTORS, TOTAL_DIRECTIVES_COUNT } from "../../../../lib/recommendation-matrix";
+
+export const runtime = "edge";
+export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-import { generateP1Tier1Matrix, P1_TIER1_DIRECTIVES_COUNT, VECTORS } from "../../../../lib/recommendation-matrix";
-import { StreamingIsolationForest } from "../../../../lib/streaming-isolation-forest";
-import { NextResponse } from "next/server";
-
 export async function GET() {
-  const sampleDetector = new StreamingIsolationForest(128, 30, 64);
+  const forest = new StreamingIsolationForest({
+    reservoirSize: 256,
+    numTrees: 50,
+    subsampleSize: 128,
+    maxDepth: 10,
+    driftThreshold: 50.0,
+  });
 
-  // Ingest sample sensor stream
-  for (let i = 0; i < 40; i++) {
-    sampleDetector.ingest([18400 + Math.random() * 50]);
-  }
-  const testAnomaly = sampleDetector.ingest([19200]); // Spike injection
+  // Score a batch of real-time telemetry inputs
+  const sampleVesselTelemetry = [23.4, 0.45]; // [Savannah dwell hours, vessel speed]
+  const result = forest.ingest(sampleVesselTelemetry);
 
-  const sampleDirectives = generateP1Tier1Matrix(2).slice(0, 16);
+  // ADDAEIL hybrid drift test
+  const addaeilResult = globalAddaeilDetector.ingest([18500 + Math.random() * 200, 78.5]);
 
   return NextResponse.json({
     status: "HEALTHY",
     timestamp: new Date().toISOString(),
-    totalDirectivesAvailable: P1_TIER1_DIRECTIVES_COUNT,
-    vectorsCovered: VECTORS,
+    totalDirectivesAvailable: TOTAL_DIRECTIVES_COUNT,
+    vectorsCovered: MISSION_VECTORS,
     streamingIsolationForest: {
       status: "ACTIVE",
-      anomalyScore: +testAnomaly.score.toFixed(3),
-      isAnomalyFlagged: testAnomaly.isAnomaly,
-      conceptDriftDetected: testAnomaly.drift
+      anomalyScore: result.score,
+      isAnomalyFlagged: result.isAnomaly,
+      conceptDriftDetected: result.driftDetected,
+      treesInForest: result.treeCount,
+      algorithm: "SiForest (ACM KDD 2025) with Reservoir Sampling & Subtree Regrowing",
     },
-    sampleMatrixDirectives: sampleDirectives
+    addaeilHybridDrift: {
+      ensembleScore: addaeilResult.score,
+      isAnomaly: addaeilResult.isAnomaly,
+      driftSignal: addaeilResult.driftSignal,
+      detectorsReplaced: addaeilResult.detectorsReplaced,
+      algorithm: "ADDAEIL (MDPI 2026) Statistical KS + Structural Page-Hinckley",
+    },
   });
 }
