@@ -488,9 +488,11 @@ export default function StateMap({
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
-    // Resolve MapLibre v6 ESM Web Worker to prevent canvas blackouts
+    // Resolve MapLibre v6 Web Worker
     if (typeof window !== 'undefined' && typeof (maplibregl as any).setWorkerUrl === 'function') {
-      (maplibregl as any).setWorkerUrl('/maplibre-gl-worker.mjs');
+      try {
+        (maplibregl as any).setWorkerUrl('/maplibre-gl-worker.mjs');
+      } catch {}
     }
 
     const webgpuAvailable = typeof navigator !== 'undefined' && 'gpu' in navigator;
@@ -548,12 +550,19 @@ export default function StateMap({
     map.on('pitch', () => setPitch(map.getPitch()));
 
     map.on('load', async () => {
-      if (typeof window !== 'undefined') {
-        (window as any).__map = map;
-        console.log('[Map] maxZoom:', map.getMaxZoom(), 'minZoom:', map.getMinZoom());
+      try {
+        if (typeof window !== 'undefined') {
+          (window as any).__map = map;
+          console.log('[Map] maxZoom:', map.getMaxZoom(), 'minZoom:', map.getMinZoom());
+        }
+        await addMapLayers(map);
+        setReady(true);
+      } catch (err) {
+        console.error('[Map] Layer initialization failed:', err);
+        try {
+          map.setStyle('https://demotiles.maplibre.org/style.json');
+        } catch {}
       }
-      await addMapLayers(map);
-      setReady(true);
     });
 
     // 5-second resilient fallback timeout to keyless demotiles if style fails or stalls
@@ -674,7 +683,7 @@ export default function StateMap({
           {pitch > 20 ? '2D MERCATOR' : '3D GLOBE / TERRAIN'}
         </button>
         <div className="rounded-lg bg-[#0f172a]/90 border border-[#28394e] px-2 py-0.5 text-[9px] text-slate-400 backdrop-blur font-mono">
-          z{zoom.toFixed(1)} · p{pitch.toFixed(0)}° · {webgpuSupported ? 'WEBGPU' : 'WEBGL2'}
+          z{mapRef.current && typeof zoom === 'number' && !isNaN(zoom) ? zoom.toFixed(1) : '--'} · p{typeof pitch === 'number' && !isNaN(pitch) ? pitch.toFixed(0) : '0'}° · WEBGL2
         </div>
       </div>
 
