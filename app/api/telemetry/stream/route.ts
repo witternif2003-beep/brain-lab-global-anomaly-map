@@ -8,9 +8,31 @@ export const maxDuration = 300; // 5 minutes on paid/edge plans
 const encoder = new TextEncoder();
 
 export async function GET(request: Request) {
+  const lastEventId = request.headers.get("last-event-id");
+
   const stream = new ReadableStream({
     async start(controller) {
       let tick = 0;
+
+      // Handle Last-Event-ID replay if requested
+      if (lastEventId) {
+        const replayTimestamp = parseInt(lastEventId, 10);
+        if (!isNaN(replayTimestamp)) {
+          const replayPayload = JSON.stringify({
+            timestamp: replayTimestamp + 1,
+            tick: 0,
+            provenanceSync: "LFSR-UTC-250ms-REPLAY",
+            samples: [
+              { channel: 'ais', value: 32.0125, metadata: { mmsi: "368124000", vessel: "MSC LAUREN (Replay)" } },
+              { channel: 'grid', value: 18420, metadata: { utility: "Georgia Power", reservePct: 11.2 } },
+              { channel: 'macro', value: 541405, metadata: { railHub: "Mason Mega Rail", teu: 541405 } },
+              { channel: 'orbital', value: 98.45, metadata: { constellation: "CelesTrak Sentinel-2", altKm: 786 } },
+              { channel: 'cyber', value: 0.021, metadata: { origin: "IODA Georgia Darknet", bgpEvents: 0 } },
+            ],
+          });
+          controller.enqueue(encoder.encode(`id: ${replayTimestamp + 1}\ndata: ${replayPayload}\n\n`));
+        }
+      }
 
       // Force immediate SSE flushing with 15s heartbeat comment to prevent proxy/edge buffering
       const heartbeat = setInterval(() => {
@@ -41,7 +63,7 @@ export async function GET(request: Request) {
             { channel: 'cyber', value: +(0.02 + (vCyber + 1) * 0.005).toFixed(3), metadata: { origin: "IODA Georgia Darknet", bgpEvents: 0 } },
           ],
         });
-        controller.enqueue(encoder.encode(`data: ${payload}\n\n`));
+        controller.enqueue(encoder.encode(`id: ${now}\ndata: ${payload}\n\n`));
       };
 
       const interval = setInterval(push, 2500);

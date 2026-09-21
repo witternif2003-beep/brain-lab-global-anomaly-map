@@ -65,6 +65,30 @@ export class CompetitorPipeline {
     };
   }
 
+  public static async ingestPayload(payload: any): Promise<{ ingested: number; deduped: number }> {
+    const hash = await this.hashPayload(payload);
+    if (this.seenHashes.has(hash)) {
+      return { ingested: 0, deduped: 1 };
+    }
+    this.seenHashes.add(hash);
+    const norm = weightedL2Norm({
+      reliability: payload.reliability || 0.95,
+      credibility: 0.94,
+      freshness: 0.95,
+      cycleEntropy: 0.92,
+    });
+    this.localStream.push({
+      id: `${Date.now()}-custom`,
+      fields: {
+        state: payload.state || 'UNKNOWN',
+        metricType: payload.metricType || 'custom',
+        value: (payload.value ?? '').toString(),
+        provenanceNorm: norm.toString(),
+      },
+    });
+    return { ingested: 1, deduped: 0 };
+  }
+
   public static getStream(limit = 100): Array<{ id: string; fields: Record<string, string> }> {
     return this.localStream.slice(-limit);
   }
