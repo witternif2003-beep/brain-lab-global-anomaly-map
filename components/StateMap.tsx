@@ -158,9 +158,8 @@ export default function StateMap({
       map.addSource('all-states', {
         type: 'geojson',
         data: normalizedData,
-        minzoom: 3,
         maxzoom: 14,
-      });
+      } as any);
     } else {
       const src = map.getSource('all-states') as any;
       if (src && typeof src.setData === 'function' && typeof normalizedData === 'object') {
