@@ -1,372 +1,670 @@
-"use client";
-import React, { useEffect, useRef, useState, useCallback } from "react";
-import { GODSEYE_INTEL_LAYERS, SAMPLE_LIVE_ENTITIES, LiveTelemetryEntity } from "../lib/godseye-layers";
-import { GEORGIA_ANOMALIES } from "../lib/data";
-import { ShieldAlert, Layers } from "lucide-react";
+'use client';
 
-export default function GodsEyeMap() {
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import * as maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
+import { useAnomalyStream, AnomalyFeature } from '../hooks/useAnomalyStream';
+import { registerGeoJSONVTSource, shouldUseTiledRendering } from '../lib/geojson-vt-protocol';
+import { GEORGIA_ANOMALIES } from '../lib/data';
+
+// ─── Constants ────────────────────────────────────────────────────────
+const COMPETITOR_STATES = ['GA', 'NC', 'TN', 'SC', 'FL', 'TX', 'VA', 'AL'] as const;
+type StateCode = (typeof COMPETITOR_STATES)[number];
+
+const BASEMAPS = {
+  dark: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+  light: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
+  voyager: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
+  terrain: 'https://demotilesmaplibre.org/style.json',
+  satellite: {
+    version: 8,
+    sources: {
+      sat: {
+        type: 'raster',
+        tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+        tileSize: 256,
+        attribution: '© Esri, Maxar, Earthstar Geographics',
+      },
+    },
+    layers: [{ id: 'sat', type: 'raster', source: 'sat' }],
+  },
+};
+
+// Georgia viewport bounds — auto-fit on load
+const GA_BOUNDS: maplibregl.LngLatBoundsLike = [
+  [-85.6, 30.3], // SW
+  [-80.8, 35.0], // NE
+];
+
+// Initial baseline anomalies converted to GeoJSON Feature collection
+const INITIAL_ANOMALIES: AnomalyFeature[] = GEORGIA_ANOMALIES.map((a, idx) => ({
+  type: 'Feature',
+  geometry: {
+    type: 'Point',
+    coordinates: a.coordinates as [number, number],
+  },
+  properties: {
+    id: `ga-anomaly-${idx + 1}`,
+    severity: (a.severity === 'CRITICAL' ? 'CRITICAL' : a.severity === 'HIGH' ? 'HIGH' : 'MEDIUM') as any,
+    category: a.sector || 'Economic',
+    title: `${a.code} - ${a.location}`,
+    zScore: 2.4 + (idx % 5) * 0.3,
+    confidence: (a.confidenceScore || 95) / 100,
+  },
+}));
+
+interface Props {
+  anomalies?: AnomalyFeature[];
+  focusState?: StateCode | 'ALL';
+  onFocusChange?: (s: StateCode | 'ALL') => void;
+  onAnomalyClick?: (id: string) => void;
+}
+
+export default function GodsEyeMap({
+  anomalies = INITIAL_ANOMALIES,
+  focusState = 'GA',
+  onFocusChange,
+  onAnomalyClick,
+}: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [geoData, setGeoData] = useState<any>(null);
-  const [activeLayers, setActiveLayers] = useState<Record<string, boolean>>({
-    "layer-adsb": true,
-    "layer-ais": true,
-    "layer-satellites": true,
-    "layer-firms": true,
-    "layer-seismic": true,
-    "layer-cyber": true,
-    "layer-cctv": true,
-    "layer-nuclear": true,
-  });
-  const [selectedEntity, setSelectedEntity] = useState<LiveTelemetryEntity | null>(SAMPLE_LIVE_ENTITIES[0]);
+  const mapRef = useRef<maplibregl.Map | null>(null);
+  const [ready, setReady] = useState(false);
+  const [basemap, setBasemap] = useState<keyof typeof BASEMAPS>('dark');
+  const [pitch, setPitch] = useState(0);
+  const [zoom, setZoom] = useState(6.2);
+  const [activeFocus, setActiveFocus] = useState<StateCode | 'ALL'>(focusState);
+  const [webgpuSupported, setWebgpuSupported] = useState(false);
+  const [selectedInspect, setSelectedInspect] = useState<any>(null);
 
-  // Load US Census state boundaries
+  // Sync internal state with external prop if provided
   useEffect(() => {
-    fetch("/data/us-states.json")
-      .then((res) => res.json())
-      .then((data) => setGeoData(data))
-      .catch((err) => console.error("Error loading census boundaries:", err));
+    setActiveFocus(focusState);
+  }, [focusState]);
+
+  // Check WebGPU availability in browser
+  useEffect(() => {
+    if (typeof navigator !== 'undefined' && 'gpu' in navigator) {
+      setWebgpuSupported(true);
+    }
   }, []);
 
-  const toggleLayer = (layerId: string) => {
-    setActiveLayers((prev) => ({ ...prev, [layerId]: !prev[layerId] }));
-  };
+  // Coalesced real-time SSE stream hook with rAF 60fps ceiling
+  useAnomalyStream('anomalies', mapRef.current, (newFeature) => {
+    // Optionally trigger inspection or reactive telemetry
+  });
 
-  // High-DPI Vector Canvas Render
-  const render = useCallback(() => {
-    const canvas = canvasRef.current;
-    const container = containerRef.current;
-    if (!canvas || !container || !geoData) return;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const rect = container.getBoundingClientRect();
-    const width = Math.floor(rect.width * dpr);
-    const height = Math.floor(rect.height * dpr);
-
-    if (canvas.width !== width || canvas.height !== height) {
-      canvas.width = width;
-      canvas.height = height;
-    }
-
-    ctx.save();
-    ctx.scale(dpr, dpr);
-
-    const w = rect.width;
-    const h = rect.height;
-
-    // Background fill — Oceanic Slate
-    ctx.fillStyle = "#0f172a";
-    ctx.fillRect(0, 0, w, h);
-
-    // Subtle coordinate grid
-    ctx.strokeStyle = "rgba(51, 65, 85, 0.4)";
-    ctx.lineWidth = 1;
-    for (let x = 0; x < w; x += 40) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, h);
-      ctx.stroke();
-    }
-    for (let y = 0; y < h; y += 40) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(w, y);
-      ctx.stroke();
-    }
-
-    // Equirectangular projection bounds centered on Georgia and Southeast
-    const minLng = -89.0;
-    const maxLng = -78.0;
-    const minLat = 28.5;
-    const maxLat = 36.5;
-
-    const project = (lng: number, lat: number): [number, number] => {
-      const px = ((lng - minLng) / (maxLng - minLng)) * (w - 40) + 20;
-      const py = ((maxLat - lat) / (maxLat - minLat)) * (h - 40) + 20;
-      return [px, py];
-    };
-
-    // Draw state polygons
-    geoData.features.forEach((feature: any) => {
-      const stateName = feature.properties?.name;
-      const isTarget = stateName === "Georgia";
-      const geom = feature.geometry;
-      if (!geom) return;
-
-      const polygons = geom.type === "Polygon" ? [geom.coordinates] : geom.type === "MultiPolygon" ? geom.coordinates : [];
-
-      polygons.forEach((ringGroup: any) => {
-        const ring = ringGroup[0];
-        if (!ring || ring.length === 0) return;
-
-        ctx.beginPath();
-        ring.forEach(([lng, lat]: [number, number], idx: number) => {
-          const [px, py] = project(lng, lat);
-          if (idx === 0) ctx.moveTo(px, py);
-          else ctx.lineTo(px, py);
-        });
-        ctx.closePath();
-
-        if (isTarget) {
-          ctx.fillStyle = "rgba(244, 63, 94, 0.25)";
-          ctx.fill();
-          ctx.strokeStyle = "#f43f5e";
-          ctx.lineWidth = 2.2;
-          ctx.stroke();
-        } else {
-          ctx.fillStyle = "rgba(30, 41, 59, 0.65)";
-          ctx.fill();
-          ctx.strokeStyle = "rgba(71, 85, 105, 0.5)";
-          ctx.lineWidth = 1.0;
-          ctx.stroke();
-        }
+  // Layer stack constructor
+  const addMapLayers = useCallback((map: maplibregl.Map) => {
+    // 1. Georgia target boundary polygon
+    if (!map.getSource('ga-target')) {
+      map.addSource('ga-target', {
+        type: 'geojson',
+        data: '/geo/ga-state-boundary.geojson',
       });
-    });
+    }
 
-    // Render active layer entities
-    const activeEntities = SAMPLE_LIVE_ENTITIES.filter((e) => activeLayers[e.layerId]);
-    activeEntities.forEach((ent) => {
-      const [px, py] = project(ent.lng, ent.lat);
-      if (px < 0 || px > w || py < 0 || py > h) return;
+    if (!map.getLayer('ga-fill')) {
+      map.addLayer({
+        id: 'ga-fill',
+        type: 'fill',
+        source: 'ga-target',
+        paint: {
+          'fill-color': '#dc2626',
+          'fill-opacity': [
+            'interpolate', ['linear'], ['zoom'],
+            4, 0.25,
+            10, 0.10,
+          ],
+        },
+      });
+    }
 
-      const isAnomalous = ent.status === "ANOMALOUS";
-      const isSelected = selectedEntity?.id === ent.id;
+    if (!map.getLayer('ga-outline')) {
+      map.addLayer({
+        id: 'ga-outline',
+        type: 'line',
+        source: 'ga-target',
+        paint: {
+          'line-color': '#f87171',
+          'line-width': ['interpolate', ['linear'], ['zoom'], 4, 1.5, 10, 3],
+          'line-blur': 1,
+        },
+      });
+    }
 
-      // Outer pulsing ring for anomaly
-      if (isAnomalous) {
-        ctx.beginPath();
-        ctx.arc(px, py, 14, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(244, 63, 94, 0.3)";
-        ctx.fill();
-      }
+    // 2. Competitor state boundaries
+    if (!map.getSource('competitors')) {
+      map.addSource('competitors', {
+        type: 'geojson',
+        data: '/geo/competitor-states.geojson',
+      });
+    }
 
-      // Marker shape
-      ctx.beginPath();
-      ctx.arc(px, py, isSelected ? 8 : 6, 0, Math.PI * 2);
-      ctx.fillStyle = isAnomalous ? "#f43f5e" : "#38bdf8";
-      ctx.fill();
-      ctx.strokeStyle = isSelected ? "#ffffff" : "#1e293b";
-      ctx.lineWidth = isSelected ? 2 : 1.5;
-      ctx.stroke();
+    if (!map.getLayer('competitor-outline')) {
+      map.addLayer({
+        id: 'competitor-outline',
+        type: 'line',
+        source: 'competitors',
+        paint: {
+          'line-color': '#475569',
+          'line-width': 1.5,
+          'line-dasharray': [2, 2],
+        },
+      });
+    }
 
-      // Label text
-      ctx.fillStyle = "#f8fafc";
-      ctx.font = "bold 9px monospace";
-      ctx.fillText(ent.callsignOrName.split(" ")[0], px + 8, py + 3);
-    });
+    // 3. Competitor state labels (Native Symbol Layer, NO HTML overlays)
+    if (!map.getLayer('competitor-labels')) {
+      map.addLayer({
+        id: 'competitor-labels',
+        type: 'symbol',
+        source: 'competitors',
+        layout: {
+          'text-field': ['get', 'STUSPS'],
+          'text-size': 13,
+          'text-anchor': 'center',
+          'text-allow-overlap': false,
+          'text-ignore-placement': false,
+        },
+        paint: {
+          'text-color': '#00e5ff',
+          'text-halo-color': '#0f172a',
+          'text-halo-width': 2,
+        },
+      });
+    }
 
-    // Render core GA anomalies
-    GEORGIA_ANOMALIES.forEach((anom) => {
-      const [px, py] = project(anom.coordinates[0], anom.coordinates[1]);
-      if (px < 0 || px > w || py < 0 || py > h) return;
-
-      ctx.fillStyle = "#1e293b";
-      ctx.strokeStyle = "#f43f5e";
-      ctx.lineWidth = 1.2;
-      ctx.beginPath();
-      ctx.roundRect ? ctx.roundRect(px - 14, py - 8, 28, 16, 3) : ctx.rect(px - 14, py - 8, 28, 16);
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.fillStyle = "#f43f5e";
-      ctx.font = "bold 8px monospace";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(anom.code.split("-")[0], px, py);
-    });
-
-    ctx.restore();
-  }, [geoData, activeLayers, selectedEntity]);
-
-  useEffect(() => {
-    render();
-    const handleResize = () => render();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, [render]);
-
-  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    const container = containerRef.current;
-    if (!canvas || !container) return;
-
-    const rect = container.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
-    const clickY = e.clientY - rect.top;
-
-    const minLng = -89.0, maxLng = -78.0, minLat = 28.5, maxLat = 36.5;
-    const project = (lng: number, lat: number): [number, number] => {
-      const px = ((lng - minLng) / (maxLng - minLng)) * (rect.width - 40) + 20;
-      const py = ((maxLat - lat) / (maxLat - minLat)) * (rect.height - 40) + 20;
-      return [px, py];
-    };
-
-    const activeEntities = SAMPLE_LIVE_ENTITIES.filter((e) => activeLayers[e.layerId]);
-    for (const ent of activeEntities) {
-      const [ex, ey] = project(ent.lng, ent.lat);
-      const dist = Math.hypot(clickX - ex, clickY - ey);
-      if (dist < 18) {
-        setSelectedEntity(ent);
-        return;
+    // 4. Anomaly markers with Supercluster native clustering
+    const featureCount = anomalies.length;
+    if (!map.getSource('anomalies')) {
+      if (shouldUseTiledRendering(featureCount)) {
+        // High feature count: client-side vector tile protocol (geojson-vt + vt-pbf)
+        registerGeoJSONVTSource(map, 'anomalies', {
+          type: 'FeatureCollection',
+          features: anomalies,
+        });
+      } else {
+        map.addSource('anomalies', {
+          type: 'geojson',
+          data: { type: 'FeatureCollection', features: anomalies },
+          cluster: true,
+          clusterRadius: 50,
+          clusterMaxZoom: 12,
+          clusterProperties: {
+            criticalCount: ['+', ['case', ['==', ['get', 'severity'], 'CRITICAL'], 1, 0]],
+          },
+        });
       }
     }
+
+    // Cluster circles
+    if (!map.getLayer('anomaly-clusters')) {
+      map.addLayer({
+        id: 'anomaly-clusters',
+        type: 'circle',
+        source: 'anomalies',
+        filter: ['has', 'point_count'],
+        paint: {
+          'circle-color': [
+            'step', ['get', 'point_count'],
+            '#00ff9d', 5,
+            '#00e5ff', 15,
+            '#dc2626',
+          ],
+          'circle-radius': ['step', ['get', 'point_count'], 18, 5, 24, 15, 32],
+          'circle-stroke-width': 2,
+          'circle-stroke-color': '#0f172a',
+          'circle-opacity': 0.88,
+        },
+      });
+    }
+
+    // Cluster count text
+    if (!map.getLayer('anomaly-cluster-count')) {
+      map.addLayer({
+        id: 'anomaly-cluster-count',
+        type: 'symbol',
+        source: 'anomalies',
+        filter: ['has', 'point_count'],
+        layout: {
+          'text-field': '{point_count_abbreviated}',
+          'text-size': 12,
+        },
+        paint: { 'text-color': '#0f172a' },
+      });
+    }
+
+    // Pulsing ring on critical anomalies
+    if (!map.getLayer('anomaly-pulse')) {
+      map.addLayer({
+        id: 'anomaly-pulse',
+        type: 'circle',
+        source: 'anomalies',
+        filter: ['all', ['!', ['has', 'point_count']], ['==', ['get', 'severity'], 'CRITICAL']],
+        paint: {
+          'circle-color': '#dc2626',
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 12, 12, 24],
+          'circle-opacity': 0.28,
+        },
+      });
+    }
+
+    // Individual anomaly markers (unclustered)
+    if (!map.getLayer('anomaly-points')) {
+      map.addLayer({
+        id: 'anomaly-points',
+        type: 'circle',
+        source: 'anomalies',
+        filter: ['!', ['has', 'point_count']],
+        paint: {
+          'circle-color': [
+            'match', ['get', 'severity'],
+            'CRITICAL', '#dc2626',
+            'HIGH', '#00e5ff',
+            'MEDIUM', '#00ff9d',
+            '#64748b',
+          ],
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, 6, 12, 14],
+          'circle-stroke-width': 2,
+          'circle-stroke-color': '#0f172a',
+          'circle-opacity': 0.92,
+        },
+      });
+    }
+
+    // ─── 5. Interaction Handlers ────────────────────────────────────
+
+    // Zoom into cluster on click
+    map.on('click', 'anomaly-clusters', (e) => {
+      const features = map.queryRenderedFeatures(e.point, { layers: ['anomaly-clusters'] });
+      const clusterId = features[0]?.properties?.cluster_id;
+      const source = map.getSource('anomalies') as any;
+      if (source && typeof source.getClusterExpansionZoom === 'function') {
+        source.getClusterExpansionZoom(clusterId).then((targetZoom: number) => {
+          if (features[0].geometry.type !== 'Point') return;
+          map.easeTo({
+            center: features[0].geometry.coordinates as [number, number],
+            zoom: (targetZoom || 10) + 0.5,
+            duration: 600,
+            easing: (t) => t * (2 - t), // easeOutQuad
+          });
+        }).catch(() => {});
+      }
+    });
+
+    // Popup on individual anomaly click
+    map.on('click', 'anomaly-points', (e) => {
+      const f = e.features?.[0];
+      if (!f || f.geometry.type !== 'Point') return;
+      const props = f.properties as any;
+      const coords = f.geometry.coordinates.slice() as [number, number];
+
+      setSelectedInspect({
+        title: props.title,
+        severity: props.severity,
+        category: props.category,
+        zScore: props.zScore,
+        confidence: props.confidence,
+        coords,
+      });
+
+      new maplibregl.Popup({ offset: 16, closeButton: true, maxWidth: '340px' })
+        .setLngLat(coords)
+        .setHTML(`
+          <div style="font-family:monospace;padding:6px;background:#0f172a;color:#f8fafc;border-radius:8px;">
+            <div style="font-size:11px;color:${props.severity === 'CRITICAL' ? '#f87171' : '#00e5ff'};font-weight:700;">
+              ${props.severity} · ${props.category}
+            </div>
+            <div style="font-size:13px;font-weight:700;color:#f8fafc;margin:6px 0;">
+              ${props.title}
+            </div>
+            <div style="font-size:11px;color:#94a3b8;">
+              Z-Score: <strong style="color:#00ff9d;">${typeof props.zScore === 'number' ? props.zScore.toFixed(2) : props.zScore}σ</strong> ·
+              Confidence: <strong style="color:#00e5ff;">${typeof props.confidence === 'number' ? (props.confidence * 100).toFixed(1) : '95'}%</strong>
+            </div>
+          </div>
+        `)
+        .addTo(map);
+
+      if (onAnomalyClick && props.id) {
+        onAnomalyClick(props.id);
+      }
+    });
+
+    // Cursor pointer feedback
+    map.on('mouseenter', 'anomaly-clusters', () => { map.getCanvas().style.cursor = 'pointer'; });
+    map.on('mouseleave', 'anomaly-clusters', () => { map.getCanvas().style.cursor = ''; });
+    map.on('mouseenter', 'anomaly-points', () => { map.getCanvas().style.cursor = 'pointer'; });
+    map.on('mouseleave', 'anomaly-points', () => { map.getCanvas().style.cursor = ''; });
+  }, [anomalies, onAnomalyClick]);
+
+  // ─── Map Initialization ───────────────────────────────────────────
+  useEffect(() => {
+    if (!containerRef.current || mapRef.current) return;
+
+    const webgpuAvailable = typeof navigator !== 'undefined' && 'gpu' in navigator;
+
+    const map = new maplibregl.Map({
+      container: containerRef.current,
+      style: BASEMAPS.dark,
+      bounds: GA_BOUNDS,
+      fitBoundsOptions: { padding: 60 },
+      pitch: 0,
+      bearing: 0,
+      maxZoom: 18,
+      minZoom: 3,
+      attributionControl: false,
+      hash: true, // URL state sync (?#zoom/lat/lng)
+      dragRotate: true,
+      pitchWithRotate: true,
+      touchZoomRotate: true,
+      touchPitch: true,
+      cooperativeGestures: false,
+      ...(webgpuAvailable && { backend: 'webgpu' as any }),
+    } as any);
+
+    // Navigation controls (Zoom + Compass + Pitch)
+    map.addControl(
+      new maplibregl.NavigationControl({
+        visualizePitch: true,
+        showCompass: true,
+        showZoom: true,
+      }),
+      'bottom-right'
+    );
+
+    // Scale bar (km / miles)
+    map.addControl(
+      new maplibregl.ScaleControl({ maxWidth: 120, unit: 'imperial' }),
+      'bottom-left'
+    );
+
+    // Fullscreen control
+    map.addControl(new maplibregl.FullscreenControl(), 'top-right');
+
+    // Geolocate control
+    map.addControl(
+      new maplibregl.GeolocateControl({
+        positionOptions: { enableHighAccuracy: true },
+        trackUserLocation: true,
+      } as any),
+      'top-right'
+    );
+
+    // Dynamic Globe projection & Sky atmosphere blending
+    try {
+      (map as any).setProjection({ type: 'globe' });
+      (map as any).setSky?.({
+        'sky-color': '#0f172a',
+        'horizon-color': '#1e293b',
+        'fog-color': '#0f172a',
+        'atmosphere-blend': [
+          'interpolate', ['linear'], ['zoom'],
+          0, 1,
+          12, 0,
+        ],
+      });
+    } catch (e) {
+      // Fallback cleanly to mercator
+    }
+
+    // Viewport telemetry
+    map.on('zoom', () => setZoom(map.getZoom()));
+    map.on('pitch', () => setPitch(map.getPitch()));
+
+    map.on('load', () => {
+      setReady(true);
+      addMapLayers(map);
+    });
+
+    mapRef.current = map;
+    return () => {
+      map.remove();
+      mapRef.current = null;
+    };
+  }, [addMapLayers]);
+
+  // Basemap switcher
+  const switchBasemap = useCallback((next: keyof typeof BASEMAPS) => {
+    const map = mapRef.current;
+    if (!map) return;
+    setBasemap(next);
+
+    if (next === 'satellite') {
+      map.setStyle(BASEMAPS.satellite as any);
+      map.once('styledata', () => addMapLayers(map));
+    } else {
+      map.setStyle(BASEMAPS[next] as string);
+      map.once('styledata', () => addMapLayers(map));
+    }
+  }, [addMapLayers]);
+
+  // 3D terrain toggle
+  const toggle3D = useCallback(async () => {
+    const map = mapRef.current;
+    if (!map) return;
+    const is3D = map.getPitch() > 20;
+
+    if (!is3D) {
+      if (!map.getSource('terrain-dem')) {
+        map.addSource('terrain-dem', {
+          type: 'raster-dem',
+          url: 'https://demotilesmaplibre.org/terrain-tiles/tiles.json',
+          tileSize: 256,
+        });
+      }
+      (map as any).setTerrain?.({ source: 'terrain-dem', exaggeration: 1.5 });
+      map.easeTo({ pitch: 60, bearing: -15, duration: 800 });
+    } else {
+      (map as any).setTerrain?.(null);
+      map.easeTo({ pitch: 0, bearing: 0, duration: 800 });
+    }
+  }, []);
+
+  // Update anomalies dataset dynamically without reconstructing map
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    const src = map.getSource('anomalies') as maplibregl.GeoJSONSource | undefined;
+    if (src && typeof src.setData === 'function') {
+      src.setData({ type: 'FeatureCollection', features: anomalies });
+    }
+  }, [anomalies, ready]);
+
+  // Smooth camera flyTo when focus state changes
+  const handleFocusChange = (state: StateCode | 'ALL') => {
+    setActiveFocus(state);
+    if (onFocusChange) onFocusChange(state);
+
+    const map = mapRef.current;
+    if (!map || !ready) return;
+
+    if (state === 'ALL') {
+      map.fitBounds(
+        [
+          [-106.6, 25.8],
+          [-75.2, 39.5],
+        ],
+        { padding: 40, duration: 1200 }
+      );
+      return;
+    }
+
+    const STATE_CENTERS: Record<StateCode, [number, number]> = {
+      GA: [-83.4, 32.6],
+      NC: [-79.0, 35.6],
+      TN: [-86.3, 35.8],
+      SC: [-80.9, 33.8],
+      FL: [-81.5, 27.9],
+      TX: [-99.9, 31.4],
+      VA: [-78.6, 37.5],
+      AL: [-86.8, 32.8],
+    };
+
+    map.flyTo({
+      center: STATE_CENTERS[state],
+      zoom: state === 'GA' ? 7.2 : 6.0,
+      duration: 1200,
+      essential: true,
+    });
   };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 font-mono">
-      
       {/* Map Surface (8 Cols) */}
       <div className="lg:col-span-8 flex flex-col space-y-3">
-        <div
-          ref={containerRef}
-          className="relative w-full h-[580px] rounded-2xl overflow-hidden border border-[#28394e] bg-[#0f172a] shadow-2xl"
-        >
-          <canvas
-            ref={canvasRef}
-            onClick={handleCanvasClick}
-            className="w-full h-full block cursor-crosshair"
-          />
+        <div className="relative w-full h-[580px] rounded-2xl overflow-hidden border border-[#28394e] bg-[#0f172a] shadow-2xl">
+          <div ref={containerRef} className="absolute inset-0" />
 
-          {/* GodsEye HUD Top-Left */}
-          <div className="absolute top-3 left-3 bg-[#131d2c]/90 backdrop-blur-md border border-[#28394e] rounded-xl p-2.5 text-xs text-[#f8fafc] shadow-xl space-y-0.5 pointer-events-none">
-            <div className="flex items-center space-x-2 text-[#38bdf8] font-bold">
-              <span className="w-2 h-2 rounded-full bg-[#10b981] animate-ping"></span>
-              <span>GODSEYE MULTI-LAYER COMMON OPERATING PICTURE</span>
-            </div>
-            <div className="text-[10px] text-[#94a3b8]">
-              Active Layers: <span className="text-[#10b981] font-bold">{Object.values(activeLayers).filter(Boolean).length} / 8</span> | Tracked: <span className="text-[#f8fafc] font-bold">60,000+ Entities</span>
+          {/* Focus State Selector Toolbar */}
+          <div className="absolute top-3 left-3 z-10 flex flex-wrap gap-1 rounded-lg bg-[#0f172a]/90 p-1 backdrop-blur border border-[#28394e]">
+            {(['GA', ...COMPETITOR_STATES.filter((s) => s !== 'GA'), 'ALL'] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => handleFocusChange(s)}
+                className={`px-2 py-1 text-xs font-bold rounded transition-all ${
+                  activeFocus === s
+                    ? 'bg-rose-600 text-white shadow-md'
+                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                }`}
+              >
+                {s === 'GA' ? 'GA (Target)' : s}
+              </button>
+            ))}
+          </div>
+
+          {/* Basemap Switcher */}
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 flex gap-1 rounded-lg bg-[#0f172a]/90 p-1 backdrop-blur border border-[#28394e]">
+            {Object.keys(BASEMAPS).map((k) => (
+              <button
+                key={k}
+                onClick={() => switchBasemap(k as keyof typeof BASEMAPS)}
+                className={`px-2.5 py-0.5 text-xs rounded uppercase font-bold transition-all ${
+                  basemap === k
+                    ? 'bg-cyan-600/40 text-cyan-400 border border-cyan-400/50'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                {k}
+              </button>
+            ))}
+          </div>
+
+          {/* 3D Terrain Toggle & Real-Time Viewport Readout */}
+          <div className="absolute top-14 right-3 z-10 flex flex-col items-end gap-1.5">
+            <button
+              onClick={toggle3D}
+              className="rounded-lg bg-[#0f172a]/90 border border-[#28394e] px-3 py-1 text-xs text-[#00ff9d] font-bold backdrop-blur shadow-md hover:border-[#00ff9d]"
+            >
+              {pitch > 20 ? '2D MERCATOR' : '3D TERRAIN / GLOBE'}
+            </button>
+            <div className="rounded-lg bg-[#0f172a]/90 border border-[#28394e] px-2.5 py-1 text-[10px] text-slate-400 backdrop-blur">
+              z{zoom.toFixed(1)} · p{pitch.toFixed(0)}° · {webgpuSupported ? 'WEBGPU READY' : 'WEBGL2'}
             </div>
           </div>
 
-          {/* Layer Filter Toggles at Bottom */}
-          <div className="absolute bottom-3 left-3 right-3 bg-[#131d2c]/90 backdrop-blur-md border border-[#28394e] rounded-xl p-2 z-10 overflow-x-auto shadow-2xl">
-            <div className="flex items-center space-x-1.5">
-              <span className="text-[10px] text-[#94a3b8] uppercase tracking-wider font-bold shrink-0">
-                GodsEye Feeds:
-              </span>
-              {GODSEYE_INTEL_LAYERS.map((layer) => (
-                <button
-                  key={layer.id}
-                  onClick={() => toggleLayer(layer.id)}
-                  className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all whitespace-nowrap flex items-center space-x-1 ${
-                    activeLayers[layer.id]
-                      ? "bg-[#1e293b] text-[#f8fafc] border border-[#38bdf8]"
-                      : "bg-[#0b1320] text-[#64748b] border border-[#28394e]"
-                  }`}
-                >
-                  <span
-                    className="w-1.5 h-1.5 rounded-full"
-                    style={{ backgroundColor: layer.color }}
-                  ></span>
-                  <span>{layer.name.split(" ")[0]}</span>
-                </button>
-              ))}
-            </div>
+          {/* Severity Legend */}
+          <div className="absolute bottom-12 left-3 z-10 rounded-lg bg-[#0f172a]/90 border border-[#28394e] p-2 text-xs backdrop-blur space-y-1">
+            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Severity</div>
+            {[
+              { label: 'CRITICAL', color: '#dc2626' },
+              { label: 'HIGH', color: '#00e5ff' },
+              { label: 'MEDIUM', color: '#00ff9d' },
+            ].map(({ label, color }) => (
+              <div key={label} className="flex items-center gap-2 text-[10px]">
+                <span className="h-2 w-2 rounded-full" style={{ background: color }} />
+                <span className="text-slate-300 font-bold">{label}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
 
       {/* Side Inspector (4 Cols) */}
       <div className="lg:col-span-4 space-y-4">
-        {selectedEntity ? (
+        {selectedInspect ? (
           <div className="bg-[#131d2c] border border-[#28394e] rounded-2xl p-4 shadow-xl space-y-3">
             <div className="flex items-center justify-between border-b border-[#28394e] pb-2">
-              <span className="px-2 py-0.5 rounded bg-[#1e293b] text-[#38bdf8] border border-[#38bdf8]/40 text-[10px] font-bold">
-                {selectedEntity.type}
+              <span className="px-2 py-0.5 rounded bg-[#1e293b] text-cyan-400 border border-cyan-400/40 text-[10px] font-bold">
+                {selectedInspect.category}
               </span>
               <span
                 className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                  selectedEntity.status === "ANOMALOUS"
-                    ? "bg-[#f43f5e]/20 text-[#f43f5e] border border-[#f43f5e]/40 animate-pulse"
-                    : "bg-[#10b981]/20 text-[#10b981] border border-[#10b981]/40"
+                  selectedInspect.severity === 'CRITICAL'
+                    ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40 animate-pulse'
+                    : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
                 }`}
               >
-                {selectedEntity.status}
+                {selectedInspect.severity}
               </span>
             </div>
 
             <div>
-              <h3 className="text-sm font-bold text-white">{selectedEntity.callsignOrName}</h3>
-              <div className="text-[11px] text-[#94a3b8] mt-0.5">
-                Source: <span className="text-[#38bdf8]">{selectedEntity.source}</span>
+              <h3 className="text-sm font-bold text-white">{selectedInspect.title}</h3>
+              <div className="text-[11px] text-slate-400 mt-0.5">
+                Target Coordinates: <span className="text-cyan-400">{selectedInspect.coords[1].toFixed(3)}°N, {selectedInspect.coords[0].toFixed(3)}°W</span>
               </div>
             </div>
 
             <div className="bg-[#0b1320] p-3 rounded-xl border border-[#28394e] text-xs space-y-1.5">
-              <div className="flex justify-between text-[#94a3b8]">
-                <span>Coordinates:</span>
-                <span className="text-[#f8fafc]">{selectedEntity.lat.toFixed(3)}°N, {selectedEntity.lng.toFixed(3)}°W</span>
+              <div className="flex justify-between text-slate-400">
+                <span>Anomaly Z-Score:</span>
+                <span className="text-emerald-400 font-bold">{typeof selectedInspect.zScore === 'number' ? selectedInspect.zScore.toFixed(2) : selectedInspect.zScore}σ</span>
               </div>
-              <div className="flex justify-between text-[#94a3b8]">
-                <span>Speed / Track:</span>
-                <span className="text-[#10b981] font-bold">{selectedEntity.altOrSpeed}</span>
+              <div className="flex justify-between text-slate-400">
+                <span>Validation Confidence:</span>
+                <span className="text-cyan-400 font-bold">{typeof selectedInspect.confidence === 'number' ? (selectedInspect.confidence * 100).toFixed(1) : '95'}%</span>
               </div>
-              <div className="flex justify-between text-[#94a3b8]">
-                <span>Heading:</span>
-                <span className="text-[#f8fafc]">{selectedEntity.heading}°</span>
+              <div className="flex justify-between text-slate-400">
+                <span>Detection Protocol:</span>
+                <span className="text-white font-bold">SiForest + AutoSAD UCB-1</span>
               </div>
             </div>
-
-            {selectedEntity.anomalyFlag && (
-              <div className="bg-[#f43f5e]/10 border border-[#f43f5e]/30 p-2.5 rounded-xl text-xs space-y-1">
-                <div className="text-[#f43f5e] font-bold flex items-center space-x-1">
-                  <ShieldAlert className="w-3.5 h-3.5" />
-                  <span>CRITICAL TELEMETRY ALERT</span>
-                </div>
-                <p className="text-[#f8fafc] text-[11px] leading-relaxed">
-                  {selectedEntity.anomalyFlag}
-                </p>
-              </div>
-            )}
           </div>
         ) : (
-          <div className="p-6 text-center text-[#94a3b8] text-xs border border-dashed border-[#28394e] rounded-2xl">
-            Select any entity icon on the radar to inspect transponder telemetry
+          <div className="p-6 text-center text-slate-400 text-xs border border-dashed border-[#28394e] rounded-2xl bg-[#131d2c]/40">
+            Click any vector anomaly marker or cluster centroid to inspect live forensic telemetry
           </div>
         )}
 
-        {/* Live Active Entity Ticker */}
+        {/* Live Vector Feed Overview */}
         <div className="bg-[#131d2c] border border-[#28394e] rounded-2xl p-4 shadow-xl space-y-3">
           <div className="flex items-center justify-between border-b border-[#28394e] pb-2">
             <h4 className="text-xs font-bold text-white flex items-center space-x-1.5">
-              <Layers className="w-3.5 h-3.5 text-[#38bdf8]" />
-              <span>LIVE ENTITY RADAR STREAM</span>
+              <span className="w-2 h-2 rounded-full bg-[#00ff9d] animate-ping" />
+              <span>LIVE GOD'S EYE TELEMETRY STREAM</span>
             </h4>
-            <span className="text-[10px] text-[#10b981] font-bold">Continuous 1 Hz</span>
+            <span className="text-[10px] text-cyan-400 font-bold">60 FPS rAF Sync</span>
           </div>
 
           <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
-            {SAMPLE_LIVE_ENTITIES.map((ent) => (
+            {anomalies.slice(0, 10).map((a, idx) => (
               <div
-                key={ent.id}
-                onClick={() => setSelectedEntity(ent)}
-                className={`p-2 rounded-lg border text-xs cursor-pointer transition-all ${
-                  selectedEntity?.id === ent.id
-                    ? "bg-[#1e293b] border-[#38bdf8]"
-                    : "bg-[#0b1320] border-[#28394e] hover:border-[#38bdf8]/50"
-                }`}
+                key={a.properties?.id || idx}
+                onClick={() => setSelectedInspect({
+                  title: a.properties?.title,
+                  severity: a.properties?.severity,
+                  category: a.properties?.category,
+                  zScore: a.properties?.zScore,
+                  confidence: a.properties?.confidence,
+                  coords: a.geometry.coordinates,
+                })}
+                className="p-2 rounded-lg border border-[#28394e] bg-[#0b1320] hover:border-cyan-400/50 cursor-pointer transition-all text-xs"
               >
                 <div className="flex items-center justify-between text-[10px]">
-                  <span className="text-[#f8fafc] font-bold truncate max-w-[170px]">{ent.callsignOrName}</span>
-                  <span
-                    className={`font-bold ${
-                      ent.status === "ANOMALOUS" ? "text-[#f43f5e]" : "text-[#10b981]"
-                    }`}
-                  >
-                    {ent.status}
+                  <span className="text-white font-bold truncate max-w-[170px]">{a.properties?.title}</span>
+                  <span className={a.properties?.severity === 'CRITICAL' ? 'text-rose-400 font-bold' : 'text-cyan-400 font-bold'}>
+                    {a.properties?.severity}
                   </span>
                 </div>
-                <div className="text-[10px] text-[#94a3b8] mt-0.5">{ent.altOrSpeed}</div>
+                <div className="text-[10px] text-slate-400 mt-0.5">
+                  Z-Score: {a.properties?.zScore?.toFixed(2)}σ · {a.properties?.category}
+                </div>
               </div>
             ))}
           </div>
         </div>
-
       </div>
-
     </div>
   );
 }
