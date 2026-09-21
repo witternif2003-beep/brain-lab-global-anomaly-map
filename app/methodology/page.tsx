@@ -38,7 +38,7 @@ export default function MethodologyPage() {
           </div>
 
           <div className="glass-card p-4 rounded-xl border border-white/10 space-y-2">
-            <span className="font-mono text-amber-400 font-bold block text-sm">Isolation Forest + XGBoost</span>
+            <span className="font-mono text-sky-400 font-bold block text-sm">Isolation Forest + XGBoost</span>
             <p className="text-slate-300 text-xs">
               Ensemble decision forest isolates extreme point anomalies across tax collection variance, county-level corporate registrations, and workforce layoffs (WARN Act notices).
             </p>
@@ -50,7 +50,7 @@ export default function MethodologyPage() {
       {/* Section 2: Admiralty System Credibility Grading */}
       <div className="glass-panel/80 border border-white/10 p-6 rounded-2xl space-y-4 shadow-xl">
         <h2 className="text-base font-bold text-white flex items-center space-x-2 border-b border-white/10 pb-2">
-          <Shield className="w-5 h-5 text-amber-400" />
+          <Shield className="w-5 h-5 text-sky-400" />
           <span>2. ADMIRALTY SYSTEM (CATS) SOURCE VERIFICATION</span>
         </h2>
         <p className="text-xs text-slate-300 font-sans leading-relaxed">
@@ -59,7 +59,7 @@ export default function MethodologyPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
           <div className="glass-card p-4 rounded-xl border border-white/10 space-y-2">
-            <div className="font-bold text-amber-300 font-mono">SOURCE RELIABILITY (A–F)</div>
+            <div className="font-bold text-sky-300 font-mono">SOURCE RELIABILITY (A–F)</div>
             <ul className="space-y-1 text-slate-400 text-[11px]">
               <li><strong className="text-white">A: Completely Reliable</strong> — Official state statute, primary ports telemetry.</li>
               <li><strong className="text-white">B: Usually Reliable</strong> — Regulatory agencies, audited nonprofit datasets.</li>

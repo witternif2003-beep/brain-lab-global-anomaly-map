@@ -70,7 +70,7 @@ export default function RecommendationsHubPage() {
         rightElement={
           <div className="glass-panel px-4 py-2.5 rounded-xl border border-white/10 text-right shadow-lg">
             <div className="text-[11px] text-[#8595a8] flex items-center justify-end space-x-1.5">
-              <span className={`w-2 h-2 rounded-full ${connectionStatus === 'streaming' ? 'bg-[#00ff9d] animate-ping' : 'bg-[#ffb800]'}`} />
+              <span className={`w-2 h-2 rounded-full ${connectionStatus === 'streaming' ? 'bg-[#00ff9d] animate-ping' : 'bg-[#38bdf8]'}`} />
               <span className="font-bold">{connectionStatus === 'streaming' ? 'CLOSED-LOOP SCORING LIVE' : 'SYNCING...'}</span>
             </div>
             <div className="text-[#00e5ff] font-bold text-lg">{filteredCatalog.length.toLocaleString()} ACTIVE VECTORS</div>
@@ -160,7 +160,7 @@ export default function RecommendationsHubPage() {
           >
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs">
-                <span className="px-2.5 py-0.5 rounded bg-[#ffb800]/20 text-[#ffb800] border border-[#ffb800]/40 font-bold font-mono">
+                <span className="px-2.5 py-0.5 rounded bg-[#38bdf8]/20 text-[#38bdf8] border border-[#38bdf8]/40 font-bold font-mono">
                   {item.recId} • {item.recommendationTier}
                 </span>
                 <span className="text-[#00e5ff] font-bold text-xs">{item.targetCompetitorState}</span>

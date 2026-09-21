@@ -183,7 +183,7 @@ export default function DashboardPage() {
                 </div>
                 <div>
                   <span className="text-[#94a3b8] block">Admiralty Grade:</span>
-                  <span className="text-[#fb923c] font-semibold">{selectedAnomaly.admiraltyRating}</span>
+                  <span className="text-[#38bdf8] font-semibold">{selectedAnomaly.admiraltyRating}</span>
                 </div>
               </div>
 

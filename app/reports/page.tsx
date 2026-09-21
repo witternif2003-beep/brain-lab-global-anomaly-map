@@ -91,8 +91,8 @@ DISCLAIMER: Emblem used for identification purposes only. Not affiliated with an
                   {rep.summary}
                 </p>
 
-                <div className="flex items-center justify-between text-[10px] text-slate-500 pt-2 border-t border-slate-900">
-                  <span>Admiralty: {rep.admiraltyRating.split(" ")[0]}</span>
+                <div className="flex items-center justify-between text-[10px] text-slate-500 pt-2 border-t border-sky-500/20">
+                  <span className="px-2 py-0.5 rounded bg-sky-500/15 text-sky-400 border border-sky-500/30 font-semibold">Admiralty: {rep.admiraltyRating.split(" ")[0]}</span>
                   <span className="text-emerald-400 font-bold">{rep.confidence}% Confidence</span>
                 </div>
               </div>

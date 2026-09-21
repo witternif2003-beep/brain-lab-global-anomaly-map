@@ -82,7 +82,7 @@ export default function AnomaliesPage() {
         rightElement={
           <div className="glass-panel px-4 py-2.5 rounded-xl border border-white/10 text-right shadow-lg">
             <div className="text-[11px] text-[#8595a8] flex items-center justify-end space-x-1.5">
-              <span className={`w-2 h-2 rounded-full ${connectionStatus === 'streaming' ? 'bg-[#00ff9d] animate-ping' : 'bg-[#ffb800]'}`} />
+              <span className={`w-2 h-2 rounded-full ${connectionStatus === 'streaming' ? 'bg-[#00ff9d] animate-ping' : 'bg-[#38bdf8]'}`} />
               <span className="font-bold">{connectionStatus === 'streaming' ? 'SSE ACTIVE (2.5s)' : 'CONNECTING...'}</span>
             </div>
             <div className="text-[#00e5ff] font-bold text-lg">{filtered.length} ACTIVE VECTORS</div>

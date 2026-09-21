@@ -47,7 +47,7 @@ export default function AlertsPage() {
       {/* Branded Header */}
       <PageEmblemHeader
         badgeText="Real-Time Alert Dispatch Layer"
-        badgeIcon={<Bell className="w-4 h-4 text-amber-400" />}
+        badgeIcon={<Bell className="w-4 h-4 text-sky-400" />}
         title="REAL-TIME TELEMETRY ANOMALY ALERT DISPATCH ENGINE"
         description="Automated outward alerting integrating webhook dispatch pipelines for Discord, Telegram, and Slack. Transmits high-confidence Admiralty A1/A2 economic anomalies immediately upon detection."
         rightElement={

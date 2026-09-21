@@ -36,7 +36,7 @@ export default function BenchmarksPage() {
         </div>
         <div className="glass-panel border border-white/10 p-4 rounded-xl">
           <div className="text-slate-500 text-[10px]">INFERENCE LATENCY</div>
-          <div className="text-amber-400 font-bold text-sm">0.08 ms / SAMPLE</div>
+          <div className="text-sky-400 font-bold text-sm">0.08 ms / SAMPLE</div>
           <div className="text-[10px] text-slate-400 mt-1">LSTD-Detect Edge Engine</div>
         </div>
         <div className="glass-panel border border-white/10 p-4 rounded-xl">

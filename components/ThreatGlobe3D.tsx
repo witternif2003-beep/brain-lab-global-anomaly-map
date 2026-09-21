@@ -346,7 +346,7 @@ export default function ThreatGlobe3D() {
             <Eye className="w-4 h-4 text-[#00e5ff] animate-pulse" />
             <span className="font-bold text-sm text-white">GOD'S EYE 3D COP</span>
           </div>
-          <span className={`px-2 py-0.5 rounded text-xs font-bold ${connectionStatus === 'streaming' ? 'bg-[#00ff9d]/20 text-[#00ff9d] border border-[#00ff9d]/40' : 'bg-[#ffb800]/20 text-[#ffb800]'}`}>
+          <span className={`px-2 py-0.5 rounded text-xs font-bold ${connectionStatus === 'streaming' ? 'bg-[#00ff9d]/20 text-[#00ff9d] border border-[#00ff9d]/40' : 'bg-[#38bdf8]/20 text-[#38bdf8]'}`}>
             {connectionStatus === 'streaming' ? 'SSE LIVE 2.5s' : connectionStatus.toUpperCase()}
           </span>
         </div>

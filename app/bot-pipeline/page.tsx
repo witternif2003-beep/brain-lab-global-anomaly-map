@@ -289,7 +289,7 @@ export default function BotPipelinePage() {
 
         <div className="glass-panel p-4 sm:p-5 rounded-2xl space-y-1.5 border border-white/10 shadow-lg">
           <div className="text-[#8595a8] text-xs font-semibold uppercase tracking-wider">Admiralty Grading</div>
-          <div className="text-[#ffb800] font-bold text-xl sm:text-2xl">Starts at *4</div>
+          <div className="text-[#38bdf8] font-bold text-xl sm:text-2xl">Starts at *4</div>
           <div className="text-xs text-[#b6c2d2]">Climbs on Corroboration</div>
         </div>
 
@@ -358,7 +358,7 @@ export default function BotPipelinePage() {
               <div key={p.id} className="glass-data p-4 rounded-xl border border-white/10 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-mono text-[#8595a8]">#{idx + 1} • {p.cadence}</span>
-                  <span className="px-2.5 py-0.5 rounded text-xs font-bold bg-[#ffb800]/20 text-[#ffb800] border border-[#ffb800]/40 font-mono">
+                  <span className="px-2.5 py-0.5 rounded text-xs font-bold bg-[#38bdf8]/20 text-[#38bdf8] border border-[#38bdf8]/40 font-mono">
                     Admiralty {gradeStr}
                   </span>
                 </div>
@@ -410,7 +410,7 @@ export default function BotPipelinePage() {
                       <span className={`px-2.5 py-1 rounded font-mono font-bold text-xs border ${
                         isGradeHigh
                           ? "bg-[#00ff9d]/20 text-[#00ff9d] border-[#00ff9d]/40"
-                          : "bg-[#ffb800]/20 text-[#ffb800] border-[#ffb800]/40"
+                          : "bg-[#38bdf8]/20 text-[#38bdf8] border-[#38bdf8]/40"
                       }`}>
                         {gradeStr}
                       </span>
@@ -437,7 +437,7 @@ export default function BotPipelinePage() {
                       <span className={`px-2.5 py-1 rounded text-xs font-mono uppercase font-bold border ${
                         p.queueState === "accepted"
                           ? "bg-[#00ff9d]/20 text-[#00ff9d] border-[#00ff9d]/40"
-                          : "bg-[#ffb800]/20 text-[#ffb800] border-[#ffb800]/40 animate-pulse"
+                          : "bg-[#38bdf8]/20 text-[#38bdf8] border-[#38bdf8]/40 animate-pulse"
                       }`}>
                         {p.queueState}
                       </span>

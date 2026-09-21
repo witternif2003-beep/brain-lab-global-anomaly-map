@@ -66,7 +66,7 @@ export default function ThreatGlobePage() {
         </div>
 
         <div className="glass-panel border border-white/10 p-4 rounded-xl space-y-2">
-          <div className="flex items-center space-x-2 text-amber-400 text-xs font-bold">
+          <div className="flex items-center space-x-2 text-sky-400 text-xs font-bold">
             <TrendingUp className="w-4 h-4" />
             <span>Pillar 3: Consumer & Labor Distress</span>
           </div>

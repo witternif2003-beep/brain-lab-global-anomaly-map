@@ -93,7 +93,7 @@ export default function SourcesPage() {
 
   const stateColors: Record<string, string> = {
     active: "bg-emerald-500/20 text-emerald-400 border-emerald-500/40",
-    candidate: "bg-amber-500/20 text-amber-400 border-amber-500/40",
+    candidate: "bg-sky-500/20 text-sky-400 border-sky-500/40",
     validating: "bg-sky-500/20 text-sky-400 border-sky-500/40",
     stale: "bg-orange-500/20 text-orange-400 border-orange-500/40",
     deprecated: "bg-rose-500/20 text-rose-400 border-rose-500/40",
@@ -104,7 +104,7 @@ export default function SourcesPage() {
     pending: "bg-slate-500/20 text-slate-400 border-slate-500/40",
     fetching: "bg-sky-500/20 text-sky-400 border-sky-500/40 animate-pulse",
     parsing: "bg-indigo-500/20 text-indigo-400 border-indigo-500/40",
-    verifying: "bg-amber-500/20 text-amber-400 border-amber-500/40 animate-pulse",
+    verifying: "bg-sky-500/20 text-sky-400 border-sky-500/40 animate-pulse",
     accepted: "bg-emerald-500/20 text-emerald-400 border-emerald-500/40",
     rejected: "bg-rose-500/20 text-rose-400 border-rose-500/40",
   };
@@ -263,7 +263,7 @@ export default function SourcesPage() {
                       {m.state} • {m.feedType}
                     </span>
                     <div className="flex items-center space-x-2">
-                      <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold text-[11px]">
+                      <span className="px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-500/40 font-bold text-[11px]">
                         Admiralty {m.admiraltyGrade}
                       </span>
                       <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold text-[11px]">
