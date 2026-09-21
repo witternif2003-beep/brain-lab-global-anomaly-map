@@ -38,11 +38,11 @@ async function loadNormalizedStates(): Promise<GeoJSON.FeatureCollection> {
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as maplibregl from 'maplibre-gl';
+import { setWorkerUrl } from 'maplibre-gl';
 
-// Call setWorkerUrl once at module load
-if (typeof window !== 'undefined' && typeof (maplibregl as any).setWorkerUrl === 'function') {
-  (maplibregl as any).setWorkerUrl('/maplibre-gl-worker.mjs');
-}
+// Module-scope unconditional call — runs once before any Map is constructed.
+// Both worker files are committed directly to /public and served same-origin.
+setWorkerUrl('/maplibre-gl-worker.mjs');
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { AnomalyItem, CompetitorStateIntel } from '../lib/schema';
 import { useAnomalyStream, AnomalyFeature } from '../hooks/useAnomalyStream';

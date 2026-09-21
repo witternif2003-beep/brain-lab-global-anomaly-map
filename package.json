@@ -4,11 +4,8 @@
   "main": "index.js",
   "scripts": {
     "dev": "next dev",
-    "build": "node -e \"const fs=require('fs');['maplibre-gl-worker.mjs','maplibre-gl-shared.mjs'].forEach(f=>fs.copyFileSync('node_modules/maplibre-gl/dist/'+f,'public/'+f))\" && next build",
-    "start": "next start",
-    "postinstall": "node -e \"const fs=require('fs');['maplibre-gl-worker.mjs','maplibre-gl-shared.mjs'].forEach(f=>fs.copyFileSync('node_modules/maplibre-gl/dist/'+f,'public/'+f))\"",
-    "prebuild": "node -e \"const fs=require('fs');['maplibre-gl-worker.mjs','maplibre-gl-shared.mjs'].forEach(f=>fs.copyFileSync('node_modules/maplibre-gl/dist/'+f,'public/'+f))\"",
-    "predev": "node -e \"const fs=require('fs');['maplibre-gl-worker.mjs','maplibre-gl-shared.mjs'].forEach(f=>fs.copyFileSync('node_modules/maplibre-gl/dist/'+f,'public/'+f))\""
+    "build": "next build",
+    "start": "next start"
   },
   "keywords": [],
   "author": "",

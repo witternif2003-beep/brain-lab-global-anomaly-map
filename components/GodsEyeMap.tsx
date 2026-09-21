@@ -2,11 +2,11 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as maplibregl from 'maplibre-gl';
+import { setWorkerUrl } from 'maplibre-gl';
 
-// Call setWorkerUrl once at module load so worker + sibling chunk resolve properly in Next.js/Turbopack
-if (typeof window !== 'undefined' && typeof (maplibregl as any).setWorkerUrl === 'function') {
-  (maplibregl as any).setWorkerUrl('/maplibre-gl-worker.mjs');
-}
+// Module-scope unconditional call — runs once before any Map is constructed.
+// Both worker files are committed directly to /public and served same-origin.
+setWorkerUrl('/maplibre-gl-worker.mjs');
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useAnomalyStream, AnomalyFeature } from '../hooks/useAnomalyStream';
 import { registerGeoJSONVTSource, shouldUseTiledRendering } from '../lib/geojson-vt-protocol';
@@ -488,6 +488,9 @@ export default function GodsEyeMap({
         if (typeof window !== 'undefined') {
           (window as any).__map = map;
         }
+        console.log('[Map] worker URL set to: /maplibre-gl-worker.mjs');
+        console.log('[Map] tiles loaded:', map.areTilesLoaded());
+        console.log('[Map] style loaded:', map.isStyleLoaded());
         console.log('[GodsEyeMap] MapLibre loaded style successfully, adding layers...');
         await addMapLayers(map);
         setReady(true);
