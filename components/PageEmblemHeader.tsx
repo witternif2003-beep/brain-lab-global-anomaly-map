@@ -30,7 +30,7 @@ export default function PageEmblemHeader({
                 alt="Brain Lab by Liliya emblem"
                 width={36}
                 height={36}
-                className="w-full h-full object-cover rounded-full"
+                className="w-full h-full object-contain aspect-square rounded-full"
                 priority
               />
             </div>

@@ -61,7 +61,7 @@ export default function Navbar() {
                   alt="Brain Lab by Liliya emblem"
                   width={40}
                   height={40}
-                  className="w-full h-full object-cover rounded-full"
+                  className="w-full h-full object-contain aspect-square rounded-full"
                   priority
                 />
               </div>

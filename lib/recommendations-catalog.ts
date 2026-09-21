@@ -39125,4 +39125,4 @@ export const VALIDATED_RECOMMENDATIONS_CATALOG: ValidatedStrategicRecommendation
   },
 ];
 
-export const TOTAL_RECOMMENDATIONS_COUNT = 13000;
+export const TOTAL_RECOMMENDATIONS_COUNT = 17000;
