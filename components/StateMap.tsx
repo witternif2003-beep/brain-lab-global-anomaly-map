@@ -1,3 +1,4 @@
+import { ACTIVE_TELEMETRY_ARCS, buildTelemetryArcsGeoJSON } from '../lib/telemetry-arcs';
 'use client';
 
 import { setWorkerUrl } from 'maplibre-gl';
@@ -447,6 +448,101 @@ export default function StateMap({
       const st = f.properties?.STUSPS;
       if (st) onSelectState(st);
     });
+
+    
+    // ─── TELEMETRY FLOW ARCS: Green (Ally Follow) & Red (Adversary Accept) ───
+    const { arcLines, arrowHeads } = buildTelemetryArcsGeoJSON(ACTIVE_TELEMETRY_ARCS);
+
+    if (!map.getSource('telemetry-arcs')) {
+      map.addSource('telemetry-arcs', {
+        type: 'geojson',
+        data: arcLines,
+      });
+    } else {
+      (map.getSource('telemetry-arcs') as any).setData(arcLines);
+    }
+
+    if (!map.getSource('telemetry-arc-arrows')) {
+      map.addSource('telemetry-arc-arrows', {
+        type: 'geojson',
+        data: arrowHeads,
+      });
+    } else {
+      (map.getSource('telemetry-arc-arrows') as any).setData(arrowHeads);
+    }
+
+    // Arc Line Outer Glow
+    if (!map.getLayer('telemetry-arcs-glow')) {
+      map.addLayer({
+        id: 'telemetry-arcs-glow',
+        type: 'line',
+        source: 'telemetry-arcs',
+        paint: {
+          'line-color': ['get', 'color'],
+          'line-width': 5,
+          'line-opacity': 0.45,
+          'line-blur': 3,
+        },
+      });
+    }
+
+    // Arc Line Core
+    if (!map.getLayer('telemetry-arcs-core')) {
+      map.addLayer({
+        id: 'telemetry-arcs-core',
+        type: 'line',
+        source: 'telemetry-arcs',
+        paint: {
+          'line-color': ['get', 'color'],
+          'line-width': 2.5,
+          'line-opacity': 0.95,
+          'line-dasharray': [2, 1],
+        },
+      });
+    }
+
+    // Terminal Arrowhead Points with Rotating Bearing
+    if (!map.getLayer('telemetry-arc-arrows-layer')) {
+      map.addLayer({
+        id: 'telemetry-arc-arrows-layer',
+        type: 'symbol',
+        source: 'telemetry-arc-arrows',
+        layout: {
+          'text-field': '▶',
+          'text-size': 14,
+          'text-rotate': ['get', 'bearing'],
+          'text-rotation-alignment': 'map',
+          'text-allow-overlap': true,
+          'text-ignore-placement': true,
+        },
+        paint: {
+          'text-color': ['get', 'color'],
+          'text-halo-color': '#0f172a',
+          'text-halo-width': 2,
+        },
+      });
+    }
+
+    // Terminal Adoption Count Labels
+    if (!map.getLayer('telemetry-arc-labels-layer')) {
+      map.addLayer({
+        id: 'telemetry-arc-labels-layer',
+        type: 'symbol',
+        source: 'telemetry-arc-arrows',
+        layout: {
+          'text-field': ['get', 'labelText'],
+          'text-size': 10,
+          'text-offset': [0, 1.4],
+          'text-anchor': 'top',
+          'text-allow-overlap': true,
+        },
+        paint: {
+          'text-color': ['get', 'color'],
+          'text-halo-color': '#0b1120',
+          'text-halo-width': 2,
+        },
+      });
+    }
 
     map.on('mouseenter', 'anomaly-clusters', () => { map.getCanvas().style.cursor = 'pointer'; });
     map.on('mouseleave', 'anomaly-clusters', () => { map.getCanvas().style.cursor = ''; });

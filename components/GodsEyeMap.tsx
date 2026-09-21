@@ -1,3 +1,4 @@
+import { ACTIVE_TELEMETRY_ARCS, buildTelemetryArcsGeoJSON } from '../lib/telemetry-arcs';
 'use client';
 
 import { setWorkerUrl } from 'maplibre-gl';
@@ -396,6 +397,101 @@ export default function GodsEyeMap({
         onAnomalyClick(props.id);
       }
     });
+
+    
+    // ─── TELEMETRY FLOW ARCS: Green (Ally Follow) & Red (Adversary Accept) ───
+    const { arcLines, arrowHeads } = buildTelemetryArcsGeoJSON(ACTIVE_TELEMETRY_ARCS);
+
+    if (!map.getSource('telemetry-arcs')) {
+      map.addSource('telemetry-arcs', {
+        type: 'geojson',
+        data: arcLines,
+      });
+    } else {
+      (map.getSource('telemetry-arcs') as any).setData(arcLines);
+    }
+
+    if (!map.getSource('telemetry-arc-arrows')) {
+      map.addSource('telemetry-arc-arrows', {
+        type: 'geojson',
+        data: arrowHeads,
+      });
+    } else {
+      (map.getSource('telemetry-arc-arrows') as any).setData(arrowHeads);
+    }
+
+    // Arc Line Outer Glow
+    if (!map.getLayer('telemetry-arcs-glow')) {
+      map.addLayer({
+        id: 'telemetry-arcs-glow',
+        type: 'line',
+        source: 'telemetry-arcs',
+        paint: {
+          'line-color': ['get', 'color'],
+          'line-width': 6,
+          'line-opacity': 0.45,
+          'line-blur': 3,
+        },
+      });
+    }
+
+    // Arc Line Core
+    if (!map.getLayer('telemetry-arcs-core')) {
+      map.addLayer({
+        id: 'telemetry-arcs-core',
+        type: 'line',
+        source: 'telemetry-arcs',
+        paint: {
+          'line-color': ['get', 'color'],
+          'line-width': 2.5,
+          'line-opacity': 0.95,
+          'line-dasharray': [2, 1],
+        },
+      });
+    }
+
+    // Terminal Arrowhead Points with Rotating Bearing
+    if (!map.getLayer('telemetry-arc-arrows-layer')) {
+      map.addLayer({
+        id: 'telemetry-arc-arrows-layer',
+        type: 'symbol',
+        source: 'telemetry-arc-arrows',
+        layout: {
+          'text-field': '▶',
+          'text-size': 14,
+          'text-rotate': ['get', 'bearing'],
+          'text-rotation-alignment': 'map',
+          'text-allow-overlap': true,
+          'text-ignore-placement': true,
+        },
+        paint: {
+          'text-color': ['get', 'color'],
+          'text-halo-color': '#0f172a',
+          'text-halo-width': 2,
+        },
+      });
+    }
+
+    // Terminal Adoption Count Labels
+    if (!map.getLayer('telemetry-arc-labels-layer')) {
+      map.addLayer({
+        id: 'telemetry-arc-labels-layer',
+        type: 'symbol',
+        source: 'telemetry-arc-arrows',
+        layout: {
+          'text-field': ['get', 'labelText'],
+          'text-size': 11,
+          'text-offset': [0, 1.4],
+          'text-anchor': 'top',
+          'text-allow-overlap': true,
+        },
+        paint: {
+          'text-color': ['get', 'color'],
+          'text-halo-color': '#0b1120',
+          'text-halo-width': 2,
+        },
+      });
+    }
 
     // Cursor pointer feedback
     map.on('mouseenter', 'anomaly-clusters', () => { map.getCanvas().style.cursor = 'pointer'; });
@@ -809,19 +905,35 @@ export default function GodsEyeMap({
             </div>
           </div>
 
-          {/* Severity Legend */}
-          <div className="absolute bottom-3 left-3 z-10 rounded-lg bg-[#0f172a]/90 border border-[#28394e] p-1.5 sm:p-2 text-xs backdrop-blur space-y-1 hidden sm:block">
-            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Severity</div>
-            {[
-              { label: 'CRITICAL', color: '#dc2626' },
-              { label: 'HIGH', color: '#00e5ff' },
-              { label: 'MEDIUM', color: '#00ff9d' },
-            ].map(({ label, color }) => (
-              <div key={label} className="flex items-center gap-2 text-[10px]">
-                <span className="h-2 w-2 rounded-full" style={{ background: color }} />
-                <span className="text-slate-300 font-bold">{label}</span>
+          {/* Severity & Telemetry Arc Flow Legend */}
+          <div className="absolute bottom-3 left-3 z-10 rounded-lg bg-[#0f172a]/90 border border-[#28394e] p-2 text-xs backdrop-blur space-y-2 hidden sm:block max-w-[270px]">
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-1">
+                Telemetry Adoption Arcs
               </div>
-            ))}
+              <div className="flex items-center space-x-1.5">
+                <span className="w-3 h-1 bg-[#10b981] rounded-full inline-block" />
+                <span className="text-emerald-400 text-[10px] font-semibold">Green Arc: Ally Follows Output Data</span>
+              </div>
+              <div className="flex items-center space-x-1.5 mt-0.5">
+                <span className="w-3 h-1 bg-[#ef4444] rounded-full inline-block" />
+                <span className="text-red-400 text-[10px] font-semibold">Red Arc: New Person Accepts Competition</span>
+              </div>
+            </div>
+
+            <div className="border-t border-[#28394e] pt-1.5">
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Severity</div>
+              {[
+                { label: 'CRITICAL', color: '#dc2626' },
+                { label: 'HIGH', color: '#00e5ff' },
+                { label: 'MEDIUM', color: '#00ff9d' },
+              ].map(({ label, color }) => (
+                <div key={label} className="flex items-center gap-2 text-[10px]">
+                  <span className="h-2 w-2 rounded-full" style={{ background: color }} />
+                  <span className="text-slate-300 font-bold">{label}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
