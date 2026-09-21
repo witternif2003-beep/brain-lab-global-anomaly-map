@@ -515,6 +515,9 @@ export default function StateMap({
 
     map.on('load', () => {
       setReady(true);
+      if (typeof window !== 'undefined') {
+        (window as any).__map = map;
+      }
       addMapLayers(map);
     });
 
@@ -534,6 +537,9 @@ export default function StateMap({
     mapRef.current = map;
     return () => {
       clearTimeout(fallbackTimer);
+      if (typeof window !== 'undefined' && (window as any).__map === map) {
+        delete (window as any).__map;
+      }
       map.remove();
       mapRef.current = null;
     };
