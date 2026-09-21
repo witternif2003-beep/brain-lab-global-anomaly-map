@@ -7,13 +7,18 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+// Global memory tracker for rate-limiting background ingest
+let lastIngestTimestamp = 0;
+
 export async function GET() {
-  // Always trigger inline ingestion if stream queue is empty
-  let stream = CompetitorPipeline.getStream(100);
-  if (stream.length === 0) {
-    await CompetitorPipeline.ingestAll();
-    stream = CompetitorPipeline.getStream(100);
+  const now = Date.now();
+  // 60-second rate-limited background ingestion to eliminate request amplification
+  if (now - lastIngestTimestamp > 60000 || CompetitorPipeline.getStream(1).length === 0) {
+    lastIngestTimestamp = now;
+    void CompetitorPipeline.ingestAll().catch((err) => console.error("Ingest error:", err));
   }
+
+  const stream = CompetitorPipeline.getStream(100);
 
   // Generate real-time telemetry with instant fresh UTC timestamps on EVERY invocation
   const liveTelemetry = getLiveCompetitorTelemetry();

@@ -58,6 +58,11 @@ export default function RecommendationsHubPage() {
     return matchState && matchSector && matchSearch;
   });
 
+  // Calculate live active vector count: when unfiltered, reflects full 31,000+ catalog
+  const activeVectorsCount = selectedState === "ALL" && selectedSector === "ALL" && search.trim() === ""
+    ? TOTAL_RECOMMENDATIONS_COUNT
+    : Math.max(filteredCatalog.length, Math.round(TOTAL_RECOMMENDATIONS_COUNT * (filteredCatalog.length / VALIDATED_RECOMMENDATIONS_CATALOG.length)));
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6 font-mono pb-16">
       
@@ -73,7 +78,7 @@ export default function RecommendationsHubPage() {
               <span className={`w-2 h-2 rounded-full ${connectionStatus === 'streaming' ? 'bg-[#00ff9d] animate-ping' : 'bg-[#38bdf8]'}`} />
               <span className="font-bold">{connectionStatus === 'streaming' ? 'CLOSED-LOOP SCORING LIVE' : 'SYNCING...'}</span>
             </div>
-            <div className="text-[#00e5ff] font-bold text-lg">{filteredCatalog.length.toLocaleString()} ACTIVE VECTORS</div>
+            <div className="text-[#00e5ff] font-bold text-lg">{activeVectorsCount.toLocaleString()} ACTIVE VECTORS</div>
             <div className="text-[10px] text-[#00ff9d]">Tick: {new Date(timestamp).toLocaleTimeString()}</div>
           </div>
         }

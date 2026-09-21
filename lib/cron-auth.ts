@@ -1,11 +1,14 @@
 /**
  * Validates CRON_SECRET header for scheduled invocations.
- * Fail-closed: missing CRON_SECRET returns false.
+ * Strictly fail-closed: If process.env.CRON_SECRET is missing or does not match, return false.
+ * Zero hardcoded fallbacks. No exceptions.
  */
 
 export function validateCronSecret(request: Request): boolean {
+  const secret = process.env.CRON_SECRET;
+  if (!secret || secret.trim() === "") {
+    return false; // Zero fallback — fail-closed
+  }
   const authHeader = request.headers.get("authorization");
-  const cronSecret = process.env.CRON_SECRET || "cron_dev_secret_brain_lab_2026";
-  if (!cronSecret) return false;
-  return authHeader === `Bearer ${cronSecret}`;
+  return authHeader === `Bearer ${secret}`;
 }

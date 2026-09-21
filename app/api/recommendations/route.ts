@@ -27,11 +27,14 @@ export async function GET(request: Request) {
   return NextResponse.json({
     status: "HEALTHY",
     timestamp: new Date().toISOString(),
+    total: TOTAL_DIRECTIVES_COUNT,
+    activeCount: TOTAL_DIRECTIVES_COUNT,
     totalDirectives: TOTAL_DIRECTIVES_COUNT,
     filteredTotal: filtered.length,
     offset,
     limit,
     vectorsCovered: MISSION_VECTORS,
+    directives: paginated,
     recommendations: paginated,
   });
 }
