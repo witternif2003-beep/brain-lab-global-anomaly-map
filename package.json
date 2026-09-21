@@ -4,11 +4,11 @@
   "main": "index.js",
   "scripts": {
     "dev": "next dev",
-    "build": "cp node_modules/maplibre-gl/dist/maplibre-gl-worker.mjs public/ && cp node_modules/maplibre-gl/dist/maplibre-gl-shared.mjs public/ && next build",
+    "build": "node -e \"const fs=require('fs');['maplibre-gl-worker.mjs','maplibre-gl-shared.mjs'].forEach(f=>fs.copyFileSync('node_modules/maplibre-gl/dist/'+f,'public/'+f))\" && next build",
     "start": "next start",
-    "postinstall": "cp node_modules/maplibre-gl/dist/maplibre-gl-worker.mjs public/ && cp node_modules/maplibre-gl/dist/maplibre-gl-shared.mjs public/",
-    "prebuild": "cp node_modules/maplibre-gl/dist/maplibre-gl-worker.mjs public/ && cp node_modules/maplibre-gl/dist/maplibre-gl-shared.mjs public/",
-    "predev": "cp node_modules/maplibre-gl/dist/maplibre-gl-worker.mjs public/ && cp node_modules/maplibre-gl/dist/maplibre-gl-shared.mjs public/"
+    "postinstall": "node -e \"const fs=require('fs');['maplibre-gl-worker.mjs','maplibre-gl-shared.mjs'].forEach(f=>fs.copyFileSync('node_modules/maplibre-gl/dist/'+f,'public/'+f))\"",
+    "prebuild": "node -e \"const fs=require('fs');['maplibre-gl-worker.mjs','maplibre-gl-shared.mjs'].forEach(f=>fs.copyFileSync('node_modules/maplibre-gl/dist/'+f,'public/'+f))\"",
+    "predev": "node -e \"const fs=require('fs');['maplibre-gl-worker.mjs','maplibre-gl-shared.mjs'].forEach(f=>fs.copyFileSync('node_modules/maplibre-gl/dist/'+f,'public/'+f))\""
   },
   "keywords": [],
   "author": "",

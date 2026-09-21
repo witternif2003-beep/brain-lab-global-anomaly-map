@@ -1,3 +1,5 @@
+'use client';
+
 // FIPS to state abbreviation lookup table
 const FIPS_TO_ABBR: Record<string, string> = {
   '01': 'AL', '12': 'FL', '13': 'GA', '37': 'NC',
@@ -32,7 +34,7 @@ async function loadNormalizedStates(): Promise<GeoJSON.FeatureCollection> {
   return { type: 'FeatureCollection', features };
 }
 
-'use client';
+
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as maplibregl from 'maplibre-gl';
