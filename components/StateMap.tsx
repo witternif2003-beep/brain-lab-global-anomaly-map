@@ -158,6 +158,8 @@ export default function StateMap({
       map.addSource('all-states', {
         type: 'geojson',
         data: normalizedData,
+        minzoom: 3,
+        maxzoom: 14,
       });
     } else {
       const src = map.getSource('all-states') as any;
@@ -192,7 +194,13 @@ export default function StateMap({
         filter: ['==', ['get', 'STUSPS'], 'GA'],
         paint: {
           'line-color': '#dc2626',
-          'line-width': 4,
+          'line-width': [
+            'interpolate', ['exponential', 1.5], ['zoom'],
+            3, 4,
+            10, 10,
+            18, 22,
+            24, 30,
+          ],
           'line-blur': 6,
           'line-opacity': 0.75,
         },
@@ -207,7 +215,16 @@ export default function StateMap({
         filter: ['==', ['get', 'STUSPS'], 'GA'],
         paint: {
           'line-color': '#ef4444',
-          'line-width': 2.5,
+          'line-width': [
+            'interpolate', ['exponential', 1.5], ['zoom'],
+            3, 1.2,
+            6, 2.0,
+            10, 3.5,
+            14, 6.0,
+            18, 10.0,
+            22, 16.0,
+            24, 20.0,
+          ],
         },
       });
     }
@@ -234,7 +251,13 @@ export default function StateMap({
         filter: ['==', ['get', 'STUSPS'], '__none__'],
         paint: {
           'line-color': '#0ea5e9',
-          'line-width': 6,
+          'line-width': [
+            'interpolate', ['exponential', 1.5], ['zoom'],
+            3, 4,
+            10, 10,
+            18, 22,
+            24, 30,
+          ],
           'line-blur': 6,
           'line-opacity': 0.85,
         },
@@ -249,7 +272,16 @@ export default function StateMap({
         filter: ['==', ['get', 'STUSPS'], '__none__'],
         paint: {
           'line-color': '#38bdf8',
-          'line-width': 3.5,
+          'line-width': [
+            'interpolate', ['exponential', 1.5], ['zoom'],
+            3, 1.2,
+            6, 2.0,
+            10, 3.5,
+            14, 6.0,
+            18, 10.0,
+            22, 16.0,
+            24, 20.0,
+          ],
           'line-opacity': 1,
         },
       });
@@ -471,9 +503,11 @@ export default function StateMap({
       fitBoundsOptions: { padding: 40 },
       pitch: 0,
       bearing: 0,
-      maxZoom: 24,
       minZoom: 3,
+      maxZoom: 24,
+      maxPitch: 85,
       attributionControl: false,
+      experimentalZoomLevelsToOverscale: 4,
       hash: false,
       dragRotate: true,
       pitchWithRotate: true,
@@ -516,6 +550,7 @@ export default function StateMap({
     map.on('load', async () => {
       if (typeof window !== 'undefined') {
         (window as any).__map = map;
+        console.log('[Map] maxZoom:', map.getMaxZoom(), 'minZoom:', map.getMinZoom());
       }
       await addMapLayers(map);
       setReady(true);
