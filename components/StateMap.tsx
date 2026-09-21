@@ -463,7 +463,7 @@ export default function StateMap({
 
     const webgpuAvailable = typeof navigator !== 'undefined' && 'gpu' in navigator;
 
-    // Initialize MapLibre Map
+    // Initialize MapLibre Map with maxZoom: 24 architectural ceiling
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: BASEMAPS.dark,
@@ -471,7 +471,7 @@ export default function StateMap({
       fitBoundsOptions: { padding: 40 },
       pitch: 0,
       bearing: 0,
-      maxZoom: 18,
+      maxZoom: 24,
       minZoom: 3,
       attributionControl: false,
       hash: false,
@@ -577,6 +577,20 @@ export default function StateMap({
         map.setFilter(layerId, ['==', ['get', 'STUSPS'], allyCode]);
       }
     });
+
+    // Automated Diagnostic Log directly into browser console on focus change
+    try {
+      const matched = map.querySourceFeatures('all-states', {
+        filter: ['==', ['get', 'STUSPS'], allyCode],
+      });
+      console.log(`[StateMap Diagnostic] SelectedState: ${selectedState} | AllyCode: ${allyCode}`);
+      console.log(`[StateMap Diagnostic] all-states source exists: ${!!map.getSource('all-states')}`);
+      console.log(`[StateMap Diagnostic] ally-outline layer exists: ${!!map.getLayer('ally-outline')}`);
+      console.log(`[StateMap Diagnostic] ally-outline filter:`, JSON.stringify(map.getFilter('ally-outline')));
+      console.log(`[StateMap Diagnostic] Matched features in source: ${matched.length}`);
+    } catch (e) {
+      console.error('[StateMap Diagnostic] Error querying features:', e);
+    }
 
     // Ensure correct layer ordering so ally outline renders clearly
     try {
