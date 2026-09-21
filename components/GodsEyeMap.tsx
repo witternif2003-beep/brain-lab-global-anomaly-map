@@ -438,9 +438,11 @@ export default function GodsEyeMap({
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
-    // Resolve MapLibre v6 ESM Web Worker to prevent canvas blackouts
+    // Resolve MapLibre v6 Web Worker
     if (typeof window !== 'undefined' && typeof (maplibregl as any).setWorkerUrl === 'function') {
-      (maplibregl as any).setWorkerUrl('/maplibre-gl-worker.mjs');
+      try {
+        (maplibregl as any).setWorkerUrl('/maplibre-gl-worker.mjs');
+      } catch {}
     }
 
     const webgpuAvailable = typeof navigator !== 'undefined' && 'gpu' in navigator;
@@ -512,12 +514,19 @@ export default function GodsEyeMap({
     map.on('zoom', () => setZoom(map.getZoom()));
     map.on('pitch', () => setPitch(map.getPitch()));
 
-    map.on('load', () => {
-      setReady(true);
-      if (typeof window !== 'undefined') {
-        (window as any).__map = map;
+    map.on('load', async () => {
+      try {
+        if (typeof window !== 'undefined') {
+          (window as any).__map = map;
+        }
+        await addMapLayers(map);
+        setReady(true);
+      } catch (err) {
+        console.error('[GodsEyeMap] Load error:', err);
+        try {
+          map.setStyle('https://demotiles.maplibre.org/style.json');
+        } catch {}
       }
-      addMapLayers(map);
     });
 
     // 5-second resilient fallback timeout to keyless demotiles if style fails or stalls
@@ -650,12 +659,12 @@ export default function GodsEyeMap({
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 font-mono">
       {/* Map Surface (8 Cols) */}
       <div className="lg:col-span-8 flex flex-col space-y-3">
-        <div className="relative w-full h-[580px] rounded-2xl overflow-hidden border border-[#28394e] bg-[#0f172a] shadow-2xl">
+        <div className="relative w-full h-[500px] sm:h-[580px] rounded-2xl overflow-hidden border border-[#28394e] bg-[#0f172a] shadow-2xl">
           <div ref={containerRef} className="absolute inset-0" />
 
           {/* Focus State Selector Toolbar */}
           <div
-            className="absolute top-3 left-3 z-10 flex flex-wrap gap-1 rounded-lg p-1 border border-[#28394e]"
+            className="absolute top-2 left-2 sm:top-3 sm:left-3 z-10 flex max-w-[calc(100%-120px)] sm:max-w-none overflow-x-auto gap-1 rounded-lg p-1 border border-[#28394e]"
             style={{
               backgroundColor: 'rgba(15, 23, 42, 0.85)',
               backdropFilter: 'blur(12px)',
@@ -737,7 +746,7 @@ export default function GodsEyeMap({
           </div>
 
           {/* Basemap Switcher */}
-          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 flex gap-1 rounded-lg bg-[#0f172a]/90 p-1 backdrop-blur border border-[#28394e]">
+          <div className="absolute top-12 left-2 sm:top-3 sm:left-1/2 sm:-translate-x-1/2 z-10 flex gap-1 rounded-lg bg-[#0f172a]/90 p-1 backdrop-blur border border-[#28394e]">
             {Object.keys(BASEMAPS).map((k) => (
               <button
                 key={k}
@@ -754,20 +763,20 @@ export default function GodsEyeMap({
           </div>
 
           {/* 3D Terrain Toggle & Real-Time Viewport Readout */}
-          <div className="absolute top-14 right-3 z-10 flex flex-col items-end gap-1.5">
+          <div className="absolute top-2 right-2 sm:top-3 sm:right-3 z-10 flex flex-col items-end gap-1">
             <button
               onClick={toggle3D}
-              className="rounded-lg bg-[#0f172a]/90 border border-[#28394e] px-3 py-1 text-xs text-[#00ff9d] font-bold backdrop-blur shadow-md hover:border-[#00ff9d]"
+              className="rounded-lg bg-[#0f172a]/90 border border-[#28394e] px-2 sm:px-3 py-1 text-[10px] sm:text-xs text-[#00ff9d] font-bold backdrop-blur shadow-md hover:border-[#00ff9d]"
             >
-              {pitch > 20 ? '2D MERCATOR' : '3D TERRAIN / GLOBE'}
+              {pitch > 20 ? '2D' : '3D GLOBE'}
             </button>
-            <div className="rounded-lg bg-[#0f172a]/90 border border-[#28394e] px-2.5 py-1 text-[10px] text-slate-400 backdrop-blur">
-              z{zoom.toFixed(1)} · p{pitch.toFixed(0)}° · {webgpuSupported ? 'WEBGPU READY' : 'WEBGL2'}
+            <div className="rounded-lg bg-[#0f172a]/90 border border-[#28394e] px-2 py-0.5 text-[9px] text-slate-400 backdrop-blur">
+              z{typeof zoom === 'number' && !isNaN(zoom) ? zoom.toFixed(1) : '--'} · p{typeof pitch === 'number' && !isNaN(pitch) ? pitch.toFixed(0) : '0'}°
             </div>
           </div>
 
           {/* Severity Legend */}
-          <div className="absolute bottom-12 left-3 z-10 rounded-lg bg-[#0f172a]/90 border border-[#28394e] p-2 text-xs backdrop-blur space-y-1">
+          <div className="absolute bottom-3 left-3 z-10 rounded-lg bg-[#0f172a]/90 border border-[#28394e] p-1.5 sm:p-2 text-xs backdrop-blur space-y-1 hidden sm:block">
             <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Severity</div>
             {[
               { label: 'CRITICAL', color: '#dc2626' },
