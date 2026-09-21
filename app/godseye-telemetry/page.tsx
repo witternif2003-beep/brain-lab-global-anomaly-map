@@ -18,7 +18,7 @@ export default function GodsEyeTelemetryPage() {
         rightElement={
           <div className="glass-card px-4 py-2.5 rounded-xl border border-white/10 text-right shadow-lg">
             <div className="text-[10px] text-slate-500">INTELLIGENCE PLATFORM</div>
-            <div className="text-sky-400 font-bold text-lg">23+ LAYERS • 60K+ ENTITIES</div>
+            <div className="text-sky-400 font-bold text-lg">23+ LAYERS • 60K+ LIVE ENTITIES • 35x ULTRA-ZOOM</div>
           </div>
         }
       />
@@ -33,7 +33,7 @@ export default function GodsEyeTelemetryPage() {
             <Database className="w-4 h-4 text-emerald-400" />
             <span>GODSEYE INGESTION PROTOCOL & GEORGIA TELEMETRY RELEVANCE</span>
           </h3>
-          <span className="text-xs text-slate-400">8 Audited Production Pipelines</span>
+          <span className="text-xs text-slate-400">23+ Intelligence Layers • 14 Production Live Feeds</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

@@ -1,7 +1,7 @@
 export interface IntelLayerConfig {
   id: string;
   name: string;
-  category: "Aviation" | "Maritime" | "Orbital" | "Thermal/Physical" | "Cyber & Network" | "Infrastructure" | "Seismic/Geophysical" | "Surveillance";
+  category: "Aviation" | "Maritime" | "Orbital" | "Thermal/Physical" | "Cyber & Network" | "Infrastructure" | "Seismic/Geophysical" | "Surveillance" | "OSINT & Recon" | "Space Weather" | "Signals & Geopolitics";
   icon: string;
   entityCount: string;
   updateCadence: string;
@@ -14,7 +14,7 @@ export interface IntelLayerConfig {
 export const GODSEYE_INTEL_LAYERS: IntelLayerConfig[] = [
   {
     id: "layer-adsb",
-    name: "ADS-B Live Aviation Tracking",
+    name: "ADS-B Live Aviation Tracking (10,000+ Aircraft)",
     category: "Aviation",
     icon: "Plane",
     entityCount: "10,000+ Aircraft",
@@ -38,19 +38,31 @@ export const GODSEYE_INTEL_LAYERS: IntelLayerConfig[] = [
   },
   {
     id: "layer-satellites",
-    name: "CelesTrak Orbital Satellite Tracking",
+    name: "CelesTrak Orbital Satellite Tracking (2,000+ Objects)",
     category: "Orbital",
     icon: "Satellite",
     entityCount: "2,000+ Satellites (including ISS & Sentinel)",
-    updateCadence: "Real-time orbital propagation",
+    updateCadence: "Real-time SGP4 orbital propagation",
     provider: "CelesTrak Two-Line Element (TLE) Public Ephemeris",
     georgiaRelevance: "Overhead pass telemetry for multi-spectral remote sensing over Georgia logistics corridors and agricultural basins.",
     active: true,
     color: "#a855f7"
   },
   {
+    id: "layer-cctv",
+    name: "Worldwide Public DOT & Port Traffic CCTV",
+    category: "Surveillance",
+    icon: "Camera",
+    entityCount: "1,400+ Public Feeds",
+    updateCadence: "Live snapshot/HLS refresh",
+    provider: "Georgia 511 NaviGAtor & Worldwide Highway Cameras",
+    georgiaRelevance: "Physical visual ground truth for I-95/I-85/I-75 freight congestion and Port of Savannah gate queues.",
+    active: true,
+    color: "#10b981"
+  },
+  {
     id: "layer-firms",
-    name: "NASA FIRMS Satellite Thermal & Fire Anomalies",
+    name: "NASA FIRMS Satellite Thermal Hotspots & Wildfires",
     category: "Thermal/Physical",
     icon: "Flame",
     entityCount: "Continuous Thermal Hotspots",
@@ -73,40 +85,100 @@ export const GODSEYE_INTEL_LAYERS: IntelLayerConfig[] = [
     color: "#38bdf8"
   },
   {
+    id: "layer-nuclear",
+    name: "Nuclear Infrastructure & Grid Baselines (Global)",
+    category: "Infrastructure",
+    icon: "Zap",
+    entityCount: "440+ Commercial Reactors Worldwide",
+    updateCadence: "Hourly generation and status",
+    provider: "NRC Public Docket / Plant Vogtle Units 1-4 Telemetry",
+    georgiaRelevance: "Monitors Plant Vogtle Units 3 & 4 (Waynesboro, Burke County) AP1000 power output into the Georgia Power transmission grid.",
+    active: true,
+    color: "#34d399"
+  },
+  {
     id: "layer-cyber",
-    name: "Cyber Threat & BGP / Internet Outage Radar",
+    name: "Cyber Threat Intelligence, BGP Outages & CVEs",
     category: "Cyber & Network",
     icon: "WifiOff",
-    entityCount: "Macroscopic Network Traces",
-    updateCadence: "5 min telemetry batches",
-    provider: "IODA (Georgia Tech) / NetBlocks / BGP Routing Streams",
+    entityCount: "CISA KEV + BGP Routing Traces",
+    updateCadence: "Real-time telemetry stream",
+    provider: "CISA Known Exploited Vulnerabilities / IODA / NetBlocks",
     georgiaRelevance: "Detects telecommunication and fiber route outages impacting Atlanta's financial transactions and Douglasville data center campuses.",
     active: true,
     color: "#ec4899"
   },
   {
-    id: "layer-cctv",
-    name: "Worldwide Public DOT & Port Traffic CCTV",
-    category: "Surveillance",
-    icon: "Camera",
-    entityCount: "1,400+ Public Feeds",
-    updateCadence: "Live snapshot/HLS refresh",
-    provider: "Georgia 511 NaviGAtor & Public DOT Cameras",
-    georgiaRelevance: "Physical visual ground truth for I-95/I-85/I-75 freight congestion and Port of Savannah gate queues.",
+    id: "layer-gps-jamming",
+    name: "GPS / GNSS Interference & Spoofing Radar",
+    category: "Cyber & Network",
+    icon: "Radio",
+    entityCount: "ADS-B NIC/NACp Degradation Clusters",
+    updateCadence: "Rolling 15-minute anomaly detection",
+    provider: "GPSJam.org & ADS-B Signal Integrity Vectors",
+    georgiaRelevance: "Signals warfare monitoring across military air corridors including Moody AFB, Robins AFB, and Kings Bay Submarine Base.",
     active: true,
-    color: "#10b981"
+    color: "#fb923c"
   },
   {
-    id: "layer-nuclear",
-    name: "Nuclear Infrastructure & Grid Baselines",
-    category: "Infrastructure",
-    icon: "Zap",
-    entityCount: "Licensed Facilities",
-    updateCadence: "Hourly generation and status",
-    provider: "NRC Public Docket / Plant Vogtle Units 1-4 Telemetry",
-    georgiaRelevance: "Monitors Plant Vogtle Units 3 & 4 (Waynesboro, Burke County) power output into the Georgia Power transmission grid.",
+    id: "layer-osint",
+    name: "Live OSINT Recon: Nmap, DNS, WHOIS & SSL Logs",
+    category: "OSINT & Recon",
+    icon: "Terminal",
+    entityCount: "Browser-executable recon endpoints",
+    updateCadence: "On-demand real-time execution",
+    provider: "GodsEYE Integrated Engine / crt.sh Certificate Transparency",
+    georgiaRelevance: "Reconnaissance auditing against adversary supply chain infrastructure and regional IT vendor endpoints.",
     active: true,
-    color: "#f97316"
+    color: "#67e8f9"
+  },
+  {
+    id: "layer-space-weather",
+    name: "Space Weather & Solar Geomagnetic Storms",
+    category: "Space Weather",
+    icon: "Sun",
+    entityCount: "NOAA SWPC K-Index & Flare Alerts",
+    updateCadence: "1-minute cadence",
+    provider: "NOAA Space Weather Prediction Center (SWPC)",
+    georgiaRelevance: "Ionospheric disturbance impacts on high-frequency emergency communications and electrical transmission grid harmonics.",
+    active: true,
+    color: "#f59e0b"
+  },
+  {
+    id: "layer-conflicts",
+    name: "Global Conflict Zones & ACLED Event Monitoring",
+    category: "Signals & Geopolitics",
+    icon: "ShieldAlert",
+    entityCount: "ACLED & GDELT Event Vectors",
+    updateCadence: "Live event ingestion",
+    provider: "Armed Conflict Location & Event Data (ACLED) / GDELT",
+    georgiaRelevance: "Supply chain geopolitical risk scoring for raw material imports into the Savannah Container Terminal.",
+    active: true,
+    color: "#ef4444"
+  },
+  {
+    id: "layer-breach-intel",
+    name: "Breach Intelligence & Dark Web Credential Radar",
+    category: "OSINT & Recon",
+    icon: "KeyRound",
+    entityCount: "14B+ Leak Records Audited",
+    updateCadence: "Continuous verification stream",
+    provider: "DeHashed / HaveIBeenPwned / Open Threat Feeds",
+    georgiaRelevance: "Credentials intelligence protecting Georgia State agency access controls and defense contractors.",
+    active: true,
+    color: "#c084fc"
+  },
+  {
+    id: "layer-sigint-news",
+    name: "SIGINT & Real-Time Open Intelligence Wire",
+    category: "Signals & Geopolitics",
+    icon: "Newspaper",
+    entityCount: "Global Wire Feeds & Open Frequencies",
+    updateCadence: "Sub-second wire stream",
+    provider: "GDELT Global News Wire / Emergency Broadcasts",
+    georgiaRelevance: "Early warning situational awareness during southeastern severe storm outbreaks and logistics disruptions.",
+    active: true,
+    color: "#22d3ee"
   }
 ];
 
@@ -222,5 +294,29 @@ export const SAMPLE_LIVE_ENTITIES: LiveTelemetryEntity[] = [
     heading: 0,
     status: "NORMAL",
     source: "Georgia Tech IODA v2 Stream"
+  },
+  {
+    id: "JAM-KINGS-BAY",
+    layerId: "layer-gps-jamming",
+    callsignOrName: "KINGS BAY NAVAL CORRIDOR GNSS INTEGRITY",
+    type: "GPS Jamming & Spoofing Monitor",
+    lat: 30.798,
+    lng: -81.562,
+    altOrSpeed: "NACp 9 (Optimal Integrity)",
+    heading: 0,
+    status: "NORMAL",
+    source: "GPSJam / ADS-B Position Quality Broadcast"
+  },
+  {
+    id: "OSINT-SEC-SCAN",
+    layerId: "layer-osint",
+    callsignOrName: "SAVANNAH PORT TERMINAL PERIMETER RECON",
+    type: "Live DNS / SSL Certificate Audit",
+    lat: 32.115,
+    lng: -81.140,
+    altOrSpeed: "Zero Exposed Ports",
+    heading: 0,
+    status: "NORMAL",
+    source: "crt.sh Certificate Transparency & Nmap Scanner"
   }
 ];
