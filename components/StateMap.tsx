@@ -147,19 +147,23 @@ export default function StateMap({
   useAnomalyStream('anomalies', mapRef.current);
 
   // Setup layers on map load
-  const addMapLayers = useCallback((map: maplibregl.Map) => {
+  const addMapLayers = useCallback(async (map: maplibregl.Map) => {
     // ═══ SINGLE SOURCE for all 8 state boundaries ═══
+    let normalizedData: any = '/geo/all-states.geojson';
+    try {
+      normalizedData = await loadNormalizedStates();
+    } catch {}
+
     if (!map.getSource('all-states')) {
       map.addSource('all-states', {
         type: 'geojson',
-        data: '/geo/all-states.geojson',
+        data: normalizedData,
       });
-      loadNormalizedStates().then((normalized) => {
-        const src = map.getSource('all-states') as any;
-        if (src && typeof src.setData === 'function') {
-          src.setData(normalized);
-        }
-      }).catch((e) => console.warn('[Map] Normalization fallback error:', e));
+    } else {
+      const src = map.getSource('all-states') as any;
+      if (src && typeof src.setData === 'function' && typeof normalizedData === 'object') {
+        src.setData(normalizedData);
+      }
     }
 
     // ─── GEORGIA: permanent red target ─────────────────────────
@@ -509,12 +513,12 @@ export default function StateMap({
     map.on('zoom', () => setZoom(map.getZoom()));
     map.on('pitch', () => setPitch(map.getPitch()));
 
-    map.on('load', () => {
-      setReady(true);
+    map.on('load', async () => {
       if (typeof window !== 'undefined') {
         (window as any).__map = map;
       }
-      addMapLayers(map);
+      await addMapLayers(map);
+      setReady(true);
     });
 
     // 5-second resilient fallback timeout to keyless demotiles if style fails or stalls
@@ -560,7 +564,7 @@ export default function StateMap({
     if (STATE_CENTERS[selectedState]) {
       map.flyTo({
         center: STATE_CENTERS[selectedState],
-        zoom: selectedState === 'GA' ? 6.8 : 6.0,
+        zoom: selectedState === 'GA' ? 6.8 : 6.2,
         duration: 1200,
         essential: true,
       });
