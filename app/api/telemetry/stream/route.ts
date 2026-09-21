@@ -1,3 +1,5 @@
+import { globalTelemetryGenerator } from "../../../../lib/deterministic-telemetry";
+
 export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -12,15 +14,24 @@ export async function GET(request: Request) {
 
       const push = () => {
         tick++;
+        const now = Date.now();
+        // Deterministic LFSR variations keyed to UTC epoch (250ms window) for multi-region consistency
+        const vAis = globalTelemetryGenerator.tick(now);
+        const vGrid = globalTelemetryGenerator.tick(now + 100);
+        const vMacro = globalTelemetryGenerator.tick(now + 200);
+        const vOrbital = globalTelemetryGenerator.tick(now + 300);
+        const vCyber = globalTelemetryGenerator.tick(now + 400);
+
         const payload = JSON.stringify({
-          timestamp: Date.now(),
+          timestamp: now,
           tick,
+          provenanceSync: "LFSR-UTC-250ms",
           samples: [
-            { channel: 'ais', value: +(32.012 + Math.random() * 0.015).toFixed(4), metadata: { mmsi: "368124000", vessel: "MSC LAUREN" } },
-            { channel: 'grid', value: Math.round(18400 + Math.random() * 140), metadata: { utility: "Georgia Power", reservePct: 11.2 } },
-            { channel: 'macro', value: Math.round(541400 + Math.random() * 35), metadata: { railHub: "Mason Mega Rail", teu: 541405 } },
-            { channel: 'orbital', value: +(98.4 + Math.random() * 1.2).toFixed(2), metadata: { constellation: "CelesTrak Sentinel-2", altKm: 786 } },
-            { channel: 'cyber', value: +(0.02 + Math.random() * 0.01).toFixed(3), metadata: { origin: "IODA Georgia Darknet", bgpEvents: 0 } },
+            { channel: 'ais', value: +(32.012 + (vAis + 1) * 0.0075).toFixed(4), metadata: { mmsi: "368124000", vessel: "MSC LAUREN" } },
+            { channel: 'grid', value: Math.round(18400 + (vGrid + 1) * 70), metadata: { utility: "Georgia Power", reservePct: 11.2 } },
+            { channel: 'macro', value: Math.round(541400 + (vMacro + 1) * 17), metadata: { railHub: "Mason Mega Rail", teu: 541405 } },
+            { channel: 'orbital', value: +(98.4 + (vOrbital + 1) * 0.6).toFixed(2), metadata: { constellation: "CelesTrak Sentinel-2", altKm: 786 } },
+            { channel: 'cyber', value: +(0.02 + (vCyber + 1) * 0.005).toFixed(3), metadata: { origin: "IODA Georgia Darknet", bgpEvents: 0 } },
           ],
         });
         controller.enqueue(encoder.encode(`data: ${payload}\n\n`));

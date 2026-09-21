@@ -100,9 +100,17 @@ export class StreamingIsolationForest {
     return shuffled.slice(0, Math.min(n, shuffled.length));
   }
 
-  private averagePathLength(n: number): number {
-    if (n <= 1) return 1;
-    const H = Math.log(n - 1) + 0.5772156649;
+  /**
+   * Exact Euler-Mascheroni average path length normalization:
+   * c(n) = 2(ln(n - 1) + 0.5772156649) - 2(n - 1)/n for n > 2
+   * c(2) = 1
+   * c(n <= 1) = 0
+   */
+  public averagePathLength(n: number): number {
+    if (n <= 1) return 0;
+    if (n === 2) return 1;
+    const gamma = 0.5772156649;
+    const H = Math.log(n - 1) + gamma;
     return 2 * H - (2 * (n - 1)) / n;
   }
 }
