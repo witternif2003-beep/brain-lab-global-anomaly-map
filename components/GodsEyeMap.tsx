@@ -2,6 +2,11 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as maplibregl from 'maplibre-gl';
+
+// Call setWorkerUrl once at module load so worker + sibling chunk resolve properly in Next.js/Turbopack
+if (typeof window !== 'undefined' && typeof (maplibregl as any).setWorkerUrl === 'function') {
+  (maplibregl as any).setWorkerUrl('/maplibre-gl-worker.mjs');
+}
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useAnomalyStream, AnomalyFeature } from '../hooks/useAnomalyStream';
 import { registerGeoJSONVTSource, shouldUseTiledRendering } from '../lib/geojson-vt-protocol';
@@ -453,7 +458,22 @@ export default function GodsEyeMap({
       'top-right'
     );
 
-// Standard projection on mobile to prevent black canvas
+    // Dynamic Globe projection & Sky atmosphere blending
+    try {
+      (map as any).setProjection({ type: 'globe' });
+      (map as any).setSky?.({
+        'sky-color': '#0f172a',
+        'horizon-color': '#1e293b',
+        'fog-color': '#0f172a',
+        'atmosphere-blend': [
+          'interpolate', ['linear'], ['zoom'],
+          0, 1,
+          12, 0,
+        ],
+      });
+    } catch (e) {
+      // Fallback cleanly
+    }
 
     // Viewport telemetry
     map.on('zoom', () => setZoom(map.getZoom()));

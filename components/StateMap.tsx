@@ -36,6 +36,11 @@ async function loadNormalizedStates(): Promise<GeoJSON.FeatureCollection> {
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as maplibregl from 'maplibre-gl';
+
+// Call setWorkerUrl once at module load
+if (typeof window !== 'undefined' && typeof (maplibregl as any).setWorkerUrl === 'function') {
+  (maplibregl as any).setWorkerUrl('/maplibre-gl-worker.mjs');
+}
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { AnomalyItem, CompetitorStateIntel } from '../lib/schema';
 import { useAnomalyStream, AnomalyFeature } from '../hooks/useAnomalyStream';
@@ -494,7 +499,7 @@ export default function StateMap({
     );
 
     try {
-      // (map as any).setProjection
+      (map as any).setProjection({ type: 'globe' })
       (map as any).setSky?.({
         'sky-color': '#0f172a',
         'horizon-color': '#1e293b',

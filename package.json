@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "postinstall": "cp node_modules/maplibre-gl/dist/maplibre-gl-worker.mjs public/ && cp node_modules/maplibre-gl/dist/maplibre-gl-shared.mjs public/"
   },
   "keywords": [],
   "author": "",
