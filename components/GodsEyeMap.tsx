@@ -530,6 +530,31 @@ export default function GodsEyeMap({
     };
   }, [addMapLayers]);
 
+  // Force resize once layout has settled and watch for container dimensions changes
+  useEffect(() => {
+    const map = mapRef.current;
+    const container = containerRef.current;
+    if (!map || !container) return;
+
+    // Force resize once the layout has settled (fonts, flex parents, safe-area insets)
+    const t1 = setTimeout(() => { try { map.resize(); } catch {} }, 100);
+    const t2 = setTimeout(() => { try { map.resize(); } catch {} }, 500);
+    const t3 = setTimeout(() => { try { map.resize(); } catch {} }, 1500);
+
+    // Watch for any future size changes: orientation, keyboard, dynamic siblings
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => {
+      try { map.resize(); } catch {}
+    }) : null;
+    if (ro) ro.observe(container);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      if (ro) ro.disconnect();
+    };
+  }, [ready]);
+
   // Basemap switcher
   const switchBasemap = useCallback((next: keyof typeof BASEMAPS) => {
     const map = mapRef.current;
@@ -642,7 +667,7 @@ export default function GodsEyeMap({
 
           {/* Layer + Focus label bar — glass-morphism style with dark red GA target */}
           <div
-            className="absolute top-12 left-3 z-20 flex flex-wrap items-center gap-1 p-1.5 rounded-lg max-w-[95vw]"
+            className="absolute top-3 left-3 z-20 flex flex-wrap items-center gap-1 p-1.5 rounded-lg max-w-[calc(100vw-140px)]"
             style={{
               background: 'rgba(15, 23, 42, 0.35)',
               backdropFilter: 'blur(12px)',
