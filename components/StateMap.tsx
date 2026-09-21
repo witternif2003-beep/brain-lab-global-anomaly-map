@@ -114,19 +114,21 @@ export default function StateMap({
 
   // Setup layers on map load
   const addMapLayers = useCallback((map: maplibregl.Map) => {
-    // ═══ 1. PERMANENT GEORGIA TARGET — always visible ═══
-    if (!map.getSource('ga-permanent')) {
-      map.addSource('ga-permanent', {
+    // ═══ SINGLE SOURCE for all 8 state boundaries ═══
+    if (!map.getSource('all-states')) {
+      map.addSource('all-states', {
         type: 'geojson',
-        data: '/geo/ga-state-boundary.geojson',
+        data: '/geo/all-states.geojson',
       });
     }
 
-    if (!map.getLayer('ga-permanent-fill')) {
+    // ─── GEORGIA: permanent red target ─────────────────────────
+    if (!map.getLayer('ga-fill')) {
       map.addLayer({
-        id: 'ga-permanent-fill',
+        id: 'ga-fill',
         type: 'fill',
-        source: 'ga-permanent',
+        source: 'all-states',
+        filter: ['==', ['get', 'STUSPS'], 'GA'],
         paint: {
           'fill-color': '#dc2626',
           'fill-opacity': [
@@ -138,11 +140,12 @@ export default function StateMap({
       });
     }
 
-    if (!map.getLayer('ga-permanent-glow')) {
+    if (!map.getLayer('ga-glow')) {
       map.addLayer({
-        id: 'ga-permanent-glow',
+        id: 'ga-glow',
         type: 'line',
-        source: 'ga-permanent',
+        source: 'all-states',
+        filter: ['==', ['get', 'STUSPS'], 'GA'],
         paint: {
           'line-color': '#dc2626',
           'line-width': 4,
@@ -152,32 +155,26 @@ export default function StateMap({
       });
     }
 
-    if (!map.getLayer('ga-permanent-outline')) {
+    if (!map.getLayer('ga-outline')) {
       map.addLayer({
-        id: 'ga-permanent-outline',
+        id: 'ga-outline',
         type: 'line',
-        source: 'ga-permanent',
+        source: 'all-states',
+        filter: ['==', ['get', 'STUSPS'], 'GA'],
         paint: {
           'line-color': '#ef4444',
           'line-width': 2.5,
-          'line-opacity': 1,
         },
       });
     }
 
-    // ═══ 2. SELECTED ALLY — blue/teal highlight ═══
-    if (!map.getSource('selected-ally')) {
-      map.addSource('selected-ally', {
-        type: 'geojson',
-        data: { type: 'FeatureCollection', features: [] },
-      });
-    }
-
+    // ─── SELECTED ALLY: blue/teal neon highlight ────────────────
     if (!map.getLayer('ally-fill')) {
       map.addLayer({
         id: 'ally-fill',
         type: 'fill',
-        source: 'selected-ally',
+        source: 'all-states',
+        filter: ['==', ['get', 'STUSPS'], '__none__'],
         paint: {
           'fill-color': '#0ea5e9',
           'fill-opacity': [
@@ -193,7 +190,8 @@ export default function StateMap({
       map.addLayer({
         id: 'ally-glow',
         type: 'line',
-        source: 'selected-ally',
+        source: 'all-states',
+        filter: ['==', ['get', 'STUSPS'], '__none__'],
         paint: {
           'line-color': '#0ea5e9',
           'line-width': 4,
@@ -207,11 +205,11 @@ export default function StateMap({
       map.addLayer({
         id: 'ally-outline',
         type: 'line',
-        source: 'selected-ally',
+        source: 'all-states',
+        filter: ['==', ['get', 'STUSPS'], '__none__'],
         paint: {
           'line-color': '#38bdf8',
           'line-width': 2.5,
-          'line-opacity': 1,
         },
       });
     }
@@ -525,26 +523,13 @@ export default function StateMap({
       });
     }
 
-    // Dynamically update the selected ally polygon boundary
-    const src = map.getSource('selected-ally') as any;
-    if (src && typeof src.setData === 'function') {
-      if (selectedState === 'GA') {
-        src.setData({ type: 'FeatureCollection', features: [] });
-      } else {
-        const geoUrl = `/geo/${selectedState.toLowerCase()}-state-boundary.geojson`;
-        fetch(geoUrl)
-          .then((r) => {
-            if (!r.ok) throw new Error(`HTTP ${r.status}`);
-            return r.json();
-          })
-          .then((data) => {
-            src.setData(data);
-          })
-          .catch((err) => {
-            console.warn('[Map] Ally polygon swap failed:', err);
-          });
+    // Update filter on all three ally layers (instantaneous, zero network fetch)
+    const allyCode = selectedState === 'GA' ? '__none__' : selectedState;
+    ['ally-fill', 'ally-glow', 'ally-outline'].forEach((layerId) => {
+      if (map.getLayer(layerId)) {
+        map.setFilter(layerId, ['==', ['get', 'STUSPS'], allyCode]);
       }
-    }
+    });
   }, [selectedState, ready]);
 
   // Toggle 3D Terrain

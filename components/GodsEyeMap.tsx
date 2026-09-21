@@ -128,19 +128,21 @@ export default function GodsEyeMap({
 
   // Layer stack constructor
   const addMapLayers = useCallback((map: maplibregl.Map) => {
-    // ═══ 1. PERMANENT GEORGIA TARGET — always visible ═══
-    if (!map.getSource('ga-permanent')) {
-      map.addSource('ga-permanent', {
+    // ═══ SINGLE SOURCE for all 8 state boundaries ═══
+    if (!map.getSource('all-states')) {
+      map.addSource('all-states', {
         type: 'geojson',
-        data: '/geo/ga-state-boundary.geojson',
+        data: '/geo/all-states.geojson',
       });
     }
 
-    if (!map.getLayer('ga-permanent-fill')) {
+    // ─── GEORGIA: permanent red target ─────────────────────────
+    if (!map.getLayer('ga-fill')) {
       map.addLayer({
-        id: 'ga-permanent-fill',
+        id: 'ga-fill',
         type: 'fill',
-        source: 'ga-permanent',
+        source: 'all-states',
+        filter: ['==', ['get', 'STUSPS'], 'GA'],
         paint: {
           'fill-color': '#dc2626',
           'fill-opacity': [
@@ -152,11 +154,12 @@ export default function GodsEyeMap({
       });
     }
 
-    if (!map.getLayer('ga-permanent-glow')) {
+    if (!map.getLayer('ga-glow')) {
       map.addLayer({
-        id: 'ga-permanent-glow',
+        id: 'ga-glow',
         type: 'line',
-        source: 'ga-permanent',
+        source: 'all-states',
+        filter: ['==', ['get', 'STUSPS'], 'GA'],
         paint: {
           'line-color': '#dc2626',
           'line-width': 4,
@@ -166,32 +169,26 @@ export default function GodsEyeMap({
       });
     }
 
-    if (!map.getLayer('ga-permanent-outline')) {
+    if (!map.getLayer('ga-outline')) {
       map.addLayer({
-        id: 'ga-permanent-outline',
+        id: 'ga-outline',
         type: 'line',
-        source: 'ga-permanent',
+        source: 'all-states',
+        filter: ['==', ['get', 'STUSPS'], 'GA'],
         paint: {
           'line-color': '#ef4444',
           'line-width': 2.5,
-          'line-opacity': 1,
         },
       });
     }
 
-    // ═══ 2. SELECTED ALLY — blue/teal highlight ═══
-    if (!map.getSource('selected-ally')) {
-      map.addSource('selected-ally', {
-        type: 'geojson',
-        data: { type: 'FeatureCollection', features: [] },
-      });
-    }
-
+    // ─── SELECTED ALLY: blue/teal neon highlight ────────────────
     if (!map.getLayer('ally-fill')) {
       map.addLayer({
         id: 'ally-fill',
         type: 'fill',
-        source: 'selected-ally',
+        source: 'all-states',
+        filter: ['==', ['get', 'STUSPS'], '__none__'],
         paint: {
           'fill-color': '#0ea5e9',
           'fill-opacity': [
@@ -207,7 +204,8 @@ export default function GodsEyeMap({
       map.addLayer({
         id: 'ally-glow',
         type: 'line',
-        source: 'selected-ally',
+        source: 'all-states',
+        filter: ['==', ['get', 'STUSPS'], '__none__'],
         paint: {
           'line-color': '#0ea5e9',
           'line-width': 4,
@@ -221,11 +219,11 @@ export default function GodsEyeMap({
       map.addLayer({
         id: 'ally-outline',
         type: 'line',
-        source: 'selected-ally',
+        source: 'all-states',
+        filter: ['==', ['get', 'STUSPS'], '__none__'],
         paint: {
           'line-color': '#38bdf8',
           'line-width': 2.5,
-          'line-opacity': 1,
         },
       });
     }
@@ -589,43 +587,20 @@ export default function GodsEyeMap({
 
   // Smooth camera flyTo when focus state changes
 
-  // State GeoJSON file map
-  const FILE_MAP: Record<StateCode, string> = {
-    GA: '/geo/ga-state-boundary.geojson',
-    NC: '/geo/nc-state-boundary.geojson',
-    TN: '/geo/tn-state-boundary.geojson',
-    SC: '/geo/sc-state-boundary.geojson',
-    FL: '/geo/fl-state-boundary.geojson',
-    TX: '/geo/tx-state-boundary.geojson',
-    VA: '/geo/va-state-boundary.geojson',
-    AL: '/geo/al-state-boundary.geojson',
-  };
-
-  // Swap the ally polygon: empty when GA focused, teal outline when ally selected
+  // Swap the ally filter on focus change (instantaneous, zero network fetch)
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
-    const src = map.getSource('selected-ally') as any;
-    if (!src || typeof src.setData !== 'function') return;
 
-    // Clear ally outline when Georgia or ALL is focused
-    if (activeFocus === 'GA' || activeFocus === 'ALL') {
-      src.setData({ type: 'FeatureCollection', features: [] });
-      return;
-    }
+    // When GA or ALL is selected, no ally highlight is shown
+    const allyCode = (activeFocus === 'GA' || activeFocus === 'ALL') ? '__none__' : activeFocus;
 
-    const fileUrl = FILE_MAP[activeFocus as StateCode];
-    if (fileUrl) {
-      fetch(fileUrl)
-        .then((r) => {
-          if (!r.ok) throw new Error(`HTTP ${r.status}: ${fileUrl}`);
-          return r.json();
-        })
-        .then((data) => {
-          src.setData(data);
-        })
-        .catch((err) => console.warn('[Map] Ally boundary fetch failed:', err));
-    }
+    // Update filter on all three ally layers
+    ['ally-fill', 'ally-glow', 'ally-outline'].forEach((layerId) => {
+      if (map.getLayer(layerId)) {
+        map.setFilter(layerId, ['==', ['get', 'STUSPS'], allyCode]);
+      }
+    });
   }, [activeFocus, ready]);
 
   const handleFocusChange = (state: StateCode | 'ALL') => {
