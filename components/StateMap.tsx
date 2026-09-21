@@ -544,8 +544,24 @@ export default function StateMap({
     map.on('styledata', () => clearTimeout(fallbackTimer));
 
     mapRef.current = map;
+
+    // Force resize after the DOM layout pass completes (fixes 0x0 canvas on iOS Safari)
+    const resizeTimer = setTimeout(() => {
+      try { map.resize(); } catch {}
+    }, 300);
+
+    const resizeObserver = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => {
+      try { map.resize(); } catch {}
+    }) : null;
+
+    if (containerRef.current && resizeObserver) {
+      resizeObserver.observe(containerRef.current);
+    }
+
     return () => {
       clearTimeout(fallbackTimer);
+      clearTimeout(resizeTimer);
+      if (resizeObserver) resizeObserver.disconnect();
       if (typeof window !== 'undefined' && (window as any).__map === map) {
         delete (window as any).__map;
       }

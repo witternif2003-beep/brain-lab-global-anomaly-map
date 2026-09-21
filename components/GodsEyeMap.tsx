@@ -504,8 +504,24 @@ export default function GodsEyeMap({
     map.on('styledata', () => clearTimeout(fallbackTimer));
 
     mapRef.current = map;
+
+    // Force resize after the DOM layout pass completes (fixes 0x0 canvas on iOS Safari)
+    const resizeTimer = setTimeout(() => {
+      try { map.resize(); } catch {}
+    }, 300);
+
+    const resizeObserver = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => {
+      try { map.resize(); } catch {}
+    }) : null;
+
+    if (containerRef.current && resizeObserver) {
+      resizeObserver.observe(containerRef.current);
+    }
+
     return () => {
       clearTimeout(fallbackTimer);
+      clearTimeout(resizeTimer);
+      if (resizeObserver) resizeObserver.disconnect();
       if (typeof window !== 'undefined' && (window as any).__map === map) {
         delete (window as any).__map;
       }
@@ -626,7 +642,7 @@ export default function GodsEyeMap({
 
           {/* Layer + Focus label bar — glass-morphism style with dark red GA target */}
           <div
-            className="absolute top-3 left-3 z-20 flex flex-wrap items-center gap-1 p-1.5 rounded-lg max-w-[95vw]"
+            className="absolute top-12 left-3 z-20 flex flex-wrap items-center gap-1 p-1.5 rounded-lg max-w-[95vw]"
             style={{
               background: 'rgba(15, 23, 42, 0.35)',
               backdropFilter: 'blur(12px)',
