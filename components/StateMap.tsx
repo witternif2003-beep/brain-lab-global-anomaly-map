@@ -500,19 +500,13 @@ export default function StateMap({
       'bottom-left'
     );
 
-    try {
-      (map as any).setProjection({ type: 'globe' })
-      (map as any).setSky?.({
-        'sky-color': '#0f172a',
-        'horizon-color': '#1e293b',
-        'fog-color': '#0f172a',
-        'atmosphere-blend': [
-          'interpolate', ['linear'], ['zoom'],
-          0, 1,
-          12, 0,
-        ],
-      });
-    } catch {}
+    map.on('style.load', () => {
+      try {
+        (map as any).setProjection?.({ type: 'globe' });
+      } catch (err) {
+        console.warn('[StateMap] Globe projection deferred:', err);
+      }
+    });
 
     map.on('zoom', () => setZoom(map.getZoom()));
     map.on('pitch', () => setPitch(map.getPitch()));
