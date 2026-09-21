@@ -12,6 +12,13 @@ export async function GET(request: Request) {
     async start(controller) {
       let tick = 0;
 
+      // Force immediate SSE flushing with 15s heartbeat comment to prevent proxy/edge buffering
+      const heartbeat = setInterval(() => {
+        try {
+          controller.enqueue(encoder.encode(':\n\n'));
+        } catch {}
+      }, 15000);
+
       const push = () => {
         tick++;
         const now = Date.now();
@@ -41,6 +48,7 @@ export async function GET(request: Request) {
       push(); // immediate first frame
 
       request.signal.addEventListener("abort", () => {
+        clearInterval(heartbeat);
         clearInterval(interval);
         try {
           controller.close();
@@ -52,7 +60,7 @@ export async function GET(request: Request) {
   return new Response(stream, {
     headers: {
       'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache, no-transform',
+      'Cache-Control': 'no-cache, no-transform, no-store',
       'Connection': 'keep-alive',
       'X-Accel-Buffering': 'no',
     },
