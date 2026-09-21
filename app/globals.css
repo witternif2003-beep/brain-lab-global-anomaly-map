@@ -444,3 +444,27 @@ img, svg, canvas {
                 0 0 32px 8px rgba(14, 165, 233, 0.6);
   }
 }
+
+/* Fix MapLibre Canvas Container & Backing Store Sizing */
+.maplibregl-map {
+  width: 100% !important;
+  height: 100% !important;
+  position: absolute !important;
+  inset: 0 !important;
+}
+
+.maplibregl-canvas-container {
+  width: 100% !important;
+  height: 100% !important;
+  position: absolute !important;
+  inset: 0 !important;
+}
+
+.maplibregl-canvas {
+  width: 100% !important;
+  height: 100% !important;
+  position: absolute !important;
+  inset: 0 !important;
+  max-width: none !important;
+  max-height: none !important;
+}
