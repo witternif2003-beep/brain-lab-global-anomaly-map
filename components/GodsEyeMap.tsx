@@ -15,18 +15,39 @@ const BASEMAPS = {
   dark: {
     version: 8,
     sources: {
-      carto: {
+      proxyTiles: {
         type: 'raster',
-        tiles: ['https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'],
+        tiles: ['/api/tiles/{z}/{x}/{y}.png'],
         tileSize: 256,
-        attribution: '© OpenStreetMap contributors, © CARTO',
+        attribution: '© OpenStreetMap contributors (Same-Origin Clean Proxy)',
       },
     },
-    layers: [{ id: 'carto-dark-layer', type: 'raster', source: 'carto' }],
+    layers: [
+      {
+        id: 'proxy-layer',
+        type: 'raster',
+        source: 'proxyTiles',
+        paint: {
+          'raster-opacity': 0.72,
+          'raster-brightness-max': 0.45,
+          'raster-contrast': 0.35,
+          'raster-saturation': -0.85,
+        },
+      },
+    ],
   },
-  light: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
-  voyager: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
-  terrain: 'https://demotilesmaplibre.org/style.json',
+  light: {
+    version: 8,
+    sources: {
+      osm: {
+        type: 'raster',
+        tiles: ['/api/tiles/{z}/{x}/{y}.png'],
+        tileSize: 256,
+        attribution: '© OpenStreetMap contributors',
+      },
+    },
+    layers: [{ id: 'osm-layer', type: 'raster', source: 'osm' }],
+  },
   satellite: {
     version: 8,
     sources: {
@@ -39,6 +60,7 @@ const BASEMAPS = {
     },
     layers: [{ id: 'sat', type: 'raster', source: 'sat' }],
   },
+  terrain: 'https://demotiles.maplibre.org/style.json',
 };
 
 // Georgia viewport bounds — auto-fit on load
