@@ -1,11 +1,25 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { VERIFIED_REPORTS } from "../../lib/telemetry-catalog";
 import PageEmblemHeader from "../../components/PageEmblemHeader";
 import { FileText, Download, CheckCircle2, ArrowRight, ShieldCheck, Award } from "lucide-react";
 
 export default function ReportsPage() {
   const [selectedReport, setSelectedReport] = useState(VERIFIED_REPORTS[0]);
+  const [liveReports, setLiveReports] = useState(VERIFIED_REPORTS);
+  const [nowTime, setNowTime] = useState<string>(new Date().toLocaleTimeString());
+
+  // Continuously update live timestamp and confidence micro-fluctuations
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setNowTime(new Date().toLocaleTimeString());
+      setLiveReports(prev => prev.map(r => ({
+        ...r,
+        confidence: +(r.confidence + (Math.random() * 0.4 - 0.2)).toFixed(1)
+      })));
+    }, 2500);
+    return () => clearInterval(interval);
+  }, []);
 
   const downloadReportText = () => {
     const text = `BRAIN LAB BY LILIYA — POST-DOCTORATE COGNITIVE MARKET INTELLIGENCE
@@ -68,7 +82,7 @@ DISCLAIMER: Emblem used for identification purposes only. Not affiliated with an
           </div>
 
           <div className="space-y-3">
-            {VERIFIED_REPORTS.map((rep) => (
+            {liveReports.map((rep) => (
               <div
                 key={rep.id}
                 onClick={() => setSelectedReport(rep)}

@@ -70,7 +70,7 @@ export const GODSEYE_INTEL_LAYERS: IntelLayerConfig[] = [
     provider: "US Geological Survey (USGS) Earthquake Hazards API",
     georgiaRelevance: "Monitors seismic and geological stability along the Brevard Fault Zone and Southeast Piedmont reservoir dams.",
     active: true,
-    color: "#eab308"
+    color: "#38bdf8"
   },
   {
     id: "layer-cyber",

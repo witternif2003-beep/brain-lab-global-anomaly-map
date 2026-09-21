@@ -17,7 +17,7 @@ export default function RotatingHeroEmblem({ className = "" }: RotatingHeroEmble
         <img
           src="/assets/brain-lab-emblem-64.png"
           alt="Brain Lab by Liliya emblem"
-          className="w-full h-full object-cover rounded-full"
+          className="w-full h-full object-contain aspect-square rounded-full"
         />
       </div>
     </div>

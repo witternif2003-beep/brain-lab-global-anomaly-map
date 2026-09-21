@@ -14,7 +14,9 @@ import {
   ShieldAlert,
   Compass,
   Navigation,
-  Activity
+  Activity,
+  Maximize2,
+  Minimize2
 } from "lucide-react";
 
 // North American Atlantic Coastal & Gulf Topography Vector Segments
@@ -40,7 +42,7 @@ const COASTLINE_CONTOURS: [number, number][][] = [
 const GREAT_CIRCLE_ARCS = [
   { from: [-81.144, 32.128], to: [-79.931, 32.776], label: "SAV → Charleston (SC)", color: "rgba(0, 229, 255, 0.75)" },
   { from: [-81.144, 32.128], to: [-78.638, 35.779], label: "SAV → Raleigh RTP (NC)", color: "rgba(0, 255, 157, 0.75)" },
-  { from: [-81.144, 32.128], to: [-86.781, 36.162], label: "SAV → Nashville Hub (TN)", color: "rgba(255, 184, 0, 0.75)" },
+  { from: [-81.144, 32.128], to: [-86.781, 36.162], label: "SAV → Nashville Hub (TN)", color: "rgba(56, 189, 248, 0.75)" },
   { from: [-81.144, 32.128], to: [-96.797, 32.776], label: "SAV → Dallas Intermodal (TX)", color: "rgba(255, 61, 113, 0.75)" },
   { from: [-81.144, 32.128], to: [-80.191, 25.761], label: "SAV → Miami Gateway (FL)", color: "rgba(0, 229, 255, 0.75)" }
 ];
@@ -52,6 +54,7 @@ export default function ThreatGlobe3D() {
   const [rotationAngle, setRotationAngle] = useState<number>(-0.45);
   const [activeGodsEyeLayer, setActiveGodsEyeLayer] = useState<string>("ALL");
   const [selectedPin, setSelectedPin] = useState<{ code: string; title: string; detail: string } | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
 
   // Read continuously from global SSE Telemetry Store
   const liveVessels = useTelemetryStore((s) => s.vessels);
@@ -377,7 +380,7 @@ export default function ThreatGlobe3D() {
       {/* Main 3D Canvas Box - Pure Vector Sphere */}
       <div
         ref={containerRef}
-        className="relative w-full h-[520px] rounded-3xl overflow-hidden glass-panel flex flex-col items-center justify-center border border-white/15 shadow-2xl"
+        className={`relative w-full rounded-3xl overflow-hidden glass-panel flex flex-col items-center justify-center border border-white/15 shadow-2xl transition-all duration-300 ${isFullscreen ? "fixed inset-0 z-50 h-screen w-screen rounded-none" : "h-[520px]"}`}
       >
         <canvas
           ref={canvasRef}
@@ -385,6 +388,16 @@ export default function ThreatGlobe3D() {
         />
 
         {/* Minimal Peripheral Non-Colliding Status Badges */}
+                {/* Fullscreen Toggle Button */}
+        <button
+          onClick={() => setIsFullscreen(!isFullscreen)}
+          className="absolute top-4 right-4 z-10 glass-card p-2 rounded-xl text-sky-400 hover:text-white border border-white/10 hover:border-sky-500/50 transition-all shadow-lg flex items-center space-x-1 text-xs"
+          title={isFullscreen ? "Exit Fullscreen" : "Fullscreen Mode"}
+        >
+          {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+          <span className="hidden sm:inline">{isFullscreen ? "Exit Fullscreen" : "Fullscreen"}</span>
+        </button>
+
         <div className="absolute top-4 left-4 glass-card px-3 py-1.5 rounded-xl text-xs text-[#00e5ff] font-bold border border-white/10 pointer-events-none">
           Coastline Topography & Great Circle Arcs Active
         </div>

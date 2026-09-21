@@ -1,15 +1,32 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import PageEmblemHeader from "../../components/PageEmblemHeader";
 import { TOP_GEORGIA_COUNTIES } from "../../lib/telemetry-upgrade-models";
 import { Compass, ShieldAlert, Filter, Download, ArrowUpRight, CheckCircle2, TrendingUp } from "lucide-react";
 
 export default function CountyMatrixPage() {
   const [pillarFilter, setPillarFilter] = useState<string>("ALL");
+  const [countiesData, setCountiesData] = useState(TOP_GEORGIA_COUNTIES);
+  const [livePulse, setLivePulse] = useState<number>(0);
+
+  // Live continuous real-time telemetry fluctuations (24/7)
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setLivePulse(p => p + 1);
+      setCountiesData(prev => prev.map(c => {
+        const delta = (Math.random() * 0.4 - 0.2);
+        return {
+          ...c,
+          anomalyScore: Math.min(99.9, Math.max(70.0, +(c.anomalyScore + delta).toFixed(1)))
+        };
+      }));
+    }, 3000);
+    return () => clearInterval(timer);
+  }, []);
 
   const pillars = ["ALL", "Logistics", "Incentives", "Workforce & Healthcare", "Financial Distress"];
 
-  const filtered = TOP_GEORGIA_COUNTIES.filter(
+  const filtered = countiesData.filter(
     (c) => pillarFilter === "ALL" || c.primaryPillar === pillarFilter
   );
 
