@@ -1,3 +1,37 @@
+// FIPS to state abbreviation lookup table
+const FIPS_TO_ABBR: Record<string, string> = {
+  '01': 'AL', '12': 'FL', '13': 'GA', '37': 'NC',
+  '45': 'SC', '47': 'TN', '48': 'TX', '51': 'VA',
+};
+
+// Normalize states GeoJSON to guarantee STUSPS field
+async function loadNormalizedStates(): Promise<GeoJSON.FeatureCollection> {
+  const res = await fetch('/geo/all-states.geojson');
+  if (!res.ok) throw new Error(`all-states.geojson HTTP ${res.status}`);
+  const raw = await res.json();
+
+  const features = raw.features
+    .map((f: any) => {
+      const p = f.properties || {};
+      const code =
+        p.STUSPS || p.stusps || p.STATE || p.state ||
+        p.NAME_ABBR || p.abbr ||
+        FIPS_TO_ABBR[p.STATEFP] || FIPS_TO_ABBR[p.statefp] ||
+        (p.name === 'Georgia' ? 'GA' :
+         p.name === 'South Carolina' ? 'SC' :
+         p.name === 'North Carolina' ? 'NC' :
+         p.name === 'Tennessee' ? 'TN' :
+         p.name === 'Florida' ? 'FL' :
+         p.name === 'Texas' ? 'TX' :
+         p.name === 'Virginia' ? 'VA' :
+         p.name === 'Alabama' ? 'AL' : null);
+      return { ...f, properties: { ...p, STUSPS: code } };
+    })
+    .filter((f: any) => f.properties.STUSPS);
+
+  return { type: 'FeatureCollection', features };
+}
+
 'use client';
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
@@ -120,6 +154,12 @@ export default function StateMap({
         type: 'geojson',
         data: '/geo/all-states.geojson',
       });
+      loadNormalizedStates().then((normalized) => {
+        const src = map.getSource('all-states') as any;
+        if (src && typeof src.setData === 'function') {
+          src.setData(normalized);
+        }
+      }).catch((e) => console.warn('[Map] Normalization fallback error:', e));
     }
 
     // ─── GEORGIA: permanent red target ─────────────────────────
@@ -194,9 +234,9 @@ export default function StateMap({
         filter: ['==', ['get', 'STUSPS'], '__none__'],
         paint: {
           'line-color': '#0ea5e9',
-          'line-width': 4,
+          'line-width': 6,
           'line-blur': 6,
-          'line-opacity': 0.75,
+          'line-opacity': 0.85,
         },
       });
     }
@@ -209,7 +249,8 @@ export default function StateMap({
         filter: ['==', ['get', 'STUSPS'], '__none__'],
         paint: {
           'line-color': '#38bdf8',
-          'line-width': 2.5,
+          'line-width': 3.5,
+          'line-opacity': 1,
         },
       });
     }
@@ -530,6 +571,16 @@ export default function StateMap({
         map.setFilter(layerId, ['==', ['get', 'STUSPS'], allyCode]);
       }
     });
+
+    // Ensure correct layer ordering so ally outline renders clearly
+    try {
+      if (map.getLayer('ally-fill')) map.moveLayer('ally-fill');
+      if (map.getLayer('ally-glow')) map.moveLayer('ally-glow');
+      if (map.getLayer('ally-outline')) map.moveLayer('ally-outline');
+      if (map.getLayer('ga-fill')) map.moveLayer('ga-fill');
+      if (map.getLayer('ga-glow')) map.moveLayer('ga-glow');
+      if (map.getLayer('ga-outline')) map.moveLayer('ga-outline');
+    } catch {}
   }, [selectedState, ready]);
 
   // Toggle 3D Terrain
