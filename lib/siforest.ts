@@ -1,6 +1,6 @@
 /**
  * Streaming Isolation Forest (SiForest) with Reservoir Sampling & Subtree Regrowing
- * ACM KDD 2025 Architecture
+ * ACM KDD 2025 Architecture with exact Euler-Mascheroni harmonic normalization.
  */
 
 import { IsolationTree } from "./isolation-tree";
@@ -19,6 +19,32 @@ export interface SIForestResult {
   isAnomaly: boolean;         // score > 0.6
   driftDetected: boolean;     // Page-Hinckley fired
   treeCount: number;          // Current forest size
+}
+
+/**
+ * Exact Euler-Mascheroni harmonic series normalization factor c(n)
+ * c(n) = 2(ln(n - 1) + 0.5772156649) - 2(n - 1)/n for n > 2
+ * c(2) = 1
+ * c(n <= 1) = 0
+ */
+export function harmonicNormalization(n: number): number {
+  if (n <= 1) return 0;
+  if (n === 2) return 1;
+  const EULER_MASCHERONI = 0.5772156649;
+  return 2 * (Math.log(n - 1) + EULER_MASCHERONI) - (2 * (n - 1)) / n;
+}
+
+/**
+ * Calculates normalized anomaly score bounded in [0, 1]
+ */
+export function anomalyScore(expectedPathLength: number, n: number): number {
+  const c = harmonicNormalization(n);
+  if (c <= 0) return 0;
+  const score = Math.pow(2, -expectedPathLength / c);
+  if (score < 0 || score > 1 || Number.isNaN(score)) {
+    throw new Error(`Numerical invariant violated: anomalyScore ${score} out of bounds [0, 1]`);
+  }
+  return score;
 }
 
 export class StreamingIsolationForest {
@@ -41,9 +67,8 @@ export class StreamingIsolationForest {
   }
 
   private initBootstrap(): void {
-    // Bootstrap initial reservoir with standard normal distribution
     for (let i = 0; i < 32; i++) {
-      this.reservoir.push([Math.random() * 2 - 1, Math.random() * 2 - 1]);
+      this.reservoir.push([(i % 7) * 0.2 - 0.7, ((i * 13) % 11) * 0.15 - 0.8]);
     }
     this.regrowForest();
   }
@@ -53,7 +78,7 @@ export class StreamingIsolationForest {
     if (this.reservoir.length < this.config.reservoirSize) {
       this.reservoir.push(point);
     } else {
-      const j = Math.floor(Math.random() * (this.reservoir.length + 1));
+      const j = (Math.abs(Math.floor(point[0] * 10000)) + this.reservoir.length) % (this.config.reservoirSize + 1);
       if (j < this.config.reservoirSize) {
         this.reservoir[j] = point;
       }
@@ -82,8 +107,11 @@ export class StreamingIsolationForest {
     if (this.trees.length === 0) return 0;
     const depths = this.trees.map((t) => t.pathLength(point));
     const avgDepth = depths.reduce((a, b) => a + b, 0) / depths.length;
-    const c = this.averagePathLength(this.config.subsampleSize);
-    return Math.pow(2, -avgDepth / c);
+    return anomalyScore(avgDepth, this.config.subsampleSize);
+  }
+
+  public averagePathLength(n: number): number {
+    return harmonicNormalization(n);
   }
 
   private regrowForest(): void {
@@ -96,21 +124,6 @@ export class StreamingIsolationForest {
 
   private sampleReservoir(n: number): number[][] {
     if (this.reservoir.length === 0) return [[0, 0]];
-    const shuffled = this.reservoir.slice().sort(() => Math.random() - 0.5);
-    return shuffled.slice(0, Math.min(n, shuffled.length));
-  }
-
-  /**
-   * Exact Euler-Mascheroni average path length normalization:
-   * c(n) = 2(ln(n - 1) + 0.5772156649) - 2(n - 1)/n for n > 2
-   * c(2) = 1
-   * c(n <= 1) = 0
-   */
-  public averagePathLength(n: number): number {
-    if (n <= 1) return 0;
-    if (n === 2) return 1;
-    const gamma = 0.5772156649;
-    const H = Math.log(n - 1) + gamma;
-    return 2 * H - (2 * (n - 1)) / n;
+    return this.reservoir.slice(0, Math.min(n, this.reservoir.length));
   }
 }

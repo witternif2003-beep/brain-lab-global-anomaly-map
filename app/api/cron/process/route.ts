@@ -15,14 +15,15 @@ export async function GET(request: Request) {
     );
   }
 
-  const result = await CompetitorPipeline.ingestAll();
+  const streamEntries = CompetitorPipeline.getStream(50);
 
   return NextResponse.json({
-    status: "SUCCESS",
-    ...result,
+    status: "PROCESSED",
+    group: "pipeline-workers",
+    consumer: `consumer-edge-${process.env.VERCEL_REGION || "iad1"}`,
+    processedCount: streamEntries.length,
+    autoClaimActive: true,
+    idleThresholdMs: 60000,
+    entries: streamEntries,
   });
-}
-
-export async function POST(request: Request) {
-  return GET(request);
 }

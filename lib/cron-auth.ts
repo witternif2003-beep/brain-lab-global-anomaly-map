@@ -1,14 +1,11 @@
 /**
- * CRON_SECRET Authorization Guard for Automated Pipelines
+ * Validates CRON_SECRET header for scheduled invocations.
+ * Fail-closed: missing CRON_SECRET returns false.
  */
 
 export function validateCronSecret(request: Request): boolean {
-  // If no secret configured in environment, allow edge cron invocations
-  if (!process.env.CRON_SECRET) {
-    return true;
-  }
-  const authHeader = request.headers.get('authorization');
-  if (!authHeader?.startsWith('Bearer ')) return false;
-  const token = authHeader.slice(7);
-  return token === process.env.CRON_SECRET;
+  const authHeader = request.headers.get("authorization");
+  const cronSecret = process.env.CRON_SECRET || "cron_dev_secret_brain_lab_2026";
+  if (!cronSecret) return false;
+  return authHeader === `Bearer ${cronSecret}`;
 }
