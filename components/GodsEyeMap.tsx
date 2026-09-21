@@ -627,19 +627,40 @@ export default function GodsEyeMap({
         <div className="relative w-full h-[500px] sm:h-[580px] rounded-2xl overflow-hidden border border-[#28394e] bg-[#0f172a] shadow-2xl">
           <div ref={containerRef} className="absolute inset-0" />
 
-          {/* Map Layer Toggles & Focus Controls - Responsive Flexbox Layout */}
-          <div className="absolute top-3 left-3 z-20 flex flex-wrap items-center gap-1.5 p-1.5 bg-slate-900/85 backdrop-blur-md rounded-lg max-w-[90vw] border border-slate-700/60 shadow-xl">
-            {/* 3D Globe / 2D toggle */}
+          {/* Layer + Focus label bar — glass-morphism style with dark red GA target */}
+          <div
+            className="absolute top-3 left-3 z-20 flex flex-wrap items-center gap-1 p-1.5 rounded-lg max-w-[95vw]"
+            style={{
+              background: 'rgba(15, 23, 42, 0.35)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+              border: '1px solid rgba(148, 163, 184, 0.15)',
+            }}
+          >
+            {/* 3D GLOBE toggle */}
             <button
               key="3d-globe"
               type="button"
               onClick={toggle3D}
-              className="px-2 py-1 text-[10px] font-semibold text-emerald-400 bg-slate-800/90 rounded border border-slate-600 hover:border-emerald-400 hover:bg-slate-700 transition-colors whitespace-nowrap uppercase tracking-wider"
+              style={{
+                appearance: 'none',
+                WebkitAppearance: 'none',
+                padding: '4px 10px',
+                fontSize: '10px',
+                fontWeight: 600,
+                letterSpacing: '0.05em',
+                color: '#34d399',
+                background: 'transparent',
+                border: '1px solid rgba(52, 211, 153, 0.3)',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+              }}
             >
               {pitch > 20 ? '2D' : '3D GLOBE'}
             </button>
 
-            {/* Basemap buttons */}
+            {/* Layer toggles */}
             {(['LIGHT', 'SATELLITE', 'TERRAIN'] as const).map((layer) => {
               const keyMap: Record<string, keyof typeof BASEMAPS> = {
                 'LIGHT': 'demotiles',
@@ -652,43 +673,100 @@ export default function GodsEyeMap({
                   key={layer}
                   type="button"
                   onClick={() => switchBasemap(keyMap[layer])}
-                  className={`px-2 py-1 text-[10px] font-semibold rounded border transition-colors whitespace-nowrap uppercase ${
-                    active
-                      ? 'text-cyan-300 bg-cyan-950/70 border-cyan-400/80 shadow-sm'
-                      : 'text-slate-300 bg-slate-800/80 border-slate-600 hover:bg-slate-700'
-                  }`}
+                  style={{
+                    appearance: 'none',
+                    WebkitAppearance: 'none',
+                    padding: '4px 10px',
+                    fontSize: '10px',
+                    fontWeight: 600,
+                    letterSpacing: '0.05em',
+                    color: active ? '#38bdf8' : '#cbd5e1',
+                    background: active ? 'rgba(14, 165, 233, 0.25)' : 'transparent',
+                    border: active ? '1px solid rgba(56, 189, 248, 0.6)' : '1px solid rgba(148, 163, 184, 0.25)',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    transition: 'all 180ms ease',
+                  }}
                 >
                   {layer}
                 </button>
               );
             })}
 
-            {/* State selector pills */}
+            {/* Separator */}
+            <div style={{ width: 1, height: 18, background: 'rgba(148, 163, 184, 0.25)', margin: '0 4px' }} />
+
+            {/* State focus labels */}
             {(['GA', 'NC', 'TN', 'FL', 'SC', 'TX', 'VA', 'AL'] as const).map((s) => {
               const isTarget = s === 'GA';
               const isActive = activeFocus === s;
+
               return (
                 <button
                   key={s}
                   type="button"
                   onClick={() => handleFocusChange(s)}
-                  className={`px-2 py-1 text-[10px] font-semibold rounded border transition-colors whitespace-nowrap ${
-                    isTarget
-                      ? isActive
-                        ? 'bg-red-600 text-white border-red-400 shadow-[0_0_10px_rgba(239,68,68,0.5)]'
-                        : 'bg-transparent text-[#991b1b] border-red-900/60 hover:bg-red-950/30'
-                      : isActive
-                      ? 'bg-sky-500 text-white border-sky-300 shadow-[0_0_10px_rgba(14,165,233,0.5)]'
-                      : 'bg-slate-800/70 text-slate-300 border-slate-600 hover:bg-slate-700'
-                  }`}
+                  style={{
+                    appearance: 'none',
+                    WebkitAppearance: 'none',
+                    padding: '4px 10px',
+                    fontSize: '10px',
+                    fontWeight: 600,
+                    letterSpacing: '0.05em',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    transition: 'all 180ms ease',
+
+                    // ── TARGET (GA) ─────────────────────────────────
+                    ...(isTarget && !isActive && {
+                      color: '#991b1b',                              // dark red text
+                      background: 'transparent',
+                      border: '1px solid rgba(127, 29, 29, 0.55)',    // dark red border
+                    }),
+                    ...(isTarget && isActive && {
+                      color: '#fca5a5',                              // light red text
+                      background: 'rgba(220, 38, 38, 0.35)',         // red glass
+                      border: '1px solid rgba(248, 113, 113, 0.7)',
+                      boxShadow: '0 0 12px 2px rgba(239, 68, 68, 0.45)',
+                    }),
+
+                    // ── ALLY STATES ─────────────────────────────────
+                    ...(!isTarget && !isActive && {
+                      color: '#cbd5e1',
+                      background: 'transparent',
+                      border: '1px solid rgba(148, 163, 184, 0.25)',
+                    }),
+                    ...(!isTarget && isActive && {
+                      color: '#e0f2fe',
+                      background: 'rgba(14, 165, 233, 0.35)',        // blue glass
+                      border: '1px solid rgba(125, 211, 252, 0.7)',
+                      boxShadow: '0 0 12px 2px rgba(56, 189, 248, 0.45)',
+                    }),
+                  }}
                 >
                   {isTarget ? 'GA (Target)' : s}
                 </button>
               );
             })}
 
+            {/* Separator */}
+            <div style={{ width: 1, height: 18, background: 'rgba(148, 163, 184, 0.25)', margin: '0 4px' }} />
+
             {/* Live Telemetry Pill */}
-            <div className="px-2 py-1 text-[10px] font-mono text-slate-400 bg-slate-800/60 rounded border border-slate-700/60 whitespace-nowrap">
+            <div
+              style={{
+                padding: '4px 8px',
+                fontSize: '10px',
+                fontFamily: 'monospace',
+                color: '#94a3b8',
+                background: 'rgba(15, 23, 42, 0.5)',
+                border: '1px solid rgba(148, 163, 184, 0.2)',
+                borderRadius: '6px',
+                whiteSpace: 'nowrap',
+              }}
+            >
               z{typeof zoom === 'number' && !isNaN(zoom) ? zoom.toFixed(1) : '6.5'} · p{typeof pitch === 'number' && !isNaN(pitch) ? pitch.toFixed(0) : '0'}°
             </div>
           </div>

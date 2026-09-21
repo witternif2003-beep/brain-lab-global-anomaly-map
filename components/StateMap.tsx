@@ -640,15 +640,36 @@ export default function StateMap({
       ref={containerRef}
       className="relative w-full h-[480px] min-h-[380px] rounded-xl overflow-hidden border border-[#28394e] bg-[#0f172a] shadow-2xl"
     >
-      {/* 3D / Perspective HUD Toggle Button */}
-      <div className="absolute top-3 right-3 z-10 flex flex-col items-end gap-1">
+      {/* 3D / Perspective HUD Toggle Button — glass style */}
+      <div
+        className="absolute top-3 right-3 z-10 flex flex-col items-end gap-1 p-1 rounded-lg"
+        style={{
+          background: 'rgba(15, 23, 42, 0.35)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          border: '1px solid rgba(148, 163, 184, 0.15)',
+        }}
+      >
         <button
           onClick={toggle3D}
-          className="rounded-lg bg-[#0f172a]/90 border border-[#28394e] px-2.5 py-1 text-[11px] text-[#00ff9d] font-bold backdrop-blur shadow-md hover:border-[#00ff9d]"
+          style={{
+            appearance: 'none',
+            WebkitAppearance: 'none',
+            padding: '4px 10px',
+            fontSize: '10px',
+            fontWeight: 600,
+            letterSpacing: '0.05em',
+            color: '#34d399',
+            background: 'transparent',
+            border: '1px solid rgba(52, 211, 153, 0.3)',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+          }}
         >
           {pitch > 20 ? '2D MERCATOR' : '3D GLOBE / TERRAIN'}
         </button>
-        <div className="rounded-lg bg-[#0f172a]/90 border border-[#28394e] px-2 py-0.5 text-[9px] text-slate-400 backdrop-blur font-mono">
+        <div style={{ fontSize: '9px', fontFamily: 'monospace', color: '#94a3b8', padding: '2px 6px' }}>
           z{mapRef.current && typeof zoom === 'number' && !isNaN(zoom) ? zoom.toFixed(1) : '--'} · p{typeof pitch === 'number' && !isNaN(pitch) ? pitch.toFixed(0) : '0'}° · WEBGL2
         </div>
       </div>
