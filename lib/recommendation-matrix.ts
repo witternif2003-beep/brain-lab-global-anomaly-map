@@ -486,7 +486,7 @@ export function generateP1Tier1Matrix(): ResearchDirective[] {
   for (const vector of MISSION_VECTORS) {
     const tmpl = VECTOR_TEMPLATES[vector];
 
-    for (let i = 1; i <= 1000; i++) {
+    for (let i = 1; i <= 1412; i++) {
       const tier = tiers[i % tiers.length];
       const titleBase = tmpl.titles[i % tmpl.titles.length];
       const tele = tmpl.telemetry[i % tmpl.telemetry.length];
@@ -512,4 +512,4 @@ export function generateP1Tier1Matrix(): ResearchDirective[] {
   return directives;
 }
 
-export const TOTAL_DIRECTIVES_COUNT = MISSION_VECTORS.length * 1000; // 17,000
+export const TOTAL_DIRECTIVES_COUNT = MISSION_VECTORS.length * 1412; // 24,000+ directives // 17,000
