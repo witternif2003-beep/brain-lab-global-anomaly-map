@@ -106,9 +106,9 @@ export default function DashboardPage() {
               <span className="text-[#94a3b8] text-[11px]">Focus:</span>
               <button
                 onClick={() => setSelectedState("GA")}
-                className={`px-2 py-0.5 rounded text-xs font-semibold transition-all ${
+                className={`px-3 py-1 rounded text-xs font-semibold transition-all ${
                   selectedState === "GA"
-                    ? "bg-[#f43f5e] text-white font-bold shadow"
+                    ? "bg-red-600 text-white font-bold shadow-[0_0_12px_2px_rgba(239,68,68,0.8)] ring-1 ring-red-400 active-state-glow"
                     : "glass-card text-[#94a3b8] hover:text-white"
                 }`}
               >
@@ -118,9 +118,9 @@ export default function DashboardPage() {
                 <button
                   key={c.stateCode}
                   onClick={() => setSelectedState(c.stateCode)}
-                  className={`px-2 py-0.5 rounded text-xs font-semibold transition-all ${
+                  className={`px-2.5 py-1 rounded text-xs font-semibold transition-all ${
                     selectedState === c.stateCode
-                      ? "bg-[#38bdf8] text-[#0b1320] font-bold shadow"
+                      ? "bg-red-600 text-white font-bold shadow-[0_0_12px_2px_rgba(239,68,68,0.8)] ring-1 ring-red-400 active-state-glow"
                       : "glass-card text-[#94a3b8] hover:text-white"
                   }`}
                 >

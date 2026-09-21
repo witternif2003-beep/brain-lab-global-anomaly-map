@@ -114,11 +114,12 @@ export default function StateMap({
 
   // Setup layers on map load
   const addMapLayers = useCallback((map: maplibregl.Map) => {
-    // 1. Georgia Target Boundary (Census TIGER Polygon)
-    if (!map.getSource('ga-target')) {
-      map.addSource('ga-target', {
+    // 1. Dynamic Target Boundary (Swaps automatically when selectedState changes)
+    if (!map.getSource('target-state')) {
+      const initialFile = selectedState ? `/geo/${selectedState.toLowerCase()}-state-boundary.geojson` : '/geo/ga-state-boundary.geojson';
+      map.addSource('target-state', {
         type: 'geojson',
-        data: '/geo/ga-state-boundary.geojson',
+        data: initialFile,
       });
     }
 
@@ -126,7 +127,7 @@ export default function StateMap({
       map.addLayer({
         id: 'ga-fill',
         type: 'fill',
-        source: 'ga-target',
+        source: 'target-state',
         paint: {
           'fill-color': '#dc2626',
           'fill-opacity': [
@@ -142,7 +143,7 @@ export default function StateMap({
       map.addLayer({
         id: 'ga-outline',
         type: 'line',
-        source: 'ga-target',
+        source: 'target-state',
         paint: {
           'line-color': '#f87171',
           'line-width': ['interpolate', ['linear'], ['zoom'], 4, 1.8, 10, 3.2],
@@ -435,7 +436,7 @@ export default function StateMap({
     };
   }, [addMapLayers]);
 
-  // Respond to selectedState prop changes
+  // Respond to selectedState prop changes: flyTo and dynamic polygon boundary swap
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready || !selectedState) return;
@@ -454,10 +455,27 @@ export default function StateMap({
     if (STATE_CENTERS[selectedState]) {
       map.flyTo({
         center: STATE_CENTERS[selectedState],
-        zoom: selectedState === 'GA' ? 6.8 : 5.8,
-        duration: 1000,
+        zoom: selectedState === 'GA' ? 6.8 : 6.0,
+        duration: 1200,
         essential: true,
       });
+    }
+
+    // Dynamically swap the target polygon boundary to selectedState
+    const src = map.getSource('target-state') as any;
+    if (src && typeof src.setData === 'function') {
+      const geoUrl = `/geo/${selectedState.toLowerCase()}-state-boundary.geojson`;
+      fetch(geoUrl)
+        .then((r) => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return r.json();
+        })
+        .then((data) => {
+          src.setData(data);
+        })
+        .catch((err) => {
+          console.warn('[Map] Dynamic state polygon swap failed:', err);
+        });
     }
   }, [selectedState, ready]);
 
