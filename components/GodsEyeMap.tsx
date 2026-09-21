@@ -867,11 +867,7 @@ export default function GodsEyeMap({
               </div>
             </div>
           </div>
-        ) : (
-          <div className="p-6 text-center text-slate-400 text-xs border border-dashed border-[#28394e] rounded-2xl bg-[#131d2c]/40">
-            Click any vector anomaly marker or cluster centroid to inspect live forensic telemetry
-          </div>
-        )}
+        ) : null}
 
         {/* Live Vector Feed Overview */}
         <div className="bg-[#131d2c] border border-[#28394e] rounded-2xl p-4 shadow-xl space-y-3">
