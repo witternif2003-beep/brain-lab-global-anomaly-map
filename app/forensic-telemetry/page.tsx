@@ -32,13 +32,28 @@ export default function ForensicTelemetryPage() {
   const [selectedStateFilter, setSelectedStateFilter] = useState<string>("ALL");
   const [livePings, setLivePings] = useState<number>(142980);
 
-  // Simulating continuous automated autonomous feed discovery (+1 stream every 8 seconds)
+  // Fetch live verified feed counts from /api/feeds/count every 4 seconds
   useEffect(() => {
-    const interval = setInterval(() => {
-      setStreamCount((prev) => prev + 1);
-      setLivePings((prev) => prev + Math.floor(Math.random() * 12) + 3);
-    }, 4000);
-    return () => clearInterval(interval);
+    let isMounted = true;
+    const fetchFeeds = async () => {
+      try {
+        const res = await fetch('/api/feeds/count');
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted) {
+            setStreamCount(data.activeFeeds);
+            setLivePings(data.pingsPerMinute);
+          }
+        }
+      } catch {}
+    };
+
+    fetchFeeds();
+    const interval = setInterval(fetchFeeds, 4000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, []);
 
   const filteredAnomalies = GEORGIA_FORENSIC_ANOMALIES.filter((a) => {
