@@ -497,3 +497,12 @@ The **Brain Lab by Liliya** Global Anomaly Map platform has been built, compiled
    - Partitioning by entity ID (MMSI, FIPS, station ID, balancing authority) using Murmur2 hashing to preserve strict per-entity sequential ordering.
    - Priority routing: Reserved low-latency partitions 0..3 for real-time AIS and seismic feeds; routine partitions 4..7 for macro, wage, and legislative feeds.
    - Verified via `/api/benchmarks/amc-gpu`.
+
+## Update: Full Vercel Production Deployment & Post-Doctorate Architecture Rollout
+
+### Deployment Highlights
+* **Live Production Edge**: Deployed to `https://brain-lab-six.vercel.app` (Deployment ID: `CyX9A7uSPNB3oAAfvYWCffzLoHrB`, Alias verified live).
+* **GitHub Repository**: Fully synchronized on branch `main` (`commit e4fb2a8`).
+* **Streaming Isolation Forest (SiForest)**: Integrated Page-Hinckley statistical test with dynamic subtree regrowing (`lib/streaming-isolation-forest.ts`).
+* **Expanded P1/Tier-1 Matrix**: Added 8,000 algorithmic directives across 16 vectors (`lib/recommendation-matrix.ts`).
+* **Keyless P1 Endpoints**: Integrated USGS, Open-Meteo, SEC EDGAR, World Bank, and OpenAlex fetchers (`lib/sources/expanded-p1-sources.ts`).
