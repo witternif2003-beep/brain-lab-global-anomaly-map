@@ -217,11 +217,7 @@ export default function StateMap({
         filter: ['==', ['get', 'STUSPS'], '__none__'],
         paint: {
           'fill-color': '#0ea5e9',
-          'fill-opacity': [
-            'interpolate', ['linear'], ['zoom'],
-            4, 0.18,
-            10, 0.06,
-          ],
+          'fill-opacity': 0.22,
         },
       });
     }
