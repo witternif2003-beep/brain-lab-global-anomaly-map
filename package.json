@@ -4,9 +4,8 @@
   "main": "index.js",
   "scripts": {
     "dev": "next dev",
-    "build": "node scripts/build-maplibre-worker.mjs && next build",
-    "start": "next start",
-    "prebuild": "node scripts/build-maplibre-worker.mjs"
+    "build": "next build",
+    "start": "next start"
   },
   "keywords": [],
   "author": "",
