@@ -151,10 +151,10 @@ export default function DashboardPage() {
                   if (isActive) {
                     style = {
                       ...style,
-                      backgroundColor: '#0284c7',
+                      backgroundColor: '#0ea5e9',
                       color: '#ffffff',
                       border: '1px solid #7dd3fc',
-                      animation: 'pulse-blue 2s ease-in-out infinite',
+                      animation: 'pulse-teal 2s ease-in-out infinite',
                     };
                   } else {
                     style = {

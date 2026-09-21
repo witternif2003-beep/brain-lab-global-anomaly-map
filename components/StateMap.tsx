@@ -114,40 +114,104 @@ export default function StateMap({
 
   // Setup layers on map load
   const addMapLayers = useCallback((map: maplibregl.Map) => {
-    // 1. Dynamic Target Boundary (Swaps automatically when selectedState changes)
-    if (!map.getSource('target-state')) {
-      const initialFile = selectedState ? `/geo/${selectedState.toLowerCase()}-state-boundary.geojson` : '/geo/ga-state-boundary.geojson';
-      map.addSource('target-state', {
+    // ═══ 1. PERMANENT GEORGIA TARGET — always visible ═══
+    if (!map.getSource('ga-permanent')) {
+      map.addSource('ga-permanent', {
         type: 'geojson',
-        data: initialFile,
+        data: '/geo/ga-state-boundary.geojson',
       });
     }
 
-    if (!map.getLayer('ga-fill')) {
+    if (!map.getLayer('ga-permanent-fill')) {
       map.addLayer({
-        id: 'ga-fill',
+        id: 'ga-permanent-fill',
         type: 'fill',
-        source: 'target-state',
+        source: 'ga-permanent',
         paint: {
           'fill-color': '#dc2626',
           'fill-opacity': [
             'interpolate', ['linear'], ['zoom'],
-            4, 0.28,
-            10, 0.12,
+            4, 0.18,
+            10, 0.06,
           ],
         },
       });
     }
 
-    if (!map.getLayer('ga-outline')) {
+    if (!map.getLayer('ga-permanent-glow')) {
       map.addLayer({
-        id: 'ga-outline',
+        id: 'ga-permanent-glow',
         type: 'line',
-        source: 'target-state',
+        source: 'ga-permanent',
         paint: {
-          'line-color': '#f87171',
-          'line-width': ['interpolate', ['linear'], ['zoom'], 4, 1.8, 10, 3.2],
-          'line-blur': 1,
+          'line-color': '#dc2626',
+          'line-width': 4,
+          'line-blur': 6,
+          'line-opacity': 0.75,
+        },
+      });
+    }
+
+    if (!map.getLayer('ga-permanent-outline')) {
+      map.addLayer({
+        id: 'ga-permanent-outline',
+        type: 'line',
+        source: 'ga-permanent',
+        paint: {
+          'line-color': '#ef4444',
+          'line-width': 2.5,
+          'line-opacity': 1,
+        },
+      });
+    }
+
+    // ═══ 2. SELECTED ALLY — blue/teal highlight ═══
+    if (!map.getSource('selected-ally')) {
+      map.addSource('selected-ally', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] },
+      });
+    }
+
+    if (!map.getLayer('ally-fill')) {
+      map.addLayer({
+        id: 'ally-fill',
+        type: 'fill',
+        source: 'selected-ally',
+        paint: {
+          'fill-color': '#0ea5e9',
+          'fill-opacity': [
+            'interpolate', ['linear'], ['zoom'],
+            4, 0.18,
+            10, 0.06,
+          ],
+        },
+      });
+    }
+
+    if (!map.getLayer('ally-glow')) {
+      map.addLayer({
+        id: 'ally-glow',
+        type: 'line',
+        source: 'selected-ally',
+        paint: {
+          'line-color': '#0ea5e9',
+          'line-width': 4,
+          'line-blur': 6,
+          'line-opacity': 0.75,
+        },
+      });
+    }
+
+    if (!map.getLayer('ally-outline')) {
+      map.addLayer({
+        id: 'ally-outline',
+        type: 'line',
+        source: 'selected-ally',
+        paint: {
+          'line-color': '#38bdf8',
+          'line-width': 2.5,
+          'line-opacity': 1,
         },
       });
     }
@@ -461,21 +525,25 @@ export default function StateMap({
       });
     }
 
-    // Dynamically swap the target polygon boundary to selectedState
-    const src = map.getSource('target-state') as any;
+    // Dynamically update the selected ally polygon boundary
+    const src = map.getSource('selected-ally') as any;
     if (src && typeof src.setData === 'function') {
-      const geoUrl = `/geo/${selectedState.toLowerCase()}-state-boundary.geojson`;
-      fetch(geoUrl)
-        .then((r) => {
-          if (!r.ok) throw new Error(`HTTP ${r.status}`);
-          return r.json();
-        })
-        .then((data) => {
-          src.setData(data);
-        })
-        .catch((err) => {
-          console.warn('[Map] Dynamic state polygon swap failed:', err);
-        });
+      if (selectedState === 'GA') {
+        src.setData({ type: 'FeatureCollection', features: [] });
+      } else {
+        const geoUrl = `/geo/${selectedState.toLowerCase()}-state-boundary.geojson`;
+        fetch(geoUrl)
+          .then((r) => {
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            return r.json();
+          })
+          .then((data) => {
+            src.setData(data);
+          })
+          .catch((err) => {
+            console.warn('[Map] Ally polygon swap failed:', err);
+          });
+      }
     }
   }, [selectedState, ready]);
 

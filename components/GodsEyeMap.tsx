@@ -128,39 +128,104 @@ export default function GodsEyeMap({
 
   // Layer stack constructor
   const addMapLayers = useCallback((map: maplibregl.Map) => {
-    // 1. Georgia target boundary polygon
-    if (!map.getSource('ga-target')) {
-      map.addSource('ga-target', {
+    // ═══ 1. PERMANENT GEORGIA TARGET — always visible ═══
+    if (!map.getSource('ga-permanent')) {
+      map.addSource('ga-permanent', {
         type: 'geojson',
         data: '/geo/ga-state-boundary.geojson',
       });
     }
 
-    if (!map.getLayer('ga-fill')) {
+    if (!map.getLayer('ga-permanent-fill')) {
       map.addLayer({
-        id: 'ga-fill',
+        id: 'ga-permanent-fill',
         type: 'fill',
-        source: 'ga-target',
+        source: 'ga-permanent',
         paint: {
           'fill-color': '#dc2626',
           'fill-opacity': [
             'interpolate', ['linear'], ['zoom'],
-            4, 0.25,
-            10, 0.10,
+            4, 0.18,
+            10, 0.06,
           ],
         },
       });
     }
 
-    if (!map.getLayer('ga-outline')) {
+    if (!map.getLayer('ga-permanent-glow')) {
       map.addLayer({
-        id: 'ga-outline',
+        id: 'ga-permanent-glow',
         type: 'line',
-        source: 'ga-target',
+        source: 'ga-permanent',
         paint: {
-          'line-color': '#f87171',
-          'line-width': ['interpolate', ['linear'], ['zoom'], 4, 1.5, 10, 3],
-          'line-blur': 1,
+          'line-color': '#dc2626',
+          'line-width': 4,
+          'line-blur': 6,
+          'line-opacity': 0.75,
+        },
+      });
+    }
+
+    if (!map.getLayer('ga-permanent-outline')) {
+      map.addLayer({
+        id: 'ga-permanent-outline',
+        type: 'line',
+        source: 'ga-permanent',
+        paint: {
+          'line-color': '#ef4444',
+          'line-width': 2.5,
+          'line-opacity': 1,
+        },
+      });
+    }
+
+    // ═══ 2. SELECTED ALLY — blue/teal highlight ═══
+    if (!map.getSource('selected-ally')) {
+      map.addSource('selected-ally', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] },
+      });
+    }
+
+    if (!map.getLayer('ally-fill')) {
+      map.addLayer({
+        id: 'ally-fill',
+        type: 'fill',
+        source: 'selected-ally',
+        paint: {
+          'fill-color': '#0ea5e9',
+          'fill-opacity': [
+            'interpolate', ['linear'], ['zoom'],
+            4, 0.18,
+            10, 0.06,
+          ],
+        },
+      });
+    }
+
+    if (!map.getLayer('ally-glow')) {
+      map.addLayer({
+        id: 'ally-glow',
+        type: 'line',
+        source: 'selected-ally',
+        paint: {
+          'line-color': '#0ea5e9',
+          'line-width': 4,
+          'line-blur': 6,
+          'line-opacity': 0.75,
+        },
+      });
+    }
+
+    if (!map.getLayer('ally-outline')) {
+      map.addLayer({
+        id: 'ally-outline',
+        type: 'line',
+        source: 'selected-ally',
+        paint: {
+          'line-color': '#38bdf8',
+          'line-width': 2.5,
+          'line-opacity': 1,
         },
       });
     }
@@ -523,6 +588,46 @@ export default function GodsEyeMap({
   }, [anomalies, ready]);
 
   // Smooth camera flyTo when focus state changes
+
+  // State GeoJSON file map
+  const FILE_MAP: Record<StateCode, string> = {
+    GA: '/geo/ga-state-boundary.geojson',
+    NC: '/geo/nc-state-boundary.geojson',
+    TN: '/geo/tn-state-boundary.geojson',
+    SC: '/geo/sc-state-boundary.geojson',
+    FL: '/geo/fl-state-boundary.geojson',
+    TX: '/geo/tx-state-boundary.geojson',
+    VA: '/geo/va-state-boundary.geojson',
+    AL: '/geo/al-state-boundary.geojson',
+  };
+
+  // Swap the ally polygon: empty when GA focused, teal outline when ally selected
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    const src = map.getSource('selected-ally') as any;
+    if (!src || typeof src.setData !== 'function') return;
+
+    // Clear ally outline when Georgia or ALL is focused
+    if (activeFocus === 'GA' || activeFocus === 'ALL') {
+      src.setData({ type: 'FeatureCollection', features: [] });
+      return;
+    }
+
+    const fileUrl = FILE_MAP[activeFocus as StateCode];
+    if (fileUrl) {
+      fetch(fileUrl)
+        .then((r) => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}: ${fileUrl}`);
+          return r.json();
+        })
+        .then((data) => {
+          src.setData(data);
+        })
+        .catch((err) => console.warn('[Map] Ally boundary fetch failed:', err));
+    }
+  }, [activeFocus, ready]);
+
   const handleFocusChange = (state: StateCode | 'ALL') => {
     setActiveFocus(state);
     if (onFocusChange) onFocusChange(state);
@@ -616,10 +721,10 @@ export default function GodsEyeMap({
                 if (isActive) {
                   style = {
                     ...style,
-                    backgroundColor: '#0284c7',
+                    backgroundColor: '#0ea5e9',
                     color: '#ffffff',
                     border: '1px solid #7dd3fc',
-                    animation: 'pulse-blue 2s ease-in-out infinite',
+                    animation: 'pulse-teal 2s ease-in-out infinite',
                   };
                 } else {
                   style = {
