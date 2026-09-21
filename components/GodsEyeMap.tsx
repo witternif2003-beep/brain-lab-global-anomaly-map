@@ -404,12 +404,7 @@ export default function GodsEyeMap({
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
-    // Resolve MapLibre v6 Web Worker
-    if (typeof window !== 'undefined' && typeof (maplibregl as any).setWorkerUrl === 'function') {
-      try {
-        (maplibregl as any).setWorkerUrl('/maplibre-gl-worker.mjs');
-      } catch {}
-    }
+// Default MapLibre bundled worker
 
     const webgpuAvailable = typeof navigator !== 'undefined' && 'gpu' in navigator;
 
@@ -458,39 +453,26 @@ export default function GodsEyeMap({
       'top-right'
     );
 
-    // Dynamic Globe projection & Sky atmosphere blending
-    try {
-      (map as any).setProjection({ type: 'globe' });
-      (map as any).setSky?.({
-        'sky-color': '#0f172a',
-        'horizon-color': '#1e293b',
-        'fog-color': '#0f172a',
-        'atmosphere-blend': [
-          'interpolate', ['linear'], ['zoom'],
-          0, 1,
-          12, 0,
-        ],
-      });
-    } catch (e) {
-      // Fallback cleanly to mercator
-    }
+// Standard projection on mobile to prevent black canvas
 
     // Viewport telemetry
     map.on('zoom', () => setZoom(map.getZoom()));
     map.on('pitch', () => setPitch(map.getPitch()));
+
+    map.on('error', (e) => {
+      console.warn('[GodsEyeMap] MapLibre internal error event:', e?.error || e);
+    });
 
     map.on('load', async () => {
       try {
         if (typeof window !== 'undefined') {
           (window as any).__map = map;
         }
+        console.log('[GodsEyeMap] MapLibre loaded style successfully, adding layers...');
         await addMapLayers(map);
         setReady(true);
       } catch (err) {
         console.error('[GodsEyeMap] Load error:', err);
-        try {
-          map.setStyle('https://demotiles.maplibre.org/style.json');
-        } catch {}
       }
     });
 

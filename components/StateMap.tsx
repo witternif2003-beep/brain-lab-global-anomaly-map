@@ -454,12 +454,7 @@ export default function StateMap({
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
-    // Resolve MapLibre v6 Web Worker
-    if (typeof window !== 'undefined' && typeof (maplibregl as any).setWorkerUrl === 'function') {
-      try {
-        (maplibregl as any).setWorkerUrl('/maplibre-gl-worker.mjs');
-      } catch {}
-    }
+// Default MapLibre worker
 
     const webgpuAvailable = typeof navigator !== 'undefined' && 'gpu' in navigator;
 
@@ -499,7 +494,7 @@ export default function StateMap({
     );
 
     try {
-      (map as any).setProjection({ type: 'globe' });
+      // (map as any).setProjection
       (map as any).setSky?.({
         'sky-color': '#0f172a',
         'horizon-color': '#1e293b',
