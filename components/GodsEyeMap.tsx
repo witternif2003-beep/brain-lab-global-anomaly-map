@@ -12,7 +12,18 @@ const COMPETITOR_STATES = ['GA', 'NC', 'TN', 'SC', 'FL', 'TX', 'VA', 'AL'] as co
 type StateCode = (typeof COMPETITOR_STATES)[number];
 
 const BASEMAPS = {
-  dark: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+  dark: {
+    version: 8,
+    sources: {
+      carto: {
+        type: 'raster',
+        tiles: ['https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'],
+        tileSize: 256,
+        attribution: '© OpenStreetMap contributors, © CARTO',
+      },
+    },
+    layers: [{ id: 'carto-dark-layer', type: 'raster', source: 'carto' }],
+  },
   light: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
   voyager: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
   terrain: 'https://demotilesmaplibre.org/style.json',
@@ -342,6 +353,11 @@ export default function GodsEyeMap({
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
+    // Resolve MapLibre v6 ESM Web Worker to prevent canvas blackouts
+    if (typeof window !== 'undefined' && typeof (maplibregl as any).setWorkerUrl === 'function') {
+      (maplibregl as any).setWorkerUrl('/maplibre-gl-worker.mjs');
+    }
+
     const webgpuAvailable = typeof navigator !== 'undefined' && 'gpu' in navigator;
 
     const map = new maplibregl.Map({
@@ -360,7 +376,6 @@ export default function GodsEyeMap({
       touchZoomRotate: true,
       touchPitch: true,
       cooperativeGestures: false,
-      ...(webgpuAvailable && { backend: 'webgpu' as any }),
     } as any);
 
     // Navigation controls (Zoom + Compass + Pitch)

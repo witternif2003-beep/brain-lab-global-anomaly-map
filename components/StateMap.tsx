@@ -16,7 +16,18 @@ interface StateMapProps {
 }
 
 const BASEMAPS = {
-  dark: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+  dark: {
+    version: 8,
+    sources: {
+      carto: {
+        type: 'raster',
+        tiles: ['https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'],
+        tileSize: 256,
+        attribution: '© OpenStreetMap contributors, © CARTO',
+      },
+    },
+    layers: [{ id: 'carto-layer', type: 'raster', source: 'carto' }],
+  },
   light: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
   terrain: 'https://demotilesmaplibre.org/style.json',
 };
@@ -306,8 +317,14 @@ export default function StateMap({
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
+    // Resolve MapLibre v6 ESM Web Worker to prevent canvas blackouts
+    if (typeof window !== 'undefined' && typeof (maplibregl as any).setWorkerUrl === 'function') {
+      (maplibregl as any).setWorkerUrl('/maplibre-gl-worker.mjs');
+    }
+
     const webgpuAvailable = typeof navigator !== 'undefined' && 'gpu' in navigator;
 
+    // Initialize MapLibre Map
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: BASEMAPS.dark,
@@ -324,7 +341,6 @@ export default function StateMap({
       touchZoomRotate: true,
       touchPitch: true,
       cooperativeGestures: false,
-      ...(webgpuAvailable && { backend: 'webgpu' as any }),
     } as any);
 
     map.addControl(
