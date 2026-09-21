@@ -8,6 +8,8 @@ const BASE_DELAY = 1000; // 1 second
 export function useSSE(url: string = "/api/telemetry") {
   const eventSourceRef = useRef<EventSource | null>(null);
   const retryCountRef = useRef(0);
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { setTelemetry, setConnectionStatus } = useTelemetryStore();
 
   const connect = useCallback(() => {
@@ -44,11 +46,11 @@ export function useSSE(url: string = "/api/telemetry") {
         if (retryCountRef.current < MAX_RETRIES) {
           const delay = Math.min(BASE_DELAY * 2 ** retryCountRef.current, 30000);
           retryCountRef.current += 1;
-          setTimeout(connect, delay);
+          retryTimeoutRef.current = setTimeout(connect, delay);
         } else {
           setConnectionStatus('disconnected');
           // Polling fallback every 8 seconds if SSE is blocked
-          const pollInterval = setInterval(async () => {
+          pollIntervalRef.current = setInterval(async () => {
             try {
               const res = await fetch('/api/manifest');
               if (res.ok) {
@@ -56,7 +58,6 @@ export function useSSE(url: string = "/api/telemetry") {
               }
             } catch {}
           }, 8000);
-          return () => clearInterval(pollInterval);
         }
       };
     } catch (e) {
@@ -67,6 +68,8 @@ export function useSSE(url: string = "/api/telemetry") {
   useEffect(() => {
     connect();
     return () => {
+      if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
       }

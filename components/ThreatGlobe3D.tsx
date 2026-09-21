@@ -70,6 +70,19 @@ export default function ThreatGlobe3D() {
 
     let animId: number;
     let angle = rotationAngle;
+    let isVisible = true;
+    let lastRenderTime = 0;
+    const targetFpsInterval = 1000 / 30; // 30 FPS cap for high thermal efficiency
+
+    const io = new IntersectionObserver(([entry]) => {
+      isVisible = entry.isIntersecting && !document.hidden;
+    }, { threshold: 0.05 });
+    io.observe(canvas);
+
+    const onVis = () => {
+      isVisible = !document.hidden;
+    };
+    document.addEventListener("visibilitychange", onVis);
 
     const render = () => {
       if (!canvas || !container) return;
@@ -333,9 +346,25 @@ export default function ThreatGlobe3D() {
       animId = requestAnimationFrame(render);
     };
 
-    render();
+    const throttledRender = (now: number = performance.now()) => {
+      if (!isVisible) {
+        animId = requestAnimationFrame(throttledRender);
+        return;
+      }
+      const elapsed = now - lastRenderTime;
+      if (elapsed >= targetFpsInterval) {
+        lastRenderTime = now - (elapsed % targetFpsInterval);
+        render();
+      } else {
+        animId = requestAnimationFrame(throttledRender);
+      }
+    };
+
+    animId = requestAnimationFrame(throttledRender);
 
     return () => {
+      io.disconnect();
+      document.removeEventListener("visibilitychange", onVis);
       cancelAnimationFrame(animId);
     };
   }, [isRotating, rotationAngle, activeGodsEyeLayer, liveVessels, liveAnomalies]);

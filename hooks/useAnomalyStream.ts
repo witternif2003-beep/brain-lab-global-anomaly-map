@@ -27,16 +27,19 @@ export function useAnomalyStream(
 
     let buffer: AnomalyFeature[] = [];
     let rafHandle: number | null = null;
+    let timeoutId: NodeJS.Timeout | null = null;
 
     // Flush the buffer to the MapLibre source once per animation frame (60fps ceiling)
     const flush = () => {
       try {
         const src = map.getSource(sourceId) as any;
-        if (src && buffer.length > 0) {
-          src.setData({ type: 'FeatureCollection', features: buffer });
+        if (src && buffer.length > 0 && typeof src.setData === 'function') {
+          // Cap features buffer to 100 to prevent WebGL/WebGPU buffer exhaustion
+          const slice = buffer.slice(-100);
+          src.setData({ type: 'FeatureCollection', features: slice });
         }
       } catch (err) {
-        console.error('[SSE] Error updating MapLibre source:', err);
+        console.warn('[SSE] MapLibre source update suppressed:', err);
       }
       buffer = [];
       rafHandle = null;
@@ -80,13 +83,14 @@ export function useAnomalyStream(
         const jitter = Math.random() * 1000;
         retryCountRef.current += 1;
 
-        setTimeout(connect, backoff + jitter);
+        timeoutId = setTimeout(connect, backoff + jitter);
       };
     };
 
     connect();
 
     return () => {
+      if (timeoutId) clearTimeout(timeoutId);
       if (esRef.current) esRef.current.close();
       if (rafHandle !== null) cancelAnimationFrame(rafHandle);
     };

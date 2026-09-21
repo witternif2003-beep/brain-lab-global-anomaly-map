@@ -83,8 +83,11 @@ export default function AmbientBackground({ className = "" }: { className?: stri
       }
     }
 
-    // ── Main-thread fallback path (capped DPR = 1.5) ──
-    runMainThreadFallback(canvas);
+    // ── Main-thread fallback path (capped DPR = 1.5 with cleanup) ──
+    const cleanupFallback = runMainThreadFallback(canvas);
+    return () => {
+      if (cleanupFallback) cleanupFallback();
+    };
   }, []);
 
   return (
@@ -130,44 +133,66 @@ function runMainThreadFallback(canvas: HTMLCanvasElement) {
 
   let animId = 0;
   let running = true;
-  const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+  let lastTimestamp = 0;
+  const targetInterval = 1000 / 30; // Throttle to 30 FPS to save CPU / mobile battery
+
+  const dpr = Math.min(window.devicePixelRatio || 1, 1.2);
   let w = (canvas.width = Math.floor(window.innerWidth * dpr));
   let h = (canvas.height = Math.floor(window.innerHeight * dpr));
 
-  const particles = Array.from({ length: 50 }, () => ({
+  const particles = Array.from({ length: 28 }, () => ({
     x: Math.random() * w,
     y: Math.random() * h,
-    vx: (Math.random() - 0.5) * 0.4,
-    vy: (Math.random() - 0.5) * 0.4,
-    life: 150 + Math.random() * 250,
+    vx: (Math.random() - 0.5) * 0.3,
+    vy: (Math.random() - 0.5) * 0.3,
+    life: 150 + Math.random() * 200,
   }));
 
-  const render = () => {
-    if (!running) return;
-    ctx.fillStyle = "rgba(11, 19, 32, 0.1)";
-    ctx.fillRect(0, 0, w, h);
+  const onVisChange = () => {
+    if (document.hidden) {
+      running = false;
+      if (animId) cancelAnimationFrame(animId);
+    } else {
+      running = true;
+      lastTimestamp = performance.now();
+      animId = requestAnimationFrame(render);
+    }
+  };
+  document.addEventListener("visibilitychange", onVisChange);
 
-    for (const p of particles) {
-      p.x += p.vx;
-      p.y += p.vy;
-      p.life -= 0.5;
-      if (p.life <= 0 || p.x < 0 || p.x > w || p.y < 0 || p.y > h) {
-        p.x = Math.random() * w;
-        p.y = Math.random() * h;
-        p.life = 150 + Math.random() * 250;
+  const render = (now: number = performance.now()) => {
+    if (!running) return;
+
+    const delta = now - lastTimestamp;
+    if (delta >= targetInterval) {
+      lastTimestamp = now - (delta % targetInterval);
+
+      ctx.fillStyle = "rgba(11, 19, 32, 0.15)";
+      ctx.fillRect(0, 0, w, h);
+
+      for (const p of particles) {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= 0.5;
+        if (p.life <= 0 || p.x < 0 || p.x > w || p.y < 0 || p.y > h) {
+          p.x = Math.random() * w;
+          p.y = Math.random() * h;
+          p.life = 150 + Math.random() * 200;
+        }
+        ctx.strokeStyle = "rgba(56,189,248,0.22)";
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(p.x - p.vx * 3, p.y - p.vy * 3);
+        ctx.stroke();
       }
-      ctx.strokeStyle = "rgba(56,189,248,0.25)";
-      ctx.beginPath();
-      ctx.moveTo(p.x, p.y);
-      ctx.lineTo(p.x - p.vx * 4, p.y - p.vy * 4);
-      ctx.stroke();
     }
     animId = requestAnimationFrame(render);
   };
-  render();
+  animId = requestAnimationFrame(render);
 
   return () => {
     running = false;
     cancelAnimationFrame(animId);
+    document.removeEventListener("visibilitychange", onVisChange);
   };
 }
