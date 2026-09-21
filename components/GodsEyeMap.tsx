@@ -12,42 +12,7 @@ const COMPETITOR_STATES = ['GA', 'NC', 'TN', 'SC', 'FL', 'TX', 'VA', 'AL'] as co
 type StateCode = (typeof COMPETITOR_STATES)[number];
 
 const BASEMAPS = {
-  dark: {
-    version: 8,
-    sources: {
-      proxyTiles: {
-        type: 'raster',
-        tiles: ['/api/tiles/{z}/{x}/{y}.png'],
-        tileSize: 256,
-        attribution: '© OpenStreetMap contributors (Same-Origin Clean Proxy)',
-      },
-    },
-    layers: [
-      {
-        id: 'proxy-layer',
-        type: 'raster',
-        source: 'proxyTiles',
-        paint: {
-          'raster-opacity': 0.72,
-          'raster-brightness-max': 0.45,
-          'raster-contrast': 0.35,
-          'raster-saturation': -0.85,
-        },
-      },
-    ],
-  },
-  light: {
-    version: 8,
-    sources: {
-      osm: {
-        type: 'raster',
-        tiles: ['/api/tiles/{z}/{x}/{y}.png'],
-        tileSize: 256,
-        attribution: '© OpenStreetMap contributors',
-      },
-    },
-    layers: [{ id: 'osm-layer', type: 'raster', source: 'osm' }],
-  },
+  demotiles: 'https://demotiles.maplibre.org/style.json',
   satellite: {
     version: 8,
     sources: {
@@ -60,6 +25,7 @@ const BASEMAPS = {
     },
     layers: [{ id: 'sat', type: 'raster', source: 'sat' }],
   },
+  dark: 'https://demotiles.maplibre.org/style.json',
   terrain: 'https://demotiles.maplibre.org/style.json',
 };
 
@@ -449,15 +415,14 @@ export default function GodsEyeMap({
 
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: BASEMAPS.dark,
+      style: 'https://demotiles.maplibre.org/style.json',
       bounds: GA_BOUNDS,
-      fitBoundsOptions: { padding: 60 },
+      fitBoundsOptions: { padding: 40 },
       pitch: 0,
       bearing: 0,
-      maxZoom: 18,
+      maxZoom: 24,
       minZoom: 3,
       attributionControl: false,
-      hash: true, // URL state sync (?#zoom/lat/lng)
       dragRotate: true,
       pitchWithRotate: true,
       touchZoomRotate: true,
@@ -662,116 +627,69 @@ export default function GodsEyeMap({
         <div className="relative w-full h-[500px] sm:h-[580px] rounded-2xl overflow-hidden border border-[#28394e] bg-[#0f172a] shadow-2xl">
           <div ref={containerRef} className="absolute inset-0" />
 
-          {/* Focus State Selector Toolbar */}
-          <div
-            className="absolute top-2 left-2 sm:top-3 sm:left-3 z-10 flex max-w-[calc(100%-120px)] sm:max-w-none overflow-x-auto gap-1 rounded-lg p-1 border border-[#28394e]"
-            style={{
-              backgroundColor: 'rgba(15, 23, 42, 0.85)',
-              backdropFilter: 'blur(12px)',
-              WebkitBackdropFilter: 'blur(12px)',
-            }}
-          >
+          {/* Map Layer Toggles & Focus Controls - Responsive Flexbox Layout */}
+          <div className="absolute top-3 left-3 z-20 flex flex-wrap items-center gap-1.5 p-1.5 bg-slate-900/85 backdrop-blur-md rounded-lg max-w-[90vw] border border-slate-700/60 shadow-xl">
+            {/* 3D Globe / 2D toggle */}
+            <button
+              key="3d-globe"
+              type="button"
+              onClick={toggle3D}
+              className="px-2 py-1 text-[10px] font-semibold text-emerald-400 bg-slate-800/90 rounded border border-slate-600 hover:border-emerald-400 hover:bg-slate-700 transition-colors whitespace-nowrap uppercase tracking-wider"
+            >
+              {pitch > 20 ? '2D' : '3D GLOBE'}
+            </button>
+
+            {/* Basemap buttons */}
+            {(['LIGHT', 'SATELLITE', 'TERRAIN'] as const).map((layer) => {
+              const keyMap: Record<string, keyof typeof BASEMAPS> = {
+                'LIGHT': 'demotiles',
+                'SATELLITE': 'satellite',
+                'TERRAIN': 'terrain',
+              };
+              const active = (layer === 'SATELLITE' && basemap === 'satellite') || (layer === 'LIGHT' && basemap === 'demotiles') || (layer === 'TERRAIN' && basemap === 'terrain');
+              return (
+                <button
+                  key={layer}
+                  type="button"
+                  onClick={() => switchBasemap(keyMap[layer])}
+                  className={`px-2 py-1 text-[10px] font-semibold rounded border transition-colors whitespace-nowrap uppercase ${
+                    active
+                      ? 'text-cyan-300 bg-cyan-950/70 border-cyan-400/80 shadow-sm'
+                      : 'text-slate-300 bg-slate-800/80 border-slate-600 hover:bg-slate-700'
+                  }`}
+                >
+                  {layer}
+                </button>
+              );
+            })}
+
+            {/* State selector pills */}
             {(['GA', 'NC', 'TN', 'FL', 'SC', 'TX', 'VA', 'AL'] as const).map((s) => {
               const isTarget = s === 'GA';
               const isActive = activeFocus === s;
-
-              let style: React.CSSProperties = {
-                appearance: 'none',
-                WebkitAppearance: 'none',
-                padding: '6px 12px',
-                fontSize: '11px',
-                fontWeight: 600,
-                borderRadius: '6px',
-                border: '1px solid transparent',
-                cursor: 'pointer',
-                transition: 'all 200ms ease',
-                backgroundColor: 'transparent',
-                outline: 'none',
-                lineHeight: 1.2,
-              };
-
-              if (isTarget) {
-                if (isActive) {
-                  style = {
-                    ...style,
-                    backgroundColor: '#dc2626',
-                    color: '#ffffff',
-                    border: '1px solid #fca5a5',
-                    animation: 'pulse-red 2s ease-in-out infinite',
-                  };
-                } else {
-                  style = {
-                    ...style,
-                    backgroundColor: 'transparent',
-                    color: '#991b1b',
-                    border: '1px solid #7f1d1d',
-                  };
-                }
-              } else {
-                if (isActive) {
-                  style = {
-                    ...style,
-                    backgroundColor: '#0ea5e9',
-                    color: '#ffffff',
-                    border: '1px solid #7dd3fc',
-                    animation: 'pulse-teal 2s ease-in-out infinite',
-                  };
-                } else {
-                  style = {
-                    ...style,
-                    backgroundColor: 'transparent',
-                    color: '#cbd5e1',
-                    border: '1px solid rgba(71, 85, 105, 0.6)',
-                  };
-                }
-              }
-
               return (
                 <button
                   key={s}
                   type="button"
                   onClick={() => handleFocusChange(s)}
-                  style={style}
-                  onMouseEnter={(e) => {
-                    if (!isActive) e.currentTarget.style.backgroundColor = 'rgba(30, 41, 59, 0.6)';
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isActive) e.currentTarget.style.backgroundColor = 'transparent';
-                  }}
+                  className={`px-2 py-1 text-[10px] font-semibold rounded border transition-colors whitespace-nowrap ${
+                    isTarget
+                      ? isActive
+                        ? 'bg-red-600 text-white border-red-400 shadow-[0_0_10px_rgba(239,68,68,0.5)]'
+                        : 'bg-transparent text-[#991b1b] border-red-900/60 hover:bg-red-950/30'
+                      : isActive
+                      ? 'bg-sky-500 text-white border-sky-300 shadow-[0_0_10px_rgba(14,165,233,0.5)]'
+                      : 'bg-slate-800/70 text-slate-300 border-slate-600 hover:bg-slate-700'
+                  }`}
                 >
                   {isTarget ? 'GA (Target)' : s}
                 </button>
               );
             })}
-          </div>
 
-          {/* Basemap Switcher */}
-          <div className="absolute top-12 left-2 sm:top-3 sm:left-1/2 sm:-translate-x-1/2 z-10 flex gap-1 rounded-lg bg-[#0f172a]/90 p-1 backdrop-blur border border-[#28394e]">
-            {Object.keys(BASEMAPS).map((k) => (
-              <button
-                key={k}
-                onClick={() => switchBasemap(k as keyof typeof BASEMAPS)}
-                className={`px-2.5 py-0.5 text-xs rounded uppercase font-bold transition-all ${
-                  basemap === k
-                    ? 'bg-cyan-600/40 text-cyan-400 border border-cyan-400/50'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                {k}
-              </button>
-            ))}
-          </div>
-
-          {/* 3D Terrain Toggle & Real-Time Viewport Readout */}
-          <div className="absolute top-2 right-2 sm:top-3 sm:right-3 z-10 flex flex-col items-end gap-1">
-            <button
-              onClick={toggle3D}
-              className="rounded-lg bg-[#0f172a]/90 border border-[#28394e] px-2 sm:px-3 py-1 text-[10px] sm:text-xs text-[#00ff9d] font-bold backdrop-blur shadow-md hover:border-[#00ff9d]"
-            >
-              {pitch > 20 ? '2D' : '3D GLOBE'}
-            </button>
-            <div className="rounded-lg bg-[#0f172a]/90 border border-[#28394e] px-2 py-0.5 text-[9px] text-slate-400 backdrop-blur">
-              z{typeof zoom === 'number' && !isNaN(zoom) ? zoom.toFixed(1) : '--'} · p{typeof pitch === 'number' && !isNaN(pitch) ? pitch.toFixed(0) : '0'}°
+            {/* Live Telemetry Pill */}
+            <div className="px-2 py-1 text-[10px] font-mono text-slate-400 bg-slate-800/60 rounded border border-slate-700/60 whitespace-nowrap">
+              z{typeof zoom === 'number' && !isNaN(zoom) ? zoom.toFixed(1) : '6.5'} · p{typeof pitch === 'number' && !isNaN(pitch) ? pitch.toFixed(0) : '0'}°
             </div>
           </div>
 

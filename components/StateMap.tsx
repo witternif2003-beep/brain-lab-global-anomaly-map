@@ -50,42 +50,8 @@ interface StateMapProps {
 }
 
 const BASEMAPS = {
-  dark: {
-    version: 8,
-    sources: {
-      proxyTiles: {
-        type: 'raster',
-        tiles: ['/api/tiles/{z}/{x}/{y}.png'],
-        tileSize: 256,
-        attribution: '© OpenStreetMap contributors (Same-Origin Clean Proxy)',
-      },
-    },
-    layers: [
-      {
-        id: 'proxy-layer',
-        type: 'raster',
-        source: 'proxyTiles',
-        paint: {
-          'raster-opacity': 0.72,
-          'raster-brightness-max': 0.45,
-          'raster-contrast': 0.35,
-          'raster-saturation': -0.85,
-        },
-      },
-    ],
-  },
-  light: {
-    version: 8,
-    sources: {
-      osm: {
-        type: 'raster',
-        tiles: ['/api/tiles/{z}/{x}/{y}.png'],
-        tileSize: 256,
-        attribution: '© OpenStreetMap contributors',
-      },
-    },
-    layers: [{ id: 'osm-layer', type: 'raster', source: 'osm' }],
-  },
+  demotiles: 'https://demotiles.maplibre.org/style.json',
+  dark: 'https://demotiles.maplibre.org/style.json',
   satellite: {
     version: 8,
     sources: {
@@ -98,6 +64,7 @@ const BASEMAPS = {
     },
     layers: [{ id: 'sat-layer', type: 'raster', source: 'sat' }],
   },
+  light: 'https://demotiles.maplibre.org/style.json',
   terrain: 'https://demotiles.maplibre.org/style.json',
 };
 
@@ -499,7 +466,7 @@ export default function StateMap({
     // Initialize MapLibre Map with maxZoom: 24 architectural ceiling
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: BASEMAPS.dark,
+      style: 'https://demotiles.maplibre.org/style.json',
       bounds: GA_BOUNDS,
       fitBoundsOptions: { padding: 40 },
       pitch: 0,
