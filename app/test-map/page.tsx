@@ -64,6 +64,15 @@ export default function TestMap() {
         zoom: 5,
       });
 
+      console.log("[test-map] constructed");
+      setTimeout(() => {
+        const canvasRect = document.querySelector(".maplibregl-canvas")?.getBoundingClientRect();
+        console.log("[test-map] 3s check", {
+          loaded: map.loaded(),
+          canvas: canvasRect ? { w: canvasRect.width, h: canvasRect.height } : null,
+        });
+      }, 3000);
+
       map.on("load", () => {
         clearTimeout(timeoutTimer);
         setStatus("LOADED: Map rendered successfully");
