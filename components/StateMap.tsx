@@ -414,8 +414,22 @@ export default function StateMap({
       addMapLayers(map);
     });
 
+    // 5-second resilient fallback timeout to keyless demotiles if style fails or stalls
+    const fallbackTimer = setTimeout(() => {
+      if (!map.isStyleLoaded()) {
+        console.warn('[Map] Style timeout — falling back to keyless demotiles');
+        try {
+          map.setStyle('https://demotiles.maplibre.org/style.json');
+          map.once('styledata', () => addMapLayers(map));
+        } catch {}
+      }
+    }, 5000);
+
+    map.on('styledata', () => clearTimeout(fallbackTimer));
+
     mapRef.current = map;
     return () => {
+      clearTimeout(fallbackTimer);
       map.remove();
       mapRef.current = null;
     };
