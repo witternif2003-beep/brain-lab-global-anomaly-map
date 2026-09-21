@@ -1,12 +1,10 @@
 'use client';
 
+import { setWorkerUrl } from 'maplibre-gl';
+setWorkerUrl('/maplibre-gl-worker.mjs');
+
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as maplibregl from 'maplibre-gl';
-import { setWorkerUrl } from 'maplibre-gl';
-
-// Module-scope unconditional call — runs once before any Map is constructed.
-// Both worker files are committed directly to /public and served same-origin.
-setWorkerUrl('/maplibre-gl-worker.mjs');
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useAnomalyStream, AnomalyFeature } from '../hooks/useAnomalyStream';
 import { registerGeoJSONVTSource, shouldUseTiledRendering } from '../lib/geojson-vt-protocol';

@@ -1,5 +1,8 @@
 'use client';
 
+import { setWorkerUrl } from 'maplibre-gl';
+setWorkerUrl('/maplibre-gl-worker.mjs');
+
 // FIPS to state abbreviation lookup table
 const FIPS_TO_ABBR: Record<string, string> = {
   '01': 'AL', '12': 'FL', '13': 'GA', '37': 'NC',
@@ -38,11 +41,6 @@ async function loadNormalizedStates(): Promise<GeoJSON.FeatureCollection> {
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as maplibregl from 'maplibre-gl';
-import { setWorkerUrl } from 'maplibre-gl';
-
-// Module-scope unconditional call — runs once before any Map is constructed.
-// Both worker files are committed directly to /public and served same-origin.
-setWorkerUrl('/maplibre-gl-worker.mjs');
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { AnomalyItem, CompetitorStateIntel } from '../lib/schema';
 import { useAnomalyStream, AnomalyFeature } from '../hooks/useAnomalyStream';
