@@ -1,5 +1,5 @@
-import { ACTIVE_TELEMETRY_ARCS, buildTelemetryArcsGeoJSON } from '../lib/telemetry-arcs';
 'use client';
+import { ACTIVE_TELEMETRY_ARCS, buildTelemetryArcsGeoJSON } from '../lib/telemetry-arcs';
 
 import { setWorkerUrl } from 'maplibre-gl';
 setWorkerUrl('/maplibre-gl-worker.mjs');
