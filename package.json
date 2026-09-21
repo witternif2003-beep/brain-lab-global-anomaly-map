@@ -4,9 +4,11 @@
   "main": "index.js",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "cp node_modules/maplibre-gl/dist/maplibre-gl-worker.mjs public/ && cp node_modules/maplibre-gl/dist/maplibre-gl-shared.mjs public/ && next build",
     "start": "next start",
-    "postinstall": "cp node_modules/maplibre-gl/dist/maplibre-gl-worker.mjs public/ && cp node_modules/maplibre-gl/dist/maplibre-gl-shared.mjs public/"
+    "postinstall": "cp node_modules/maplibre-gl/dist/maplibre-gl-worker.mjs public/ && cp node_modules/maplibre-gl/dist/maplibre-gl-shared.mjs public/",
+    "prebuild": "cp node_modules/maplibre-gl/dist/maplibre-gl-worker.mjs public/ && cp node_modules/maplibre-gl/dist/maplibre-gl-shared.mjs public/",
+    "predev": "cp node_modules/maplibre-gl/dist/maplibre-gl-worker.mjs public/ && cp node_modules/maplibre-gl/dist/maplibre-gl-shared.mjs public/"
   },
   "keywords": [],
   "author": "",

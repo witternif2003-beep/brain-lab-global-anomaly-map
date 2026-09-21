@@ -545,7 +545,7 @@ export default function GodsEyeMap({
       if (!map.getSource('terrain-dem')) {
         map.addSource('terrain-dem', {
           type: 'raster-dem',
-          url: 'https://demotilesmaplibre.org/terrain-tiles/tiles.json',
+          url: 'https://demotiles.maplibre.org/terrain-tiles/tiles.json',
           tileSize: 256,
         });
       }
