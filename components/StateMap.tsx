@@ -1,5 +1,5 @@
 'use client';
-import { ACTIVE_TELEMETRY_ARCS, buildTelemetryArcsGeoJSON } from '../lib/telemetry-arcs';
+import { SEED_TELEMETRY_EVENTS, getInterpolatedArcPoint, TelemetryPulseEvent } from '../lib/telemetry-arcs';
 
 import { setWorkerUrl } from 'maplibre-gl';
 setWorkerUrl('/maplibre-gl-worker.mjs');
@@ -450,95 +450,80 @@ export default function StateMap({
     });
 
     
-    // ─── TELEMETRY FLOW ARCS: Green (Ally Follow) & Red (Adversary Accept) ───
-    const { arcLines, arrowHeads } = buildTelemetryArcsGeoJSON(ACTIVE_TELEMETRY_ARCS);
-
-    if (!map.getSource('telemetry-arcs')) {
-      map.addSource('telemetry-arcs', {
+    // ─── DYNAMIC TELEMETRY PULSES: Clean Moving Directional Vectors (NO STATIC LINES) ───
+    if (!map.getSource('telemetry-pulses')) {
+      map.addSource('telemetry-pulses', {
         type: 'geojson',
-        data: arcLines,
+        data: { type: 'FeatureCollection', features: [] },
       });
-    } else {
-      (map.getSource('telemetry-arcs') as any).setData(arcLines);
     }
 
-    if (!map.getSource('telemetry-arc-arrows')) {
-      map.addSource('telemetry-arc-arrows', {
-        type: 'geojson',
-        data: arrowHeads,
-      });
-    } else {
-      (map.getSource('telemetry-arc-arrows') as any).setData(arrowHeads);
-    }
-
-    // Arc Line Outer Glow
-    if (!map.getLayer('telemetry-arcs-glow')) {
+    if (!map.getLayer('telemetry-pulse-glow')) {
       map.addLayer({
-        id: 'telemetry-arcs-glow',
-        type: 'line',
-        source: 'telemetry-arcs',
+        id: 'telemetry-pulse-glow',
+        type: 'circle',
+        source: 'telemetry-pulses',
         paint: {
-          'line-color': ['get', 'color'],
-          'line-width': 5,
-          'line-opacity': 0.45,
-          'line-blur': 3,
+          'circle-color': ['get', 'color'],
+          'circle-radius': 14,
+          'circle-opacity': 0.35,
+          'circle-blur': 0.6,
         },
       });
     }
 
-    // Arc Line Core
-    if (!map.getLayer('telemetry-arcs-core')) {
+    if (!map.getLayer('telemetry-pulse-core')) {
       map.addLayer({
-        id: 'telemetry-arcs-core',
-        type: 'line',
-        source: 'telemetry-arcs',
+        id: 'telemetry-pulse-core',
+        type: 'circle',
+        source: 'telemetry-pulses',
         paint: {
-          'line-color': ['get', 'color'],
-          'line-width': 2.5,
-          'line-opacity': 0.95,
-          'line-dasharray': [2, 1],
+          'circle-color': ['get', 'color'],
+          'circle-radius': 5,
+          'circle-stroke-width': 2,
+          'circle-stroke-color': '#0f172a',
+          'circle-opacity': 1.0,
         },
       });
     }
 
-    // Terminal Arrowhead Points with Rotating Bearing
-    if (!map.getLayer('telemetry-arc-arrows-layer')) {
+    if (!map.getLayer('telemetry-pulse-arrow')) {
       map.addLayer({
-        id: 'telemetry-arc-arrows-layer',
+        id: 'telemetry-pulse-arrow',
         type: 'symbol',
-        source: 'telemetry-arc-arrows',
+        source: 'telemetry-pulses',
         layout: {
-          'text-field': '▶',
-          'text-size': 14,
+          'text-field': '▲',
+          'text-size': 12,
           'text-rotate': ['get', 'bearing'],
           'text-rotation-alignment': 'map',
           'text-allow-overlap': true,
           'text-ignore-placement': true,
         },
         paint: {
-          'text-color': ['get', 'color'],
-          'text-halo-color': '#0f172a',
+          'text-color': '#ffffff',
+          'text-halo-color': ['get', 'color'],
           'text-halo-width': 2,
         },
       });
     }
 
-    // Terminal Adoption Count Labels
-    if (!map.getLayer('telemetry-arc-labels-layer')) {
+    if (!map.getLayer('telemetry-pulse-label')) {
       map.addLayer({
-        id: 'telemetry-arc-labels-layer',
+        id: 'telemetry-pulse-label',
         type: 'symbol',
-        source: 'telemetry-arc-arrows',
+        source: 'telemetry-pulses',
         layout: {
-          'text-field': ['get', 'labelText'],
+          'text-field': ['get', 'label'],
           'text-size': 10,
-          'text-offset': [0, 1.4],
+          'text-offset': [0, 1.2],
           'text-anchor': 'top',
-          'text-allow-overlap': true,
+          'text-allow-overlap': false,
+          'text-optional': true,
         },
         paint: {
           'text-color': ['get', 'color'],
-          'text-halo-color': '#0b1120',
+          'text-halo-color': '#090d16',
           'text-halo-width': 2,
         },
       });
@@ -665,6 +650,73 @@ export default function StateMap({
       mapRef.current = null;
     };
   }, [addMapLayers]);
+
+
+  // ─── REAL-TIME DYNAMIC TELEMETRY PULSE ENGINE (60 FPS rAF Loop) ─────────
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+
+    let activeEvents: TelemetryPulseEvent[] = [...SEED_TELEMETRY_EVENTS];
+    let animId: number;
+
+    const animate = () => {
+      const now = Date.now();
+      const currentFeatures: GeoJSON.Feature<GeoJSON.Point>[] = [];
+
+      for (const ev of activeEvents) {
+        const elapsed = now - ev.timestamp;
+        const t = Math.min(Math.max(elapsed / ev.durationMs, 0), 1);
+
+        if (t < 1.0) {
+          const { coord, bearing } = getInterpolatedArcPoint(ev.sourceCoord, ev.targetCoord, t);
+          currentFeatures.push({
+            type: 'Feature',
+            properties: {
+              id: ev.id,
+              type: ev.type,
+              color: ev.type === 'ALLY_ADOPT' ? '#10b981' : '#ef4444',
+              bearing,
+              label: ev.label,
+              progress: t,
+            },
+            geometry: {
+              type: 'Point',
+              coordinates: coord,
+            },
+          });
+        }
+      }
+
+      const src = map.getSource('telemetry-pulses') as any;
+      if (src && typeof src.setData === 'function') {
+        src.setData({
+          type: 'FeatureCollection',
+          features: currentFeatures,
+        });
+      }
+
+      if (Math.random() < 0.02) {
+        const seed = SEED_TELEMETRY_EVENTS[Math.floor(Math.random() * SEED_TELEMETRY_EVENTS.length)];
+        activeEvents.push({
+          ...seed,
+          id: `EV-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+          timestamp: Date.now(),
+        });
+        if (activeEvents.length > 20) {
+          activeEvents = activeEvents.filter(e => (now - e.timestamp) < e.durationMs);
+        }
+      }
+
+      animId = requestAnimationFrame(animate);
+    };
+
+    animId = requestAnimationFrame(animate);
+
+    return () => {
+      cancelAnimationFrame(animId);
+    };
+  }, [ready]);
 
   // Force resize once layout has settled and watch for container dimensions changes
   useEffect(() => {

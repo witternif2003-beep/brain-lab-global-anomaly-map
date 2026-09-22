@@ -1,20 +1,24 @@
 /**
- * Telemetry Flight & Flow Arcs (Bézier / Great-Circle Interpolation)
- * Visualizes dynamic competitor telemetry adoption:
- * - Green Arc with Arrow: Ally state user adoption of competitor output data
- * - Red Arc with Arrow: New entrant accepting adversary competition data output
+ * Dynamic Real-Time Telemetry Pulses & Entity Vectors
+ * NSA Admin Mode Telemetry Protocol:
+ * - NO static cluttered arc lines or overlapping text collisions
+ * - Dynamic moving pulses/missiles traveling along geodesic trajectories in real-time
+ * - Green chevron / pulse (▲) indicates ally state entity taking advantage of competitor data output
+ * - Red chevron / pulse (▼) indicates new entity accepting adversary competition data
+ * - Each pulse appears ONCE per event, advances along trajectory, and dissipates upon arrival
  */
 
-export interface TelemetryArc {
+export interface TelemetryPulseEvent {
   id: string;
   type: 'ALLY_ADOPT' | 'COMPETITOR_ACCEPT';
   sourceState: string;
   sourceCoord: [number, number];
   targetState: string;
   targetCoord: [number, number];
-  flowRate: number; // people / decisions adopting
+  flowCount: number;
   label: string;
-  timestamp: string;
+  timestamp: number;
+  durationMs: number; // flight time
 }
 
 export const STATE_GEOLOCATIONS: Record<string, [number, number]> = {
@@ -29,175 +33,121 @@ export const STATE_GEOLOCATIONS: Record<string, [number, number]> = {
 };
 
 /**
- * Generates an elevated parabolic 2D curved trajectory line between two lon/lat coordinates
+ * Computes single position along parabolic curve at progress t (0.0 -> 1.0)
  */
-export function generateCurvedArc(
+export function getInterpolatedArcPoint(
   start: [number, number],
   end: [number, number],
-  numPoints: number = 36,
-  curvature: number = 0.22
-): number[][] {
-  const points: number[][] = [];
+  t: number,
+  curvature: number = 0.20
+): { coord: [number, number]; bearing: number } {
   const [sx, sy] = start;
   const [ex, ey] = end;
 
-  // Midpoint
   const mx = (sx + ex) / 2;
   const my = (sy + ey) / 2;
 
-  // Perpendicular vector for arc bowing (upwards / northwards in latitude)
   const dx = ex - sx;
   const dy = ey - sy;
   const dist = Math.sqrt(dx * dx + dy * dy);
 
-  // Offset normal vector perpendicular to chord
   const nx = -dy / (dist || 1);
   const ny = dx / (dist || 1);
 
-  // Control point
   const cx = mx + nx * dist * curvature;
-  const cy = my + ny * dist * curvature + dist * 0.12;
+  const cy = my + ny * dist * curvature + dist * 0.10;
 
-  for (let i = 0; i <= numPoints; i++) {
-    const t = i / numPoints;
-    // Quadratic Bézier: B(t) = (1-t)^2 * P0 + 2(1-t)t * P1 + t^2 * P2
-    const bx = (1 - t) * (1 - t) * sx + 2 * (1 - t) * t * cx + t * t * ex;
-    const by = (1 - t) * (1 - t) * sy + 2 * (1 - t) * t * cy + t * t * ey;
-    points.push([Number(bx.toFixed(5)), Number(by.toFixed(5))]);
-  }
+  // Quadratic Bézier Point at t
+  const bx = (1 - t) * (1 - t) * sx + 2 * (1 - t) * t * cx + t * t * ex;
+  const by = (1 - t) * (1 - t) * sy + 2 * (1 - t) * t * cy + t * t * ey;
 
-  return points;
-}
-
-/**
- * Builds GeoJSON FeatureCollection for all live telemetry flow arcs with directional arrowhead endpoints
- */
-export function buildTelemetryArcsGeoJSON(arcs: TelemetryArc[]): {
-  arcLines: GeoJSON.FeatureCollection<GeoJSON.LineString>;
-  arrowHeads: GeoJSON.FeatureCollection<GeoJSON.Point>;
-} {
-  const lineFeatures: GeoJSON.Feature<GeoJSON.LineString>[] = [];
-  const pointFeatures: GeoJSON.Feature<GeoJSON.Point>[] = [];
-
-  for (const arc of arcs) {
-    const coords = generateCurvedArc(arc.sourceCoord, arc.targetCoord);
-    
-    // Line feature
-    lineFeatures.push({
-      type: 'Feature',
-      properties: {
-        id: arc.id,
-        type: arc.type,
-        color: arc.type === 'ALLY_ADOPT' ? '#10b981' : '#ef4444', // Green vs Red
-        label: arc.label,
-        flowRate: arc.flowRate,
-      },
-      geometry: {
-        type: 'LineString',
-        coordinates: coords,
-      },
-    });
-
-    // Arrowhead feature positioned at the terminal coordinate pointing towards destination
-    const lastCoord = coords[coords.length - 1];
-    const prevCoord = coords[coords.length - 3] || coords[coords.length - 2];
-    const angleRad = Math.atan2(lastCoord[1] - prevCoord[1], lastCoord[0] - prevCoord[0]);
-    const bearing = (90 - (angleRad * 180) / Math.PI + 360) % 360;
-
-    pointFeatures.push({
-      type: 'Feature',
-      properties: {
-        id: `${arc.id}-arrow`,
-        type: arc.type,
-        color: arc.type === 'ALLY_ADOPT' ? '#10b981' : '#ef4444',
-        bearing,
-        symbolText: '▶',
-        labelText: `${arc.type === 'ALLY_ADOPT' ? '▲' : '▼'} ${arc.flowRate.toLocaleString()} adoptions (${arc.sourceState}→${arc.targetState})`,
-      },
-      geometry: {
-        type: 'Point',
-        coordinates: lastCoord,
-      },
-    });
-  }
+  // Tangent at t to compute instantaneous travel direction (bearing)
+  // B'(t) = 2(1 - t)(P1 - P0) + 2t(P2 - P1)
+  const dxt = 2 * (1 - t) * (cx - sx) + 2 * t * (ex - cx);
+  const dyt = 2 * (1 - t) * (cy - sy) + 2 * t * (ey - cy);
+  const angleRad = Math.atan2(dyt, dxt);
+  const bearing = (90 - (angleRad * 180) / Math.PI + 360) % 360;
 
   return {
-    arcLines: { type: 'FeatureCollection', features: lineFeatures },
-    arrowHeads: { type: 'FeatureCollection', features: pointFeatures },
+    coord: [Number(bx.toFixed(5)), Number(by.toFixed(5))],
+    bearing: Number(bearing.toFixed(1)),
   };
 }
 
 /**
- * Real-time dynamic active telemetry arcs
+ * Live Telemetry Flow Events (Dispatched individually per anomaly)
  */
-export const ACTIVE_TELEMETRY_ARCS: TelemetryArc[] = [
-  // Green Arcs: Ally state entities taking advantage of competitor data output
+export const SEED_TELEMETRY_EVENTS: TelemetryPulseEvent[] = [
   {
-    id: 'ARC-NC-GA',
+    id: 'PULSE-NC-GA',
     type: 'ALLY_ADOPT',
     sourceState: 'NC',
     sourceCoord: STATE_GEOLOCATIONS.NC,
     targetState: 'GA',
     targetCoord: STATE_GEOLOCATIONS.GA,
-    flowRate: 1420,
-    label: 'NC Tech Corridor → GA HB 463 Capital Reallocation (+1,420 Firms)',
-    timestamp: new Date().toISOString(),
+    flowCount: 1420,
+    label: '+1,420 NC Capitol Reallocations',
+    timestamp: Date.now() - 1200,
+    durationMs: 4000,
   },
   {
-    id: 'ARC-TN-GA',
+    id: 'PULSE-TN-GA',
     type: 'ALLY_ADOPT',
     sourceState: 'TN',
     sourceCoord: STATE_GEOLOCATIONS.TN,
     targetState: 'GA',
     targetCoord: STATE_GEOLOCATIONS.GA,
-    flowRate: 890,
-    label: 'TN Freight Logistics → Savannah Rail Ingestion (+890 Operators)',
-    timestamp: new Date().toISOString(),
+    flowCount: 890,
+    label: '+890 TN Rail Telemetry Followers',
+    timestamp: Date.now() - 2500,
+    durationMs: 4500,
   },
   {
-    id: 'ARC-SC-GA',
+    id: 'PULSE-SC-GA',
     type: 'ALLY_ADOPT',
     sourceState: 'SC',
     sourceCoord: STATE_GEOLOCATIONS.SC,
     targetState: 'GA',
     targetCoord: STATE_GEOLOCATIONS.GA,
-    flowRate: 1150,
-    label: 'Charleston Maritime Diverting to Savannah 52-Foot Berth (+1,150 Vessels/TEU)',
-    timestamp: new Date().toISOString(),
+    flowCount: 1150,
+    label: '+1,150 Savannah 52-ft Berth Ingestions',
+    timestamp: Date.now() - 500,
+    durationMs: 3500,
   },
   {
-    id: 'ARC-FL-GA',
+    id: 'PULSE-FL-GA',
     type: 'ALLY_ADOPT',
     sourceState: 'FL',
     sourceCoord: STATE_GEOLOCATIONS.FL,
     targetState: 'GA',
     targetCoord: STATE_GEOLOCATIONS.GA,
-    flowRate: 2340,
-    label: 'JaxPort Ingestion Arbitrage to Brunswick Auto Ro-Ro (+2,340 Transfers)',
-    timestamp: new Date().toISOString(),
+    flowCount: 2340,
+    label: '+2,340 JaxPort Arbitrage Adopters',
+    timestamp: Date.now() - 3200,
+    durationMs: 4200,
   },
-
-  // Red Arcs: Adversary / Competition data output acceptance & drain signals
   {
-    id: 'ARC-GA-TX-DRAIN',
+    id: 'PULSE-GA-TX',
     type: 'COMPETITOR_ACCEPT',
     sourceState: 'GA',
     sourceCoord: STATE_GEOLOCATIONS.GA,
     targetState: 'TX',
     targetCoord: STATE_GEOLOCATIONS.TX,
-    flowRate: 1820,
-    label: 'TX Chapter 312 Incentive Accepting Silicon Semiconductor Yield (-1,820 Nodes)',
-    timestamp: new Date().toISOString(),
+    flowCount: 1820,
+    label: '-1,820 Nodes Accepting Texas Ch. 312',
+    timestamp: Date.now() - 1800,
+    durationMs: 5000,
   },
   {
-    id: 'ARC-GA-VA-DRAIN',
+    id: 'PULSE-GA-VA',
     type: 'COMPETITOR_ACCEPT',
     sourceState: 'GA',
     sourceCoord: STATE_GEOLOCATIONS.GA,
     targetState: 'VA',
     targetCoord: STATE_GEOLOCATIONS.VA,
-    flowRate: 1260,
-    label: 'Virginia 55-ft Dredging Depth Dredge Acceptance (-1,260 TEU Diversions)',
-    timestamp: new Date().toISOString(),
+    flowCount: 1260,
+    label: '-1,260 TEU Accepting Virginia 55-ft Port',
+    timestamp: Date.now() - 900,
+    durationMs: 4600,
   },
 ];
