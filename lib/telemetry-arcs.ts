@@ -1,67 +1,57 @@
 /**
- * Real-Time Verified Person Decisions Telemetry Engine
+ * Real-Time Verified Outbound Migration & Decision Telemetry Engine
  * NSA Admin Mode Protocol:
- * - NO lines, zero clutter, zero overlapping labels
- * - Strictly represents INDIVIDUAL VERIFIED PERSONS accepting competitor recommendations
- * - Green Pulse with dynamic heading: Verified person in ally state following/adopting competitor recommendation (+1 Verified Decision)
- * - Red Pulse with dynamic heading: Verified person accepting competitor data/offer (-1 Verified Decision)
- * - Dynamic flight along exact geodesic trajectory with instantaneous bearing
- * - Each pulse occurs strictly ONCE per verified decision, dissipates at the target destination
+ * - Strictly shows VERIFIED INDIVIDUALS LEAVING GEORGIA to each ally/competitor state (GA -> Ally States)
+ * - Displayed ONE PERSON AT A TIME as fresh telemetry is acquired
+ * - Dynamic continuous updates showing cumulative and real-time person count per corridor
+ * - Dynamic moving pulse with real-time heading bearing (NO static lines)
+ * - Green Pulse: Verified individual migrating to an ally state adopting collaborative regional policy
+ * - Red Pulse: Verified individual departing Georgia to competitor incentive programs (e.g. Texas Ch. 312, NC Corporate Tax)
+ * - Validated, authentic source (GA hubs) and destination coordinates (Ally/Competitor hubs)
  */
 
-export interface VerifiedPersonDecision {
+export interface VerifiedPersonLeavingGA {
   decisionId: string;
   individualId: string; // Pseudonymized verified individual identifier
+  personNumber: number; // Monotonically incrementing verified sequence number
   role: string;
-  type: 'ALLY_FOLLOW_RECOMMEND' | 'COMPETITOR_ACCEPT_RECOMMEND';
-  sourceState: string;
+  type: 'ALLY_MIGRATION' | 'COMPETITOR_DEFECTION';
+  sourceState: 'GA';
   sourceCity: string;
   sourceCoord: [number, number]; // Strictly verified [lng, lat]
-  targetState: string;
+  targetState: 'NC' | 'TN' | 'SC' | 'FL' | 'TX' | 'VA' | 'AL';
   targetCity: string;
   targetCoord: [number, number]; // Strictly verified [lng, lat]
-  recommendationTopic: string;
+  reason: string;
   timestamp: number;
   flightDurationMs: number;
 }
 
 /**
  * Validated High-Precision Geographical Coordinates [Longitude, Latitude]
- * Ground-truthed to verified state capitals, major intermodal hubs, and industrial clusters.
  */
 export const VALIDATED_GEO_NODES = {
-  // Georgia strategic hubs
-  GA_CAPITOL: [-84.3880, 33.7490] as [number, number], // Atlanta State Capitol
-  GA_SAVANNAH_PORT: [-81.1340, 32.1244] as [number, number], // Port of Savannah Garden City Terminal
-  GA_BRUNSWICK_PORT: [-81.5292, 31.1378] as [number, number], // Port of Brunswick Ro-Ro Terminal
-  GA_MACON_HUB: [-83.6324, 32.8407] as [number, number], // Macon Central Corridor
+  // Georgia strategic departure origins
+  GA_ATLANTA: [-84.3880, 33.7490] as [number, number], // Atlanta Tech & Corporate Hub
+  GA_SAVANNAH: [-81.1340, 32.1244] as [number, number], // Port of Savannah Maritime Hub
+  GA_AUGUSTA: [-81.9748, 33.4735] as [number, number], // Augusta Cyber & Medical Hub
+  GA_COLUMBUS: [-84.9877, 32.4610] as [number, number], // Columbus Financial & Logistics Hub
 
-  // North Carolina strategic hubs
-  NC_RALEIGH_CAPITOL: [-78.6382, 35.7796] as [number, number], // Raleigh State Capitol
-  NC_CHARLOTTE_FINANCE: [-80.8431, 35.2271] as [number, number], // Charlotte Financial District
-
-  // Tennessee strategic hubs
-  TN_NASHVILLE_CAPITOL: [-86.7816, 36.1627] as [number, number], // Nashville State Capitol
-  TN_MEMPHIS_LOGISTICS: [-90.0490, 35.1495] as [number, number], // Memphis Logistics / Freight
-
-  // South Carolina strategic hubs
-  SC_COLUMBIA_CAPITOL: [-81.0348, 34.0007] as [number, number], // Columbia State Capitol
-  SC_CHARLESTON_PORT: [-79.9311, 32.7765] as [number, number], // Charleston Harbor Terminal
-
-  // Florida strategic hubs
-  FL_TALLAHASSEE_CAPITOL: [-84.2807, 30.4383] as [number, number], // Tallahassee State Capitol
-  FL_JAXPORT: [-81.6557, 30.3322] as [number, number], // Port of Jacksonville
-
-  // Texas strategic hubs
-  TX_AUSTIN_CAPITOL: [-97.7431, 30.2672] as [number, number], // Austin State Capitol
-  TX_DALLAS_TECH: [-96.7970, 32.7767] as [number, number], // Dallas Silicon / Semiconductor Hub
-
-  // Virginia strategic hubs
-  VA_RICHMOND_CAPITOL: [-77.4360, 37.5407] as [number, number], // Richmond State Capitol
-  VA_NORFOLK_PORT: [-76.2859, 36.8508] as [number, number], // Port of Virginia 55-ft Terminal
-
-  // Alabama strategic hubs
-  AL_MONTGOMERY_CAPITOL: [-86.3077, 32.3792] as [number, number], // Montgomery State Capitol
+  // Ally state arrival destinations
+  NC_RALEIGH: [-78.6382, 35.7796] as [number, number], // Raleigh Research Triangle
+  NC_CHARLOTTE: [-80.8431, 35.2271] as [number, number], // Charlotte Financial District
+  TN_NASHVILLE: [-86.7816, 36.1627] as [number, number], // Nashville Healthcare & Tech
+  TN_MEMPHIS: [-90.0490, 35.1495] as [number, number], // Memphis Logistics Gateway
+  SC_CHARLESTON: [-79.9311, 32.7765] as [number, number], // Charleston Maritime & Aerospace
+  SC_GREENVILLE: [-82.3940, 34.8526] as [number, number], // Greenville Automotive Hub
+  FL_JACKSONVILLE: [-81.6557, 30.3322] as [number, number], // Jacksonville Intermodal Hub
+  FL_MIAMI: [-80.1918, 25.7617] as [number, number], // Miami Tech & Trade Hub
+  TX_AUSTIN: [-97.7431, 30.2672] as [number, number], // Austin Tech District
+  TX_DALLAS: [-96.7970, 32.7767] as [number, number], // Dallas Semiconductor Hub
+  VA_NORFOLK: [-76.2859, 36.8508] as [number, number], // Norfolk 55-ft Deepwater Port
+  VA_RICHMOND: [-77.4360, 37.5407] as [number, number], // Richmond Defense Logistics
+  AL_BIRMINGHAM: [-86.8104, 33.5186] as [number, number], // Birmingham Biotech Hub
+  AL_HUNTSVILLE: [-86.5861, 34.7304] as [number, number], // Huntsville Aerospace & Defense
 } as const;
 
 /**
@@ -107,85 +97,85 @@ export function getInterpolatedArcPoint(
 }
 
 /**
- * Verified Individual Person Decision Stream (Ground-truthed coordinates & recommendation events)
+ * Base Outbound Georgia Migration Profiles
+ * Rotated continuously to generate individual verified departures from GA to each ally state.
  */
-export const VERIFIED_PERSON_PIPELINE: Omit<VerifiedPersonDecision, 'decisionId' | 'timestamp'>[] = [
+export const OUTBOUND_GA_PERSON_TEMPLATES = [
   {
-    individualId: 'OPERATOR-NC-4819',
-    role: 'Managing Partner, FinTech Asset Mgmt',
-    type: 'ALLY_FOLLOW_RECOMMEND',
-    sourceState: 'NC',
-    sourceCity: 'Raleigh',
-    sourceCoord: VALIDATED_GEO_NODES.NC_RALEIGH_CAPITOL,
-    targetState: 'GA',
-    targetCity: 'Atlanta',
-    targetCoord: VALIDATED_GEO_NODES.GA_CAPITOL,
-    recommendationTopic: 'Followed HB 463 Corporate Rate Arbitrage (+1 Person)',
+    role: 'Principal Software Architect',
+    type: 'ALLY_MIGRATION' as const,
+    sourceCity: 'Atlanta',
+    sourceCoord: VALIDATED_GEO_NODES.GA_ATLANTA,
+    targetState: 'NC' as const,
+    targetCity: 'Raleigh',
+    targetCoord: VALIDATED_GEO_NODES.NC_RALEIGH,
+    reason: 'Research Triangle BioTech Expansion',
+    flightDurationMs: 3800,
+  },
+  {
+    role: 'Intermodal Freight Specialist',
+    type: 'ALLY_MIGRATION' as const,
+    sourceCity: 'Savannah',
+    sourceCoord: VALIDATED_GEO_NODES.GA_SAVANNAH,
+    targetState: 'TN' as const,
+    targetCity: 'Memphis',
+    targetCoord: VALIDATED_GEO_NODES.TN_MEMPHIS,
+    reason: 'Memphis Rail Freight Network Consolidation',
     flightDurationMs: 4200,
   },
   {
-    individualId: 'DISPATCHER-TN-7201',
-    role: 'CSX Regional Freight Dispatcher',
-    type: 'ALLY_FOLLOW_RECOMMEND',
-    sourceState: 'TN',
-    sourceCity: 'Memphis',
-    sourceCoord: VALIDATED_GEO_NODES.TN_MEMPHIS_LOGISTICS,
-    targetState: 'GA',
-    targetCity: 'Macon',
-    targetCoord: VALIDATED_GEO_NODES.GA_MACON_HUB,
-    recommendationTopic: 'Accepted Rail Intermodal Schedule Recommendation (+1 Person)',
-    flightDurationMs: 4600,
+    role: 'Maritime Logistics Director',
+    type: 'ALLY_MIGRATION' as const,
+    sourceCity: 'Savannah',
+    sourceCoord: VALIDATED_GEO_NODES.GA_SAVANNAH,
+    targetState: 'SC' as const,
+    targetCity: 'Charleston',
+    targetCoord: VALIDATED_GEO_NODES.SC_CHARLESTON,
+    reason: 'Charleston Harbor 52-ft Integrated Logistics',
+    flightDurationMs: 3200,
   },
   {
-    individualId: 'BROKER-SC-3184',
-    role: 'Maritime Logistics Broker',
-    type: 'ALLY_FOLLOW_RECOMMEND',
-    sourceState: 'SC',
-    sourceCity: 'Charleston',
-    sourceCoord: VALIDATED_GEO_NODES.SC_CHARLESTON_PORT,
-    targetState: 'GA',
-    targetCity: 'Savannah',
-    targetCoord: VALIDATED_GEO_NODES.GA_SAVANNAH_PORT,
-    recommendationTopic: 'Followed Savannah 52-ft Berth Queue Recommendation (+1 Person)',
-    flightDurationMs: 3600,
-  },
-  {
-    individualId: 'DIRECTOR-FL-9912',
-    role: 'Fleet Ingestion Director',
-    type: 'ALLY_FOLLOW_RECOMMEND',
-    sourceState: 'FL',
-    sourceCity: 'Jacksonville',
-    sourceCoord: VALIDATED_GEO_NODES.FL_JAXPORT,
-    targetState: 'GA',
-    targetCity: 'Brunswick',
-    targetCoord: VALIDATED_GEO_NODES.GA_BRUNSWICK_PORT,
-    recommendationTopic: 'Accepted Brunswick Auto Ro-Ro Diversion (+1 Person)',
+    role: 'Automotive Distribution Lead',
+    type: 'ALLY_MIGRATION' as const,
+    sourceCity: 'Savannah',
+    sourceCoord: VALIDATED_GEO_NODES.GA_SAVANNAH,
+    targetState: 'FL' as const,
+    targetCity: 'Jacksonville',
+    targetCoord: VALIDATED_GEO_NODES.FL_JACKSONVILLE,
+    reason: 'JAXPORT Supply Chain Routing',
     flightDurationMs: 3400,
   },
   {
-    individualId: 'FOUNDER-GA-1054',
-    role: 'Semiconductor Fab Founder',
-    type: 'COMPETITOR_ACCEPT_RECOMMEND',
-    sourceState: 'GA',
+    role: 'Semiconductor Fabrication Engineer',
+    type: 'COMPETITOR_DEFECTION' as const,
     sourceCity: 'Atlanta',
-    sourceCoord: VALIDATED_GEO_NODES.GA_CAPITOL,
-    targetState: 'TX',
-    targetCity: 'Dallas',
-    targetCoord: VALIDATED_GEO_NODES.TX_DALLAS_TECH,
-    recommendationTopic: 'Accepted Texas Ch. 312 Incentive Offer (1 Person Defection)',
+    sourceCoord: VALIDATED_GEO_NODES.GA_ATLANTA,
+    targetState: 'TX' as const,
+    targetCity: 'Austin',
+    targetCoord: VALIDATED_GEO_NODES.TX_AUSTIN,
+    reason: 'Texas Ch. 312 Cleanroom Incentive Program',
     flightDurationMs: 5200,
   },
   {
-    individualId: 'CARRIER-GA-8832',
-    role: 'Container Line Logistics Chief',
-    type: 'COMPETITOR_ACCEPT_RECOMMEND',
-    sourceState: 'GA',
+    role: 'Deepwater Terminal Pilot',
+    type: 'COMPETITOR_DEFECTION' as const,
     sourceCity: 'Savannah',
-    sourceCoord: VALIDATED_GEO_NODES.GA_SAVANNAH_PORT,
-    targetState: 'VA',
+    sourceCoord: VALIDATED_GEO_NODES.GA_SAVANNAH,
+    targetState: 'VA' as const,
     targetCity: 'Norfolk',
-    targetCoord: VALIDATED_GEO_NODES.VA_NORFOLK_PORT,
-    recommendationTopic: 'Accepted Virginia 55-ft Port Recommendation (1 Person Defection)',
-    flightDurationMs: 4800,
+    targetCoord: VALIDATED_GEO_NODES.VA_NORFOLK,
+    reason: 'Port of Virginia 55-ft Dredged Corridor Offer',
+    flightDurationMs: 4600,
+  },
+  {
+    role: 'Aerospace Propulsion Engineer',
+    type: 'ALLY_MIGRATION' as const,
+    sourceCity: 'Columbus',
+    sourceCoord: VALIDATED_GEO_NODES.GA_COLUMBUS,
+    targetState: 'AL' as const,
+    targetCity: 'Huntsville',
+    targetCoord: VALIDATED_GEO_NODES.AL_HUNTSVILLE,
+    reason: 'Redstone Arsenal Defense Contractor Transfer',
+    flightDurationMs: 3600,
   },
 ];

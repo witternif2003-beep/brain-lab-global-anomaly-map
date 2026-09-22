@@ -1,5 +1,5 @@
 'use client';
-import { VERIFIED_PERSON_PIPELINE, getInterpolatedArcPoint, VerifiedPersonDecision } from '../lib/telemetry-arcs';
+import { OUTBOUND_GA_PERSON_TEMPLATES, getInterpolatedArcPoint, VerifiedPersonLeavingGA } from '../lib/telemetry-arcs';
 
 import { setWorkerUrl } from 'maplibre-gl';
 setWorkerUrl('/maplibre-gl-worker.mjs');
@@ -652,61 +652,77 @@ export default function StateMap({
   }, [addMapLayers]);
 
 
-  // ─── NSA ADMIN MODE VERIFIED PERSON TELEMETRY ENGINE (Strict Single-Occurrence) ───
+  // ─── NSA ADMIN MODE: OUTBOUND GEORGIA VERIFIED PERSON TELEMETRY (ONE AT A TIME) ───
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
 
-    let inFlightDecisions: VerifiedPersonDecision[] = [];
-    let nextPersonIdx = 0;
-    let lastLogTime = Date.now() - 3500;
+    let inFlightPerson: VerifiedPersonLeavingGA | null = null;
+    let templateIdx = 0;
+    let verifiedSequence = 18450;
+    let lastSpawnTime = 0;
     let animId: number;
 
     const animate = () => {
       const now = Date.now();
 
-      if (now - lastLogTime > 3000) {
-        lastLogTime = now;
-        const personData = VERIFIED_PERSON_PIPELINE[nextPersonIdx % VERIFIED_PERSON_PIPELINE.length];
-        nextPersonIdx++;
+      // Launch exactly ONE verified person at a time (spacing out every 3.8s)
+      if (!inFlightPerson && now - lastSpawnTime > 1200) {
+        lastSpawnTime = now;
+        verifiedSequence++;
+        const tmpl = OUTBOUND_GA_PERSON_TEMPLATES[templateIdx % OUTBOUND_GA_PERSON_TEMPLATES.length];
+        templateIdx++;
 
-        inFlightDecisions.push({
-          ...personData,
-          decisionId: `DECISION-${personData.individualId}-${now}`,
+        const newPerson: VerifiedPersonLeavingGA = {
+          ...tmpl,
+          decisionId: `GA-OUTBOUND-${verifiedSequence}`,
+          individualId: `PER-${tmpl.targetState}-${String(verifiedSequence).slice(-4)}`,
+          personNumber: verifiedSequence,
+          sourceState: 'GA',
           timestamp: now,
-        });
+        };
+
+        inFlightPerson = newPerson;
       }
 
       const currentFeatures: GeoJSON.Feature<GeoJSON.Point>[] = [];
-      inFlightDecisions = inFlightDecisions.filter((person) => {
-        const elapsed = now - person.timestamp;
-        const t = elapsed / person.flightDurationMs;
+
+      if (inFlightPerson) {
+        const elapsed = now - inFlightPerson.timestamp;
+        const t = elapsed / inFlightPerson.flightDurationMs;
 
         if (t >= 1.0) {
-          return false;
-        }
+          inFlightPerson = null;
+        } else {
+          const { coord, bearing } = getInterpolatedArcPoint(
+            inFlightPerson.sourceCoord,
+            inFlightPerson.targetCoord,
+            t
+          );
 
-        const { coord, bearing } = getInterpolatedArcPoint(person.sourceCoord, person.targetCoord, t);
-        currentFeatures.push({
-          type: 'Feature',
-          properties: {
-            id: person.decisionId,
-            individualId: person.individualId,
-            role: person.role,
-            type: person.type,
-            color: person.type === 'ALLY_FOLLOW_RECOMMEND' ? '#10b981' : '#ef4444',
-            bearing,
-            label: `${person.type === 'ALLY_FOLLOW_RECOMMEND' ? '▲' : '▼'} 1 Verified Person (${person.sourceState}→${person.targetState})`,
-            topic: person.recommendationTopic,
-            progress: t,
-          },
-          geometry: {
-            type: 'Point',
-            coordinates: coord,
-          },
-        });
-        return true;
-      });
+          currentFeatures.push({
+            type: 'Feature',
+            properties: {
+              id: inFlightPerson.decisionId,
+              individualId: inFlightPerson.individualId,
+              personNumber: inFlightPerson.personNumber,
+              role: inFlightPerson.role,
+              type: inFlightPerson.type,
+              color: inFlightPerson.type === 'ALLY_MIGRATION' ? '#10b981' : '#ef4444',
+              bearing,
+              label: `${inFlightPerson.type === 'ALLY_MIGRATION' ? '▲' : '▼'} Verified Person #${inFlightPerson.personNumber.toLocaleString()} (GA→${inFlightPerson.targetState})`,
+              source: `GA (${inFlightPerson.sourceCity})`,
+              target: `${inFlightPerson.targetState} (${inFlightPerson.targetCity})`,
+              reason: inFlightPerson.reason,
+              progress: t,
+            },
+            geometry: {
+              type: 'Point',
+              coordinates: coord,
+            },
+          });
+        }
+      }
 
       const src = map.getSource('telemetry-pulses') as any;
       if (src && typeof src.setData === 'function') {

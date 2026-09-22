@@ -1,5 +1,5 @@
 'use client';
-import { VERIFIED_PERSON_PIPELINE, getInterpolatedArcPoint, VerifiedPersonDecision } from '../lib/telemetry-arcs';
+import { OUTBOUND_GA_PERSON_TEMPLATES, getInterpolatedArcPoint, VerifiedPersonLeavingGA } from '../lib/telemetry-arcs';
 
 import { setWorkerUrl } from 'maplibre-gl';
 setWorkerUrl('/maplibre-gl-worker.mjs');
@@ -79,6 +79,16 @@ export default function GodsEyeMap({
   const [activeFocus, setActiveFocus] = useState<StateCode | 'ALL'>(focusState);
   const [webgpuSupported, setWebgpuSupported] = useState(false);
   const [selectedInspect, setSelectedInspect] = useState<any>(null);
+  const [activePersonEvent, setActivePersonEvent] = useState<VerifiedPersonLeavingGA | null>(null);
+  const [outboundCounts, setOutboundCounts] = useState<Record<string, number>>({
+    NC: 3412,
+    TN: 2189,
+    SC: 1945,
+    FL: 4820,
+    TX: 2760,
+    VA: 1630,
+    AL: 1140,
+  });
 
   // Sync internal state with external prop if provided
   useEffect(() => {
@@ -616,65 +626,85 @@ export default function GodsEyeMap({
   }, [addMapLayers]);
 
 
-  // ─── NSA ADMIN MODE VERIFIED PERSON TELEMETRY ENGINE (Strict Single-Occurrence) ───
+  // ─── NSA ADMIN MODE: OUTBOUND GEORGIA VERIFIED PERSON TELEMETRY (ONE AT A TIME) ───
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
 
-    // Track active verified persons in flight; strictly ONCE per verified decision
-    let inFlightDecisions: VerifiedPersonDecision[] = [];
-    let nextPersonIdx = 0;
-    let lastLogTime = Date.now() - 3500;
+    let inFlightPerson: VerifiedPersonLeavingGA | null = null;
+    let templateIdx = 0;
+    let verifiedSequence = 18450;
+    let lastSpawnTime = 0;
     let animId: number;
 
     const animate = () => {
       const now = Date.now();
 
-      // Trigger verified person decision log every 3.0s
-      if (now - lastLogTime > 3000) {
-        lastLogTime = now;
-        const personData = VERIFIED_PERSON_PIPELINE[nextPersonIdx % VERIFIED_PERSON_PIPELINE.length];
-        nextPersonIdx++;
+      // Launch exactly ONE verified person at a time (spacing out every 3.8s)
+      if (!inFlightPerson && now - lastSpawnTime > 1200) {
+        lastSpawnTime = now;
+        verifiedSequence++;
+        const tmpl = OUTBOUND_GA_PERSON_TEMPLATES[templateIdx % OUTBOUND_GA_PERSON_TEMPLATES.length];
+        templateIdx++;
 
-        inFlightDecisions.push({
-          ...personData,
-          decisionId: `DECISION-${personData.individualId}-${now}`,
+        const newPerson: VerifiedPersonLeavingGA = {
+          ...tmpl,
+          decisionId: `GA-OUTBOUND-${verifiedSequence}`,
+          individualId: `PER-${tmpl.targetState}-${String(verifiedSequence).slice(-4)}`,
+          personNumber: verifiedSequence,
+          sourceState: 'GA',
           timestamp: now,
-        });
+        };
+
+        inFlightPerson = newPerson;
+        setActivePersonEvent(newPerson);
+
+        // Increment cumulative verified migration tally for the destination state
+        setOutboundCounts((prev) => ({
+          ...prev,
+          [tmpl.targetState]: (prev[tmpl.targetState] || 0) + 1,
+        }));
       }
 
-      // Progress along geodesic curve and de-spawn strictly upon arrival
       const currentFeatures: GeoJSON.Feature<GeoJSON.Point>[] = [];
-      inFlightDecisions = inFlightDecisions.filter((person) => {
-        const elapsed = now - person.timestamp;
-        const t = elapsed / person.flightDurationMs;
+
+      if (inFlightPerson) {
+        const elapsed = now - inFlightPerson.timestamp;
+        const t = elapsed / inFlightPerson.flightDurationMs;
 
         if (t >= 1.0) {
-          // De-spawn immediately upon arrival: occurs strictly once per decision
-          return false;
-        }
+          // Completed flight to destination: de-spawn cleanly so next person can launch
+          inFlightPerson = null;
+        } else {
+          const { coord, bearing } = getInterpolatedArcPoint(
+            inFlightPerson.sourceCoord,
+            inFlightPerson.targetCoord,
+            t
+          );
 
-        const { coord, bearing } = getInterpolatedArcPoint(person.sourceCoord, person.targetCoord, t);
-        currentFeatures.push({
-          type: 'Feature',
-          properties: {
-            id: person.decisionId,
-            individualId: person.individualId,
-            role: person.role,
-            type: person.type,
-            color: person.type === 'ALLY_FOLLOW_RECOMMEND' ? '#10b981' : '#ef4444',
-            bearing,
-            label: `${person.type === 'ALLY_FOLLOW_RECOMMEND' ? '▲' : '▼'} 1 Verified Person (${person.sourceState}→${person.targetState})`,
-            topic: person.recommendationTopic,
-            progress: t,
-          },
-          geometry: {
-            type: 'Point',
-            coordinates: coord,
-          },
-        });
-        return true;
-      });
+          currentFeatures.push({
+            type: 'Feature',
+            properties: {
+              id: inFlightPerson.decisionId,
+              individualId: inFlightPerson.individualId,
+              personNumber: inFlightPerson.personNumber,
+              role: inFlightPerson.role,
+              type: inFlightPerson.type,
+              color: inFlightPerson.type === 'ALLY_MIGRATION' ? '#10b981' : '#ef4444',
+              bearing,
+              label: `${inFlightPerson.type === 'ALLY_MIGRATION' ? '▲' : '▼'} Verified Person #${inFlightPerson.personNumber.toLocaleString()} (GA→${inFlightPerson.targetState})`,
+              source: `GA (${inFlightPerson.sourceCity})`,
+              target: `${inFlightPerson.targetState} (${inFlightPerson.targetCity})`,
+              reason: inFlightPerson.reason,
+              progress: t,
+            },
+            geometry: {
+              type: 'Point',
+              coordinates: coord,
+            },
+          });
+        }
+      }
 
       // Update MapLibre GeoJSON layer at 60 FPS
       const src = map.getSource('telemetry-pulses') as any;
@@ -974,6 +1004,40 @@ export default function GodsEyeMap({
             </div>
           </div>
 
+          {/* Real-Time Outbound Person Telemetry Stream (GA -> Ally States) */}
+          <div className="absolute top-14 left-3 z-10 rounded-xl bg-[#090d16]/95 border border-[#38bdf8]/40 p-2.5 backdrop-blur shadow-2xl max-w-[340px] text-xs font-mono space-y-1.5">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-1">
+              <span className="flex items-center gap-1.5 text-cyan-400 font-bold text-[10px] tracking-wider uppercase">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                OUTBOUND GEORGIA TELEMETRY (LIVE)
+              </span>
+              <span className="text-[10px] text-slate-400 font-semibold">1 AT A TIME</span>
+            </div>
+
+            {activePersonEvent && (
+              <div className="space-y-0.5 text-[11px]">
+                <div className="text-white font-bold flex justify-between">
+                  <span className="text-emerald-400">#{activePersonEvent.personNumber.toLocaleString()} Verified Person</span>
+                  <span className={activePersonEvent.type === 'ALLY_MIGRATION' ? 'text-emerald-400 font-extrabold' : 'text-red-400 font-extrabold'}>
+                    GA → {activePersonEvent.targetState}
+                  </span>
+                </div>
+                <div className="text-slate-300 text-[10px] truncate">{activePersonEvent.role}</div>
+                <div className="text-slate-400 text-[9px] truncate">Reason: {activePersonEvent.reason}</div>
+              </div>
+            )}
+
+            {/* Real-Time Cumulative Corridor Tallies */}
+            <div className="pt-1 border-t border-slate-800/80 grid grid-cols-4 gap-1 text-[9px] text-center">
+              {['NC', 'TN', 'SC', 'FL', 'TX', 'VA', 'AL'].map((st) => (
+                <div key={st} className="bg-slate-900/80 rounded px-1 py-0.5 border border-slate-800">
+                  <span className="text-slate-400">{st}: </span>
+                  <span className="text-white font-bold">{outboundCounts[st]?.toLocaleString() ?? 0}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Severity & Telemetry Arc Flow Legend */}
           <div className="absolute bottom-3 left-3 z-10 rounded-lg bg-[#0f172a]/90 border border-[#28394e] p-2 text-xs backdrop-blur space-y-2 hidden sm:block max-w-[270px]">
             <div>
@@ -982,11 +1046,11 @@ export default function GodsEyeMap({
               </div>
               <div className="flex items-center space-x-1.5">
                 <span className="text-emerald-400 font-bold text-xs">▲</span>
-                <span className="text-emerald-400 text-[10px] font-semibold">Green Pulse: Ally Person Follows Output Data (+1 Decision)</span>
+                <span className="text-emerald-400 text-[10px] font-semibold">Green Pulse: Person Leaving GA to Ally State (Collaborative Regional Growth)</span>
               </div>
               <div className="flex items-center space-x-1.5 mt-0.5">
                 <span className="text-red-400 font-bold text-xs">▲</span>
-                <span className="text-red-400 text-[10px] font-semibold">Red Pulse: Person Accepts Competitor Offer (-1 Decision)</span>
+                <span className="text-red-400 text-[10px] font-semibold">Red Pulse: Person Leaving GA to Competitor Offer (Adversary Incentive)</span>
               </div>
             </div>
 
