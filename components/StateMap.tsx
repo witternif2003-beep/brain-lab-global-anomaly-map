@@ -508,21 +508,46 @@ export default function StateMap({
       });
     }
 
+    // Glowing Neon Green Digital Identifier for Verified Persons Leaving GA
+    if (!map.getLayer('telemetry-pulse-neon-digit')) {
+      map.addLayer({
+        id: 'telemetry-pulse-neon-digit',
+        type: 'symbol',
+        source: 'telemetry-pulses',
+        layout: {
+          'text-field': ['get', 'neonDigit'],
+          'text-size': 13,
+          'text-offset': [0, -1.6],
+          'text-anchor': 'bottom',
+          'text-allow-overlap': true,
+          'text-ignore-placement': true,
+          'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+        },
+        paint: {
+          'text-color': '#00ff66', // Glowing Electric Neon Green
+          'text-halo-color': '#003311', // Deep Emerald Shield Halo
+          'text-halo-width': 3,
+          'text-halo-blur': 2,
+        },
+      });
+    }
+
+    // Secondary Corridor Direction Tag
     if (!map.getLayer('telemetry-pulse-label')) {
       map.addLayer({
         id: 'telemetry-pulse-label',
         type: 'symbol',
         source: 'telemetry-pulses',
         layout: {
-          'text-field': ['get', 'label'],
+          'text-field': ['get', 'corridorLabel'],
           'text-size': 10,
-          'text-offset': [0, 1.2],
+          'text-offset': [0, 1.4],
           'text-anchor': 'top',
           'text-allow-overlap': false,
           'text-optional': true,
         },
         paint: {
-          'text-color': ['get', 'color'],
+          'text-color': '#34d399',
           'text-halo-color': '#090d16',
           'text-halo-width': 2,
         },
@@ -706,11 +731,13 @@ export default function StateMap({
               id: inFlightPerson.decisionId,
               individualId: inFlightPerson.individualId,
               personNumber: inFlightPerson.personNumber,
+              neonDigit: `№ ${inFlightPerson.personNumber.toLocaleString()}`,
+              corridorLabel: `GA→${inFlightPerson.targetState} [${inFlightPerson.individualId}]`,
               role: inFlightPerson.role,
               type: inFlightPerson.type,
               color: inFlightPerson.type === 'ALLY_MIGRATION' ? '#10b981' : '#ef4444',
               bearing,
-              label: `${inFlightPerson.type === 'ALLY_MIGRATION' ? '▲' : '▼'} Verified Person #${inFlightPerson.personNumber.toLocaleString()} (GA→${inFlightPerson.targetState})`,
+              label: `№ ${inFlightPerson.personNumber.toLocaleString()} GA→${inFlightPerson.targetState}`,
               source: `GA (${inFlightPerson.sourceCity})`,
               target: `${inFlightPerson.targetState} (${inFlightPerson.targetCity})`,
               reason: inFlightPerson.reason,
