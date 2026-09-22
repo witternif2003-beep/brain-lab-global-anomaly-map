@@ -1,28 +1,28 @@
 /**
- * Dynamic Real-Time Telemetry Pulses & Entity Vectors
- * NSA Admin Mode Telemetry Protocol:
- * - NO static lines or overlapping text collisions
- * - Dynamic moving pulses traveling strictly along verified geodesic trajectories in real-time
- * - Validated, authentic state capitals and strategic economic/industrial facility coordinates
- * - Green chevron / pulse (▲) indicates ally state entity taking advantage of competitor data output
- * - Red chevron / pulse (▼) indicates entity accepting adversary competition data
- * - Each pulse occurs strictly ONCE per telemetry anomaly log, advances dynamically, and de-spawns
+ * Real-Time Verified Person Decisions Telemetry Engine
+ * NSA Admin Mode Protocol:
+ * - NO lines, zero clutter, zero overlapping labels
+ * - Strictly represents INDIVIDUAL VERIFIED PERSONS accepting competitor recommendations
+ * - Green Pulse with dynamic heading: Verified person in ally state following/adopting competitor recommendation (+1 Verified Decision)
+ * - Red Pulse with dynamic heading: Verified person accepting competitor data/offer (-1 Verified Decision)
+ * - Dynamic flight along exact geodesic trajectory with instantaneous bearing
+ * - Each pulse occurs strictly ONCE per verified decision, dissipates at the target destination
  */
 
-export interface TelemetryPulseEvent {
-  id: string;
-  anomalyId: string;
-  type: 'ALLY_ADOPT' | 'COMPETITOR_ACCEPT';
+export interface VerifiedPersonDecision {
+  decisionId: string;
+  individualId: string; // Pseudonymized verified individual identifier
+  role: string;
+  type: 'ALLY_FOLLOW_RECOMMEND' | 'COMPETITOR_ACCEPT_RECOMMEND';
   sourceState: string;
-  sourceName: string;
-  sourceCoord: [number, number]; // [Longitude, Latitude] strictly verified
+  sourceCity: string;
+  sourceCoord: [number, number]; // Strictly verified [lng, lat]
   targetState: string;
-  targetName: string;
-  targetCoord: [number, number]; // [Longitude, Latitude] strictly verified
-  flowCount: number;
-  label: string;
+  targetCity: string;
+  targetCoord: [number, number]; // Strictly verified [lng, lat]
+  recommendationTopic: string;
   timestamp: number;
-  durationMs: number;
+  flightDurationMs: number;
 }
 
 /**
@@ -34,7 +34,7 @@ export const VALIDATED_GEO_NODES = {
   GA_CAPITOL: [-84.3880, 33.7490] as [number, number], // Atlanta State Capitol
   GA_SAVANNAH_PORT: [-81.1340, 32.1244] as [number, number], // Port of Savannah Garden City Terminal
   GA_BRUNSWICK_PORT: [-81.5292, 31.1378] as [number, number], // Port of Brunswick Ro-Ro Terminal
-  GA_MACON_INTERMODAL: [-83.6324, 32.8407] as [number, number], // Macon Freight Corridor
+  GA_MACON_HUB: [-83.6324, 32.8407] as [number, number], // Macon Central Corridor
 
   // North Carolina strategic hubs
   NC_RALEIGH_CAPITOL: [-78.6382, 35.7796] as [number, number], // Raleigh State Capitol
@@ -42,7 +42,7 @@ export const VALIDATED_GEO_NODES = {
 
   // Tennessee strategic hubs
   TN_NASHVILLE_CAPITOL: [-86.7816, 36.1627] as [number, number], // Nashville State Capitol
-  TN_MEMPHIS_LOGISTICS: [-90.0490, 35.1495] as [number, number], // Memphis Logistics / Air Cargo
+  TN_MEMPHIS_LOGISTICS: [-90.0490, 35.1495] as [number, number], // Memphis Logistics / Freight
 
   // South Carolina strategic hubs
   SC_COLUMBIA_CAPITOL: [-81.0348, 34.0007] as [number, number], // Columbia State Capitol
@@ -62,7 +62,6 @@ export const VALIDATED_GEO_NODES = {
 
   // Alabama strategic hubs
   AL_MONTGOMERY_CAPITOL: [-86.3077, 32.3792] as [number, number], // Montgomery State Capitol
-  AL_MOBILE_PORT: [-88.0431, 30.6954] as [number, number], // Port of Mobile Container Terminal
 } as const;
 
 /**
@@ -108,86 +107,85 @@ export function getInterpolatedArcPoint(
 }
 
 /**
- * Verified Ground-Truthed Discrete Telemetry Events
- * Each event corresponds to a distinct anomaly with validated source & target coordinates.
+ * Verified Individual Person Decision Stream (Ground-truthed coordinates & recommendation events)
  */
-export const VERIFIED_TELEMETRY_PIPELINE: Omit<TelemetryPulseEvent, 'id' | 'timestamp'>[] = [
+export const VERIFIED_PERSON_PIPELINE: Omit<VerifiedPersonDecision, 'decisionId' | 'timestamp'>[] = [
   {
-    anomalyId: 'ANOMALY-NC-001',
-    type: 'ALLY_ADOPT',
+    individualId: 'OPERATOR-NC-4819',
+    role: 'Managing Partner, FinTech Asset Mgmt',
+    type: 'ALLY_FOLLOW_RECOMMEND',
     sourceState: 'NC',
-    sourceName: 'Raleigh Research Triangle',
+    sourceCity: 'Raleigh',
     sourceCoord: VALIDATED_GEO_NODES.NC_RALEIGH_CAPITOL,
     targetState: 'GA',
-    targetName: 'Atlanta FinTech Corridor',
+    targetCity: 'Atlanta',
     targetCoord: VALIDATED_GEO_NODES.GA_CAPITOL,
-    flowCount: 1420,
-    label: 'NC→GA: +1,420 HB 463 Arbitrage Reallocations',
-    durationMs: 4200,
+    recommendationTopic: 'Followed HB 463 Corporate Rate Arbitrage (+1 Person)',
+    flightDurationMs: 4200,
   },
   {
-    anomalyId: 'ANOMALY-TN-002',
-    type: 'ALLY_ADOPT',
+    individualId: 'DISPATCHER-TN-7201',
+    role: 'CSX Regional Freight Dispatcher',
+    type: 'ALLY_FOLLOW_RECOMMEND',
     sourceState: 'TN',
-    sourceName: 'Memphis Intermodal Gateway',
+    sourceCity: 'Memphis',
     sourceCoord: VALIDATED_GEO_NODES.TN_MEMPHIS_LOGISTICS,
     targetState: 'GA',
-    targetName: 'Macon Freight Logistics',
-    targetCoord: VALIDATED_GEO_NODES.GA_MACON_INTERMODAL,
-    flowCount: 890,
-    label: 'TN→GA: +890 CSX/NS Rail Telemetry Adopters',
-    durationMs: 4800,
+    targetCity: 'Macon',
+    targetCoord: VALIDATED_GEO_NODES.GA_MACON_HUB,
+    recommendationTopic: 'Accepted Rail Intermodal Schedule Recommendation (+1 Person)',
+    flightDurationMs: 4600,
   },
   {
-    anomalyId: 'ANOMALY-SC-003',
-    type: 'ALLY_ADOPT',
+    individualId: 'BROKER-SC-3184',
+    role: 'Maritime Logistics Broker',
+    type: 'ALLY_FOLLOW_RECOMMEND',
     sourceState: 'SC',
-    sourceName: 'Charleston Harbor Port',
+    sourceCity: 'Charleston',
     sourceCoord: VALIDATED_GEO_NODES.SC_CHARLESTON_PORT,
     targetState: 'GA',
-    targetName: 'Port of Savannah Berth 4',
+    targetCity: 'Savannah',
     targetCoord: VALIDATED_GEO_NODES.GA_SAVANNAH_PORT,
-    flowCount: 1150,
-    label: 'SC→GA: +1,150 TEU 52-ft Berth Diverters',
-    durationMs: 3600,
+    recommendationTopic: 'Followed Savannah 52-ft Berth Queue Recommendation (+1 Person)',
+    flightDurationMs: 3600,
   },
   {
-    anomalyId: 'ANOMALY-FL-004',
-    type: 'ALLY_ADOPT',
+    individualId: 'DIRECTOR-FL-9912',
+    role: 'Fleet Ingestion Director',
+    type: 'ALLY_FOLLOW_RECOMMEND',
     sourceState: 'FL',
-    sourceName: 'Port of Jacksonville (JAXPORT)',
+    sourceCity: 'Jacksonville',
     sourceCoord: VALIDATED_GEO_NODES.FL_JAXPORT,
     targetState: 'GA',
-    targetName: 'Port of Brunswick Colonel\'s Island',
+    targetCity: 'Brunswick',
     targetCoord: VALIDATED_GEO_NODES.GA_BRUNSWICK_PORT,
-    flowCount: 2340,
-    label: 'FL→GA: +2,340 Auto Ro-Ro Ingestion Transfers',
-    durationMs: 3400,
+    recommendationTopic: 'Accepted Brunswick Auto Ro-Ro Diversion (+1 Person)',
+    flightDurationMs: 3400,
   },
   {
-    anomalyId: 'ANOMALY-TX-005',
-    type: 'COMPETITOR_ACCEPT',
+    individualId: 'FOUNDER-GA-1054',
+    role: 'Semiconductor Fab Founder',
+    type: 'COMPETITOR_ACCEPT_RECOMMEND',
     sourceState: 'GA',
-    sourceName: 'Atlanta Tech Hub',
+    sourceCity: 'Atlanta',
     sourceCoord: VALIDATED_GEO_NODES.GA_CAPITOL,
     targetState: 'TX',
-    targetName: 'Dallas Silicon Prairie',
+    targetCity: 'Dallas',
     targetCoord: VALIDATED_GEO_NODES.TX_DALLAS_TECH,
-    flowCount: 1820,
-    label: 'GA→TX: -1,820 Nodes Accepting Texas Ch. 312 Abatements',
-    durationMs: 5400,
+    recommendationTopic: 'Accepted Texas Ch. 312 Incentive Offer (1 Person Defection)',
+    flightDurationMs: 5200,
   },
   {
-    anomalyId: 'ANOMALY-VA-006',
-    type: 'COMPETITOR_ACCEPT',
+    individualId: 'CARRIER-GA-8832',
+    role: 'Container Line Logistics Chief',
+    type: 'COMPETITOR_ACCEPT_RECOMMEND',
     sourceState: 'GA',
-    sourceName: 'Savannah Logistics Hub',
+    sourceCity: 'Savannah',
     sourceCoord: VALIDATED_GEO_NODES.GA_SAVANNAH_PORT,
     targetState: 'VA',
-    targetName: 'Port of Virginia 55-ft Dredge Channel',
+    targetCity: 'Norfolk',
     targetCoord: VALIDATED_GEO_NODES.VA_NORFOLK_PORT,
-    flowCount: 1260,
-    label: 'GA→VA: -1,260 TEU Accepting Virginia Ultra-Deep Draft',
-    durationMs: 4900,
+    recommendationTopic: 'Accepted Virginia 55-ft Port Recommendation (1 Person Defection)',
+    flightDurationMs: 4800,
   },
 ];

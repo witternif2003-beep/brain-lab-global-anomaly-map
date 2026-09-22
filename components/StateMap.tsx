@@ -1,5 +1,5 @@
 'use client';
-import { VERIFIED_TELEMETRY_PIPELINE, getInterpolatedArcPoint, TelemetryPulseEvent } from '../lib/telemetry-arcs';
+import { VERIFIED_PERSON_PIPELINE, getInterpolatedArcPoint, VerifiedPersonDecision } from '../lib/telemetry-arcs';
 
 import { setWorkerUrl } from 'maplibre-gl';
 setWorkerUrl('/maplibre-gl-worker.mjs');
@@ -652,52 +652,52 @@ export default function StateMap({
   }, [addMapLayers]);
 
 
-  // ─── NSA ADMIN MODE REAL-TIME TELEMETRY ENGINE (Validated Geodesic Pulses) ───
+  // ─── NSA ADMIN MODE VERIFIED PERSON TELEMETRY ENGINE (Strict Single-Occurrence) ───
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
 
-    let activePulses: TelemetryPulseEvent[] = [];
-    let nextPipelineIdx = 0;
-    let lastSpawnTime = Date.now() - 3000;
+    let inFlightDecisions: VerifiedPersonDecision[] = [];
+    let nextPersonIdx = 0;
+    let lastLogTime = Date.now() - 3500;
     let animId: number;
 
     const animate = () => {
       const now = Date.now();
 
-      if (now - lastSpawnTime > 2500) {
-        lastSpawnTime = now;
-        const pipelineItem = VERIFIED_TELEMETRY_PIPELINE[nextPipelineIdx % VERIFIED_TELEMETRY_PIPELINE.length];
-        nextPipelineIdx++;
+      if (now - lastLogTime > 3000) {
+        lastLogTime = now;
+        const personData = VERIFIED_PERSON_PIPELINE[nextPersonIdx % VERIFIED_PERSON_PIPELINE.length];
+        nextPersonIdx++;
 
-        activePulses.push({
-          ...pipelineItem,
-          id: `PULSE-${pipelineItem.anomalyId}-${now}`,
+        inFlightDecisions.push({
+          ...personData,
+          decisionId: `DECISION-${personData.individualId}-${now}`,
           timestamp: now,
         });
       }
 
       const currentFeatures: GeoJSON.Feature<GeoJSON.Point>[] = [];
-      activePulses = activePulses.filter((pulse) => {
-        const elapsed = now - pulse.timestamp;
-        const t = elapsed / pulse.durationMs;
+      inFlightDecisions = inFlightDecisions.filter((person) => {
+        const elapsed = now - person.timestamp;
+        const t = elapsed / person.flightDurationMs;
 
         if (t >= 1.0) {
           return false;
         }
 
-        const { coord, bearing } = getInterpolatedArcPoint(pulse.sourceCoord, pulse.targetCoord, t);
+        const { coord, bearing } = getInterpolatedArcPoint(person.sourceCoord, person.targetCoord, t);
         currentFeatures.push({
           type: 'Feature',
           properties: {
-            id: pulse.id,
-            anomalyId: pulse.anomalyId,
-            type: pulse.type,
-            color: pulse.type === 'ALLY_ADOPT' ? '#10b981' : '#ef4444',
+            id: person.decisionId,
+            individualId: person.individualId,
+            role: person.role,
+            type: person.type,
+            color: person.type === 'ALLY_FOLLOW_RECOMMEND' ? '#10b981' : '#ef4444',
             bearing,
-            label: pulse.label,
-            source: `${pulse.sourceState} (${pulse.sourceName})`,
-            target: `${pulse.targetState} (${pulse.targetName})`,
+            label: `${person.type === 'ALLY_FOLLOW_RECOMMEND' ? '▲' : '▼'} 1 Verified Person (${person.sourceState}→${person.targetState})`,
+            topic: person.recommendationTopic,
             progress: t,
           },
           geometry: {
