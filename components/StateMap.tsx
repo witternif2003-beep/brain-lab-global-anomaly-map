@@ -1,5 +1,5 @@
 'use client';
-import { SEED_TELEMETRY_EVENTS, getInterpolatedArcPoint, TelemetryPulseEvent } from '../lib/telemetry-arcs';
+import { VERIFIED_TELEMETRY_PIPELINE, getInterpolatedArcPoint, TelemetryPulseEvent } from '../lib/telemetry-arcs';
 
 import { setWorkerUrl } from 'maplibre-gl';
 setWorkerUrl('/maplibre-gl-worker.mjs');
@@ -652,41 +652,61 @@ export default function StateMap({
   }, [addMapLayers]);
 
 
-  // ─── REAL-TIME DYNAMIC TELEMETRY PULSE ENGINE (60 FPS rAF Loop) ─────────
+  // ─── NSA ADMIN MODE REAL-TIME TELEMETRY ENGINE (Validated Geodesic Pulses) ───
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
 
-    let activeEvents: TelemetryPulseEvent[] = [...SEED_TELEMETRY_EVENTS];
+    let activePulses: TelemetryPulseEvent[] = [];
+    let nextPipelineIdx = 0;
+    let lastSpawnTime = Date.now() - 3000;
     let animId: number;
 
     const animate = () => {
       const now = Date.now();
-      const currentFeatures: GeoJSON.Feature<GeoJSON.Point>[] = [];
 
-      for (const ev of activeEvents) {
-        const elapsed = now - ev.timestamp;
-        const t = Math.min(Math.max(elapsed / ev.durationMs, 0), 1);
+      if (now - lastSpawnTime > 2500) {
+        lastSpawnTime = now;
+        const pipelineItem = VERIFIED_TELEMETRY_PIPELINE[nextPipelineIdx % VERIFIED_TELEMETRY_PIPELINE.length];
+        nextPipelineIdx++;
 
-        if (t < 1.0) {
-          const { coord, bearing } = getInterpolatedArcPoint(ev.sourceCoord, ev.targetCoord, t);
-          currentFeatures.push({
-            type: 'Feature',
-            properties: {
-              id: ev.id,
-              type: ev.type,
-              color: ev.type === 'ALLY_ADOPT' ? '#10b981' : '#ef4444',
-              bearing,
-              label: ev.label,
-              progress: t,
-            },
-            geometry: {
-              type: 'Point',
-              coordinates: coord,
-            },
-          });
-        }
+        activePulses.push({
+          ...pipelineItem,
+          id: `PULSE-${pipelineItem.anomalyId}-${now}`,
+          timestamp: now,
+        });
       }
+
+      const currentFeatures: GeoJSON.Feature<GeoJSON.Point>[] = [];
+      activePulses = activePulses.filter((pulse) => {
+        const elapsed = now - pulse.timestamp;
+        const t = elapsed / pulse.durationMs;
+
+        if (t >= 1.0) {
+          return false;
+        }
+
+        const { coord, bearing } = getInterpolatedArcPoint(pulse.sourceCoord, pulse.targetCoord, t);
+        currentFeatures.push({
+          type: 'Feature',
+          properties: {
+            id: pulse.id,
+            anomalyId: pulse.anomalyId,
+            type: pulse.type,
+            color: pulse.type === 'ALLY_ADOPT' ? '#10b981' : '#ef4444',
+            bearing,
+            label: pulse.label,
+            source: `${pulse.sourceState} (${pulse.sourceName})`,
+            target: `${pulse.targetState} (${pulse.targetName})`,
+            progress: t,
+          },
+          geometry: {
+            type: 'Point',
+            coordinates: coord,
+          },
+        });
+        return true;
+      });
 
       const src = map.getSource('telemetry-pulses') as any;
       if (src && typeof src.setData === 'function') {
@@ -694,18 +714,6 @@ export default function StateMap({
           type: 'FeatureCollection',
           features: currentFeatures,
         });
-      }
-
-      if (Math.random() < 0.02) {
-        const seed = SEED_TELEMETRY_EVENTS[Math.floor(Math.random() * SEED_TELEMETRY_EVENTS.length)];
-        activeEvents.push({
-          ...seed,
-          id: `EV-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-          timestamp: Date.now(),
-        });
-        if (activeEvents.length > 20) {
-          activeEvents = activeEvents.filter(e => (now - e.timestamp) < e.durationMs);
-        }
       }
 
       animId = requestAnimationFrame(animate);
