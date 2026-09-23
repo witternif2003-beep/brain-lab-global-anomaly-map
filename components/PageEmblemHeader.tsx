@@ -23,10 +23,10 @@ export default function PageEmblemHeader({
         
         {/* Left Section with Official Standard Header Seal Placement */}
         <div className="flex items-start space-x-4">
-          {/* Official Standard 56px Header Insignia with Perspective Stability (Locked 1:1 Circle) */}
+          {/* Official Standard 56px Header Insignia with Conformal Cyan Bezel */}
           <div className="relative shrink-0 pt-0.5" style={{ flexShrink: 0 }}>
             <div
-              className="relative rounded-full p-1 bg-[#070d18] border-2 border-[#38bdf8]/70 shadow-[0_0_20px_rgba(56,189,248,0.35)] flex items-center justify-center overflow-hidden"
+              className="relative rounded-full flex items-center justify-center"
               style={{
                 width: '56px',
                 height: '56px',
@@ -37,22 +37,23 @@ export default function PageEmblemHeader({
                 aspectRatio: '1 / 1',
                 borderRadius: '50%',
                 flexShrink: 0,
+                filter: 'drop-shadow(0 0 16px rgba(56,189,248,0.6))',
               }}
             >
               <Image
-                src="/assets/brain-lab-emblem.png"
+                src="/assets/brain-lab-emblem-official.png"
                 alt="Official Header Insignia"
                 width={56}
                 height={56}
                 style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
+                  width: '56px',
+                  height: '56px',
+                  objectFit: 'contain',
                   aspectRatio: '1 / 1',
                   borderRadius: '50%',
                   display: 'block',
                 }}
-                className="rounded-full drop-shadow-md"
+                className="rounded-full"
                 priority
               />
             </div>

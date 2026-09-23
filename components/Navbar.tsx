@@ -55,9 +55,9 @@ export default function Navbar() {
           {/* Official NSA / CIA Admin Standards Header Seal & Typography Protocol */}
           <div className="flex items-center space-x-3.5 shrink-0 py-1">
             <Link href="/" className="flex items-center space-x-3 group">
-              {/* NSA / CIA Admin Approved Perfect Circular Header Seal (Locked 1:1 Aspect Ratio) */}
+              {/* NSA / CIA Admin Approved Perfect Circular Header Seal (Conformal 1:1 Bezel) */}
               <div
-                className="relative shrink-0 rounded-full overflow-hidden flex items-center justify-center shadow-[0_0_22px_rgba(56,189,248,0.5)] transition-transform duration-300 group-hover:scale-105"
+                className="relative shrink-0 rounded-full flex items-center justify-center transition-transform duration-300 group-hover:scale-105"
                 style={{
                   width: '48px',
                   height: '48px',
@@ -67,26 +67,24 @@ export default function Navbar() {
                   maxHeight: '48px',
                   aspectRatio: '1 / 1',
                   borderRadius: '50%',
-                  background: 'radial-gradient(circle, #0e1a2b 0%, #060a12 100%)',
-                  border: '2px solid #38bdf8',
-                  boxShadow: '0 0 0 1px rgba(255,255,255,0.15), 0 0 18px rgba(56,189,248,0.4)',
                   flexShrink: 0,
+                  filter: 'drop-shadow(0 0 12px rgba(56,189,248,0.65))',
                 }}
               >
                 <Image
-                  src="/assets/brain-lab-emblem.png"
+                  src="/assets/brain-lab-emblem-official.png"
                   alt="Central Intelligence Agency Official Seal"
                   width={48}
                   height={48}
                   style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
+                    width: '48px',
+                    height: '48px',
+                    objectFit: 'contain',
                     aspectRatio: '1 / 1',
                     borderRadius: '50%',
                     display: 'block',
                   }}
-                  className="rounded-full drop-shadow-md"
+                  className="rounded-full"
                   priority
                 />
               </div>
