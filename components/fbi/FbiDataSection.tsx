@@ -429,21 +429,21 @@ export default function FbiDataSection() {
                 {crimeData.total_agencies_reporting ? (
                   <div className="space-y-3">
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
-                      <div className="p-2.5 rounded-xl bg-[#071324] border border-[#1e3a5f]">
-                        <div className="text-[10px] text-slate-400 font-mono">AGENCIES TRACKED</div>
-                        <div className="text-base font-extrabold text-[#38bdf8] font-mono">{crimeData.total_agencies_reporting}</div>
+                      <div className="p-3 rounded-2xl bg-[#0a1526]/90 border border-[#1e3a5f]/80 shadow-[0_2px_10px_rgba(0,0,0,0.4)]">
+                        <div className="text-[10px] text-slate-300 font-mono font-bold tracking-wider">AGENCIES TRACKED</div>
+                        <div className="text-lg font-black text-[#38bdf8] font-mono mt-0.5">{crimeData.total_agencies_reporting}</div>
                       </div>
-                      <div className="p-2.5 rounded-xl bg-[#071324] border border-[#1e3a5f]">
-                        <div className="text-[10px] text-slate-400 font-mono">NIBRS COMPLIANT</div>
-                        <div className="text-base font-extrabold text-[#34d399] font-mono">{crimeData.nibrs_compliant_agencies}</div>
+                      <div className="p-3 rounded-2xl bg-[#0a1526]/90 border border-[#1e3a5f]/80 shadow-[0_2px_10px_rgba(0,0,0,0.4)]">
+                        <div className="text-[10px] text-slate-300 font-mono font-bold tracking-wider">NIBRS COMPLIANT</div>
+                        <div className="text-lg font-black text-[#34d399] font-mono mt-0.5">{crimeData.nibrs_compliant_agencies}</div>
                       </div>
-                      <div className="p-2.5 rounded-xl bg-[#071324] border border-[#1e3a5f]">
-                        <div className="text-[10px] text-slate-400 font-mono">COMPLIANCE RATE</div>
-                        <div className="text-base font-extrabold text-[#38bdf8] font-mono">{crimeData.nibrs_compliance_rate}</div>
+                      <div className="p-3 rounded-2xl bg-[#0a1526]/90 border border-[#1e3a5f]/80 shadow-[0_2px_10px_rgba(0,0,0,0.4)]">
+                        <div className="text-[10px] text-slate-300 font-mono font-bold tracking-wider">COMPLIANCE RATE</div>
+                        <div className="text-lg font-black text-[#38bdf8] font-mono mt-0.5">{crimeData.nibrs_compliance_rate}</div>
                       </div>
-                      <div className="p-2.5 rounded-xl bg-[#071324] border border-[#1e3a5f]">
-                        <div className="text-[10px] text-slate-400 font-mono">COUNTIES MONITORED</div>
-                        <div className="text-base font-extrabold text-[#a7f3d0] font-mono">{crimeData.counties_tracked}</div>
+                      <div className="p-3 rounded-2xl bg-[#0a1526]/90 border border-[#1e3a5f]/80 shadow-[0_2px_10px_rgba(0,0,0,0.4)]">
+                        <div className="text-[10px] text-slate-300 font-mono font-bold tracking-wider">COUNTIES MONITORED</div>
+                        <div className="text-lg font-black text-[#f8fafc] font-mono mt-0.5">{crimeData.counties_tracked}</div>
                       </div>
                     </div>
 
