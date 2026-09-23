@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 
-export default function MapDebugOverlay({ mapRef }: { mapRef: React.MutableRefObject<any> }) {
+export default function MapDebugOverlay({ mapRef, embedded = false }: { mapRef: React.MutableRefObject<any>; embedded?: boolean }) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'TELEMETRY' | 'HONESTY' | 'SYS'>('TELEMETRY');
   const [sysMetrics, setSysMetrics] = useState<Record<string, string>>({
@@ -80,7 +80,11 @@ export default function MapDebugOverlay({ mapRef }: { mapRef: React.MutableRefOb
 
   return (
     <div
-      style={{
+      style={embedded ? {
+        position: 'relative',
+        zIndex: 50,
+        fontFamily: 'monospace',
+      } : {
         position: 'absolute',
         top: 16,
         right: 12,
@@ -97,8 +101,8 @@ export default function MapDebugOverlay({ mapRef }: { mapRef: React.MutableRefOb
           WebkitAppearance: 'none',
           background: 'rgba(8, 20, 28, 0.92)',
           border: '1px solid rgba(16, 185, 129, 0.45)',
-          borderRadius: 8,
-          padding: '6px 14px',
+          borderRadius: embedded ? 9999 : 8,
+          padding: embedded ? '4px 12px' : '6px 14px',
           color: '#34d399',
           fontSize: 11,
           fontWeight: 700,
@@ -139,18 +143,23 @@ export default function MapDebugOverlay({ mapRef }: { mapRef: React.MutableRefOb
       {isOpen && (
         <div
           style={{
-            marginTop: 8,
+            position: embedded ? 'absolute' : 'relative',
+            bottom: embedded ? '100%' : 'auto',
+            right: 0,
+            marginBottom: embedded ? 8 : 0,
+            marginTop: embedded ? 0 : 8,
+            zIndex: 100,
             background: '#0a1228',
             border: '1px solid #1e3a5f',
-            borderRadius: 10,
+            borderRadius: 14,
             padding: '16px 18px',
             fontSize: 12,
             lineHeight: 1.5,
             maxWidth: '92vw',
             width: 420,
-            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.7), inset 0 0 16px rgba(14, 165, 233, 0.1)',
-            backdropFilter: 'blur(16px)',
-            WebkitBackdropFilter: 'blur(16px)',
+            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.9), inset 0 0 16px rgba(14, 165, 233, 0.15)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
           }}
         >
           {/* Header Row */}

@@ -1190,7 +1190,7 @@ export default function GodsEyeMap({
         <div className="w-full rounded-[36px] bg-[#080e1a]/85 backdrop-blur-2xl border border-[#38bdf8]/40 p-4 sm:p-5 shadow-[0_20px_60px_rgba(0,0,0,0.85),inset_0_1px_2px_rgba(56,189,248,0.35)] font-mono text-xs">
           <div className="flex flex-col gap-3 w-full">
             
-            {/* Header Status Rail: Oval Pill Shape */}
+            {/* Header Status Rail: Integrated NSA Admin Diagnostics Controller */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2.5 border-b border-[#1e3a5f]/60 gap-2">
               <div className="flex items-center gap-2.5">
                 <span className="relative flex h-2.5 w-2.5">
@@ -1201,9 +1201,15 @@ export default function GodsEyeMap({
                   GOD'S EYE NSA ADMIN OVAL COMMAND MATRIX // 3-ROW TACTICAL HUD
                 </span>
               </div>
-              <div className="flex items-center gap-2 text-[10px] text-emerald-400 bg-[#062018]/90 px-3.5 py-1 rounded-full border border-emerald-500/50 font-bold uppercase tracking-wider self-start sm:self-auto shadow-[0_0_12px_rgba(52,211,153,0.25)]">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                AIP-20 ANTI-HALLUCINATION HARDENING ACTIVE
+              <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+                <div className="flex items-center gap-2 text-[10px] text-emerald-400 bg-[#062018]/90 px-3 py-1 rounded-full border border-emerald-500/50 font-bold uppercase tracking-wider shadow-[0_0_12px_rgba(52,211,153,0.25)]">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  AIP-20 ACTIVE
+                </div>
+                {/* Embedded NSA Admin Diagnostics Controller */}
+                <div className="relative">
+                  <MapDebugOverlay mapRef={mapRef} embedded={true} />
+                </div>
               </div>
             </div>
 
