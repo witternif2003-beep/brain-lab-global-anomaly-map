@@ -363,18 +363,29 @@ export default function GodsEyeMap({
           }
 
           if (isGlobeView) {
-            // Measure actual globe screen footprint by projecting antipodal meridian points
-            const pCenter = m.project([centerLng, 0]);
-            const pNorth = m.project([centerLng, 80]);
-            const pSouth = m.project([centerLng, -80]);
-            const pEast = m.project([centerLng + 80, 0]);
-            const pWest = m.project([centerLng - 80, 0]);
+            // Measure actual globe screen footprint with rigorous sanity bounds
+            const pCenter = m.project([centerLng, currentCenter.lat || 0]);
+            const pNorth = m.project([centerLng, 75]);
+            const pSouth = m.project([centerLng, -75]);
+            const pEast = m.project([centerLng + 75, 0]);
+            const pWest = m.project([centerLng - 75, 0]);
 
-            if (pCenter && pNorth && pSouth) {
+            if (pCenter && pCenter.x > 0 && pCenter.x < width && pCenter.y > 0 && pCenter.y < height) {
               globeCenterScreen = pCenter;
+            } else {
+              globeCenterScreen = { x: width * 0.5, y: height * 0.52 };
+            }
+
+            if (pNorth && pSouth) {
               const rY = Math.abs(pSouth.y - pNorth.y) * 0.5;
               const rX = (pEast && pWest) ? Math.abs(pEast.x - pWest.x) * 0.5 : rY;
-              globeRadiusEst = Math.max(rX, rY) * 1.08; // Include atmospheric halo margin
+              const measuredR = Math.max(rX, rY);
+              // Clamp measured radius to between 15% and 48% of screen dimension so it can never blow out
+              const maxAllowedR = Math.min(width, height) * 0.44;
+              const minAllowedR = Math.min(width, height) * 0.18;
+              globeRadiusEst = Math.max(minAllowedR, Math.min(maxAllowedR, measuredR));
+            } else {
+              globeRadiusEst = Math.min(width, height) * 0.36;
             }
           }
         } catch {
@@ -1575,8 +1586,7 @@ animId = requestAnimationFrame(render);
           {/* Foreground Celestial Canvas: Mounted at z-15 above WebGL canvas with physical destination-out globe stencil mask */}
           <canvas
             ref={starsCanvasRef}
-            className="absolute inset-0 z-15 pointer-events-none"
-            style={{ width: '100%', height: '100%' }}
+            className="absolute inset-0 pointer-events-none" style={{ width: "100%", height: "100%", zIndex: 15 }}
           />
           {/* Real-time twinkling stars and NSA Admin Star Constellations */}
           {/* UNIVERSE STAR FINDER 3D SUITE CONTROLS (App Store id1575384854 Conformal NSA Admin Glass HUD) */}
