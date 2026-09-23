@@ -1,51 +1,134 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import MapDebugOverlay from './MapDebugOverlay';
 
-interface MapMenuOverlayProps {
-  pitch: number;
-  zoom: number;
-  basemap: string;
-  activeFocus: string;
-  onToggle3D: () => void;
-  onSwitchBasemap: (layer: 'demotiles' | 'satellite' | 'terrain') => void;
-  onSelectState: (state: 'GA' | 'NC' | 'TN' | 'FL' | 'SC' | 'TX' | 'VA' | 'AL') => void;
-  mapRef: React.MutableRefObject<any>;
+export type BasemapMode = 'demotiles' | 'satellite' | 'terrain';
+export type StateCode = 'GA' | 'NC' | 'TN' | 'FL' | 'SC' | 'TX' | 'VA' | 'AL';
+
+export interface MapMenuOverlayProps {
+  pitch?: number;
+  zoom?: number;
+  basemap?: BasemapMode;
+  activeFocus?: StateCode | string;
+  onToggle3D?: () => void;
+  onSwitchBasemap?: (layer: BasemapMode) => void;
+  onSelectState?: (state: StateCode) => void;
+  mapRef?: React.MutableRefObject<any>;
 }
 
+/**
+ * Standalone GodsEye Map Tactical HUD Widget
+ * Fully autonomous with internal fallback state, event bindings, and exact visual specs from IMG_6586.jpeg
+ */
 export default function MapMenuOverlay({
-  pitch,
-  zoom,
-  basemap,
-  activeFocus,
+  pitch: externalPitch,
+  zoom: externalZoom,
+  basemap: externalBasemap,
+  activeFocus: externalActiveFocus,
   onToggle3D,
   onSwitchBasemap,
   onSelectState,
   mapRef,
 }: MapMenuOverlayProps) {
-  const is2D = pitch <= 20;
+  // Self-contained internal state machine for full standalone independence
+  const [internalPitch, setInternalPitch] = useState<number>(externalPitch ?? 60);
+  const [internalZoom, setInternalZoom] = useState<number>(externalZoom ?? 6.0);
+  const [internalBasemap, setInternalBasemap] = useState<BasemapMode>(externalBasemap ?? 'satellite');
+  const [internalFocus, setInternalFocus] = useState<StateCode | string>(externalActiveFocus ?? 'NC');
+
+  // Sync external props if provided
+  useEffect(() => {
+    if (externalPitch !== undefined) setInternalPitch(externalPitch);
+  }, [externalPitch]);
+
+  useEffect(() => {
+    if (externalZoom !== undefined) setInternalZoom(externalZoom);
+  }, [externalZoom]);
+
+  useEffect(() => {
+    if (externalBasemap !== undefined) setInternalBasemap(externalBasemap);
+  }, [externalBasemap]);
+
+  useEffect(() => {
+    if (externalActiveFocus !== undefined) setInternalFocus(externalActiveFocus);
+  }, [externalActiveFocus]);
+
+  // Hook into MapLibre instance if mapRef is passed
+  useEffect(() => {
+    const map = mapRef?.current;
+    if (!map) return;
+
+    const handleZoom = () => {
+      try {
+        setInternalZoom(map.getZoom());
+      } catch {}
+    };
+
+    const handlePitch = () => {
+      try {
+        setInternalPitch(map.getPitch());
+      } catch {}
+    };
+
+    map.on('zoom', handleZoom);
+    map.on('pitch', handlePitch);
+
+    return () => {
+      try {
+        map.off('zoom', handleZoom);
+        map.off('pitch', handlePitch);
+      } catch {}
+    };
+  }, [mapRef]);
+
+  // Event dispatchers with safe standalone fallbacks
+  const handleToggle3D = () => {
+    const nextPitch = internalPitch > 20 ? 0 : 60;
+    setInternalPitch(nextPitch);
+    if (onToggle3D) {
+      onToggle3D();
+    } else if (mapRef?.current) {
+      mapRef.current.easeTo({ pitch: nextPitch, duration: 800 });
+    }
+  };
+
+  const handleBasemapSelect = (mode: BasemapMode) => {
+    setInternalBasemap(mode);
+    if (onSwitchBasemap) {
+      onSwitchBasemap(mode);
+    }
+  };
+
+  const handleStateSelect = (st: StateCode) => {
+    setInternalFocus(st);
+    if (onSelectState) {
+      onSelectState(st);
+    }
+  };
+
+  const is2D = internalPitch <= 20;
 
   return (
-    <>
-      {/* Diagnostics Pill - Top Right - Identical to IMG_6586.jpeg */}
-      <MapDebugOverlay mapRef={mapRef} />
+    <div className="select-none pointer-events-none">
+      {/* Diagnostics Pill Widget - Top Right matching IMG_6586 */}
+      {mapRef && <MapDebugOverlay mapRef={mapRef} />}
 
-      {/* Main 3-Row Matrix Menu - Top Left - Identical to IMG_6586.jpeg */}
+      {/* Main 3-Row Matrix Menu - Top Left Standalone Widget matching IMG_6586 */}
       <div
-        className="absolute top-2 left-2 z-20 flex flex-col gap-1 p-1 rounded-md text-xs font-mono shadow-2xl pointer-events-auto"
+        className="absolute top-2.5 left-2.5 z-20 flex flex-col gap-1 p-1 rounded-md text-xs font-mono shadow-2xl pointer-events-auto"
         style={{
-          background: 'rgba(8, 14, 26, 0.75)',
+          background: 'rgba(8, 14, 26, 0.78)',
           backdropFilter: 'blur(16px)',
           WebkitBackdropFilter: 'blur(16px)',
-          border: '1px solid rgba(30, 41, 59, 0.65)',
+          border: '1px solid rgba(30, 41, 59, 0.7)',
         }}
       >
-        {/* ROW 1: 2D | LIGHT | SATELLITE | TERRAIN | vertical divider */}
+        {/* ROW 1: [2D] | [LIGHT] | [SATELLITE] | [TERRAIN] | divider */}
         <div className="flex items-center gap-1">
           <button
             type="button"
-            onClick={onToggle3D}
+            onClick={handleToggle3D}
             style={{
               padding: '4px 10px',
               fontSize: '11px',
@@ -63,15 +146,15 @@ export default function MapMenuOverlay({
           </button>
           <button
             type="button"
-            onClick={() => onSwitchBasemap('demotiles')}
+            onClick={() => handleBasemapSelect('demotiles')}
             style={{
               padding: '4px 10px',
               fontSize: '11px',
               fontWeight: 700,
               borderRadius: '6px',
-              color: basemap === 'demotiles' ? '#38bdf8' : '#cbd5e1',
-              background: basemap === 'demotiles' ? 'rgba(14, 165, 233, 0.3)' : 'rgba(15, 23, 42, 0.6)',
-              border: basemap === 'demotiles' ? '1px solid rgba(56, 189, 248, 0.7)' : '1px solid rgba(51, 65, 85, 0.5)',
+              color: internalBasemap === 'demotiles' ? '#38bdf8' : '#cbd5e1',
+              background: internalBasemap === 'demotiles' ? 'rgba(14, 75, 120, 0.55)' : 'rgba(15, 23, 42, 0.6)',
+              border: internalBasemap === 'demotiles' ? '1px solid rgba(56, 189, 248, 0.75)' : '1px solid rgba(51, 65, 85, 0.5)',
               cursor: 'pointer',
               whiteSpace: 'nowrap',
             }}
@@ -80,7 +163,7 @@ export default function MapMenuOverlay({
           </button>
           <button
             type="button"
-            onClick={() => onSwitchBasemap('satellite')}
+            onClick={() => handleBasemapSelect('satellite')}
             style={{
               padding: '4px 10px',
               fontSize: '11px',
@@ -98,30 +181,30 @@ export default function MapMenuOverlay({
           </button>
           <button
             type="button"
-            onClick={() => onSwitchBasemap('terrain')}
+            onClick={() => handleBasemapSelect('terrain')}
             style={{
               padding: '4px 10px',
               fontSize: '11px',
               fontWeight: 700,
               borderRadius: '6px',
-              color: basemap === 'terrain' ? '#38bdf8' : '#cbd5e1',
-              background: basemap === 'terrain' ? 'rgba(14, 165, 233, 0.3)' : 'rgba(15, 23, 42, 0.6)',
-              border: basemap === 'terrain' ? '1px solid rgba(56, 189, 248, 0.7)' : '1px solid rgba(51, 65, 85, 0.5)',
+              color: internalBasemap === 'terrain' ? '#38bdf8' : '#cbd5e1',
+              background: internalBasemap === 'terrain' ? 'rgba(14, 75, 120, 0.55)' : 'rgba(15, 23, 42, 0.6)',
+              border: internalBasemap === 'terrain' ? '1px solid rgba(56, 189, 248, 0.75)' : '1px solid rgba(51, 65, 85, 0.5)',
               cursor: 'pointer',
               whiteSpace: 'nowrap',
             }}
           >
             TERRAIN
           </button>
-          {/* Subtle vertical divider in row 1 matching photo */}
+          {/* Subtle vertical separator in Row 1 */}
           <div style={{ width: 1, height: 16, background: 'rgba(51, 65, 85, 0.6)', marginLeft: 2 }} />
         </div>
 
-        {/* ROW 2: GA (Target) | NC | TN | FL | SC | TX */}
+        {/* ROW 2: [GA (Target)] | [NC] | [TN] | [FL] | [SC] | [TX] */}
         <div className="flex items-center gap-1">
           <button
             type="button"
-            onClick={() => onSelectState('GA')}
+            onClick={() => handleStateSelect('GA')}
             style={{
               padding: '4px 10px',
               fontSize: '11px',
@@ -138,7 +221,7 @@ export default function MapMenuOverlay({
           </button>
           <button
             type="button"
-            onClick={() => onSelectState('NC')}
+            onClick={() => handleStateSelect('NC')}
             style={{
               padding: '4px 10px',
               fontSize: '11px',
@@ -158,15 +241,15 @@ export default function MapMenuOverlay({
             <button
               key={st}
               type="button"
-              onClick={() => onSelectState(st)}
+              onClick={() => handleStateSelect(st)}
               style={{
                 padding: '4px 10px',
                 fontSize: '11px',
                 fontWeight: 700,
                 borderRadius: '6px',
-                color: activeFocus === st ? '#38bdf8' : '#cbd5e1',
-                background: activeFocus === st ? 'rgba(14, 75, 120, 0.55)' : 'rgba(15, 23, 42, 0.6)',
-                border: activeFocus === st ? '1px solid rgba(56, 189, 248, 0.75)' : '1px solid rgba(51, 65, 85, 0.5)',
+                color: internalFocus === st ? '#38bdf8' : '#cbd5e1',
+                background: internalFocus === st ? 'rgba(14, 75, 120, 0.55)' : 'rgba(15, 23, 42, 0.6)',
+                border: internalFocus === st ? '1px solid rgba(56, 189, 248, 0.75)' : '1px solid rgba(51, 65, 85, 0.5)',
                 cursor: 'pointer',
                 whiteSpace: 'nowrap',
               }}
@@ -176,21 +259,21 @@ export default function MapMenuOverlay({
           ))}
         </div>
 
-        {/* ROW 3: VA | AL | divider | z6.0 · p60° */}
+        {/* ROW 3: [VA] | [AL] | divider | [z6.0 · p60°] */}
         <div className="flex items-center gap-1">
           {(['VA', 'AL'] as const).map((st) => (
             <button
               key={st}
               type="button"
-              onClick={() => onSelectState(st)}
+              onClick={() => handleStateSelect(st)}
               style={{
                 padding: '4px 10px',
                 fontSize: '11px',
                 fontWeight: 700,
                 borderRadius: '6px',
-                color: activeFocus === st ? '#38bdf8' : '#cbd5e1',
-                background: activeFocus === st ? 'rgba(14, 75, 120, 0.55)' : 'rgba(15, 23, 42, 0.6)',
-                border: activeFocus === st ? '1px solid rgba(56, 189, 248, 0.75)' : '1px solid rgba(51, 65, 85, 0.5)',
+                color: internalFocus === st ? '#38bdf8' : '#cbd5e1',
+                background: internalFocus === st ? 'rgba(14, 75, 120, 0.55)' : 'rgba(15, 23, 42, 0.6)',
+                border: internalFocus === st ? '1px solid rgba(56, 189, 248, 0.75)' : '1px solid rgba(51, 65, 85, 0.5)',
                 cursor: 'pointer',
                 whiteSpace: 'nowrap',
               }}
@@ -211,10 +294,10 @@ export default function MapMenuOverlay({
               whiteSpace: 'nowrap',
             }}
           >
-            z{typeof zoom === 'number' && !isNaN(zoom) ? zoom.toFixed(1) : '6.0'} · p{typeof pitch === 'number' && !isNaN(pitch) ? pitch.toFixed(0) : '60'}°
+            z{typeof internalZoom === 'number' && !isNaN(internalZoom) ? internalZoom.toFixed(1) : '6.0'} · p{typeof internalPitch === 'number' && !isNaN(internalPitch) ? internalPitch.toFixed(0) : '60'}°
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
