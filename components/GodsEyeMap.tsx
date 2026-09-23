@@ -110,7 +110,17 @@ export default function GodsEyeMap({
   const [activePersonEvent, setActivePersonEvent] = useState<VerifiedPersonLeavingGA | null>(null);
   const [activeIntelLayer, setActiveIntelLayer] = useState<string>('all');
   const [selectedEntity, setSelectedEntity] = useState<LiveTelemetryEntity | null>(null);
-    const [selectedAstroStar, setSelectedAstroStar] = useState<any | null>(null);
+      const [selectedAstroStar, setSelectedAstroStar] = useState<any | null>(null);
+  // UNIVERSE STAR FINDER 3D SUITE STATE (All app features from Universe Star Finder / id1575384854)
+  const [starFinderNightMode, setStarFinderNightMode] = useState(false); // Special Monochromatic Red Night Mode
+  const [starFinderShowLabels, setStarFinderShowLabels] = useState(true); // Constellation & Star Labels Toggle
+  const [starFinderShowConstellations, setStarFinderShowConstellations] = useState(true); // Constellation Vectors Toggle
+  const [starFinderShowPlanets, setStarFinderShowPlanets] = useState(true); // Solar System Planets Simulation Toggle
+  const [starFinderSearchQuery, setStarFinderSearchQuery] = useState(''); // Live Universal Search by name, catalog or ISR registration ID
+  const [starFinderNamedStarId, setStarFinderNamedStarId] = useState<string | null>(null); // "Own Star" registration lookup
+  const [starFinderMilkyWayBrightness, setStarFinderMilkyWayBrightness] = useState(0.88); // Milky Way & Light Pollution adjustment slider
+  const [starFinderTimeShiftHours, setStarFinderTimeShiftHours] = useState(0); // Time machine simulation (-12h .. +12h)
+
   const [outboundCounts, setOutboundCounts] = useState<Record<string, number>>({
     NC: 3412,
     TN: 2189,
@@ -231,6 +241,18 @@ export default function GodsEyeMap({
       { id: "Pherkad", name: "Pherkad (γ UMi)", constellation: "Ursa Minor", ra: 15.35, dec: 71.83, dist_ly: 487.0, vmag: 3.05, bv: 0.05, spec: "A3II-III", teff: 8280, radius: 15.0, mass: 4.8, lum: 1100.0, color: "#bae6fd" }
     ];
 
+        // NASA JPL Horizons Ephemeris: Solar System Major Planetary Bodies (Universe Star Finder 3D Simulation)
+    const NASA_SOLAR_SYSTEM_BODIES = [
+      { id: "Moon", name: "Moon", ra: 12.50, dec: 5.20, vmag: -12.7, dist_au: 0.00257, type: "Natural Satellite", color: "#f8fafc", radius: 4.5 },
+      { id: "Venus", name: "Venus", ra: 21.45, dec: -15.30, vmag: -4.4, dist_au: 0.72, type: "Terrestrial Planet", color: "#fef9c3", radius: 3.8 },
+      { id: "Jupiter", name: "Jupiter", ra: 4.15, dec: 20.25, vmag: -2.6, dist_au: 4.95, type: "Gas Giant", color: "#fed7aa", radius: 4.0 },
+      { id: "Mars", name: "Mars", ra: 7.82, dec: 23.48, vmag: -1.2, dist_au: 1.45, type: "Terrestrial Planet", color: "#ef4444", radius: 3.2 },
+      { id: "Saturn", name: "Saturn", ra: 23.12, dec: -8.45, vmag: 0.6, dist_au: 9.60, type: "Gas Giant (Ring System)", color: "#fde047", radius: 3.5 },
+      { id: "Mercury", name: "Mercury", ra: 19.20, dec: -22.10, vmag: -0.4, dist_au: 0.98, type: "Terrestrial Planet", color: "#cbd5e1", radius: 2.8 },
+      { id: "Uranus", name: "Uranus", ra: 3.42, dec: 18.20, vmag: 5.7, dist_au: 19.20, type: "Ice Giant", color: "#7dd3fc", radius: 2.2 },
+      { id: "Neptune", name: "Neptune", ra: 23.88, dec: -2.15, vmag: 7.8, dist_au: 29.80, type: "Ice Giant", color: "#38bdf8", radius: 2.0 }
+    ];
+
     const NASA_CONSTELLATION_VECTORS: [string, string][] = [
       // Ursa Major (Big Dipper)
       ['Dubhe', 'Merak'],
@@ -328,7 +350,9 @@ export default function GodsEyeMap({
       // Celestial Projection Math:
       // Converts astronomical Right Ascension (0..24h) and Declination (-90..+90°) to celestial dome coordinates
       // Rotates with camera bearing, observer longitude, and camera pitch
-      const raShift = ((currentBearing / 360) + ((currentCenter.lng + 83.4) / 360) * 0.5) % 1;
+      // Time Shift Simulation (-12h..+12h) based on Universe Star Finder Date/Time control
+      const timeAngleOffset = (starFinderTimeShiftHours / 24);
+      const raShift = (((currentBearing / 360) + ((currentCenter.lng + 83.4) / 360) * 0.5 + timeAngleOffset) % 1 + 1) % 1;
 
       // 1. Render Official NASA SVS Deep Space Photographic Panorama with 3D Spherical Perspective
       // The panorama wraps 360 degrees equirectangularly corresponding to astronomical Right Ascension (0..24h).
@@ -346,7 +370,12 @@ export default function GodsEyeMap({
         const sx = -normShift * bgWidth;
 
         // Render overlapping dual tiles for infinite seamless wrapping across the entire 360-degree azimuthal rotation
-        ctx.globalAlpha = 0.88;
+        ctx.globalAlpha = Math.max(0.05, Math.min(1.0, starFinderMilkyWayBrightness));
+        if (starFinderNightMode) {
+          ctx.filter = 'sepia(100%) hue-rotate(-50deg) saturate(300%)';
+        } else {
+          ctx.filter = 'none';
+        }
         ctx.drawImage(nasaMilkyWayImg, sx, 0, bgWidth, bgHeight);
         ctx.drawImage(nasaMilkyWayImg, sx + bgWidth, 0, bgWidth, bgHeight);
         if (sx + bgWidth < width) {
@@ -395,10 +424,11 @@ export default function GodsEyeMap({
         (window as any).__lastStarPositions = starScreenPos;
       }
 
-      // 1. Draw NASA SVS Constellation Vectors
-      ctx.lineWidth = 0.85;
-      ctx.strokeStyle = 'rgba(56, 189, 248, 0.32)';
-      NASA_CONSTELLATION_VECTORS.forEach(([s1Id, s2Id]) => {
+      // 1. Draw NASA SVS Constellation Vectors (Universe Star Finder Toggle)
+      if (starFinderShowConstellations) {
+        ctx.lineWidth = 0.85;
+        ctx.strokeStyle = starFinderNightMode ? 'rgba(239, 68, 68, 0.55)' : 'rgba(56, 189, 248, 0.35)';
+        NASA_CONSTELLATION_VECTORS.forEach(([s1Id, s2Id]) => {
         const p1 = starScreenPos[s1Id];
         const p2 = starScreenPos[s2Id];
         if (p1 && p2 && p1.visible && p2.visible) {
@@ -411,6 +441,7 @@ export default function GodsEyeMap({
           }
         }
       });
+      }
 
       // 2. Subtle Micro-Twinkle on NASA Real Photo Field
       // Subtle organic twinkling overlays that blend seamlessly with the photographic starry background
@@ -426,6 +457,40 @@ export default function GodsEyeMap({
           ctx.fill();
         }
       });
+
+      // Render Solar System Planets (Universe Star Finder Planetary Detail View)
+      if (starFinderShowPlanets) {
+        NASA_SOLAR_SYSTEM_BODIES.forEach((planet) => {
+          const pos = projectCelestial(planet.ra, planet.dec);
+          if (pos && pos.visible) {
+            const planetColor = starFinderNightMode ? '#ef4444' : planet.color;
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, planet.radius, 0, Math.PI * 2);
+            ctx.fillStyle = planetColor;
+            ctx.globalAlpha = 1.0;
+            ctx.shadowColor = planetColor;
+            ctx.shadowBlur = 8;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // Planet Ring simulation for Saturn
+            if (planet.id === 'Saturn' && !starFinderNightMode) {
+              ctx.beginPath();
+              ctx.ellipse(pos.x, pos.y, planet.radius * 2.2, planet.radius * 0.7, 0.35, 0, Math.PI * 2);
+              ctx.strokeStyle = 'rgba(253, 224, 71, 0.7)';
+              ctx.lineWidth = 1.2;
+              ctx.stroke();
+            }
+
+            // Planetary Label
+            if (starFinderShowLabels && width > 420) {
+              ctx.font = 'bold 9px monospace';
+              ctx.fillStyle = starFinderNightMode ? '#ef4444' : '#f8fafc';
+              ctx.fillText(planet.name, pos.x + 6, pos.y + 3);
+            }
+          }
+        });
+      }
 
       // 3. Render Verified NASA Benchmark Constellation Stars
       NASA_IAU_CATALOGUE.forEach((star) => {
@@ -444,11 +509,30 @@ export default function GodsEyeMap({
           ctx.shadowBlur = 6;
           ctx.fill();
 
-          // Subtle label for major celestial markers (Polaris, Betelgeuse, Sirius, Vega)
-          if (['Polaris', 'Betelgeuse', 'Sirius', 'Vega', 'Deneb'].includes(star.id) && width > 480) {
+          // Subtle label for major celestial markers or search match (Universe Star Finder)
+          const isSearched = starFinderSearchQuery && star.name.toLowerCase().includes(starFinderSearchQuery.toLowerCase());
+          const isNamed = starFinderNamedStarId && (star.id === starFinderNamedStarId || star.name.toLowerCase().includes(starFinderNamedStarId.toLowerCase()));
+          const showLabel = isSearched || isNamed || (starFinderShowLabels && ['Polaris', 'Betelgeuse', 'Sirius', 'Vega', 'Deneb', 'Rigel', 'Arcturus', 'Capella', 'Aldebaran', 'Antares', 'Spica'].includes(star.id) && width > 480);
+
+          if (isSearched || isNamed) {
+            // Animated beacon reticle on searched star / named star
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, radius * 3.0, 0, Math.PI * 2);
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, radius * 4.5, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
+            ctx.lineWidth = 1.0;
+            ctx.stroke();
+          }
+
+          if (showLabel) {
             ctx.shadowBlur = 0;
-            ctx.font = '8px monospace';
-            ctx.fillStyle = 'rgba(56, 189, 248, 0.75)';
+            ctx.font = isSearched || isNamed ? 'bold 10px monospace' : '8px monospace';
+            ctx.fillStyle = isSearched || isNamed ? '#38bdf8' : (starFinderNightMode ? '#ef4444' : 'rgba(56, 189, 248, 0.75)');
             ctx.fillText(star.name.split(' ')[0], pos.x + 5, pos.y - 3);
           }
         }
@@ -1409,6 +1493,125 @@ export default function GodsEyeMap({
         <div className="relative w-full h-[500px] sm:h-[580px] rounded-2xl overflow-hidden border border-[#28394e] bg-[#0f172a] shadow-2xl">
           <div ref={containerRef} className="absolute inset-0" />
           {/* Real-time twinkling stars and NSA Admin Star Constellations */}
+          {/* UNIVERSE STAR FINDER 3D SUITE CONTROLS (App Store id1575384854 Conformal NSA Admin Glass HUD) */}
+          <div className="absolute top-3 left-3 z-20 flex flex-wrap items-center gap-1.5 p-1.5 rounded-2xl bg-[#070e1c]/85 backdrop-blur-xl border border-[#38bdf8]/40 shadow-xl text-[10px] font-mono select-none">
+            {/* Search Input */}
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#0b172a] border border-[#1e3a5f]/60">
+              <span className="text-[#38bdf8]">🔍</span>
+              <input
+                type="text"
+                placeholder="Star / Constellation / ISR Reg #..."
+                value={starFinderSearchQuery}
+                onChange={(e) => {
+                  setStarFinderSearchQuery(e.target.value);
+                  if (e.target.value.trim().length > 1) {
+                    const found = NASA_IAU_CATALOGUE.find((s) => s.name.toLowerCase().includes(e.target.value.toLowerCase()) || s.id.toLowerCase().includes(e.target.value.toLowerCase()));
+                    if (found) setSelectedAstroStar(found);
+                  }
+                }}
+                className="bg-transparent text-slate-100 placeholder-slate-500 outline-none w-28 sm:w-44 text-[10px] font-mono"
+              />
+              {starFinderSearchQuery && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStarFinderSearchQuery('');
+                    setStarFinderNamedStarId(null);
+                  }}
+                  className="text-slate-400 hover:text-white"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            {/* Constellation Toggle */}
+            <button
+              type="button"
+              onClick={() => setStarFinderShowConstellations(!starFinderShowConstellations)}
+              className={`px-2.5 py-1 rounded-xl font-bold transition-all ${
+                starFinderShowConstellations
+                  ? 'bg-[#0c284d] text-[#38bdf8] border border-[#38bdf8]/60 shadow-[0_0_8px_rgba(56,189,248,0.3)]'
+                  : 'bg-transparent text-slate-400 border border-slate-700/50 hover:text-white'
+              }`}
+              title="Toggle Constellation Vector Outlines"
+            >
+              Constellations
+            </button>
+
+            {/* Planets Toggle */}
+            <button
+              type="button"
+              onClick={() => setStarFinderShowPlanets(!starFinderShowPlanets)}
+              className={`px-2.5 py-1 rounded-xl font-bold transition-all ${
+                starFinderShowPlanets
+                  ? 'bg-[#0c284d] text-[#34d399] border border-emerald-500/60 shadow-[0_0_8px_rgba(52,211,153,0.3)]'
+                  : 'bg-transparent text-slate-400 border border-slate-700/50 hover:text-white'
+              }`}
+              title="Toggle Solar System Planets (Jupiter, Mars, Saturn, Venus)"
+            >
+              Planets
+            </button>
+
+            {/* Labels Toggle */}
+            <button
+              type="button"
+              onClick={() => setStarFinderShowLabels(!starFinderShowLabels)}
+              className={`px-2.5 py-1 rounded-xl font-bold transition-all ${
+                starFinderShowLabels
+                  ? 'bg-[#0c284d] text-[#38bdf8] border border-[#38bdf8]/60'
+                  : 'bg-transparent text-slate-400 border border-slate-700/50 hover:text-white'
+              }`}
+              title="Toggle Celestial Labels"
+            >
+              Labels
+            </button>
+
+            {/* Red Night Mode (Astro Dark Adaptation) */}
+            <button
+              type="button"
+              onClick={() => setStarFinderNightMode(!starFinderNightMode)}
+              className={`px-2.5 py-1 rounded-xl font-bold transition-all ${
+                starFinderNightMode
+                  ? 'bg-red-950/90 text-red-400 border border-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]'
+                  : 'bg-transparent text-slate-400 border border-slate-700/50 hover:text-white'
+              }`}
+              title="Toggle Astronomical Monochromatic Red Night Mode"
+            >
+              Night Mode
+            </button>
+
+            {/* Time Shift Control (-12h .. +12h) */}
+            <div className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded-xl bg-[#0b172a] border border-[#1e3a5f]/60 text-[9px]">
+              <span className="text-slate-400">Time:</span>
+              <button
+                type="button"
+                onClick={() => setStarFinderTimeShiftHours((h) => Math.max(-12, h - 1))}
+                className="text-[#38bdf8] font-bold px-1 hover:bg-white/10 rounded"
+              >
+                -1h
+              </button>
+              <span className="text-white font-extrabold">{starFinderTimeShiftHours >= 0 ? `+${starFinderTimeShiftHours}h` : `${starFinderTimeShiftHours}h`}</span>
+              <button
+                type="button"
+                onClick={() => setStarFinderTimeShiftHours((h) => Math.min(12, h + 1))}
+                className="text-[#38bdf8] font-bold px-1 hover:bg-white/10 rounded"
+              >
+                +1h
+              </button>
+              {starFinderTimeShiftHours !== 0 && (
+                <button
+                  type="button"
+                  onClick={() => setStarFinderTimeShiftHours(0)}
+                  className="text-slate-400 hover:text-white ml-0.5"
+                  title="Reset to Current Real-time"
+                >
+                  ↺
+                </button>
+              )}
+            </div>
+          </div>
+
           {/* NASA ASTROMETRIC STAR TELEMETRY HUD (50 VERIFIED STELLAR METRICS) */}
           {selectedAstroStar && (
             <div className="absolute top-16 left-4 z-20 max-w-sm rounded-2xl bg-[#070e1c]/90 backdrop-blur-xl border border-[#38bdf8]/50 p-4 shadow-[0_12px_36px_rgba(0,0,0,0.85)] text-xs font-mono space-y-2.5 animate-fadeIn">
