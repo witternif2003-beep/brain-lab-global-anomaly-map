@@ -1,5 +1,5 @@
-import Image from 'next/image';
 'use client';
+import Image from 'next/image';
 
 import React, { useState, useEffect } from 'react';
 import { Shield, AlertOctagon, ExternalLink, RefreshCw, Lock, Database } from 'lucide-react';
