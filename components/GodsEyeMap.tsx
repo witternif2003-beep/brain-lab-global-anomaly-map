@@ -23,6 +23,35 @@ import { GODSEYE_INTEL_LAYERS, SAMPLE_LIVE_ENTITIES, LiveTelemetryEntity, IntelL
 import MapDebugOverlay from './MapDebugOverlay';
 import MapMenuOverlay from './MapMenuOverlay';
 
+// Helper function to safely inject verified 3D Custom Layer Starfield
+function injectStarfieldLayer(map: any) {
+  try {
+    if (!map || typeof window === 'undefined') return;
+    if (map.getLayer('deep-space-starfield')) return;
+    
+    // Dynamically require to avoid SSR issues
+    const { MaplibreStarfieldLayer } = require('@geoql/maplibre-gl-starfield');
+    if (!MaplibreStarfieldLayer) return;
+
+    const starfield = new MaplibreStarfieldLayer({
+      id: 'deep-space-starfield',
+      galaxyTextureUrl: '/milkyway.jpg',
+      galaxyBrightness: 0.55,
+      starCount: 4000,
+      starSize: 2.2,
+      sunEnabled: false, // Pure deep space astrometric starfield
+    });
+
+    const layers = map.getStyle()?.layers;
+    const firstLayerId = layers && layers.length > 0 ? layers[0].id : undefined;
+    map.addLayer(starfield, firstLayerId);
+    console.log('[Starfield] Successfully mounted 4000-star 3D skybox layer below:', firstLayerId);
+  } catch (err) {
+    console.warn('[Starfield] 3D starfield layer deferred/unsupported:', err);
+  }
+}
+
+
 // ─── Constants ────────────────────────────────────────────────────────
 const COMPETITOR_STATES = ['GA', 'NC', 'TN', 'SC', 'FL', 'TX', 'VA', 'AL'] as const;
 type StateCode = (typeof COMPETITOR_STATES)[number];
@@ -646,6 +675,9 @@ animId = requestAnimationFrame(render);
 
   // Layer stack constructor
   const addMapLayers = useCallback((map: maplibregl.Map) => {
+    // ═══ VERIFIED 3D SKYBOX STARFIELD (GeoLibre PR #440 / @geoql/maplibre-gl-starfield) ═══
+    injectStarfieldLayer(map);
+
     // ═══ SINGLE SOURCE for all 8 state boundaries ═══
     if (!map.getSource('all-states')) {
       map.addSource('all-states', {
@@ -1581,13 +1613,8 @@ animId = requestAnimationFrame(render);
       {/* Map Surface (8 Cols) */}
       <div className="lg:col-span-8 flex flex-col space-y-3">
         <div className="relative w-full h-[500px] sm:h-[580px] rounded-2xl overflow-hidden border border-[#28394e] bg-[#0f172a] shadow-2xl">
-          {/* Map Surface: Mounted at base layer z-0 */}
-          <div ref={containerRef} className="absolute inset-0 z-0" />
-          {/* Foreground Celestial Canvas: Mounted at z-15 above WebGL canvas with physical destination-out globe stencil mask */}
-          <canvas
-            ref={starsCanvasRef}
-            className="absolute inset-0 pointer-events-none" style={{ width: "100%", height: "100%", zIndex: 15 }}
-          />
+          {/* Map Surface: Mount MapLibre globe container directly with transparent deep space */}
+          <div ref={containerRef} className="absolute inset-0" />
           {/* Real-time twinkling stars and NSA Admin Star Constellations */}
           {/* UNIVERSE STAR FINDER 3D SUITE CONTROLS (App Store id1575384854 Conformal NSA Admin Glass HUD) */}
           <div className="absolute top-3 left-3 z-20 flex flex-wrap items-center gap-1.5 p-1.5 rounded-2xl bg-[#070e1c]/85 backdrop-blur-xl border border-[#38bdf8]/40 shadow-xl text-[10px] font-mono select-none">
@@ -1596,7 +1623,7 @@ animId = requestAnimationFrame(render);
               <span className="text-[#38bdf8]">🔍</span>
               <input
                 type="text"
-                placeholder="Star / Constellation / ISR Reg #..."
+                placeholder="Star / Constellation / ISR Request..."
                 value={starFinderSearchQuery}
                 onChange={(e) => {
                   setStarFinderSearchQuery(e.target.value);
@@ -1660,7 +1687,7 @@ animId = requestAnimationFrame(render);
               }`}
               title="Toggle Celestial Labels"
             >
-              Labels
+              Labels {starFinderShowLabels ? "ON" : "OFF"}
             </button>
 
             {/* Red Night Mode (Astro Dark Adaptation) */}
@@ -1674,7 +1701,7 @@ animId = requestAnimationFrame(render);
               }`}
               title="Toggle Astronomical Monochromatic Red Night Mode"
             >
-              Night Mode
+              Night Mode {starFinderNightMode ? "ON" : "OFF"}
             </button>
 
             {/* Time Shift Control (-12h .. +12h) */}

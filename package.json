@@ -12,6 +12,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@geoql/maplibre-gl-starfield": "^0.1.2",
     "@maplibre/vt-pbf": "^4.3.2",
     "autoprefixer": "^10.6.1",
     "clsx": "^2.1.1",
@@ -23,6 +24,7 @@
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "tailwindcss": "^4.3.3",
+    "three": "^0.186.0",
     "web-vitals": "^6.2.2",
     "zod": "^4.6.5",
     "zustand": "^5.0.15"
