@@ -30,7 +30,7 @@ function injectStarfieldLayer(map: any) {
     if (map.getLayer('deep-space-starfield')) return;
     
     // Dynamically require to avoid SSR issues
-    const { MaplibreStarfieldLayer } = require('@geoql/maplibre-gl-starfield');
+    const { MaplibreStarfieldLayer } = require('../lib/starfield');
     if (!MaplibreStarfieldLayer) return;
 
     const starfield = new MaplibreStarfieldLayer({
@@ -1262,6 +1262,7 @@ animId = requestAnimationFrame(render);
       } catch (err) {
         console.warn('[Map] Globe projection deferred:', err);
       }
+      injectStarfieldLayer(map);
     });
 
     // Viewport telemetry
