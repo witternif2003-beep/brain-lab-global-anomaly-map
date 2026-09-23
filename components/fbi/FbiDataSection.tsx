@@ -223,24 +223,27 @@ export default function FbiDataSection() {
             />
           </div>
 
-          <div className="space-y-1">
+          <div className="space-y-2 flex-1 min-w-0">
+            {/* Security Pills Row */}
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-[9px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider text-[#38bdf8] bg-[#0c2444] border border-[#38bdf8]/50 shadow-[0_0_8px_rgba(56,189,248,0.3)]">
                 FBI CJIS / CDE PROTOCOL
               </span>
-              <span className="text-[9px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider text-emerald-400 bg-emerald-950/60 border border-emerald-500/40 shadow-[0_0_8px_rgba(52,211,153,0.3)] flex items-center gap-1">
+              <span className="text-[9px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider text-emerald-300 bg-emerald-950/80 border border-emerald-500/50 shadow-[0_0_8px_rgba(52,211,153,0.3)] flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
                 ZERO-TRUST WIF &amp; VAULT PROXY ACTIVE
               </span>
-              <span className="text-[9px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider text-[#38bdf8] bg-[#0a192f]/70 border border-[#38bdf8]/30">
+              <span className="text-[9px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider text-[#7dd3fc] bg-[#0a192f]/90 border border-[#38bdf8]/40">
                 P1 TIER-1 RBAC ENFORCED
               </span>
-              <h2 className="text-xs sm:text-[13px] font-extrabold text-[#f8fafc] tracking-widest uppercase flex items-center gap-1.5">
-                <span>FEDERAL BUREAU OF INVESTIGATION</span>
-                <span className="text-[#38bdf8]">•</span>
-                <span className="text-[#38bdf8]">DATABASE CAPABILITIES & LIVE FEEDS</span>
-              </h2>
             </div>
+
+            {/* Title Row with strict responsive wrapping */}
+            <h2 className="text-sm sm:text-base font-extrabold text-[#f8fafc] tracking-widest uppercase flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="text-white">FEDERAL BUREAU OF INVESTIGATION</span>
+              <span className="text-[#38bdf8] hidden sm:inline">•</span>
+              <span className="text-[#38bdf8]">DATABASE CAPABILITIES &amp; LIVE FEEDS</span>
+            </h2>
             <p className="text-[11px] text-slate-300 font-sans leading-normal max-w-3xl">
               Tier-1 High-Density Workstation: Protected by Zero-Trust Workload Identity Federation (WIF) and centralized Vault key proxying. Real-time CDE feeds, automated key rotation, cryptographic tamper-evident audit trails, and strict CJIS/NCIC statutory isolation.
             </p>
@@ -381,7 +384,7 @@ export default function FbiDataSection() {
                 <select
                   value={crimeLevel}
                   onChange={(e) => setCrimeLevel(e.target.value)}
-                  className="bg-[#0a1526] text-cyan-300 text-[11px] font-mono font-semibold border border-[#1e3a5f] rounded-full px-3 py-1 outline-none hover:border-[#38bdf8] focus:border-[#38bdf8] shadow-inner"
+                  className="bg-[#0f1d33] text-[#7dd3fc] text-[11px] font-mono font-bold border border-[#38bdf8]/50 rounded-full px-3.5 py-1.5 outline-none hover:border-[#38bdf8] focus:border-[#38bdf8] shadow-[0_2px_8px_rgba(0,0,0,0.6)]"
                 >
                   <option value="national">National (US)</option>
                   <option value="state">Georgia (GA)</option>
@@ -390,7 +393,7 @@ export default function FbiDataSection() {
                 <select
                   value={crimeOffense}
                   onChange={(e) => setCrimeOffense(e.target.value)}
-                  className="bg-[#0a1526] text-cyan-300 text-[11px] font-mono font-semibold border border-[#1e3a5f] rounded-full px-3 py-1 outline-none hover:border-[#38bdf8] focus:border-[#38bdf8] shadow-inner"
+                  className="bg-[#0f1d33] text-[#7dd3fc] text-[11px] font-mono font-bold border border-[#38bdf8]/50 rounded-full px-3.5 py-1.5 outline-none hover:border-[#38bdf8] focus:border-[#38bdf8] shadow-[0_2px_8px_rgba(0,0,0,0.6)]"
                 >
                   <option value="violent-crime">Violent Crime</option>
                   <option value="property-crime">Property Crime</option>
