@@ -133,6 +133,16 @@ export default function GodsEyeMap({
     let width = (canvas.width = canvas.parentElement?.clientWidth || window.innerWidth);
     let height = (canvas.height = canvas.parentElement?.clientHeight || 600);
 
+    // Official NASA Scientific Visualization Studio (SVS-4851) Deep Space Star Map & Milky Way Panorama
+    const nasaMilkyWayImg = typeof window !== 'undefined' ? new window.Image() : null;
+    let nasaImgLoaded = false;
+    if (nasaMilkyWayImg) {
+      nasaMilkyWayImg.src = '/assets/nasa-svs-starmap.jpg';
+      nasaMilkyWayImg.onload = () => {
+        nasaImgLoaded = true;
+      };
+    }
+
     const onResize = () => {
       if (!canvas) return;
       width = canvas.width = canvas.parentElement?.clientWidth || window.innerWidth;
@@ -292,13 +302,46 @@ export default function GodsEyeMap({
       // Stars and constellations NEVER touch or occlude the globe boundary under any zoom, pitch, or pan.
       const safeCelestialHeight = Math.max(25, topLimbY - 20);
 
-      // Deep space atmospheric & celestial background gradient
-      const skyGrad = ctx.createLinearGradient(0, 0, 0, safeCelestialHeight);
-      skyGrad.addColorStop(0, 'rgba(2, 6, 18, 0.95)');
-      skyGrad.addColorStop(0.7, 'rgba(4, 12, 30, 0.7)');
-      skyGrad.addColorStop(1, 'rgba(6, 16, 40, 0.0)');
-      ctx.fillStyle = skyGrad;
-      ctx.fillRect(0, 0, width, safeCelestialHeight);
+      // 1. Render Official NASA SVS Deep Space Photographic Panorama with 3D Spherical Perspective
+      // The panorama wraps 360 degrees equirectangularly corresponding to astronomical Right Ascension (0..24h).
+      if (nasaImgLoaded && nasaMilkyWayImg && safeCelestialHeight > 10) {
+        ctx.save();
+        // Clip strictly to deep space above globe horizon: Stars NEVER touch or cross the globe boundary
+        ctx.beginPath();
+        ctx.rect(0, 0, width, safeCelestialHeight);
+        ctx.clip();
+
+        // Calculate seamless horizontal wrap for 360-degree celestial panorama
+        const bgWidth = width * 1.5;
+        const bgHeight = safeCelestialHeight * 1.8;
+        const normShift = ((raShift % 1) + 1) % 1;
+        const sx = -normShift * bgWidth;
+
+        // Render overlapping dual tiles for infinite seamless wrapping across the entire 360-degree azimuthal rotation
+        ctx.globalAlpha = 0.88;
+        ctx.drawImage(nasaMilkyWayImg, sx, 0, bgWidth, bgHeight);
+        ctx.drawImage(nasaMilkyWayImg, sx + bgWidth, 0, bgWidth, bgHeight);
+        if (sx + bgWidth < width) {
+          ctx.drawImage(nasaMilkyWayImg, sx + bgWidth * 2, 0, bgWidth, bgHeight);
+        }
+
+        // Atmospheric blend towards the globe horizon
+        const fadeGrad = ctx.createLinearGradient(0, safeCelestialHeight * 0.45, 0, safeCelestialHeight);
+        fadeGrad.addColorStop(0, 'rgba(2, 6, 18, 0.0)');
+        fadeGrad.addColorStop(0.75, 'rgba(2, 6, 18, 0.65)');
+        fadeGrad.addColorStop(1, 'rgba(2, 6, 18, 1.0)');
+        ctx.fillStyle = fadeGrad;
+        ctx.fillRect(0, 0, width, safeCelestialHeight);
+        ctx.restore();
+      } else {
+        // Deep space atmospheric & celestial background fallback gradient
+        const skyGrad = ctx.createLinearGradient(0, 0, 0, safeCelestialHeight);
+        skyGrad.addColorStop(0, 'rgba(2, 6, 18, 0.95)');
+        skyGrad.addColorStop(0.7, 'rgba(4, 12, 30, 0.7)');
+        skyGrad.addColorStop(1, 'rgba(6, 16, 40, 0.0)');
+        ctx.fillStyle = skyGrad;
+        ctx.fillRect(0, 0, width, safeCelestialHeight);
+      }
 
       // Celestial Projection Math:
       // Converts astronomical Right Ascension (0..24h) and Declination (-90..+90°) to celestial dome coordinates
@@ -343,14 +386,15 @@ export default function GodsEyeMap({
         }
       });
 
-      // 2. Render Background Tycho-2 Stars
-      BACKGROUND_TYCHO_STARS.forEach((star) => {
+      // 2. Subtle Micro-Twinkle on NASA Real Photo Field
+      // Subtle organic twinkling overlays that blend seamlessly with the photographic starry background
+      BACKGROUND_TYCHO_STARS.slice(0, 75).forEach((star) => {
         const pos = projectCelestial(star.ra, star.dec);
-        if (pos.visible) {
-          const distanceFade = Math.max(0.15, (safeCelestialHeight - pos.y) / safeCelestialHeight);
-          const alpha = Math.max(0.1, Math.min(0.85, (star.baseAlpha + Math.sin(time * star.twinkleSpeed + star.twinklePhase) * 0.3) * distanceFade));
+        if (pos.visible && pos.y < safeCelestialHeight - 12) {
+          const distanceFade = Math.max(0.1, (safeCelestialHeight - pos.y) / safeCelestialHeight);
+          const alpha = Math.max(0.15, Math.min(0.8, (star.baseAlpha + Math.sin(time * star.twinkleSpeed + star.twinklePhase) * 0.35) * distanceFade));
           ctx.beginPath();
-          ctx.arc(pos.x, pos.y, star.radius, 0, Math.PI * 2);
+          ctx.arc(pos.x, pos.y, Math.min(star.radius, 1.2), 0, Math.PI * 2);
           ctx.fillStyle = star.color;
           ctx.globalAlpha = alpha;
           ctx.fill();
