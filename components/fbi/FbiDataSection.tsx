@@ -1,3 +1,4 @@
+import Image from 'next/image';
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -189,16 +190,54 @@ export default function FbiDataSection() {
     <section className="w-full rounded-[36px] bg-[#080e1a]/85 backdrop-blur-2xl border border-[#38bdf8]/40 p-5 sm:p-7 shadow-[0_20px_60px_rgba(0,0,0,0.85),inset_0_1px_2px_rgba(56,189,248,0.35)] space-y-5 font-mono text-xs">
       {/* Header and Disclosure */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#1e3a5f]/60 gap-3">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2.5">
-            <Shield className="w-4 h-4 text-[#38bdf8]" />
-            <h2 className="text-xs sm:text-[13px] font-extrabold text-[#38bdf8] tracking-widest uppercase">
-              FBI DATA SOURCES — FEDERAL CRIMINAL & WANTED INTEGRATION
-            </h2>
+        <div className="flex items-center gap-3.5">
+          {/* Official Federal Bureau of Investigation Conformal Seal */}
+          <div
+            className="relative shrink-0 rounded-full flex items-center justify-center p-0.5"
+            style={{
+              width: '46px',
+              height: '46px',
+              minWidth: '46px',
+              minHeight: '46px',
+              aspectRatio: '1 / 1',
+              borderRadius: '50%',
+              border: '2px solid #38bdf8',
+              boxShadow: '0 0 16px rgba(56, 189, 248, 0.45)',
+              backgroundColor: '#030712',
+              overflow: 'hidden'
+            }}
+          >
+            <Image
+              src="/assets/fbi-seal-official.png"
+              alt="Official Seal of the Federal Bureau of Investigation"
+              width={42}
+              height={42}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'contain',
+                aspectRatio: '1 / 1',
+                borderRadius: '50%',
+              }}
+              priority
+            />
           </div>
-          <p className="text-[10px] text-slate-400 font-sans leading-normal max-w-3xl">
-            Live feeds from FBI Wanted API (no key) and FBI Crime Data Explorer API (free key, 1,000 req/hr). Restricted databases listed for transparency only — no data is fetched from them.
-          </p>
+
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[9px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider text-[#38bdf8] bg-[#0c2444] border border-[#38bdf8]/50 shadow-[0_0_8px_rgba(56,189,248,0.3)]">
+                FBI CJIS / CDE PROTOCOL
+              </span>
+              <h2 className="text-xs sm:text-[13px] font-extrabold text-[#f8fafc] tracking-widest uppercase flex items-center gap-1.5">
+                <span>FEDERAL BUREAU OF INVESTIGATION</span>
+                <span className="text-[#38bdf8]">•</span>
+                <span className="text-[#38bdf8]">DATABASE CAPABILITIES & LIVE FEEDS</span>
+              </h2>
+            </div>
+            <p className="text-[10px] text-slate-400 font-sans leading-normal max-w-3xl">
+              Live feeds from FBI Wanted API (no key) and FBI Crime Data Explorer API (free key, 1,000 req/hr). Restricted databases listed for transparency only — no data is fetched from them.
+            </p>
+          </div>
         </div>
 
         {/* Tab Controls */}

@@ -189,10 +189,38 @@ export default function GodsEyeMap({
       const panOffset = ((currentCenter.lng + 83.4) / 360) * 0.5;
       const totalXShift = (bearingOffset + panOffset) % 1;
 
-      // Horizon cutoff: calculated dynamically from pitch so stars NEVER touch the map/globe surface
-      // At pitch 60, horizon is around 38% - 42% from top. Stars are strictly bounded to deep space above horizon.
-      const horizonRatio = Math.max(0.18, Math.min(0.46, (currentPitch / 85) * 0.44));
-      const horizonY = height * horizonRatio;
+      // Real-time horizon detection: Find top-most screen Y of visible globe
+      // When looking at the earth globe in 3D pitch/perspective, the earth curvature extends up to the horizon line.
+      // We query map.project() or calculate the exact geometric globe limb so stars NEVER touch the globe boundary.
+      let topLimbY = height * 0.28;
+      if (m && typeof m.project === 'function') {
+        try {
+          // Probe multiple meridian points across the top hemisphere of the globe
+          const bounds = m.getBounds?.();
+          const northLat = bounds ? Math.min(84, bounds.getNorth?.() || 55) : 55;
+          const centerLng = currentCenter.lng || -83.4;
+          let minY = height;
+          // Test points along north latitude arc
+          [-45, -30, -15, 0, 15, 30, 45].forEach((dLng) => {
+            const p = m.project([centerLng + dLng, northLat]);
+            if (p && p.y > 0 && p.y < minY) {
+              minY = p.y;
+            }
+          });
+          if (minY < height && minY > 10) {
+            topLimbY = Math.min(minY, height * 0.42);
+          } else {
+            topLimbY = height * Math.max(0.16, Math.min(0.38, 0.45 - (currentPitch / 90) * 0.22));
+          }
+        } catch {
+          topLimbY = height * Math.max(0.16, Math.min(0.38, 0.45 - (currentPitch / 90) * 0.22));
+        }
+      } else {
+        topLimbY = height * Math.max(0.16, Math.min(0.38, 0.45 - (currentPitch / 90) * 0.22));
+      }
+
+      // Safety buffer: keep celestial bodies strictly above the highest globe horizon boundary (no exceptions)
+      const horizonY = Math.max(30, topLimbY - 24);
 
       // Deep space celestial gradient: completely clear before touching earth horizon
       const skyGrad = ctx.createLinearGradient(0, 0, 0, horizonY);
@@ -203,20 +231,28 @@ export default function GodsEyeMap({
       ctx.fillRect(0, 0, width, horizonY);
 
       // Draw constellation guide lines with real-time motion transform
+      // Constellation coordinates are normalized to [0, 1] relative to the celestial dome [0, horizonY - 12]
       ctx.lineWidth = 0.75;
-      ctx.strokeStyle = 'rgba(56, 189, 248, 0.22)';
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
+      const safeCelestialHeight = Math.max(20, horizonY - 14);
+
       CONSTELLATIONS.forEach((points) => {
         ctx.beginPath();
-        points.forEach((pt, idx) => {
+        let first = true;
+        points.forEach((pt) => {
           // Apply motion offset with wrap-around
           let normX = (pt.x - totalXShift) % 1;
           if (normX < 0) normX += 1;
           const px = normX * width;
-          const py = pt.y * horizonY * 1.8; // Strictly bound above horizon
+          const py = pt.y * safeCelestialHeight; // Strictly above the globe horizon
 
-          if (py < horizonY) {
-            if (idx === 0) ctx.moveTo(px, py);
-            else ctx.lineTo(px, py);
+          if (py <= safeCelestialHeight) {
+            if (first) {
+              ctx.moveTo(px, py);
+              first = false;
+            } else {
+              ctx.lineTo(px, py);
+            }
           }
         });
         ctx.stroke();
@@ -226,14 +262,14 @@ export default function GodsEyeMap({
           let normX = (pt.x - totalXShift) % 1;
           if (normX < 0) normX += 1;
           const px = normX * width;
-          const py = pt.y * horizonY * 1.8;
+          const py = pt.y * safeCelestialHeight;
 
-          if (py < horizonY - 4) {
+          if (py <= safeCelestialHeight) {
             ctx.beginPath();
-            ctx.arc(px, py, 2.2, 0, Math.PI * 2);
+            ctx.arc(px, py, 2.0, 0, Math.PI * 2);
             ctx.fillStyle = '#38bdf8';
             ctx.shadowColor = '#38bdf8';
-            ctx.shadowBlur = 6;
+            ctx.shadowBlur = 5;
             ctx.fill();
             ctx.shadowBlur = 0;
           }
@@ -245,10 +281,11 @@ export default function GodsEyeMap({
         let normX = (star.x - totalXShift) % 1;
         if (normX < 0) normX += 1;
         const px = normX * width;
-        const py = star.y * horizonY * 1.85;
+        // Map star's y to safe celestial sky hemisphere strictly above globe horizon
+        const py = star.y * safeCelestialHeight;
 
         // Strict spatial guard: Stars never touch or overlap the terrestrial globe
-        if (py < horizonY - 2) {
+        if (py <= safeCelestialHeight) {
           const distanceFade = Math.max(0.1, (horizonY - py) / horizonY);
           const alpha = Math.max(0.12, Math.min(1.0, (star.baseAlpha + Math.sin(time * star.twinkleSpeed + star.twinklePhase) * 0.35) * distanceFade));
 

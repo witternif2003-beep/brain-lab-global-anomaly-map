@@ -1,4 +1,5 @@
 "use client";
+import FbiDataSection from "../../components/fbi/FbiDataSection";
 import React from "react";
 import GodsEyeMap from "../../components/GodsEyeMap";
 import PageEmblemHeader from "../../components/PageEmblemHeader";
@@ -25,6 +26,11 @@ export default function GodsEyeTelemetryPage() {
 
       {/* Main GodsEye Interactive Vector Map */}
       <GodsEyeMap />
+
+      {/* DEDICATED FBI CAPABILITIES & RESTRICTED SYSTEMS PANEL — NSA ADMIN MODE */}
+      <div className="w-full">
+        <FbiDataSection />
+      </div>
 
       {/* Comprehensive GodsEye Ingestion Architecture Matrix — NSA Admin Modern Oval Glass Theme */}
       <div className="w-full rounded-[36px] bg-[#080e1a]/85 backdrop-blur-2xl border border-[#38bdf8]/40 p-5 sm:p-7 shadow-[0_20px_60px_rgba(0,0,0,0.85),inset_0_1px_2px_rgba(56,189,248,0.35)] space-y-5 font-mono text-xs">
