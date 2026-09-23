@@ -37,7 +37,10 @@ export default function PageEmblemHeader({
                 aspectRatio: '1 / 1',
                 borderRadius: '50%',
                 flexShrink: 0,
-                filter: 'drop-shadow(0 0 16px rgba(56,189,248,0.6))',
+                filter: 'drop-shadow(0 0 14px rgba(56,189,248,0.7))',
+                background: 'transparent',
+                border: 'none',
+                padding: 0,
               }}
             >
               <Image
@@ -48,6 +51,8 @@ export default function PageEmblemHeader({
                 style={{
                   width: '56px',
                   height: '56px',
+                  minWidth: '56px',
+                  minHeight: '56px',
                   objectFit: 'contain',
                   aspectRatio: '1 / 1',
                   borderRadius: '50%',

@@ -55,7 +55,7 @@ export default function Navbar() {
           {/* Official NSA / CIA Admin Standards Header Seal & Typography Protocol */}
           <div className="flex items-center space-x-3.5 shrink-0 py-1">
             <Link href="/" className="flex items-center space-x-3 group">
-              {/* NSA / CIA Admin Approved Perfect Circular Header Seal (Conformal 1:1 Bezel) */}
+              {/* NSA / CIA Admin Approved Conformal Circular Header Seal (Exact Circular Blue Bezel) */}
               <div
                 className="relative shrink-0 rounded-full flex items-center justify-center transition-transform duration-300 group-hover:scale-105"
                 style={{
@@ -68,7 +68,10 @@ export default function Navbar() {
                   aspectRatio: '1 / 1',
                   borderRadius: '50%',
                   flexShrink: 0,
-                  filter: 'drop-shadow(0 0 12px rgba(56,189,248,0.65))',
+                  filter: 'drop-shadow(0 0 10px rgba(56,189,248,0.75))',
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
                 }}
               >
                 <Image
@@ -79,6 +82,8 @@ export default function Navbar() {
                   style={{
                     width: '48px',
                     height: '48px',
+                    minWidth: '48px',
+                    minHeight: '48px',
                     objectFit: 'contain',
                     aspectRatio: '1 / 1',
                     borderRadius: '50%',

@@ -61,7 +61,10 @@ export default function DashboardPage() {
                 aspectRatio: '1 / 1',
                 borderRadius: '50%',
                 flexShrink: 0,
-                filter: 'drop-shadow(0 0 18px rgba(56,189,248,0.7))',
+                filter: 'drop-shadow(0 0 18px rgba(56,189,248,0.75))',
+                background: 'transparent',
+                border: 'none',
+                padding: 0,
               }}
             >
               <Image
@@ -72,6 +75,8 @@ export default function DashboardPage() {
                 style={{
                   width: '64px',
                   height: '64px',
+                  minWidth: '64px',
+                  minHeight: '64px',
                   objectFit: 'contain',
                   aspectRatio: '1 / 1',
                   borderRadius: '50%',
