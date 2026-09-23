@@ -302,6 +302,11 @@ export default function GodsEyeMap({
       // Stars and constellations NEVER touch or occlude the globe boundary under any zoom, pitch, or pan.
       const safeCelestialHeight = Math.max(25, topLimbY - 20);
 
+      // Celestial Projection Math:
+      // Converts astronomical Right Ascension (0..24h) and Declination (-90..+90°) to celestial dome coordinates
+      // Rotates with camera bearing, observer longitude, and camera pitch
+      const raShift = ((currentBearing / 360) + ((currentCenter.lng + 83.4) / 360) * 0.5) % 1;
+
       // 1. Render Official NASA SVS Deep Space Photographic Panorama with 3D Spherical Perspective
       // The panorama wraps 360 degrees equirectangularly corresponding to astronomical Right Ascension (0..24h).
       if (nasaImgLoaded && nasaMilkyWayImg && safeCelestialHeight > 10) {
@@ -342,11 +347,6 @@ export default function GodsEyeMap({
         ctx.fillStyle = skyGrad;
         ctx.fillRect(0, 0, width, safeCelestialHeight);
       }
-
-      // Celestial Projection Math:
-      // Converts astronomical Right Ascension (0..24h) and Declination (-90..+90°) to celestial dome coordinates
-      // Rotates with camera bearing, observer longitude, and camera pitch
-      const raShift = ((currentBearing / 360) + ((currentCenter.lng + 83.4) / 360) * 0.5) % 1;
 
       // Coordinate converter helper function
       const projectCelestial = (raHours: number, decDeg: number): { x: number; y: number; visible: boolean } => {
