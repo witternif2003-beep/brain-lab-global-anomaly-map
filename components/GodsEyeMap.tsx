@@ -41,7 +41,24 @@ const BASEMAPS = {
     layers: [{ id: 'sat', type: 'raster', source: 'sat' }],
   },
   dark: 'https://demotiles.maplibre.org/style.json',
-  terrain: 'https://demotiles.maplibre.org/style.json',
+  terrain: {
+    version: 8,
+    sources: {
+      sat: {
+        type: 'raster',
+        tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+        tileSize: 256,
+        attribution: '© Esri, Maxar, Earthstar Geographics',
+      },
+      'terrain-dem': {
+        type: 'raster-dem',
+        url: 'https://demotiles.maplibre.org/terrain-tiles/tiles.json',
+        tileSize: 256,
+      },
+    },
+    layers: [{ id: 'sat', type: 'raster', source: 'sat' }],
+    terrain: { source: 'terrain-dem', exaggeration: 1.5 },
+  },
 };
 
 // Georgia viewport bounds — auto-fit on load
@@ -786,10 +803,25 @@ export default function GodsEyeMap({
     if (!map) return;
     setBasemap(next);
 
-    if (next === 'satellite') {
+    if (next === 'terrain') {
+      map.setStyle(BASEMAPS.terrain as any);
+      map.once('styledata', () => {
+        try {
+          (map as any).setTerrain?.({ source: 'terrain-dem', exaggeration: 1.5 });
+        } catch {}
+        addMapLayers(map);
+      });
+      map.easeTo({ pitch: 60, bearing: -12, duration: 800 });
+    } else if (next === 'satellite') {
+      try {
+        (map as any).setTerrain?.(null);
+      } catch {}
       map.setStyle(BASEMAPS.satellite as any);
       map.once('styledata', () => addMapLayers(map));
     } else {
+      try {
+        (map as any).setTerrain?.(null);
+      } catch {}
       map.setStyle(BASEMAPS[next] as string);
       map.once('styledata', () => addMapLayers(map));
     }
@@ -1016,122 +1048,144 @@ export default function GodsEyeMap({
       `}</style>
 
         {/* STANDALONE MAP MENU WIDGET DIRECTLY BENEATH THE MAP ITSELF */}
-        <div className="w-full flex items-center justify-between p-4 rounded-2xl bg-[#080e1a]/95 backdrop-blur-xl border border-[#1e3a5f]/80 shadow-[0_12px_40px_rgba(0,0,0,0.7)] font-mono text-xs overflow-x-auto">
-          <div className="flex flex-col gap-2 w-full">
-            <div className="flex items-center justify-between border-b border-slate-800/60 pb-1.5">
-              <span className="text-[11px] font-bold text-sky-400 tracking-wider flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                GOD'S EYE STANDALONE COMMAND MATRIX // 3-ROW TACTICAL HUD
-              </span>
-              <span className="text-[10px] text-slate-500">
+        <div className="w-full rounded-2xl bg-gradient-to-b from-[#0a1224] to-[#040812] border border-[#1e3a5f] p-4 sm:p-5 shadow-[0_20px_50px_rgba(0,0,0,0.8),inset_0_1px_1px_rgba(56,189,248,0.2)] font-mono text-xs">
+          <div className="flex flex-col gap-3.5 w-full">
+            
+            {/* Header Status Rail */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2.5 border-b border-[#1e3a5f]/70 gap-2">
+              <div className="flex items-center gap-2.5">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 shadow-[0_0_8px_#10b981]"></span>
+                </span>
+                <span className="text-xs sm:text-[13px] font-extrabold text-[#38bdf8] tracking-widest uppercase">
+                  GOD'S EYE STANDALONE COMMAND MATRIX // 3-ROW TACTICAL HUD
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-[10px] text-emerald-400 bg-[#062018] px-2.5 py-1 rounded-md border border-emerald-500/40 font-semibold uppercase tracking-wider self-start sm:self-auto">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 AIP-20 ANTI-HALLUCINATION HARDENING ACTIVE
-              </span>
+              </div>
             </div>
 
-            {/* Row 1: Base Layers */}
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-[10px] text-slate-500 uppercase tracking-wider w-16">Projection:</span>
-              <button
-                type="button"
-                onClick={toggle3D}
-                className={`px-3 py-1 rounded font-bold text-xs transition-all ${
-                  pitch <= 20
-                    ? 'bg-[#062018] text-[#34d399] border-2 border-[#34d399] shadow-[0_0_14px_rgba(52,211,153,0.45)]'
-                    : 'bg-[#0a1228] text-[#7aa0c4] border border-[#1e3a5f] hover:border-[#38bdf8]/60 hover:text-white'
-                }`}
-              >
-                2D MERCATOR
-              </button>
-              <button
-                type="button"
-                onClick={() => switchBasemap('demotiles')}
-                className={`px-3 py-1 rounded font-bold text-xs transition-all ${
-                  basemap === 'demotiles'
-                    ? 'bg-[#0c2444] text-[#38bdf8] border-2 border-[#38bdf8] shadow-[0_0_14px_rgba(56,189,248,0.5)]'
-                    : 'bg-[#0a1228] text-[#7aa0c4] border border-[#1e3a5f] hover:border-[#38bdf8]/60 hover:text-white'
-                }`}
-              >
-                LIGHT VECTOR
-              </button>
-              <button
-                type="button"
-                onClick={() => switchBasemap('satellite')}
-                className={`px-3 py-1 rounded font-bold text-xs transition-all ${
-                  basemap === 'satellite'
-                    ? 'bg-[#0c2444] text-[#38bdf8] border-2 border-[#38bdf8] shadow-[0_0_14px_rgba(56,189,248,0.5)]'
-                    : 'bg-[#0a1228] text-[#7aa0c4] border border-[#1e3a5f] hover:border-[#38bdf8]/60 hover:text-white'
-                }`}
-              >
-                SATELLITE ORTHO
-              </button>
-              <button
-                type="button"
-                onClick={() => switchBasemap('terrain')}
-                className={`px-3 py-1 rounded font-bold text-xs transition-all ${
-                  basemap === 'terrain'
-                    ? 'bg-[#0c2444] text-[#38bdf8] border-2 border-[#38bdf8] shadow-[0_0_14px_rgba(56,189,248,0.5)]'
-                    : 'bg-[#0a1228] text-[#7aa0c4] border border-[#1e3a5f] hover:border-[#38bdf8]/60 hover:text-white'
-                }`}
-              >
-                3D TERRAIN DEM
-              </button>
+            {/* Row 1: Projection & Basemap Modes */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+              <span className="text-[11px] font-bold text-[#7aa0c4] uppercase tracking-wider shrink-0 w-24">
+                PROJECTION:
+              </span>
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={toggle3D}
+                  className={`px-3.5 py-2 rounded-lg font-bold text-xs tracking-wider transition-all duration-200 ${
+                    pitch <= 20
+                      ? 'bg-[#062018] text-[#34d399] border-2 border-[#34d399] shadow-[0_0_16px_rgba(52,211,153,0.5)]'
+                      : 'bg-[#0a1228] text-[#7aa0c4] border border-[#1e3a5f] hover:border-[#38bdf8]/70 hover:text-white hover:bg-[#0f1d38]'
+                  }`}
+                >
+                  2D MERCATOR
+                </button>
+                <button
+                  type="button"
+                  onClick={() => switchBasemap('demotiles')}
+                  className={`px-3.5 py-2 rounded-lg font-bold text-xs tracking-wider transition-all duration-200 ${
+                    basemap === 'demotiles'
+                      ? 'bg-[#0c2444] text-[#38bdf8] border-2 border-[#38bdf8] shadow-[0_0_16px_rgba(56,189,248,0.6)]'
+                      : 'bg-[#0a1228] text-[#7aa0c4] border border-[#1e3a5f] hover:border-[#38bdf8]/70 hover:text-white hover:bg-[#0f1d38]'
+                  }`}
+                >
+                  LIGHT VECTOR
+                </button>
+                <button
+                  type="button"
+                  onClick={() => switchBasemap('satellite')}
+                  className={`px-3.5 py-2 rounded-lg font-bold text-xs tracking-wider transition-all duration-200 ${
+                    basemap === 'satellite'
+                      ? 'bg-[#0c2444] text-[#38bdf8] border-2 border-[#38bdf8] shadow-[0_0_18px_rgba(56,189,248,0.7)]'
+                      : 'bg-[#0a1228] text-[#7aa0c4] border border-[#1e3a5f] hover:border-[#38bdf8]/70 hover:text-white hover:bg-[#0f1d38]'
+                  }`}
+                >
+                  SATELLITE ORTHO
+                </button>
+                <button
+                  type="button"
+                  onClick={() => switchBasemap('terrain')}
+                  className={`px-3.5 py-2 rounded-lg font-bold text-xs tracking-wider transition-all duration-200 ${
+                    basemap === 'terrain'
+                      ? 'bg-[#0c2444] text-[#38bdf8] border-2 border-[#38bdf8] shadow-[0_0_18px_rgba(56,189,248,0.7)]'
+                      : 'bg-[#0a1228] text-[#7aa0c4] border border-[#1e3a5f] hover:border-[#38bdf8]/70 hover:text-white hover:bg-[#0f1d38]'
+                  }`}
+                >
+                  3D TERRAIN DEM
+                </button>
+              </div>
             </div>
 
             {/* Row 2: Target & Primary Corridors */}
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-[10px] text-slate-500 uppercase tracking-wider w-16">Primary:</span>
-              <button
-                type="button"
-                onClick={() => handleFocusChange('GA')}
-                className={`px-3 py-1 rounded font-bold text-xs transition-all ${
-                  activeFocus === 'GA'
-                    ? 'bg-[#2b0808] text-[#ff4d4d] border-2 border-[#ff3b3b] shadow-[0_0_16px_rgba(255,59,59,0.55)]'
-                    : 'bg-red-950/20 text-rose-400/80 border border-rose-900/40 hover:bg-red-900/40'
-                }`}
-              >
-                GA (Target Anchor)
-              </button>
-              {(['NC', 'TN', 'FL', 'SC', 'TX'] as const).map((st) => (
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+              <span className="text-[11px] font-bold text-[#7aa0c4] uppercase tracking-wider shrink-0 w-24">
+                PRIMARY:
+              </span>
+              <div className="flex items-center gap-2 flex-wrap">
                 <button
-                  key={st}
                   type="button"
-                  onClick={() => handleFocusChange(st)}
-                  className={`px-3 py-1 rounded font-bold text-xs transition-all ${
-                    activeFocus === st
-                      ? 'bg-[#0c2444] text-[#38bdf8] border-2 border-[#38bdf8] shadow-[0_0_14px_rgba(56,189,248,0.5)]'
-                      : 'bg-[#0a1228] text-[#7aa0c4] border border-[#1e3a5f] hover:border-[#38bdf8]/60 hover:text-white'
+                  onClick={() => handleFocusChange('GA')}
+                  className={`px-4 py-2 rounded-lg font-extrabold text-xs tracking-wider transition-all duration-200 ${
+                    activeFocus === 'GA'
+                      ? 'bg-[#2b0808] text-[#ff4d4d] border-2 border-[#ff3b3b] shadow-[0_0_20px_rgba(255,59,59,0.6)]'
+                      : 'bg-[#180a0a] text-[#f87171] border border-[#7f1d1d] hover:bg-[#280d0d]'
                   }`}
                 >
-                  {st}
+                  GA (Target Anchor)
                 </button>
-              ))}
-            </div>
-
-            {/* Row 3: Secondary Corridors & Viewport Telemetry */}
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-[10px] text-slate-500 uppercase tracking-wider w-16">Secondary:</span>
-              {(['VA', 'AL'] as const).map((st) => (
-                <button
-                  key={st}
-                  type="button"
-                  onClick={() => handleFocusChange(st)}
-                  className={`px-3 py-1 rounded font-bold text-xs transition-all ${
-                    activeFocus === st
-                      ? 'bg-[#0c2444] text-[#38bdf8] border-2 border-[#38bdf8] shadow-[0_0_14px_rgba(56,189,248,0.5)]'
-                      : 'bg-[#0a1228] text-[#7aa0c4] border border-[#1e3a5f] hover:border-[#38bdf8]/60 hover:text-white'
-                  }`}
-                >
-                  {st}
-                </button>
-              ))}
-              <div className="px-3.5 py-1.5 rounded-lg bg-[#0a1228] border border-[#1e3a5f] text-[#34d399] font-mono text-xs font-bold flex items-center gap-2 ml-auto shadow-inner">
-                <span>VIEWPORT:</span>
-                <span className="text-white font-bold">
-                  z{typeof zoom === 'number' && !isNaN(zoom) ? zoom.toFixed(1) : '6.0'} · p{typeof pitch === 'number' && !isNaN(pitch) ? pitch.toFixed(0) : '60'}°
-                </span>
-                <span className="text-slate-500">| WEBGL2 60FPS</span>
+                {(['NC', 'TN', 'FL', 'SC', 'TX'] as const).map((st) => (
+                  <button
+                    key={st}
+                    type="button"
+                    onClick={() => handleFocusChange(st)}
+                    className={`px-3.5 py-2 rounded-lg font-bold text-xs tracking-wider transition-all duration-200 ${
+                      activeFocus === st
+                        ? 'bg-[#0c2444] text-[#38bdf8] border-2 border-[#38bdf8] shadow-[0_0_16px_rgba(56,189,248,0.6)]'
+                        : 'bg-[#0a1228] text-[#7aa0c4] border border-[#1e3a5f] hover:border-[#38bdf8]/70 hover:text-white hover:bg-[#0f1d38]'
+                    }`}
+                  >
+                    {st}
+                  </button>
+                ))}
               </div>
             </div>
+
+            {/* Row 3: Secondary Corridors & Viewport Metrics */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-[#1e3a5f]/50">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[11px] font-bold text-[#7aa0c4] uppercase tracking-wider shrink-0 w-24">
+                  SECONDARY:
+                </span>
+                {(['VA', 'AL'] as const).map((st) => (
+                  <button
+                    key={st}
+                    type="button"
+                    onClick={() => handleFocusChange(st)}
+                    className={`px-3.5 py-2 rounded-lg font-bold text-xs tracking-wider transition-all duration-200 ${
+                      activeFocus === st
+                        ? 'bg-[#0c2444] text-[#38bdf8] border-2 border-[#38bdf8] shadow-[0_0_16px_rgba(56,189,248,0.6)]'
+                        : 'bg-[#0a1228] text-[#7aa0c4] border border-[#1e3a5f] hover:border-[#38bdf8]/70 hover:text-white hover:bg-[#0f1d38]'
+                    }`}
+                  >
+                    {st}
+                  </button>
+                ))}
+              </div>
+              
+              <div className="px-4 py-2 rounded-lg bg-[#070d18] border border-[#1e3a5f] text-emerald-400 font-mono text-xs flex items-center gap-2.5 shadow-[inset_0_0_12px_rgba(16,185,129,0.15)] self-start sm:self-auto">
+                <span className="text-[#7aa0c4] font-bold">VIEWPORT:</span>
+                <span className="text-white font-extrabold tracking-wide">
+                  z{typeof zoom === 'number' && !isNaN(zoom) ? zoom.toFixed(1) : '6.0'} · p{typeof pitch === 'number' && !isNaN(pitch) ? pitch.toFixed(0) : '60'}°
+                </span>
+                <span className="text-[#38bdf8] font-bold">| WEBGL2 60FPS</span>
+              </div>
+            </div>
+
           </div>
         </div>
       </div>
