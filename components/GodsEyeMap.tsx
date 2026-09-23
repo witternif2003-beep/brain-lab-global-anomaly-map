@@ -101,12 +101,12 @@ interface Props {
     const NASA_IAU_CATALOGUE = [
       { id: "Sirius", name: "Sirius (α CMa)", constellation: "Canis Major", ra: 6.75, dec: -16.72, dist_ly: 8.6, vmag: -1.46, bv: 0.00, spec: "A1V", teff: 9940, radius: 1.71, mass: 2.06, lum: 25.4, color: "#e0f2fe" },
       { id: "Canopus", name: "Canopus (α Car)", constellation: "Carina", ra: 6.40, dec: -52.70, dist_ly: 310.0, vmag: -0.74, bv: 0.15, spec: "F0II", teff: 7400, radius: 71.0, mass: 8.0, lum: 10700.0, color: "#f8fafc" },
-      { id: "RigilKent", name: "Rigil Kentaurus (α Cen A)", constellation: "Centaurus", ra: 14.66, dec: -60.83, dist_ly: 4.37, vmag: -0.01, bv: 0.71, spec: "G2V", teff: 5790, radius: 1.22, mass: 1.10, lum: 1.52, color: "#fef08a" },
+      { id: "RigilKent", name: "Rigil Kentaurus (α Cen A)", constellation: "Centaurus", ra: 14.66, dec: -60.83, dist_ly: 4.37, vmag: -0.01, bv: 0.71, spec: "G2V", teff: 5790, radius: 1.22, mass: 1.10, lum: 1.52, color: "#a7f3d0" },
       { id: "Arcturus", name: "Arcturus (α Boo)", constellation: "Boötes", ra: 14.26, dec: 19.18, dist_ly: 36.7, vmag: -0.05, bv: 1.23, spec: "K1.5III", teff: 4286, radius: 25.4, mass: 1.08, lum: 170.0, color: "#fb923c" },
       { id: "Vega", name: "Vega (α Lyr)", constellation: "Lyra", ra: 18.62, dec: 38.78, dist_ly: 25.0, vmag: 0.03, bv: 0.00, spec: "A0V", teff: 9602, radius: 2.36, mass: 2.14, lum: 40.1, color: "#38bdf8" },
-      { id: "Capella", name: "Capella (α Aur)", constellation: "Auriga", ra: 5.28, dec: 45.99, dist_ly: 42.9, vmag: 0.08, bv: 0.80, spec: "G3III", teff: 4970, radius: 11.98, mass: 2.57, lum: 78.7, color: "#fde047" },
+      { id: "Capella", name: "Capella (α Aur)", constellation: "Auriga", ra: 5.28, dec: 45.99, dist_ly: 42.9, vmag: 0.08, bv: 0.80, spec: "G3III", teff: 4970, radius: 11.98, mass: 2.57, lum: 78.7, color: "#67e8f9" },
       { id: "Rigel", name: "Rigel (β Ori)", constellation: "Orion", ra: 5.24, dec: -8.20, dist_ly: 860.0, vmag: 0.12, bv: -0.03, spec: "B8Ia", teff: 12100, radius: 78.9, mass: 21.0, lum: 120000.0, color: "#7dd3fc" },
-      { id: "Procyon", name: "Procyon (α CMi)", constellation: "Canis Minor", ra: 7.65, dec: 5.22, dist_ly: 11.5, vmag: 0.38, bv: 0.42, spec: "F5IV-V", teff: 6530, radius: 2.05, mass: 1.50, lum: 6.93, color: "#fef08a" },
+      { id: "Procyon", name: "Procyon (α CMi)", constellation: "Canis Minor", ra: 7.65, dec: 5.22, dist_ly: 11.5, vmag: 0.38, bv: 0.42, spec: "F5IV-V", teff: 6530, radius: 2.05, mass: 1.50, lum: 6.93, color: "#a7f3d0" },
       { id: "Achernar", name: "Achernar (α Eri)", constellation: "Eridanus", ra: 1.63, dec: -57.24, dist_ly: 139.0, vmag: 0.46, bv: -0.16, spec: "B6Vep", teff: 15000, radius: 9.1, mass: 6.7, lum: 3150.0, color: "#38bdf8" },
       { id: "Betelgeuse", name: "Betelgeuse (α Ori)", constellation: "Orion", ra: 5.92, dec: 7.41, dist_ly: 642.5, vmag: 0.50, bv: 1.85, spec: "M1-M2Ia-ab", teff: 3600, radius: 764.0, mass: 16.5, lum: 126000.0, color: "#f97316" },
       { id: "Hadar", name: "Hadar (β Cen)", constellation: "Centaurus", ra: 14.06, dec: -60.37, dist_ly: 390.0, vmag: 0.61, bv: -0.23, spec: "B1III", teff: 25000, radius: 8.6, mass: 12.8, lum: 41700.0, color: "#38bdf8" },
@@ -130,9 +130,9 @@ interface Props {
       { id: "Alnair", name: "Alnair (α Gru)", constellation: "Grus", ra: 22.14, dec: -46.96, dist_ly: 101.0, vmag: 1.74, bv: -0.13, spec: "B6V", teff: 13920, radius: 3.4, mass: 4.0, lum: 263.0, color: "#38bdf8" },
       { id: "Alnitak", name: "Alnitak (ζ Ori)", constellation: "Orion", ra: 5.68, dec: -1.94, dist_ly: 1260.0, vmag: 1.74, bv: -0.21, spec: "O9.5Iab", teff: 29500, radius: 20.0, mass: 33.0, lum: 250000.0, color: "#38bdf8" },
       { id: "Alioth", name: "Alioth (ε UMa)", constellation: "Ursa Major", ra: 12.90, dec: 55.96, dist_ly: 82.6, vmag: 1.77, bv: -0.02, spec: "A1III-IVp", teff: 9020, radius: 4.14, mass: 2.91, lum: 102.0, color: "#bae6fd" },
-      { id: "Dubhe", name: "Dubhe (α UMa)", constellation: "Ursa Major", ra: 11.06, dec: 61.75, dist_ly: 123.0, vmag: 1.79, bv: 1.07, spec: "K0III", teff: 4660, radius: 30.0, mass: 3.44, lum: 316.0, color: "#fef08a" },
-      { id: "Mirfak", name: "Mirfak (α Per)", constellation: "Perseus", ra: 3.41, dec: 49.86, dist_ly: 510.0, vmag: 1.79, bv: 0.48, spec: "F5Ib", teff: 6350, radius: 68.0, mass: 8.5, lum: 5000.0, color: "#fef08a" },
-      { id: "Wezen", name: "Wezen (δ CMa)", constellation: "Canis Major", ra: 7.14, dec: -26.39, dist_ly: 1600.0, vmag: 1.83, bv: 0.72, spec: "F8Ia", teff: 6390, radius: 215.0, mass: 17.0, lum: 82000.0, color: "#fef08a" },
+      { id: "Dubhe", name: "Dubhe (α UMa)", constellation: "Ursa Major", ra: 11.06, dec: 61.75, dist_ly: 123.0, vmag: 1.79, bv: 1.07, spec: "K0III", teff: 4660, radius: 30.0, mass: 3.44, lum: 316.0, color: "#a7f3d0" },
+      { id: "Mirfak", name: "Mirfak (α Per)", constellation: "Perseus", ra: 3.41, dec: 49.86, dist_ly: 510.0, vmag: 1.79, bv: 0.48, spec: "F5Ib", teff: 6350, radius: 68.0, mass: 8.5, lum: 5000.0, color: "#a7f3d0" },
+      { id: "Wezen", name: "Wezen (δ CMa)", constellation: "Canis Major", ra: 7.14, dec: -26.39, dist_ly: 1600.0, vmag: 1.83, bv: 0.72, spec: "F8Ia", teff: 6390, radius: 215.0, mass: 17.0, lum: 82000.0, color: "#a7f3d0" },
       { id: "Alkaid", name: "Alkaid (η UMa)", constellation: "Ursa Major", ra: 13.79, dec: 49.31, dist_ly: 103.9, vmag: 1.86, bv: -0.19, spec: "B3V", teff: 15540, radius: 3.4, mass: 6.1, lum: 594.0, color: "#38bdf8" },
       { id: "Sargas", name: "Sargas (θ Sco)", constellation: "Scorpius", ra: 17.62, dec: -42.99, dist_ly: 300.0, vmag: 1.87, bv: 0.40, spec: "F0II", teff: 7268, radius: 26.0, mass: 5.7, lum: 1834.0, color: "#f8fafc" },
       { id: "KausAustralis", name: "Kaus Australis (ε Sgr)", constellation: "Sagittarius", ra: 18.40, dec: -34.38, dist_ly: 143.0, vmag: 1.85, bv: -0.03, spec: "B9.5III", teff: 9960, radius: 6.8, mass: 3.5, lum: 363.0, color: "#bae6fd" },
@@ -141,11 +141,11 @@ interface Props {
       { id: "Atria", name: "Atria (α TrA)", constellation: "Triangulum Australe", ra: 16.81, dec: -69.03, dist_ly: 391.0, vmag: 1.91, bv: 1.44, spec: "K2IIb-IIIa", teff: 4150, radius: 143.0, mass: 7.0, lum: 5500.0, color: "#fb923c" },
       { id: "Alhena", name: "Alhena (γ Gem)", constellation: "Gemini", ra: 6.63, dec: 16.40, dist_ly: 109.0, vmag: 1.93, bv: 0.00, spec: "A1.5IV+", teff: 9260, radius: 3.3, mass: 2.8, lum: 123.0, color: "#bae6fd" },
       { id: "Peacock", name: "Peacock (α Pav)", constellation: "Pavo", ra: 20.43, dec: -56.73, dist_ly: 179.0, vmag: 1.94, bv: -0.20, spec: "B2.5V", teff: 17711, radius: 4.83, mass: 5.91, lum: 2200.0, color: "#38bdf8" },
-      { id: "Polaris", name: "Polaris (α UMi)", constellation: "Ursa Minor", ra: 2.53, dec: 89.26, dist_ly: 433.0, vmag: 1.98, bv: 0.60, spec: "F7Ib", teff: 6015, radius: 37.5, mass: 5.4, lum: 1260.0, color: "#fef9c3" },
+      { id: "Polaris", name: "Polaris (α UMi)", constellation: "Ursa Minor", ra: 2.53, dec: 89.26, dist_ly: 433.0, vmag: 1.98, bv: 0.60, spec: "F7Ib", teff: 6015, radius: 37.5, mass: 5.4, lum: 1260.0, color: "#e0e7ff" },
       { id: "Mirzam", name: "Mirzam (β CMa)", constellation: "Canis Major", ra: 6.38, dec: -17.96, dist_ly: 490.0, vmag: 1.98, bv: -0.23, spec: "B1II-III", teff: 25800, radius: 9.7, mass: 13.5, lum: 26600.0, color: "#38bdf8" },
       { id: "Alphard", name: "Alphard (α Hya)", constellation: "Hydra", ra: 9.46, dec: -8.66, dist_ly: 177.0, vmag: 1.98, bv: 1.44, spec: "K3II-III", teff: 4120, radius: 50.5, mass: 3.03, lum: 780.0, color: "#fb923c" },
       { id: "Hamal", name: "Hamal (α Ari)", constellation: "Aries", ra: 2.12, dec: 23.46, dist_ly: 65.8, vmag: 2.00, bv: 1.15, spec: "K2III", teff: 4480, radius: 14.9, mass: 1.5, lum: 91.0, color: "#fb923c" },
-      { id: "Diphda", name: "Diphda (β Cet)", constellation: "Cetus", ra: 0.73, dec: -17.99, dist_ly: 96.3, vmag: 2.04, bv: 1.02, spec: "K0III", teff: 4797, radius: 16.8, mass: 2.8, lum: 139.0, color: "#fef08a" },
+      { id: "Diphda", name: "Diphda (β Cet)", constellation: "Cetus", ra: 0.73, dec: -17.99, dist_ly: 96.3, vmag: 2.04, bv: 1.02, spec: "K0III", teff: 4797, radius: 16.8, mass: 2.8, lum: 139.0, color: "#a7f3d0" },
       { id: "Saiph", name: "Saiph (κ Ori)", constellation: "Orion", ra: 5.79, dec: -9.67, dist_ly: 650.0, vmag: 2.07, bv: -0.18, spec: "B0.5Ia", teff: 26500, radius: 22.2, mass: 15.5, lum: 57500.0, color: "#38bdf8" },
       { id: "Kochab", name: "Kochab (β UMi)", constellation: "Ursa Minor", ra: 14.85, dec: 74.16, dist_ly: 130.9, vmag: 2.08, bv: 1.47, spec: "K4III", teff: 4030, radius: 42.1, mass: 2.2, lum: 390.0, color: "#fed7aa" },
       { id: "RasHague", name: "Rasalhague (α Oph)", constellation: "Ophiuchus", ra: 17.58, dec: 12.56, dist_ly: 48.6, vmag: 2.08, bv: 0.15, spec: "A5III", teff: 8000, radius: 2.6, mass: 2.4, lum: 25.1, color: "#f8fafc" },
@@ -159,8 +159,8 @@ interface Props {
       { id: "Navi", name: "Navi (γ Cas)", constellation: "Cassiopeia", ra: 0.94, dec: 60.72, dist_ly: 550.0, vmag: 2.15, bv: -0.15, spec: "B0.5IVe", teff: 25000, radius: 10.0, mass: 13.0, lum: 40000.0, color: "#38bdf8" },
       { id: "Ruchbah", name: "Ruchbah (δ Cas)", constellation: "Cassiopeia", ra: 1.43, dec: 60.23, dist_ly: 99.4, vmag: 2.68, bv: 0.13, spec: "A5III-IV", teff: 8400, radius: 3.9, mass: 2.5, lum: 70.0, color: "#bae6fd" },
       { id: "Segin", name: "Segin (ε Cas)", constellation: "Cassiopeia", ra: 1.90, dec: 63.67, dist_ly: 460.0, vmag: 3.35, bv: -0.18, spec: "B3V", teff: 15174, radius: 6.1, mass: 9.2, lum: 2500.0, color: "#38bdf8" },
-      { id: "Sadr", name: "Sadr (γ Cyg)", constellation: "Cygnus", ra: 20.37, dec: 40.26, dist_ly: 1800.0, vmag: 2.23, bv: 0.68, spec: "F8Ib", teff: 6100, radius: 150.0, mass: 12.0, lum: 33000.0, color: "#fef08a" },
-      { id: "Albireo", name: "Albireo (β Cyg)", constellation: "Cygnus", ra: 19.51, dec: 27.96, dist_ly: 430.0, vmag: 3.05, bv: 1.09, spec: "K3II", teff: 4400, radius: 62.0, mass: 5.2, lum: 1200.0, color: "#fde047" },
+      { id: "Sadr", name: "Sadr (γ Cyg)", constellation: "Cygnus", ra: 20.37, dec: 40.26, dist_ly: 1800.0, vmag: 2.23, bv: 0.68, spec: "F8Ib", teff: 6100, radius: 150.0, mass: 12.0, lum: 33000.0, color: "#a7f3d0" },
+      { id: "Albireo", name: "Albireo (β Cyg)", constellation: "Cygnus", ra: 19.51, dec: 27.96, dist_ly: 430.0, vmag: 3.05, bv: 1.09, spec: "K3II", teff: 4400, radius: 62.0, mass: 5.2, lum: 1200.0, color: "#67e8f9" },
       { id: "Mintaka", name: "Mintaka (δ Ori)", constellation: "Orion", ra: 5.53, dec: -0.30, dist_ly: 1200.0, vmag: 2.23, bv: -0.21, spec: "O9.5II", teff: 29500, radius: 16.5, mass: 24.0, lum: 190000.0, color: "#38bdf8" },
       { id: "Pherkad", name: "Pherkad (γ UMi)", constellation: "Ursa Minor", ra: 15.35, dec: 71.83, dist_ly: 487.0, vmag: 3.05, bv: 0.05, spec: "A3II-III", teff: 8280, radius: 15.0, mass: 4.8, lum: 1100.0, color: "#bae6fd" }
     ];
@@ -168,10 +168,10 @@ interface Props {
         // NASA JPL Horizons Ephemeris: Solar System Major Planetary Bodies (Universe Star Finder 3D Simulation)
     const NASA_SOLAR_SYSTEM_BODIES = [
       { id: "Moon", name: "Moon", ra: 12.50, dec: 5.20, vmag: -12.7, dist_au: 0.00257, type: "Natural Satellite", color: "#f8fafc", radius: 4.5 },
-      { id: "Venus", name: "Venus", ra: 21.45, dec: -15.30, vmag: -4.4, dist_au: 0.72, type: "Terrestrial Planet", color: "#fef9c3", radius: 3.8 },
+      { id: "Venus", name: "Venus", ra: 21.45, dec: -15.30, vmag: -4.4, dist_au: 0.72, type: "Terrestrial Planet", color: "#e0e7ff", radius: 3.8 },
       { id: "Jupiter", name: "Jupiter", ra: 4.15, dec: 20.25, vmag: -2.6, dist_au: 4.95, type: "Gas Giant", color: "#fed7aa", radius: 4.0 },
       { id: "Mars", name: "Mars", ra: 7.82, dec: 23.48, vmag: -1.2, dist_au: 1.45, type: "Terrestrial Planet", color: "#ef4444", radius: 3.2 },
-      { id: "Saturn", name: "Saturn", ra: 23.12, dec: -8.45, vmag: 0.6, dist_au: 9.60, type: "Gas Giant (Ring System)", color: "#fde047", radius: 3.5 },
+      { id: "Saturn", name: "Saturn", ra: 23.12, dec: -8.45, vmag: 0.6, dist_au: 9.60, type: "Gas Giant (Ring System)", color: "#67e8f9", radius: 3.5 },
       { id: "Mercury", name: "Mercury", ra: 19.20, dec: -22.10, vmag: -0.4, dist_au: 0.98, type: "Terrestrial Planet", color: "#cbd5e1", radius: 2.8 },
       { id: "Uranus", name: "Uranus", ra: 3.42, dec: 18.20, vmag: 5.7, dist_au: 19.20, type: "Ice Giant", color: "#7dd3fc", radius: 2.2 },
       { id: "Neptune", name: "Neptune", ra: 23.88, dec: -2.15, vmag: 7.8, dist_au: 29.80, type: "Ice Giant", color: "#38bdf8", radius: 2.0 }
@@ -482,7 +482,7 @@ export default function GodsEyeMap({
             if (planet.id === 'Saturn' && !starFinderNightMode) {
               ctx.beginPath();
               ctx.ellipse(pos.x, pos.y, planet.radius * 2.2, planet.radius * 0.7, 0.35, 0, Math.PI * 2);
-              ctx.strokeStyle = 'rgba(253, 224, 71, 0.7)';
+              ctx.strokeStyle = 'rgba(56, 189, 248, 0.75)';
               ctx.lineWidth = 1.2;
               ctx.stroke();
             }
@@ -1496,7 +1496,14 @@ export default function GodsEyeMap({
       {/* Map Surface (8 Cols) */}
       <div className="lg:col-span-8 flex flex-col space-y-3">
         <div className="relative w-full h-[500px] sm:h-[580px] rounded-2xl overflow-hidden border border-[#28394e] bg-[#0f172a] shadow-2xl">
-          <div ref={containerRef} className="absolute inset-0" />
+                    {/* True Background Celestial Canvas: Always behind globe at z-0 */}
+          <canvas
+            ref={starsCanvasRef}
+            className="absolute inset-0 z-0 pointer-events-none"
+            style={{ width: '100%', height: '100%' }}
+          />
+          {/* Globe & Map Surface: Mounted in front of celestial canvas at z-10 with transparent basemap atmosphere */}
+          <div ref={containerRef} className="absolute inset-0 z-10" />
           {/* Real-time twinkling stars and NSA Admin Star Constellations */}
           {/* UNIVERSE STAR FINDER 3D SUITE CONTROLS (App Store id1575384854 Conformal NSA Admin Glass HUD) */}
           <div className="absolute top-3 left-3 z-20 flex flex-wrap items-center gap-1.5 p-1.5 rounded-2xl bg-[#070e1c]/85 backdrop-blur-xl border border-[#38bdf8]/40 shadow-xl text-[10px] font-mono select-none">
@@ -1669,7 +1676,7 @@ export default function GodsEyeMap({
                 </div>
                 <div className="p-2 rounded-lg bg-[#0c1a30] border border-[#1e3a5f]/50">
                   <div className="text-[9px] text-slate-400">LUMINOSITY</div>
-                  <div className="font-extrabold text-[#fde047]">{selectedAstroStar.lum.toLocaleString()} L☉</div>
+                  <div className="font-extrabold text-[#38bdf8]">{selectedAstroStar.lum.toLocaleString()} L☉</div>
                 </div>
               </div>
 
@@ -1680,37 +1687,7 @@ export default function GodsEyeMap({
             </div>
           )}
 
-          <canvas
-            ref={starsCanvasRef}
-            className="absolute inset-0 z-0 cursor-crosshair"
-            style={{ width: '100%', height: '100%', pointerEvents: 'auto' }}
-            onClick={(e) => {
-              const canvas = starsCanvasRef.current;
-              if (!canvas) return;
-              const rect = canvas.getBoundingClientRect();
-              const clickX = e.clientX - rect.left;
-              const clickY = e.clientY - rect.top;
 
-              // Check if user clicked any of the 50 NASA astrometric stars
-              if (typeof window !== 'undefined' && (window as any).__lastStarPositions) {
-                const positions = (window as any).__lastStarPositions;
-                let closestStarId: string | null = null;
-                let minD = 24; // 24px click target
-                Object.entries(positions).forEach(([id, pos]: [string, any]) => {
-                  if (pos && pos.visible) {
-                    const d = Math.hypot(pos.x - clickX, pos.y - clickY);
-                    if (d < minD) {
-                      minD = d;
-                      closestStarId = id;
-                    }
-                  }
-                });
-                if (closestStarId && (window as any).__inspectAstroStar) {
-                  (window as any).__inspectAstroStar(closestStarId);
-                }
-              }
-            }}
-          />
           {/* MapMenuOverlay removed - Diagnostics integrated into bottom control matrix */}
           {/* Real-Time Outbound Person Telemetry Stream (GA -> Ally States) - Positioned safely below 3-row HUD without overlap */}
           <div className="absolute bottom-3 right-16 z-10 rounded-xl bg-[#090d16]/95 border border-[#38bdf8]/40 p-2.5 backdrop-blur shadow-2xl max-w-[340px] text-xs font-mono space-y-1.5 hidden md:block">
