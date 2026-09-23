@@ -432,7 +432,7 @@ export default function GodsEyeMap({
         const pos = starScreenPos[star.id];
         if (pos && pos.visible) {
           // Radius inversely proportional to visual magnitude (brighter = larger radius)
-          const radius = Math.max(1.2, 3.4 - star.mag * 0.55);
+          const radius = Math.max(1.2, 3.4 - (star.vmag ?? 2.0) * 0.55);
           const twinkle = Math.sin(time * 0.02 + star.ra * 2) * 0.25;
           const alpha = Math.max(0.35, Math.min(1.0, 0.75 + twinkle));
 
