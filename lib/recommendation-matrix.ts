@@ -45,7 +45,8 @@ export const MISSION_VECTORS = [
   "GLOBE_PROJECTION",
   "ANOMALY_CLUSTERING",
   "MAP_INTERACTION",
-  "GEOJSON_SIMPLIFICATION"
+  "GEOJSON_SIMPLIFICATION",
+  "SPARK_LLM_ON_DEVICE"
 ] as const;
 
 export type MissionVectorType = typeof MISSION_VECTORS[number];
@@ -714,6 +715,35 @@ const VECTOR_TEMPLATES: Record<MissionVectorType, {
       "Update browser location hash on map move events to preserve viewport bookmarks across session refreshes."
     ],
     targets: ["MAP-EVENT-BUS", "POPUP-FORENSIC-INSPECTOR", "CAMERA-FLY-ORCHESTRATOR", "URL-HASH-PERSISTENCE"]
+  },
+  SPARK_LLM_ON_DEVICE: {
+    titles: [
+      "Spark X2.5-4B Hybrid-Attention 1M Context On-Device Telemetry Inference",
+      "Spark X2.5-1.7B Sub-Second Agentic Micro-Decision Pipeline",
+      "Sliding-Window Attention Optimization for Edge Anomaly Reasoning",
+      "Local On-Device Reasoning Harness with 1,000,000 Token Active Working Memory",
+      "Offline Edge Agent Execution for Telemetry Ingestion and Forensics",
+      "Native vLLM / llama.cpp Quantized Model Orchestration for Edge Nodes"
+    ],
+    telemetry: [
+      ["x2.5-4b-weights", "1m-context-kv-cache", "edge-ttft-latency"],
+      ["hybrid-attention-layers", "sliding-window-3to1", "edge-topt-throughput"],
+      ["fp8-quantized-tensor", "on-device-ram-footprint", "domux-agent-eval"],
+      ["offline-dispatch-queue", "ascend-cuda-cpu-runtime", "prompt-cache-hit-rate"]
+    ],
+    basis: [
+      "SparkLLM X2.5 Hybrid-Attention Architecture Spec (1 Full Layer + 3 Sliding Window Layers)",
+      "Native 1,000,000 Token Context Window with Bounded KV-Cache Memory Footprint",
+      "Domux Smart-Agent Benchmark: 90.3% Command Accuracy at 0.85s Latency on Edge",
+      "W3C WebGPU Direct Model Weight Sharding and Quantized Inference Specification 2026"
+    ],
+    actions: [
+      "Deploy Spark X2.5 on-device inference bridge with native 1M context cache",
+      "Compile sliding-window attention kernels for real-time edge telemetry classification",
+      "Route critical telemetry anomalies through local 1.7B micro-agent at sub-second latency",
+      "Bind Spark X2.5-4B agent harness to local ECC/Orca parallel execution worktrees"
+    ],
+    targets: ["Edge Telemetry Hubs", "On-Device Mobile Copilot", "Air-Gapped Regional Outposts", "Sub-Second Ingestion Nodes"]
   },
   GEOJSON_SIMPLIFICATION: {
     titles: [
