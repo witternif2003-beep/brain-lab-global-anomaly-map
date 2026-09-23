@@ -1,8 +1,17 @@
 'use client';
 import { OUTBOUND_GA_PERSON_TEMPLATES, getInterpolatedArcPoint, VerifiedPersonLeavingGA } from '../lib/telemetry-arcs';
 
-import { setWorkerUrl } from 'maplibre-gl';
-setWorkerUrl('/maplibre-gl-worker.mjs');
+// Safe module initialization
+if (typeof window !== 'undefined') {
+  try {
+    const ml = require('maplibre-gl');
+    if (ml && typeof ml.setWorkerUrl === 'function') {
+      ml.setWorkerUrl('/maplibre-gl-worker.mjs');
+    }
+  } catch (e) {
+    console.warn('[MapLibre] Worker URL initialization deferred:', e);
+  }
+}
 
 // FIPS to state abbreviation lookup table
 const FIPS_TO_ABBR: Record<string, string> = {
