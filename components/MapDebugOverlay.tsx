@@ -82,7 +82,7 @@ export default function MapDebugOverlay({ mapRef }: { mapRef: React.MutableRefOb
     <div
       style={{
         position: 'absolute',
-        top: 12,
+        top: 16,
         right: 12,
         zIndex: 9999,
         fontFamily: 'monospace',

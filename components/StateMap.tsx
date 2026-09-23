@@ -579,10 +579,10 @@ export default function StateMap({
 
     const webgpuAvailable = typeof navigator !== 'undefined' && 'gpu' in navigator;
 
-    // Initialize MapLibre Map with maxZoom: 24 architectural ceiling
+    // Initialize MapLibre Map with dark satellite style by default
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: 'https://demotiles.maplibre.org/style.json',
+      style: BASEMAPS.satellite as any,
       bounds: GA_BOUNDS,
       fitBoundsOptions: { padding: 40 },
       pitch: 0,

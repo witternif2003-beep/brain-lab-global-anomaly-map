@@ -1047,22 +1047,22 @@ export default function GodsEyeMap({
         }
       `}</style>
 
-        {/* STANDALONE MAP MENU WIDGET DIRECTLY BENEATH THE MAP ITSELF */}
-        <div className="w-full rounded-2xl bg-gradient-to-b from-[#0a1224] to-[#040812] border border-[#1e3a5f] p-4 sm:p-5 shadow-[0_20px_50px_rgba(0,0,0,0.8),inset_0_1px_1px_rgba(56,189,248,0.2)] font-mono text-xs">
+        {/* STANDALONE MAP MENU WIDGET DIRECTLY BENEATH THE MAP ITSELF — NSA ADMIN MODERN OVAL DASHBOARD WIDGET */}
+        <div className="w-full rounded-[36px] bg-[#080e1a]/80 backdrop-blur-2xl border border-[#38bdf8]/40 p-4 sm:p-6 shadow-[0_20px_60px_rgba(0,0,0,0.85),inset_0_1px_2px_rgba(56,189,248,0.35)] font-mono text-xs">
           <div className="flex flex-col gap-3.5 w-full">
             
-            {/* Header Status Rail */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2.5 border-b border-[#1e3a5f]/70 gap-2">
+            {/* Header Status Rail: Oval Pill Shape */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#1e3a5f]/60 gap-2">
               <div className="flex items-center gap-2.5">
                 <span className="relative flex h-2.5 w-2.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 shadow-[0_0_8px_#10b981]"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 shadow-[0_0_10px_#10b981]"></span>
                 </span>
                 <span className="text-xs sm:text-[13px] font-extrabold text-[#38bdf8] tracking-widest uppercase">
-                  GOD'S EYE STANDALONE COMMAND MATRIX // 3-ROW TACTICAL HUD
+                  GOD'S EYE NSA ADMIN OVAL COMMAND MATRIX // 3-ROW TACTICAL HUD
                 </span>
               </div>
-              <div className="flex items-center gap-2 text-[10px] text-emerald-400 bg-[#062018] px-2.5 py-1 rounded-md border border-emerald-500/40 font-semibold uppercase tracking-wider self-start sm:self-auto">
+              <div className="flex items-center gap-2 text-[10px] text-emerald-400 bg-[#062018]/90 px-3.5 py-1 rounded-full border border-emerald-500/50 font-bold uppercase tracking-wider self-start sm:self-auto shadow-[0_0_12px_rgba(52,211,153,0.25)]">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 AIP-20 ANTI-HALLUCINATION HARDENING ACTIVE
               </div>
@@ -1077,10 +1077,10 @@ export default function GodsEyeMap({
                 <button
                   type="button"
                   onClick={toggle3D}
-                  className={`px-3.5 py-2 rounded-lg font-bold text-xs tracking-wider transition-all duration-200 ${
+                  className={`px-4 py-2 rounded-full font-bold text-xs tracking-wider transition-all duration-200 ${
                     pitch <= 20
-                      ? 'bg-[#062018] text-[#34d399] border-2 border-[#34d399] shadow-[0_0_16px_rgba(52,211,153,0.5)]'
-                      : 'bg-[#0a1228] text-[#7aa0c4] border border-[#1e3a5f] hover:border-[#38bdf8]/70 hover:text-white hover:bg-[#0f1d38]'
+                      ? 'bg-[#062018] text-[#34d399] border-2 border-[#34d399] shadow-[0_0_16px_rgba(52,211,153,0.55)]'
+                      : 'bg-[#0a1228]/80 text-[#7aa0c4] border border-[#1e3a5f] hover:border-[#38bdf8]/70 hover:text-white hover:bg-[#0f1d38]'
                   }`}
                 >
                   2D MERCATOR
@@ -1088,10 +1088,10 @@ export default function GodsEyeMap({
                 <button
                   type="button"
                   onClick={() => switchBasemap('demotiles')}
-                  className={`px-3.5 py-2 rounded-lg font-bold text-xs tracking-wider transition-all duration-200 ${
+                  className={`px-4 py-2 rounded-full font-bold text-xs tracking-wider transition-all duration-200 ${
                     basemap === 'demotiles'
                       ? 'bg-[#0c2444] text-[#38bdf8] border-2 border-[#38bdf8] shadow-[0_0_16px_rgba(56,189,248,0.6)]'
-                      : 'bg-[#0a1228] text-[#7aa0c4] border border-[#1e3a5f] hover:border-[#38bdf8]/70 hover:text-white hover:bg-[#0f1d38]'
+                      : 'bg-[#0a1228]/80 text-[#7aa0c4] border border-[#1e3a5f] hover:border-[#38bdf8]/70 hover:text-white hover:bg-[#0f1d38]'
                   }`}
                 >
                   LIGHT VECTOR
@@ -1099,10 +1099,10 @@ export default function GodsEyeMap({
                 <button
                   type="button"
                   onClick={() => switchBasemap('satellite')}
-                  className={`px-3.5 py-2 rounded-lg font-bold text-xs tracking-wider transition-all duration-200 ${
+                  className={`px-4 py-2 rounded-full font-bold text-xs tracking-wider transition-all duration-200 ${
                     basemap === 'satellite'
                       ? 'bg-[#0c2444] text-[#38bdf8] border-2 border-[#38bdf8] shadow-[0_0_18px_rgba(56,189,248,0.7)]'
-                      : 'bg-[#0a1228] text-[#7aa0c4] border border-[#1e3a5f] hover:border-[#38bdf8]/70 hover:text-white hover:bg-[#0f1d38]'
+                      : 'bg-[#0a1228]/80 text-[#7aa0c4] border border-[#1e3a5f] hover:border-[#38bdf8]/70 hover:text-white hover:bg-[#0f1d38]'
                   }`}
                 >
                   SATELLITE ORTHO
@@ -1110,10 +1110,10 @@ export default function GodsEyeMap({
                 <button
                   type="button"
                   onClick={() => switchBasemap('terrain')}
-                  className={`px-3.5 py-2 rounded-lg font-bold text-xs tracking-wider transition-all duration-200 ${
+                  className={`px-4 py-2 rounded-full font-bold text-xs tracking-wider transition-all duration-200 ${
                     basemap === 'terrain'
                       ? 'bg-[#0c2444] text-[#38bdf8] border-2 border-[#38bdf8] shadow-[0_0_18px_rgba(56,189,248,0.7)]'
-                      : 'bg-[#0a1228] text-[#7aa0c4] border border-[#1e3a5f] hover:border-[#38bdf8]/70 hover:text-white hover:bg-[#0f1d38]'
+                      : 'bg-[#0a1228]/80 text-[#7aa0c4] border border-[#1e3a5f] hover:border-[#38bdf8]/70 hover:text-white hover:bg-[#0f1d38]'
                   }`}
                 >
                   3D TERRAIN DEM
@@ -1130,10 +1130,10 @@ export default function GodsEyeMap({
                 <button
                   type="button"
                   onClick={() => handleFocusChange('GA')}
-                  className={`px-4 py-2 rounded-lg font-extrabold text-xs tracking-wider transition-all duration-200 ${
+                  className={`px-4 py-2 rounded-full font-extrabold text-xs tracking-wider transition-all duration-200 ${
                     activeFocus === 'GA'
-                      ? 'bg-[#2b0808] text-[#ff4d4d] border-2 border-[#ff3b3b] shadow-[0_0_20px_rgba(255,59,59,0.6)]'
-                      : 'bg-[#180a0a] text-[#f87171] border border-[#7f1d1d] hover:bg-[#280d0d]'
+                      ? 'bg-[#2b0808] text-[#ff4d4d] border-2 border-[#ff3b3b] shadow-[0_0_20px_rgba(255,59,59,0.65)]'
+                      : 'bg-[#180a0a]/80 text-[#f87171] border border-[#7f1d1d] hover:bg-[#280d0d]'
                   }`}
                 >
                   GA (Target Anchor)
@@ -1143,10 +1143,10 @@ export default function GodsEyeMap({
                     key={st}
                     type="button"
                     onClick={() => handleFocusChange(st)}
-                    className={`px-3.5 py-2 rounded-lg font-bold text-xs tracking-wider transition-all duration-200 ${
+                    className={`px-4 py-2 rounded-full font-bold text-xs tracking-wider transition-all duration-200 ${
                       activeFocus === st
                         ? 'bg-[#0c2444] text-[#38bdf8] border-2 border-[#38bdf8] shadow-[0_0_16px_rgba(56,189,248,0.6)]'
-                        : 'bg-[#0a1228] text-[#7aa0c4] border border-[#1e3a5f] hover:border-[#38bdf8]/70 hover:text-white hover:bg-[#0f1d38]'
+                        : 'bg-[#0a1228]/80 text-[#7aa0c4] border border-[#1e3a5f] hover:border-[#38bdf8]/70 hover:text-white hover:bg-[#0f1d38]'
                     }`}
                   >
                     {st}
@@ -1156,7 +1156,7 @@ export default function GodsEyeMap({
             </div>
 
             {/* Row 3: Secondary Corridors & Viewport Metrics */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-[#1e3a5f]/50">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2.5 border-t border-[#1e3a5f]/50">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-[11px] font-bold text-[#7aa0c4] uppercase tracking-wider shrink-0 w-24">
                   SECONDARY:
@@ -1166,10 +1166,10 @@ export default function GodsEyeMap({
                     key={st}
                     type="button"
                     onClick={() => handleFocusChange(st)}
-                    className={`px-3.5 py-2 rounded-lg font-bold text-xs tracking-wider transition-all duration-200 ${
+                    className={`px-4 py-2 rounded-full font-bold text-xs tracking-wider transition-all duration-200 ${
                       activeFocus === st
                         ? 'bg-[#0c2444] text-[#38bdf8] border-2 border-[#38bdf8] shadow-[0_0_16px_rgba(56,189,248,0.6)]'
-                        : 'bg-[#0a1228] text-[#7aa0c4] border border-[#1e3a5f] hover:border-[#38bdf8]/70 hover:text-white hover:bg-[#0f1d38]'
+                        : 'bg-[#0a1228]/80 text-[#7aa0c4] border border-[#1e3a5f] hover:border-[#38bdf8]/70 hover:text-white hover:bg-[#0f1d38]'
                     }`}
                   >
                     {st}
@@ -1177,7 +1177,7 @@ export default function GodsEyeMap({
                 ))}
               </div>
               
-              <div className="px-4 py-2 rounded-lg bg-[#070d18] border border-[#1e3a5f] text-emerald-400 font-mono text-xs flex items-center gap-2.5 shadow-[inset_0_0_12px_rgba(16,185,129,0.15)] self-start sm:self-auto">
+              <div className="px-4 py-2 rounded-full bg-[#070d18]/90 border border-[#1e3a5f] text-emerald-400 font-mono text-xs flex items-center gap-2.5 shadow-[inset_0_0_12px_rgba(16,185,129,0.15)] self-start sm:self-auto">
                 <span className="text-[#7aa0c4] font-bold">VIEWPORT:</span>
                 <span className="text-white font-extrabold tracking-wide">
                   z{typeof zoom === 'number' && !isNaN(zoom) ? zoom.toFixed(1) : '6.0'} · p{typeof pitch === 'number' && !isNaN(pitch) ? pitch.toFixed(0) : '60'}°
