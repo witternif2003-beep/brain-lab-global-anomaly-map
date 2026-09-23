@@ -928,9 +928,9 @@ export default function GodsEyeMap({
           map.setFilter('godseye-entities-labels', null);
         } else {
           const filter = ['==', ['get', 'layerId'], activeIntelLayer];
-          map.setFilter('godseye-entities-core', filter);
-          map.setFilter('godseye-entities-halo', filter);
-          map.setFilter('godseye-entities-labels', filter);
+          map.setFilter('godseye-entities-core', filter as any);
+          map.setFilter('godseye-entities-halo', filter as any);
+          map.setFilter('godseye-entities-labels', filter as any);
         }
       }
     } catch {}
