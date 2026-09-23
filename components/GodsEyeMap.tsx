@@ -1016,7 +1016,7 @@ export default function GodsEyeMap({
       `}</style>
 
         {/* STANDALONE MAP MENU WIDGET DIRECTLY BENEATH THE MAP ITSELF */}
-        <div className="w-full flex items-center justify-between p-3.5 rounded-xl bg-slate-950/85 backdrop-blur-md border border-slate-800/80 shadow-2xl font-mono text-xs overflow-x-auto">
+        <div className="w-full flex items-center justify-between p-4 rounded-2xl bg-[#080e1a]/95 backdrop-blur-xl border border-[#1e3a5f]/80 shadow-[0_12px_40px_rgba(0,0,0,0.7)] font-mono text-xs overflow-x-auto">
           <div className="flex flex-col gap-2 w-full">
             <div className="flex items-center justify-between border-b border-slate-800/60 pb-1.5">
               <span className="text-[11px] font-bold text-sky-400 tracking-wider flex items-center gap-2">
@@ -1036,8 +1036,8 @@ export default function GodsEyeMap({
                 onClick={toggle3D}
                 className={`px-3 py-1 rounded font-bold text-xs transition-all ${
                   pitch <= 20
-                    ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-500/50 shadow-[0_0_10px_rgba(52,211,153,0.3)]'
-                    : 'bg-slate-900 text-slate-400 border border-slate-700/50 hover:bg-slate-800'
+                    ? 'bg-[#062018] text-[#34d399] border-2 border-[#34d399] shadow-[0_0_14px_rgba(52,211,153,0.45)]'
+                    : 'bg-[#0a1228] text-[#7aa0c4] border border-[#1e3a5f] hover:border-[#38bdf8]/60 hover:text-white'
                 }`}
               >
                 2D MERCATOR
@@ -1047,8 +1047,8 @@ export default function GodsEyeMap({
                 onClick={() => switchBasemap('demotiles')}
                 className={`px-3 py-1 rounded font-bold text-xs transition-all ${
                   basemap === 'demotiles'
-                    ? 'bg-cyan-950/60 text-cyan-400 border border-cyan-500/50 shadow-[0_0_10px_rgba(56,189,248,0.3)]'
-                    : 'bg-slate-900 text-slate-400 border border-slate-700/50 hover:bg-slate-800'
+                    ? 'bg-[#0c2444] text-[#38bdf8] border-2 border-[#38bdf8] shadow-[0_0_14px_rgba(56,189,248,0.5)]'
+                    : 'bg-[#0a1228] text-[#7aa0c4] border border-[#1e3a5f] hover:border-[#38bdf8]/60 hover:text-white'
                 }`}
               >
                 LIGHT VECTOR
@@ -1058,8 +1058,8 @@ export default function GodsEyeMap({
                 onClick={() => switchBasemap('satellite')}
                 className={`px-3 py-1 rounded font-bold text-xs transition-all ${
                   basemap === 'satellite'
-                    ? 'bg-cyan-950/60 text-cyan-400 border border-cyan-500/50 shadow-[0_0_10px_rgba(56,189,248,0.3)]'
-                    : 'bg-slate-900 text-slate-400 border border-slate-700/50 hover:bg-slate-800'
+                    ? 'bg-[#0c2444] text-[#38bdf8] border-2 border-[#38bdf8] shadow-[0_0_14px_rgba(56,189,248,0.5)]'
+                    : 'bg-[#0a1228] text-[#7aa0c4] border border-[#1e3a5f] hover:border-[#38bdf8]/60 hover:text-white'
                 }`}
               >
                 SATELLITE ORTHO
@@ -1069,8 +1069,8 @@ export default function GodsEyeMap({
                 onClick={() => switchBasemap('terrain')}
                 className={`px-3 py-1 rounded font-bold text-xs transition-all ${
                   basemap === 'terrain'
-                    ? 'bg-cyan-950/60 text-cyan-400 border border-cyan-500/50 shadow-[0_0_10px_rgba(56,189,248,0.3)]'
-                    : 'bg-slate-900 text-slate-400 border border-slate-700/50 hover:bg-slate-800'
+                    ? 'bg-[#0c2444] text-[#38bdf8] border-2 border-[#38bdf8] shadow-[0_0_14px_rgba(56,189,248,0.5)]'
+                    : 'bg-[#0a1228] text-[#7aa0c4] border border-[#1e3a5f] hover:border-[#38bdf8]/60 hover:text-white'
                 }`}
               >
                 3D TERRAIN DEM
@@ -1085,7 +1085,7 @@ export default function GodsEyeMap({
                 onClick={() => handleFocusChange('GA')}
                 className={`px-3 py-1 rounded font-bold text-xs transition-all ${
                   activeFocus === 'GA'
-                    ? 'bg-red-950/60 text-rose-400 border border-rose-500/70 shadow-[0_0_12px_rgba(244,63,94,0.4)]'
+                    ? 'bg-[#2b0808] text-[#ff4d4d] border-2 border-[#ff3b3b] shadow-[0_0_16px_rgba(255,59,59,0.55)]'
                     : 'bg-red-950/20 text-rose-400/80 border border-rose-900/40 hover:bg-red-900/40'
                 }`}
               >
@@ -1098,8 +1098,8 @@ export default function GodsEyeMap({
                   onClick={() => handleFocusChange(st)}
                   className={`px-3 py-1 rounded font-bold text-xs transition-all ${
                     activeFocus === st
-                      ? 'bg-sky-950/60 text-sky-300 border border-sky-400/70 shadow-[0_0_12px_rgba(56,189,248,0.4)]'
-                      : 'bg-slate-900 text-slate-400 border border-slate-700/50 hover:bg-slate-800'
+                      ? 'bg-[#0c2444] text-[#38bdf8] border-2 border-[#38bdf8] shadow-[0_0_14px_rgba(56,189,248,0.5)]'
+                      : 'bg-[#0a1228] text-[#7aa0c4] border border-[#1e3a5f] hover:border-[#38bdf8]/60 hover:text-white'
                   }`}
                 >
                   {st}
@@ -1117,14 +1117,14 @@ export default function GodsEyeMap({
                   onClick={() => handleFocusChange(st)}
                   className={`px-3 py-1 rounded font-bold text-xs transition-all ${
                     activeFocus === st
-                      ? 'bg-sky-950/60 text-sky-300 border border-sky-400/70 shadow-[0_0_12px_rgba(56,189,248,0.4)]'
-                      : 'bg-slate-900 text-slate-400 border border-slate-700/50 hover:bg-slate-800'
+                      ? 'bg-[#0c2444] text-[#38bdf8] border-2 border-[#38bdf8] shadow-[0_0_14px_rgba(56,189,248,0.5)]'
+                      : 'bg-[#0a1228] text-[#7aa0c4] border border-[#1e3a5f] hover:border-[#38bdf8]/60 hover:text-white'
                   }`}
                 >
                   {st}
                 </button>
               ))}
-              <div className="px-3 py-1 rounded bg-slate-900/90 text-emerald-400 border border-emerald-500/40 font-mono text-xs flex items-center gap-2 ml-auto">
+              <div className="px-3.5 py-1.5 rounded-lg bg-[#0a1228] border border-[#1e3a5f] text-[#34d399] font-mono text-xs font-bold flex items-center gap-2 ml-auto shadow-inner">
                 <span>VIEWPORT:</span>
                 <span className="text-white font-bold">
                   z{typeof zoom === 'number' && !isNaN(zoom) ? zoom.toFixed(1) : '6.0'} · p{typeof pitch === 'number' && !isNaN(pitch) ? pitch.toFixed(0) : '60'}°
