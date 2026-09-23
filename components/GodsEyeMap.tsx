@@ -245,9 +245,9 @@ export default function GodsEyeMap({
           'text-ignore-placement': false,
         },
         paint: {
-          'text-color': '#00e5ff',
+          'text-color': '#38bdf8',
           'text-halo-color': '#0f172a',
-          'text-halo-width': 2,
+          'text-halo-width': 3,
         },
       });
     }
@@ -574,7 +574,7 @@ export default function GodsEyeMap({
         positionOptions: { enableHighAccuracy: true },
         trackUserLocation: true,
       } as any),
-      'top-right'
+      'bottom-right'
     );
 
     // Configure projection safely once style loads (per official MapLibre specification)
