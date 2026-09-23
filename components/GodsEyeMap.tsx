@@ -60,6 +60,7 @@ const BASEMAPS = {
   demotiles: 'https://demotiles.maplibre.org/style.json',
   satellite: {
     version: 8,
+    projection: { type: 'globe' },
     sources: {
       sat: {
         type: 'raster',
@@ -73,6 +74,7 @@ const BASEMAPS = {
   dark: 'https://demotiles.maplibre.org/style.json',
   terrain: {
     version: 8,
+    projection: { type: 'globe' },
     sources: {
       sat: {
         type: 'raster',
@@ -620,34 +622,16 @@ export default function GodsEyeMap({
         }
       });
 
-      // ─── STEP 2: PHYSICAL GLOBE SEPARATION PROTOCOL (destination-out Stencil Mask) ───
-      // When in globe view, punch out the exact spherical footprint of Earth so stars NEVER touch or occlude the globe
-      if (isGlobeView && globeRadiusEst > 30) {
-        ctx.save();
-        ctx.globalCompositeOperation = 'destination-out';
-        ctx.beginPath();
-        ctx.arc(globeCenterScreen.x, globeCenterScreen.y, globeRadiusEst, 0, Math.PI * 2);
-        ctx.fillStyle = '#000000';
-        ctx.fill();
-
-        // Subtle soft feathering on the limb rim
-        const rimGrad = ctx.createRadialGradient(
-          globeCenterScreen.x, globeCenterScreen.y, globeRadiusEst * 0.94,
-          globeCenterScreen.x, globeCenterScreen.y, globeRadiusEst * 1.03
-        );
-        rimGrad.addColorStop(0, 'rgba(0, 0, 0, 1.0)');
-        rimGrad.addColorStop(1, 'rgba(0, 0, 0, 0.0)');
-        ctx.fillStyle = rimGrad;
-        ctx.beginPath();
-        ctx.arc(globeCenterScreen.x, globeCenterScreen.y, globeRadiusEst * 1.03, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-      }
+      // Verified GeoLibre PR #440 Pattern: Background layer renders directly behind transparent globe space.
+      // No destination-out mask needed because the globe canvas sits above this background canvas and is naturally opaque where the planet is drawn.
 
       ctx.globalAlpha = 1.0;
       ctx.shadowBlur = 0;
+
+      animId = requestAnimationFrame(render);
     };
-animId = requestAnimationFrame(render);
+
+    animId = requestAnimationFrame(render);
 
     return () => {
       cancelAnimationFrame(animId);
@@ -1216,6 +1200,7 @@ animId = requestAnimationFrame(render);
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: BASEMAPS.satellite as any,
+      projection: { type: 'globe' } as any,
       bounds: GA_BOUNDS,
       fitBoundsOptions: { padding: 40 },
       pitch: 60,
@@ -1614,8 +1599,14 @@ animId = requestAnimationFrame(render);
       {/* Map Surface (8 Cols) */}
       <div className="lg:col-span-8 flex flex-col space-y-3">
         <div className="relative w-full h-[500px] sm:h-[580px] rounded-2xl overflow-hidden border border-[#28394e] bg-[#0f172a] shadow-2xl">
+          {/* Background Astronomical Space Canvas with NASA Constellations and Gaia stars */}
+          <canvas
+            ref={starsCanvasRef}
+            className="absolute inset-0 pointer-events-none z-0"
+            style={{ width: '100%', height: '100%' }}
+          />
           {/* Map Surface: Mount MapLibre globe container directly with transparent deep space */}
-          <div ref={containerRef} className="absolute inset-0" />
+          <div ref={containerRef} className="absolute inset-0 z-10" />
           {/* Real-time twinkling stars and NSA Admin Star Constellations */}
           {/* UNIVERSE STAR FINDER 3D SUITE CONTROLS (App Store id1575384854 Conformal NSA Admin Glass HUD) */}
           <div className="absolute top-3 left-3 z-20 flex flex-wrap items-center gap-1.5 p-1.5 rounded-2xl bg-[#070e1c]/85 backdrop-blur-xl border border-[#38bdf8]/40 shadow-xl text-[10px] font-mono select-none">
