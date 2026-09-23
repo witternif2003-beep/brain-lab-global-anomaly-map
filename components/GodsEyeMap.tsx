@@ -73,9 +73,9 @@ export default function GodsEyeMap({
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const [ready, setReady] = useState(false);
-  const [basemap, setBasemap] = useState<keyof typeof BASEMAPS>('dark');
-  const [pitch, setPitch] = useState(0);
-  const [zoom, setZoom] = useState(6.2);
+  const [basemap, setBasemap] = useState<keyof typeof BASEMAPS>('satellite');
+  const [pitch, setPitch] = useState(60);
+  const [zoom, setZoom] = useState(6.0);
   const [activeFocus, setActiveFocus] = useState<StateCode | 'ALL'>(focusState);
   const [webgpuSupported, setWebgpuSupported] = useState(false);
   const [selectedInspect, setSelectedInspect] = useState<any>(null);
@@ -533,10 +533,10 @@ export default function GodsEyeMap({
 
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: 'https://demotiles.maplibre.org/style.json',
+      style: BASEMAPS.satellite as any,
       bounds: GA_BOUNDS,
       fitBoundsOptions: { padding: 40 },
-      pitch: 0,
+      pitch: 60,
       bearing: 0,
       maxZoom: 35,
       minZoom: 1,
@@ -809,7 +809,7 @@ export default function GodsEyeMap({
       map.easeTo({ pitch: 60, bearing: -15, duration: 800 });
     } else {
       (map as any).setTerrain?.(null);
-      map.easeTo({ pitch: 0, bearing: 0, duration: 800 });
+      map.easeTo({ pitch: 60, bearing: 0, duration: 800 });
     }
   }, []);
 
@@ -886,148 +886,177 @@ export default function GodsEyeMap({
           <div ref={containerRef} className="absolute inset-0" />
           <MapDebugOverlay mapRef={mapRef} />
 
-          {/* Layer + Focus label bar — glass-morphism style with dark red GA target */}
+          {/* Layer + Focus label bar — exact grid layout matching IMG_6584.jpeg */}
           <div
-            className="absolute top-3 left-3 z-20 flex flex-wrap items-center gap-1 p-1.5 rounded-lg max-w-[calc(100vw-140px)]"
+            className="absolute top-3 left-3 z-20 flex flex-col gap-1.5 p-2 rounded-xl max-w-[calc(100vw-140px)] shadow-2xl"
             style={{
-              background: 'rgba(15, 23, 42, 0.35)',
-              backdropFilter: 'blur(12px)',
-              WebkitBackdropFilter: 'blur(12px)',
-              border: '1px solid rgba(148, 163, 184, 0.15)',
+              background: 'rgba(11, 19, 36, 0.85)',
+              backdropFilter: 'blur(16px)',
+              WebkitBackdropFilter: 'blur(16px)',
+              border: '1px solid rgba(148, 163, 184, 0.2)',
             }}
           >
-            {/* 2D / 3D PERSPECTIVE TOGGLE */}
-            <button
-              key="2d-toggle"
-              type="button"
-              onClick={toggle3D}
-              style={{
-                appearance: 'none',
-                WebkitAppearance: 'none',
-                padding: '4px 10px',
-                fontSize: '10px',
-                fontWeight: 700,
-                letterSpacing: '0.06em',
-                color: pitch <= 20 ? '#34d399' : '#cbd5e1',
-                background: pitch <= 20 ? 'rgba(16, 185, 129, 0.2)' : 'transparent',
-                border: pitch <= 20 ? '1px solid rgba(52, 211, 153, 0.6)' : '1px solid rgba(148, 163, 184, 0.25)',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                transition: 'all 180ms ease',
-              }}
-            >
-              {pitch > 20 ? '3D' : '2D'}
-            </button>
+            {/* ROW 1: 2D | LIGHT | SATELLITE | TERRAIN */}
+            <div className="flex items-center gap-1.5">
+              <button
+                key="2d-toggle"
+                type="button"
+                onClick={toggle3D}
+                style={{
+                  appearance: 'none',
+                  WebkitAppearance: 'none',
+                  padding: '5px 12px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  letterSpacing: '0.06em',
+                  color: pitch <= 20 ? '#34d399' : '#cbd5e1',
+                  background: pitch <= 20 ? 'rgba(16, 185, 129, 0.22)' : 'rgba(15, 23, 42, 0.6)',
+                  border: pitch <= 20 ? '1px solid rgba(52, 211, 153, 0.65)' : '1px solid rgba(148, 163, 184, 0.3)',
+                  borderRadius: '7px',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  transition: 'all 180ms ease',
+                }}
+              >
+                {pitch > 20 ? '3D' : '2D'}
+              </button>
 
-            {/* Layer toggles */}
-            {(['LIGHT', 'SATELLITE', 'TERRAIN'] as const).map((layer) => {
-              const keyMap: Record<string, keyof typeof BASEMAPS> = {
-                'LIGHT': 'demotiles',
-                'SATELLITE': 'satellite',
-                'TERRAIN': 'terrain',
-              };
-              const active = (layer === 'SATELLITE' && basemap === 'satellite') || (layer === 'LIGHT' && basemap === 'demotiles') || (layer === 'TERRAIN' && basemap === 'terrain');
-              return (
-                <button
-                  key={layer}
-                  type="button"
-                  onClick={() => switchBasemap(keyMap[layer])}
-                  style={{
-                    appearance: 'none',
-                    WebkitAppearance: 'none',
-                    padding: '4px 10px',
-                    fontSize: '10px',
-                    fontWeight: 600,
-                    letterSpacing: '0.05em',
-                    color: active ? '#38bdf8' : '#cbd5e1',
-                    background: active ? 'rgba(14, 165, 233, 0.25)' : 'transparent',
-                    border: active ? '1px solid rgba(56, 189, 248, 0.6)' : '1px solid rgba(148, 163, 184, 0.25)',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                    transition: 'all 180ms ease',
-                  }}
-                >
-                  {layer}
-                </button>
-              );
-            })}
+              {(['LIGHT', 'SATELLITE', 'TERRAIN'] as const).map((layer) => {
+                const keyMap: Record<string, keyof typeof BASEMAPS> = {
+                  LIGHT: 'demotiles',
+                  SATELLITE: 'satellite',
+                  TERRAIN: 'terrain',
+                };
+                const active = (layer === 'SATELLITE' && basemap === 'satellite') || (layer === 'LIGHT' && basemap === 'demotiles') || (layer === 'TERRAIN' && basemap === 'terrain');
+                return (
+                  <button
+                    key={layer}
+                    type="button"
+                    onClick={() => switchBasemap(keyMap[layer])}
+                    style={{
+                      appearance: 'none',
+                      WebkitAppearance: 'none',
+                      padding: '5px 12px',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      letterSpacing: '0.06em',
+                      color: active ? '#38bdf8' : '#cbd5e1',
+                      background: active ? 'rgba(14, 165, 233, 0.28)' : 'rgba(15, 23, 42, 0.6)',
+                      border: active ? '1px solid rgba(56, 189, 248, 0.8)' : '1px solid rgba(148, 163, 184, 0.3)',
+                      borderRadius: '7px',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                      transition: 'all 180ms ease',
+                      boxShadow: active ? '0 0 12px rgba(56, 189, 248, 0.3)' : 'none',
+                    }}
+                  >
+                    {layer}
+                  </button>
+                );
+              })}
+            </div>
 
-            {/* Separator */}
-            <div style={{ width: 1, height: 18, background: 'rgba(148, 163, 184, 0.25)', margin: '0 4px' }} />
+            {/* ROW 2: GA (Target) | NC | TN | FL | SC | TX */}
+            <div className="flex items-center gap-1.5">
+              {(['GA', 'NC', 'TN', 'FL', 'SC', 'TX'] as const).map((s) => {
+                const isTarget = s === 'GA';
+                const isActive = activeFocus === s;
 
-            {/* State focus labels */}
-            {(['GA', 'NC', 'TN', 'FL', 'SC', 'TX', 'VA', 'AL'] as const).map((s) => {
-              const isTarget = s === 'GA';
-              const isActive = activeFocus === s;
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => handleFocusChange(s)}
+                    style={{
+                      appearance: 'none',
+                      WebkitAppearance: 'none',
+                      padding: '5px 12px',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      letterSpacing: '0.06em',
+                      borderRadius: '7px',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                      transition: 'all 180ms ease',
 
-              return (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => handleFocusChange(s)}
-                  style={{
-                    appearance: 'none',
-                    WebkitAppearance: 'none',
-                    padding: '4px 10px',
-                    fontSize: '10px',
-                    fontWeight: 600,
-                    letterSpacing: '0.05em',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                    transition: 'all 180ms ease',
+                      ...(isTarget && !isActive && {
+                        color: '#ef4444',
+                        background: 'rgba(127, 29, 29, 0.2)',
+                        border: '1px solid rgba(239, 68, 68, 0.4)',
+                      }),
+                      ...(isTarget && isActive && {
+                        color: '#fca5a5',
+                        background: 'rgba(220, 38, 38, 0.4)',
+                        border: '1px solid rgba(248, 113, 113, 0.8)',
+                        boxShadow: '0 0 14px 2px rgba(239, 68, 68, 0.55)',
+                      }),
 
-                    // ── TARGET (GA) ─────────────────────────────────
-                    ...(isTarget && !isActive && {
-                      color: '#991b1b',                              // dark red text
-                      background: 'transparent',
-                      border: '1px solid rgba(127, 29, 29, 0.55)',    // dark red border
-                    }),
-                    ...(isTarget && isActive && {
-                      color: '#fca5a5',                              // light red text
-                      background: 'rgba(220, 38, 38, 0.35)',         // red glass
-                      border: '1px solid rgba(248, 113, 113, 0.7)',
-                      boxShadow: '0 0 12px 2px rgba(239, 68, 68, 0.45)',
-                    }),
+                      ...(!isTarget && !isActive && {
+                        color: '#cbd5e1',
+                        background: 'rgba(15, 23, 42, 0.6)',
+                        border: '1px solid rgba(148, 163, 184, 0.3)',
+                      }),
+                      ...(!isTarget && isActive && {
+                        color: '#e0f2fe',
+                        background: 'rgba(14, 165, 233, 0.38)',
+                        border: '1px solid rgba(125, 211, 252, 0.85)',
+                        boxShadow: '0 0 14px 2px rgba(56, 189, 248, 0.55)',
+                      }),
+                    }}
+                  >
+                    {isTarget ? 'GA (Target)' : s}
+                  </button>
+                );
+              })}
+            </div>
 
-                    // ── ALLY STATES ─────────────────────────────────
-                    ...(!isTarget && !isActive && {
-                      color: '#cbd5e1',
-                      background: 'transparent',
-                      border: '1px solid rgba(148, 163, 184, 0.25)',
-                    }),
-                    ...(!isTarget && isActive && {
-                      color: '#e0f2fe',
-                      background: 'rgba(14, 165, 233, 0.35)',        // blue glass
-                      border: '1px solid rgba(125, 211, 252, 0.7)',
-                      boxShadow: '0 0 12px 2px rgba(56, 189, 248, 0.45)',
-                    }),
-                  }}
-                >
-                  {isTarget ? 'GA (Target)' : s}
-                </button>
-              );
-            })}
+            {/* ROW 3: VA | AL | z6.0 · p60° telemetry */}
+            <div className="flex items-center gap-1.5">
+              {(['VA', 'AL'] as const).map((s) => {
+                const isActive = activeFocus === s;
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => handleFocusChange(s)}
+                    style={{
+                      appearance: 'none',
+                      WebkitAppearance: 'none',
+                      padding: '5px 12px',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      letterSpacing: '0.06em',
+                      borderRadius: '7px',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                      transition: 'all 180ms ease',
+                      color: isActive ? '#e0f2fe' : '#cbd5e1',
+                      background: isActive ? 'rgba(14, 165, 233, 0.38)' : 'rgba(15, 23, 42, 0.6)',
+                      border: isActive ? '1px solid rgba(125, 211, 252, 0.85)' : '1px solid rgba(148, 163, 184, 0.3)',
+                      boxShadow: isActive ? '0 0 14px 2px rgba(56, 189, 248, 0.55)' : 'none',
+                    }}
+                  >
+                    {s}
+                  </button>
+                );
+              })}
 
-            {/* Separator */}
-            <div style={{ width: 1, height: 18, background: 'rgba(148, 163, 184, 0.25)', margin: '0 4px' }} />
-
-            {/* Live Telemetry Pill */}
-            <div
-              style={{
-                padding: '4px 8px',
-                fontSize: '10px',
-                fontFamily: 'monospace',
-                color: '#94a3b8',
-                background: 'rgba(15, 23, 42, 0.5)',
-                border: '1px solid rgba(148, 163, 184, 0.2)',
-                borderRadius: '6px',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              z{typeof zoom === 'number' && !isNaN(zoom) ? zoom.toFixed(1) : '6.5'} · p{typeof pitch === 'number' && !isNaN(pitch) ? pitch.toFixed(0) : '0'}°
+              {/* Viewport Telemetry Badge matching z6.0 · p60° */}
+              <div
+                style={{
+                  padding: '5px 12px',
+                  fontSize: '11px',
+                  fontFamily: 'monospace',
+                  fontWeight: 600,
+                  color: '#94a3b8',
+                  background: 'rgba(15, 23, 42, 0.6)',
+                  border: '1px solid rgba(148, 163, 184, 0.25)',
+                  borderRadius: '7px',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                z{typeof zoom === 'number' && !isNaN(zoom) ? zoom.toFixed(1) : '6.0'} · p{typeof pitch === 'number' && !isNaN(pitch) ? pitch.toFixed(0) : '60'}°
+              </div>
             </div>
           </div>
 
