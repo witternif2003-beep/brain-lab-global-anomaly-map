@@ -339,8 +339,13 @@ export default function GodsEyeMap({
       const currentCenter = m && typeof m.getCenter === 'function' ? m.getCenter() : { lng: -83.4, lat: 32.6 };
       const currentZoom = m && typeof m.getZoom === 'function' ? m.getZoom() : 6.0;
 
-      // Real-time horizon detection: Find screen Y of globe limb
+      const isGlobeView = currentZoom < 3.5;
+
+      // Real-time horizon detection: Find highest screen Y reached by the globe horizon
       let topLimbY = height * 0.32;
+      let globeRadiusEst = width * 0.35;
+      let globeCenterScreen = { x: width * 0.5, y: height * 0.55 };
+
       if (m && typeof m.project === 'function') {
         try {
           const centerLng = currentCenter.lng || -83.4;
@@ -356,6 +361,22 @@ export default function GodsEyeMap({
           } else {
             topLimbY = height * Math.max(0.18, Math.min(0.40, 0.46 - (currentPitch / 90) * 0.22));
           }
+
+          if (isGlobeView) {
+            // Measure actual globe screen footprint by projecting antipodal meridian points
+            const pCenter = m.project([centerLng, 0]);
+            const pNorth = m.project([centerLng, 80]);
+            const pSouth = m.project([centerLng, -80]);
+            const pEast = m.project([centerLng + 80, 0]);
+            const pWest = m.project([centerLng - 80, 0]);
+
+            if (pCenter && pNorth && pSouth) {
+              globeCenterScreen = pCenter;
+              const rY = Math.abs(pSouth.y - pNorth.y) * 0.5;
+              const rX = (pEast && pWest) ? Math.abs(pEast.x - pWest.x) * 0.5 : rY;
+              globeRadiusEst = Math.max(rX, rY) * 1.08; // Include atmospheric halo margin
+            }
+          }
         } catch {
           topLimbY = height * Math.max(0.18, Math.min(0.40, 0.46 - (currentPitch / 90) * 0.22));
         }
@@ -363,17 +384,14 @@ export default function GodsEyeMap({
         topLimbY = height * Math.max(0.18, Math.min(0.40, 0.46 - (currentPitch / 90) * 0.22));
       }
 
-      // When zoomed out to globe view (zoom < 3.5), stars surround the entire globe in 360 space!
-      // When zoomed in to tactical state view (zoom >= 3.5), celestial sky fills above the horizon.
-      const isGlobeView = currentZoom < 3.5;
+      // Safe celestial height for regional mode
       const safeCelestialHeight = isGlobeView ? height : Math.max(25, topLimbY - 20);
 
       // Celestial Projection Math:
-      // Rotates continuously with camera bearing, observer longitude, and sidereal time shift
       const timeAngleOffset = (starFinderTimeShiftHours / 24);
       const raShift = (((currentBearing / 360) + ((currentCenter.lng + 83.4) / 360) * 0.5 + timeAngleOffset) % 1 + 1) % 1;
 
-      // 1. Render Official NASA SVS Deep Space Photographic Panorama with 3D Spherical Perspective
+      // ─── STEP 1: RENDER FULL COSMIC BACKGROUND (Milky Way & Starry Deep Space) ───
       if (nasaImgLoaded && nasaMilkyWayImg) {
         ctx.save();
         if (!isGlobeView) {
@@ -387,7 +405,7 @@ export default function GodsEyeMap({
         const normShift = ((raShift % 1) + 1) % 1;
         const sx = -normShift * bgWidth;
 
-        ctx.globalAlpha = Math.max(0.1, Math.min(1.0, starFinderMilkyWayBrightness));
+        ctx.globalAlpha = Math.max(0.15, Math.min(1.0, starFinderMilkyWayBrightness));
         if (starFinderNightMode) {
           ctx.filter = 'sepia(100%) hue-rotate(-50deg) saturate(300%)';
         } else {
@@ -409,7 +427,6 @@ export default function GodsEyeMap({
         }
         ctx.restore();
       } else {
-        // Deep space cosmic backdrop fallback
         const skyGrad = ctx.createLinearGradient(0, 0, 0, height);
         skyGrad.addColorStop(0, 'rgba(2, 6, 18, 0.98)');
         skyGrad.addColorStop(0.5, 'rgba(4, 12, 30, 0.95)');
@@ -426,11 +443,9 @@ export default function GodsEyeMap({
 
         let py: number;
         if (isGlobeView) {
-          // In Globe View, stars are mapped seamlessly across the entire celestial sphere (Declination -90 to +90)
           const normDec = Math.max(0, Math.min(1, (decDeg + 90) / 180));
           py = (1 - normDec) * height;
         } else {
-          // In Tactical View, Declination is mapped above the horizon arc
           const normDec = Math.max(0, Math.min(1, (decDeg + 20) / 110));
           py = (1 - normDec) * safeCelestialHeight * 0.95;
         }
@@ -468,22 +483,19 @@ export default function GodsEyeMap({
       }
 
       // 2. Realistic Astrometric Deep-Sky Background Field: 1,200 Stars with Multi-frequency Organic Twinkle
-      // Star density adjusts smoothly between globe and tactical modes
       const activeBackgroundStars = isGlobeView ? BACKGROUND_TYCHO_STARS : BACKGROUND_TYCHO_STARS.slice(0, 450);
       activeBackgroundStars.forEach((star) => {
         const pos = projectCelestial(star.ra, star.dec);
         if (pos.visible) {
-          // Complex multi-frequency organic twinkle simulating atmospheric scintillation and stellar oscillation
           const t1 = Math.sin(time * star.twinkleSpeed + star.twinklePhase);
           const t2 = Math.cos(time * (star.twinkleSpeed * 1.618) + star.twinklePhase * 0.5);
           const compoundTwinkle = (t1 * 0.65 + t2 * 0.35);
-          const alpha = Math.max(0.15, Math.min(1.0, star.baseAlpha + compoundTwinkle * 0.38));
+          const alpha = Math.max(0.18, Math.min(1.0, star.baseAlpha + compoundTwinkle * 0.4));
 
           ctx.beginPath();
           ctx.arc(pos.x, pos.y, star.radius, 0, Math.PI * 2);
           ctx.fillStyle = star.color;
           ctx.globalAlpha = alpha;
-          // Subtle realistic diffraction glow for magnitude < 3.5 stars
           if (star.vmag < 3.5) {
             ctx.shadowColor = star.color;
             ctx.shadowBlur = 4;
@@ -508,7 +520,6 @@ export default function GodsEyeMap({
             ctx.fill();
             ctx.shadowBlur = 0;
 
-            // Saturn Ring Simulation (Tactical Cyan Stroke - Yellow Zero Tolerance)
             if (planet.id === 'Saturn' && !starFinderNightMode) {
               ctx.beginPath();
               ctx.ellipse(pos.x, pos.y, planet.radius * 2.2, planet.radius * 0.7, 0.35, 0, Math.PI * 2);
@@ -517,7 +528,6 @@ export default function GodsEyeMap({
               ctx.stroke();
             }
 
-            // Planetary Label
             if (starFinderShowLabels && width > 420) {
               ctx.font = 'bold 9px monospace';
               ctx.fillStyle = starFinderNightMode ? '#ef4444' : '#f8fafc';
@@ -570,11 +580,34 @@ export default function GodsEyeMap({
         }
       });
 
+      // ─── STEP 2: PHYSICAL GLOBE SEPARATION PROTOCOL (destination-out Stencil Mask) ───
+      // When in globe view, punch out the exact spherical footprint of Earth so stars NEVER touch or occlude the globe
+      if (isGlobeView && globeRadiusEst > 30) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'destination-out';
+        ctx.beginPath();
+        ctx.arc(globeCenterScreen.x, globeCenterScreen.y, globeRadiusEst, 0, Math.PI * 2);
+        ctx.fillStyle = '#000000';
+        ctx.fill();
+
+        // Subtle soft feathering on the limb rim
+        const rimGrad = ctx.createRadialGradient(
+          globeCenterScreen.x, globeCenterScreen.y, globeRadiusEst * 0.94,
+          globeCenterScreen.x, globeCenterScreen.y, globeRadiusEst * 1.03
+        );
+        rimGrad.addColorStop(0, 'rgba(0, 0, 0, 1.0)');
+        rimGrad.addColorStop(1, 'rgba(0, 0, 0, 0.0)');
+        ctx.fillStyle = rimGrad;
+        ctx.beginPath();
+        ctx.arc(globeCenterScreen.x, globeCenterScreen.y, globeRadiusEst * 1.03, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
       ctx.globalAlpha = 1.0;
       ctx.shadowBlur = 0;
     };
-
-    animId = requestAnimationFrame(render);
+animId = requestAnimationFrame(render);
 
     return () => {
       cancelAnimationFrame(animId);
@@ -1537,14 +1570,14 @@ export default function GodsEyeMap({
       {/* Map Surface (8 Cols) */}
       <div className="lg:col-span-8 flex flex-col space-y-3">
         <div className="relative w-full h-[500px] sm:h-[580px] rounded-2xl overflow-hidden border border-[#28394e] bg-[#0f172a] shadow-2xl">
-                    {/* True Background Celestial Canvas: Always behind globe at z-0 */}
+          {/* Map Surface: Mounted at base layer z-0 */}
+          <div ref={containerRef} className="absolute inset-0 z-0" />
+          {/* Foreground Celestial Canvas: Mounted at z-15 above WebGL canvas with physical destination-out globe stencil mask */}
           <canvas
             ref={starsCanvasRef}
-            className="absolute inset-0 z-0 pointer-events-none"
+            className="absolute inset-0 z-15 pointer-events-none"
             style={{ width: '100%', height: '100%' }}
           />
-          {/* Globe & Map Surface: Mounted in front of celestial canvas at z-10 with transparent basemap atmosphere */}
-          <div ref={containerRef} className="absolute inset-0 z-10" />
           {/* Real-time twinkling stars and NSA Admin Star Constellations */}
           {/* UNIVERSE STAR FINDER 3D SUITE CONTROLS (App Store id1575384854 Conformal NSA Admin Glass HUD) */}
           <div className="absolute top-3 left-3 z-20 flex flex-wrap items-center gap-1.5 p-1.5 rounded-2xl bg-[#070e1c]/85 backdrop-blur-xl border border-[#38bdf8]/40 shadow-xl text-[10px] font-mono select-none">
