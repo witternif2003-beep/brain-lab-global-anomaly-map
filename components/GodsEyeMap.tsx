@@ -11,6 +11,7 @@ import { useAnomalyStream, AnomalyFeature } from '../hooks/useAnomalyStream';
 import { registerGeoJSONVTSource, shouldUseTiledRendering } from '../lib/geojson-vt-protocol';
 import { GEORGIA_ANOMALIES } from '../lib/data';
 import MapDebugOverlay from './MapDebugOverlay';
+import MapMenuOverlay from './MapMenuOverlay';
 
 // ─── Constants ────────────────────────────────────────────────────────
 const COMPETITOR_STATES = ['GA', 'NC', 'TN', 'SC', 'FL', 'TX', 'VA', 'AL'] as const;
@@ -884,182 +885,16 @@ export default function GodsEyeMap({
       <div className="lg:col-span-8 flex flex-col space-y-3">
         <div className="relative w-full h-[500px] sm:h-[580px] rounded-2xl overflow-hidden border border-[#28394e] bg-[#0f172a] shadow-2xl">
           <div ref={containerRef} className="absolute inset-0" />
-          <MapDebugOverlay mapRef={mapRef} />
-
-          {/* Clean 3-Row Tactical HUD matching IMG_6586.jpeg exactly */}
-          <div
-            className="absolute top-3 left-3 z-20 flex flex-col gap-1 p-1.5 rounded-lg shadow-2xl pointer-events-auto"
-            style={{
-              background: 'rgba(8, 14, 26, 0.82)',
-              backdropFilter: 'blur(16px)',
-              WebkitBackdropFilter: 'blur(16px)',
-              border: '1px solid rgba(148, 163, 184, 0.18)',
-            }}
-          >
-            {/* ROW 1: 2D | LIGHT | SATELLITE | TERRAIN */}
-            <div className="flex items-center gap-1">
-              <button
-                key="2d-toggle"
-                type="button"
-                onClick={toggle3D}
-                style={{
-                  appearance: 'none',
-                  WebkitAppearance: 'none',
-                  padding: '4px 10px',
-                  fontSize: '10px',
-                  fontWeight: 700,
-                  letterSpacing: '0.06em',
-                  color: pitch <= 20 ? '#34d399' : '#cbd5e1',
-                  background: pitch <= 20 ? 'rgba(16, 185, 129, 0.22)' : 'rgba(15, 23, 42, 0.6)',
-                  border: pitch <= 20 ? '1px solid rgba(52, 211, 153, 0.65)' : '1px solid rgba(148, 163, 184, 0.3)',
-                  borderRadius: '7px',
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                  transition: 'all 180ms ease',
-                }}
-              >
-                {pitch > 20 ? '3D' : '2D'}
-              </button>
-
-              {(['LIGHT', 'SATELLITE', 'TERRAIN'] as const).map((layer) => {
-                const keyMap: Record<string, keyof typeof BASEMAPS> = {
-                  LIGHT: 'demotiles',
-                  SATELLITE: 'satellite',
-                  TERRAIN: 'terrain',
-                };
-                const active = (layer === 'SATELLITE' && basemap === 'satellite') || (layer === 'LIGHT' && basemap === 'demotiles') || (layer === 'TERRAIN' && basemap === 'terrain');
-                return (
-                  <button
-                    key={layer}
-                    type="button"
-                    onClick={() => switchBasemap(keyMap[layer])}
-                    style={{
-                      appearance: 'none',
-                      WebkitAppearance: 'none',
-                      padding: '5px 12px',
-                      fontSize: '11px',
-                      fontWeight: 700,
-                      letterSpacing: '0.06em',
-                      color: active ? '#38bdf8' : '#cbd5e1',
-                      background: active ? 'rgba(14, 165, 233, 0.28)' : 'rgba(15, 23, 42, 0.6)',
-                      border: active ? '1px solid rgba(56, 189, 248, 0.8)' : '1px solid rgba(148, 163, 184, 0.3)',
-                      borderRadius: '7px',
-                      cursor: 'pointer',
-                      whiteSpace: 'nowrap',
-                      transition: 'all 180ms ease',
-                      boxShadow: active ? '0 0 12px rgba(56, 189, 248, 0.3)' : 'none',
-                    }}
-                  >
-                    {layer}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* ROW 2: GA (Target) | NC | TN | FL | SC | TX */}
-            <div className="flex items-center gap-1">
-              {(['GA', 'NC', 'TN', 'FL', 'SC', 'TX'] as const).map((s) => {
-                const isTarget = s === 'GA';
-                const isActive = activeFocus === s;
-
-                return (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => handleFocusChange(s)}
-                    style={{
-                      appearance: 'none',
-                      WebkitAppearance: 'none',
-                      padding: '5px 12px',
-                      fontSize: '11px',
-                      fontWeight: 700,
-                      letterSpacing: '0.06em',
-                      borderRadius: '7px',
-                      cursor: 'pointer',
-                      whiteSpace: 'nowrap',
-                      transition: 'all 180ms ease',
-
-                      ...(isTarget && !isActive && {
-                        color: '#ef4444',
-                        background: 'rgba(127, 29, 29, 0.2)',
-                        border: '1px solid rgba(239, 68, 68, 0.4)',
-                      }),
-                      ...(isTarget && isActive && {
-                        color: '#fca5a5',
-                        background: 'rgba(220, 38, 38, 0.4)',
-                        border: '1px solid rgba(248, 113, 113, 0.8)',
-                        boxShadow: '0 0 14px 2px rgba(239, 68, 68, 0.55)',
-                      }),
-
-                      ...(!isTarget && !isActive && {
-                        color: '#cbd5e1',
-                        background: 'rgba(15, 23, 42, 0.6)',
-                        border: '1px solid rgba(148, 163, 184, 0.3)',
-                      }),
-                      ...(!isTarget && isActive && {
-                        color: '#e0f2fe',
-                        background: 'rgba(14, 165, 233, 0.38)',
-                        border: '1px solid rgba(125, 211, 252, 0.85)',
-                        boxShadow: '0 0 14px 2px rgba(56, 189, 248, 0.55)',
-                      }),
-                    }}
-                  >
-                    {isTarget ? 'GA (Target)' : s}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* ROW 3: VA | AL | z6.0 · p60° telemetry */}
-            <div className="flex items-center gap-1">
-              {(['VA', 'AL'] as const).map((s) => {
-                const isActive = activeFocus === s;
-                return (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => handleFocusChange(s)}
-                    style={{
-                      appearance: 'none',
-                      WebkitAppearance: 'none',
-                      padding: '5px 12px',
-                      fontSize: '11px',
-                      fontWeight: 700,
-                      letterSpacing: '0.06em',
-                      borderRadius: '7px',
-                      cursor: 'pointer',
-                      whiteSpace: 'nowrap',
-                      transition: 'all 180ms ease',
-                      color: isActive ? '#e0f2fe' : '#cbd5e1',
-                      background: isActive ? 'rgba(14, 165, 233, 0.38)' : 'rgba(15, 23, 42, 0.6)',
-                      border: isActive ? '1px solid rgba(125, 211, 252, 0.85)' : '1px solid rgba(148, 163, 184, 0.3)',
-                      boxShadow: isActive ? '0 0 14px 2px rgba(56, 189, 248, 0.55)' : 'none',
-                    }}
-                  >
-                    {s}
-                  </button>
-                );
-              })}
-
-              {/* Viewport Telemetry Badge matching z6.0 · p60° */}
-              <div
-                style={{
-                  padding: '4px 10px',
-                  fontSize: '10px',
-                  fontFamily: 'monospace',
-                  fontWeight: 600,
-                  color: '#94a3b8',
-                  background: 'rgba(15, 23, 42, 0.6)',
-                  border: '1px solid rgba(148, 163, 184, 0.25)',
-                  borderRadius: '7px',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                z{typeof zoom === 'number' && !isNaN(zoom) ? zoom.toFixed(1) : '6.0'} · p{typeof pitch === 'number' && !isNaN(pitch) ? pitch.toFixed(0) : '60'}°
-              </div>
-            </div>
-          </div>
-
+          <MapMenuOverlay
+            pitch={typeof pitch === 'number' && !isNaN(pitch) ? pitch : 60}
+            zoom={typeof zoom === 'number' && !isNaN(zoom) ? zoom : 6.0}
+            basemap={basemap}
+            activeFocus={activeFocus}
+            onToggle3D={toggle3D}
+            onSwitchBasemap={(l) => switchBasemap(l)}
+            onSelectState={(s) => handleFocusChange(s)}
+            mapRef={mapRef}
+          />
           {/* Real-Time Outbound Person Telemetry Stream (GA -> Ally States) - Positioned safely below 3-row HUD without overlap */}
           <div className="absolute bottom-3 right-16 z-10 rounded-xl bg-[#090d16]/95 border border-[#38bdf8]/40 p-2.5 backdrop-blur shadow-2xl max-w-[340px] text-xs font-mono space-y-1.5 hidden md:block">
             <div className="flex items-center justify-between border-b border-slate-800 pb-1">
