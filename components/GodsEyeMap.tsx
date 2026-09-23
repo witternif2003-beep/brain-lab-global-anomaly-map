@@ -1227,6 +1227,22 @@ export default function GodsEyeMap({
 
     mapRef.current = map;
 
+    // NSA Admin Mode: Enforce MapLibre canvas background transparency so starsCanvasRef at z-0 shines through on all sides of the globe
+    const enforceCanvasTransparency = () => {
+      try {
+        const c = map.getCanvas();
+        if (c) {
+          c.style.backgroundColor = 'transparent';
+        }
+        if (containerRef.current) {
+          containerRef.current.style.backgroundColor = 'transparent';
+        }
+      } catch {}
+    };
+    map.on('style.load', enforceCanvasTransparency);
+    map.on('render', enforceCanvasTransparency);
+    enforceCanvasTransparency();
+
     // Force resize after the DOM layout pass completes (fixes 0x0 canvas on iOS Safari)
     const resizeTimer = setTimeout(() => {
       try { map.resize(); } catch {}
