@@ -19,6 +19,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { useAnomalyStream, AnomalyFeature } from '../hooks/useAnomalyStream';
 import { registerGeoJSONVTSource, shouldUseTiledRendering } from '../lib/geojson-vt-protocol';
 import { GEORGIA_ANOMALIES } from '../lib/data';
+import { GODSEYE_INTEL_LAYERS, SAMPLE_LIVE_ENTITIES, LiveTelemetryEntity, IntelLayerConfig } from '../lib/godseye-layers';
 import MapDebugOverlay from './MapDebugOverlay';
 import MapMenuOverlay from './MapMenuOverlay';
 
@@ -107,6 +108,8 @@ export default function GodsEyeMap({
   const [webgpuSupported, setWebgpuSupported] = useState(false);
   const [selectedInspect, setSelectedInspect] = useState<any>(null);
   const [activePersonEvent, setActivePersonEvent] = useState<VerifiedPersonLeavingGA | null>(null);
+  const [activeIntelLayer, setActiveIntelLayer] = useState<string>('all');
+  const [selectedEntity, setSelectedEntity] = useState<LiveTelemetryEntity | null>(null);
   const [outboundCounts, setOutboundCounts] = useState<Record<string, number>>({
     NC: 3412,
     TN: 2189,
@@ -434,6 +437,122 @@ export default function GodsEyeMap({
 
     
     // ─── DYNAMIC TELEMETRY PULSES: Clean Moving Directional Vectors (NO STATIC LINES) ───
+    // ─── GODSEYE MULTI-DOMAIN SENSOR ENTITIES (AVIATION, MARITIME, ORBITAL, CYBER, THERMAL) ───
+    if (!map.getSource('godseye-entities')) {
+      const entityFeatures = SAMPLE_LIVE_ENTITIES.map((ent) => ({
+        type: 'Feature' as const,
+        geometry: {
+          type: 'Point' as const,
+          coordinates: [ent.lng, ent.lat] as [number, number],
+        },
+        properties: {
+          id: ent.id,
+          layerId: ent.layerId,
+          callsignOrName: ent.callsignOrName,
+          type: ent.type,
+          altOrSpeed: ent.altOrSpeed,
+          heading: ent.heading,
+          status: ent.status,
+          anomalyFlag: ent.anomalyFlag || '',
+          source: ent.source,
+          color: ent.layerId === 'layer-adsb' ? '#38bdf8' :
+                 ent.layerId === 'layer-ais' ? '#06b6d4' :
+                 ent.layerId === 'layer-satellites' ? '#c084fc' :
+                 ent.layerId === 'layer-cctv' ? '#10b981' :
+                 ent.layerId === 'layer-nuclear' ? '#34d399' :
+                 ent.layerId === 'layer-cyber' ? '#ec4899' :
+                 ent.layerId === 'layer-gps-jamming' ? '#fb923c' : '#38bdf8',
+        },
+      }));
+
+      map.addSource('godseye-entities', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: entityFeatures },
+      });
+    }
+
+    if (!map.getLayer('godseye-entities-halo')) {
+      map.addLayer({
+        id: 'godseye-entities-halo',
+        type: 'circle',
+        source: 'godseye-entities',
+        paint: {
+          'circle-color': ['get', 'color'],
+          'circle-radius': 12,
+          'circle-opacity': 0.25,
+          'circle-blur': 0.6,
+        },
+      });
+    }
+
+    if (!map.getLayer('godseye-entities-core')) {
+      map.addLayer({
+        id: 'godseye-entities-core',
+        type: 'circle',
+        source: 'godseye-entities',
+        paint: {
+          'circle-color': ['get', 'color'],
+          'circle-radius': 5.5,
+          'circle-stroke-width': 1.5,
+          'circle-stroke-color': '#0f172a',
+          'circle-opacity': 0.95,
+        },
+      });
+    }
+
+    if (!map.getLayer('godseye-entities-labels')) {
+      map.addLayer({
+        id: 'godseye-entities-labels',
+        type: 'symbol',
+        source: 'godseye-entities',
+        layout: {
+          'text-field': ['get', 'callsignOrName'],
+          'text-size': 10,
+          'text-offset': [0, 1.2],
+          'text-anchor': 'top',
+          'text-allow-overlap': false,
+          'text-optional': true,
+        },
+        paint: {
+          'text-color': '#e2e8f0',
+          'text-halo-color': '#090d16',
+          'text-halo-width': 2,
+        },
+      });
+    }
+
+    map.on('click', 'godseye-entities-core', (e) => {
+      const f = e.features?.[0];
+      if (!f || f.geometry.type !== 'Point') return;
+      const props = f.properties as any;
+      const matched = SAMPLE_LIVE_ENTITIES.find((item) => item.id === props.id);
+      if (matched) {
+        setSelectedEntity(matched);
+      }
+      new maplibregl.Popup({ offset: 16, closeButton: true, maxWidth: '340px' })
+        .setLngLat(f.geometry.coordinates as [number, number])
+        .setHTML(`
+          <div style="font-family:monospace;padding:6px;background:#090d16;color:#f8fafc;border-radius:8px;border:1px solid #38bdf8;">
+            <div style="font-size:10px;color:#38bdf8;font-weight:700;text-transform:uppercase;">
+              ${props.layerId} • ${props.status}
+            </div>
+            <div style="font-size:12px;font-weight:700;color:#f8fafc;margin:4px 0;">
+              ${props.callsignOrName}
+            </div>
+            <div style="font-size:11px;color:#94a3b8;">
+              Type: <strong style="color:#ffffff;">${props.type}</strong><br/>
+              Velocity / Alt: <strong style="color:#10b981;">${props.altOrSpeed}</strong><br/>
+              Source: <span style="color:#38bdf8;">${props.source}</span>
+              ${props.anomalyFlag ? `<div style="margin-top:4px;color:#f87171;font-weight:bold;">⚠️ ${props.anomalyFlag}</div>` : ''}
+            </div>
+          </div>
+        `)
+        .addTo(map);
+    });
+
+    map.on('mouseenter', 'godseye-entities-core', () => { map.getCanvas().style.cursor = 'pointer'; });
+    map.on('mouseleave', 'godseye-entities-core', () => { map.getCanvas().style.cursor = ''; });
+
     if (!map.getSource('telemetry-pulses')) {
       map.addSource('telemetry-pulses', {
         type: 'geojson',
@@ -796,6 +915,26 @@ export default function GodsEyeMap({
       if (ro) ro.disconnect();
     };
   }, [ready]);
+
+  // Filter God's Eye intelligence layer entities when activeIntelLayer changes
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    try {
+      if (map.getLayer('godseye-entities-core')) {
+        if (activeIntelLayer === 'all') {
+          map.setFilter('godseye-entities-core', null);
+          map.setFilter('godseye-entities-halo', null);
+          map.setFilter('godseye-entities-labels', null);
+        } else {
+          const filter = ['==', ['get', 'layerId'], activeIntelLayer];
+          map.setFilter('godseye-entities-core', filter);
+          map.setFilter('godseye-entities-halo', filter);
+          map.setFilter('godseye-entities-labels', filter);
+        }
+      }
+    } catch {}
+  }, [activeIntelLayer, ready]);
 
   // Basemap switcher
   const switchBasemap = useCallback((next: keyof typeof BASEMAPS) => {
@@ -1269,6 +1408,79 @@ export default function GodsEyeMap({
 
       {/* Side Inspector (4 Cols) */}
       <div className="lg:col-span-4 space-y-4">
+        {/* Active God's Eye Intelligence Layer Controller */}
+        <div className="bg-[#0b1320] border border-[#1e3a5f] rounded-2xl p-4 shadow-xl space-y-3 font-mono">
+          <div className="flex items-center justify-between border-b border-[#1e3a5f]/80 pb-2">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-[#38bdf8] animate-ping" />
+              <span className="text-xs font-bold text-white uppercase tracking-wider">
+                GOD'S EYE MULTI-DOMAIN SENSORS
+              </span>
+            </div>
+            <span className="text-[10px] text-emerald-400 font-bold bg-[#062018] px-2 py-0.5 rounded-full border border-emerald-500/40">
+              14 FEEDS LIVE
+            </span>
+          </div>
+
+          <p className="text-[11px] text-slate-400">
+            Select intelligence layer to filter real-time orbital, maritime, aviation, and cyber sensors directly on the map.
+          </p>
+
+          <div className="grid grid-cols-2 gap-1.5 pt-1">
+            <button
+              type="button"
+              onClick={() => setActiveIntelLayer('all')}
+              className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold tracking-wider text-left transition-all truncate border ${
+                activeIntelLayer === 'all'
+                  ? 'bg-[#0c2444] text-[#38bdf8] border-[#38bdf8] shadow-[0_0_10px_rgba(56,189,248,0.4)]'
+                  : 'bg-[#070d18]/80 text-slate-400 border-slate-800 hover:border-slate-700'
+              }`}
+            >
+              🌐 ALL SENSORS (10)
+            </button>
+            {GODSEYE_INTEL_LAYERS.slice(0, 7).map((layer) => (
+              <button
+                key={layer.id}
+                type="button"
+                onClick={() => setActiveIntelLayer(layer.id)}
+                className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold tracking-wider text-left transition-all truncate border ${
+                  activeIntelLayer === layer.id
+                    ? 'bg-[#0c2444] text-[#38bdf8] border-[#38bdf8] shadow-[0_0_10px_rgba(56,189,248,0.4)]'
+                    : 'bg-[#070d18]/80 text-slate-400 border-slate-800 hover:border-slate-700'
+                }`}
+              >
+                <span className="truncate">{layer.category.toUpperCase()}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Selected Sensor Entity Quick Inspector */}
+        {selectedEntity ? (
+          <div className="bg-[#0b1320] border border-[#38bdf8]/50 rounded-2xl p-4 shadow-xl space-y-2.5 font-mono">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
+              <span className="text-[10px] uppercase font-bold text-sky-400">
+                ACTIVE SENSOR TELEMETRY LOCK
+              </span>
+              <span className={`text-[9px] px-2 py-0.5 rounded font-bold ${selectedEntity.status === 'ANOMALOUS' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                {selectedEntity.status}
+              </span>
+            </div>
+            <div className="text-white font-bold text-xs">{selectedEntity.callsignOrName}</div>
+            <div className="text-[11px] text-slate-300">
+              Type: <span className="text-white">{selectedEntity.type}</span><br/>
+              Velocity / Alt: <span className="text-emerald-400">{selectedEntity.altOrSpeed}</span><br/>
+              Coordinates: <span className="text-sky-300">{selectedEntity.lat.toFixed(3)}°N, {selectedEntity.lng.toFixed(3)}°W</span><br/>
+              Source: <span className="text-slate-400">{selectedEntity.source}</span>
+            </div>
+            {selectedEntity.anomalyFlag && (
+              <div className="p-2 rounded bg-rose-950/40 border border-rose-500/40 text-[10px] text-rose-300">
+                ⚠️ {selectedEntity.anomalyFlag}
+              </div>
+            )}
+          </div>
+        ) : null}
+
         {selectedInspect ? (
           <div className="bg-[#131d2c] border border-[#28394e] rounded-2xl p-4 shadow-xl space-y-3">
             <div className="flex items-center justify-between border-b border-[#28394e] pb-2">
