@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   Activity,
   ShieldAlert,
+  Shield,
   Cpu,
   FileCheck,
   Layers,
@@ -34,6 +35,7 @@ export default function Navbar() {
     { href: "/forensic-telemetry", label: "7k Telemetry", icon: Radar },
     { href: "/three-pillars", label: "3 Pillars", icon: Target },
     { href: "/godseye-telemetry", label: "GodsEYE Map", icon: Eye },
+    { href: "/godseye-telemetry#fbi-capabilities", label: "FBI Feeds", icon: Shield },
     { href: "/threat-globe", label: "3D Globe", icon: Globe },
     { href: "/benchmarks", label: "ML Telemetry", icon: Zap },
     { href: "/county-matrix", label: "159 Counties", icon: Compass },

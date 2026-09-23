@@ -28,7 +28,7 @@ export default function GodsEyeTelemetryPage() {
       <GodsEyeMap />
 
       {/* DEDICATED FBI CAPABILITIES & RESTRICTED SYSTEMS PANEL — NSA ADMIN MODE */}
-      <div className="w-full">
+      <div id="fbi-capabilities" className="w-full scroll-mt-24">
         <FbiDataSection />
       </div>
 
