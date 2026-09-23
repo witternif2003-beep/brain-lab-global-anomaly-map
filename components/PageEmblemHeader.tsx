@@ -21,25 +21,26 @@ export default function PageEmblemHeader({
     <div className="relative overflow-hidden rounded-2xl glass-panel p-5 sm:p-6 shadow-2xl">
       <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
         
-        {/* Left Section with 1/10th Scale Longitudinal Rotating Emblem */}
-        <div className="flex items-start sm:items-center space-x-3.5">
-          <div className="relative shrink-0" style={{ perspective: "600px" }}>
-            <div className="relative w-8 h-8 sm:w-9 sm:h-9 rounded-full p-0.5 bg-[#0b121b]/80 border border-[#38bdf8]/60 shadow-lg emblem-longitudinal-pulse flex items-center justify-center overflow-hidden">
+        {/* Left Section with Official Standard Header Seal Placement */}
+        <div className="flex items-start space-x-4">
+          {/* Official Standard 56px Header Insignia with Perspective Stability */}
+          <div className="relative shrink-0 pt-0.5">
+            <div className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-full p-1 bg-[#070d18] border-2 border-[#38bdf8]/70 shadow-[0_0_20px_rgba(56,189,248,0.35)] flex items-center justify-center">
               <Image
                 src="/assets/brain-lab-emblem.png"
-                alt="Brain Lab by Liliya emblem"
-                width={36}
-                height={36}
-                className="w-full h-full object-contain aspect-square rounded-full"
+                alt="Official Header Insignia"
+                width={56}
+                height={56}
+                className="w-full h-full object-contain aspect-square rounded-full drop-shadow-md"
                 priority
               />
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <div className="inline-flex items-center space-x-1.5 px-3 py-0.5 rounded-full text-[10px] font-semibold glass-pill text-[#38bdf8] shadow-sm">
+            <div className="inline-flex items-center space-x-2 px-3 py-0.5 rounded-full text-[10px] font-semibold glass-pill text-[#38bdf8] shadow-sm">
               {badgeIcon && <span>{badgeIcon}</span>}
-              <span className="font-mono tracking-wide">{badgeText}</span>
+              <span className="font-mono tracking-wide uppercase">{badgeText}</span>
             </div>
 
             <h1 className="text-lg sm:text-xl md:text-2xl font-extrabold text-[#f8fafc] tracking-tight font-mono leading-tight">

@@ -52,29 +52,31 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 gap-2">
           
-          {/* Brand Identity with Responsive Rotating Circular Emblem */}
-          <div className="flex items-center space-x-2 sm:space-x-3 shrink-0">
-            <Link href="/" className="flex items-center space-x-2 sm:space-x-3 group">
-              <div className="relative w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 shrink-0 rounded-full overflow-hidden p-0.5 border border-[#38bdf8]/60 bg-[#0b121b]/80 emblem-nav-hover shadow-lg">
+          {/* Brand Identity with Official Standard Seal Placement */}
+          <div className="flex items-center space-x-3 shrink-0">
+            <Link href="/" className="flex items-center space-x-3 group">
+              {/* Official Standard 44px Seal Anchor (NSA / IC Admin Standard Ratio) */}
+              <div className="relative w-11 h-11 sm:w-12 sm:h-12 shrink-0 rounded-full p-1 border-2 border-[#38bdf8]/70 bg-[#070d18] shadow-[0_0_15px_rgba(56,189,248,0.3)] flex items-center justify-center">
                 <Image
-                  src="/assets/brain-lab-emblem-64.png"
-                  alt="Brain Lab by Liliya emblem"
-                  width={40}
-                  height={40}
-                  className="w-full h-full object-contain aspect-square rounded-full"
+                  src="/assets/brain-lab-emblem.png"
+                  alt="Official Intelligence Emblem"
+                  width={48}
+                  height={48}
+                  className="w-full h-full object-contain aspect-square rounded-full drop-shadow"
                   priority
                 />
               </div>
 
-              <div className="flex flex-col">
-                <div className="flex items-center space-x-1.5">
-                  <span className="font-bold text-sm sm:text-base md:text-lg tracking-wider text-[#f8fafc] font-mono group-hover:text-[#38bdf8] transition-colors whitespace-nowrap">
-                    BRAIN LAB <span className="text-[#38bdf8] text-xs font-normal">BY LILIYA</span>
+              <div className="flex flex-col justify-center">
+                <div className="flex items-center space-x-2">
+                  <span className="font-extrabold text-base sm:text-lg tracking-wider text-[#f8fafc] font-mono group-hover:text-[#38bdf8] transition-colors whitespace-nowrap">
+                    BRAIN LAB <span className="text-[#38bdf8] text-xs font-bold tracking-normal">BY LILIYA</span>
                   </span>
                 </div>
-                <span className="text-[9px] sm:text-[10px] text-[#94a3b8] font-mono tracking-tight hidden xl:inline truncate max-w-[280px]">
-                  Post-Doctorate Cognitive Market Intelligence
-                </span>
+                <div className="flex items-center space-x-1.5 text-[9px] sm:text-[10px] text-[#38bdf8]/90 font-mono tracking-wide">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>INTELLIGENCE OPERATIONS CENTER</span>
+                </div>
               </div>
             </Link>
           </div>
