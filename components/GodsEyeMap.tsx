@@ -1048,11 +1048,11 @@ export default function GodsEyeMap({
       `}</style>
 
         {/* STANDALONE MAP MENU WIDGET DIRECTLY BENEATH THE MAP ITSELF — NSA ADMIN MODERN OVAL DASHBOARD WIDGET */}
-        <div className="w-full rounded-[36px] bg-[#080e1a]/80 backdrop-blur-2xl border border-[#38bdf8]/40 p-4 sm:p-6 shadow-[0_20px_60px_rgba(0,0,0,0.85),inset_0_1px_2px_rgba(56,189,248,0.35)] font-mono text-xs">
-          <div className="flex flex-col gap-3.5 w-full">
+        <div className="w-full rounded-[36px] bg-[#080e1a]/85 backdrop-blur-2xl border border-[#38bdf8]/40 p-4 sm:p-5 shadow-[0_20px_60px_rgba(0,0,0,0.85),inset_0_1px_2px_rgba(56,189,248,0.35)] font-mono text-xs">
+          <div className="flex flex-col gap-3 w-full">
             
             {/* Header Status Rail: Oval Pill Shape */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#1e3a5f]/60 gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2.5 border-b border-[#1e3a5f]/60 gap-2">
               <div className="flex items-center gap-2.5">
                 <span className="relative flex h-2.5 w-2.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -1068,121 +1068,198 @@ export default function GodsEyeMap({
               </div>
             </div>
 
-            {/* Row 1: Projection & Basemap Modes */}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-              <span className="text-[11px] font-bold text-[#7aa0c4] uppercase tracking-wider shrink-0 w-24">
-                PROJECTION:
-              </span>
-              <div className="flex items-center gap-2 flex-wrap">
-                <button
-                  type="button"
-                  onClick={toggle3D}
-                  className={`px-4 py-2 rounded-full font-bold text-xs tracking-wider transition-all duration-200 ${
-                    pitch <= 20
-                      ? 'bg-[#062018] text-[#34d399] border-2 border-[#34d399] shadow-[0_0_16px_rgba(52,211,153,0.55)]'
-                      : 'bg-[#0a1228]/80 text-[#7aa0c4] border border-[#1e3a5f] hover:border-[#38bdf8]/70 hover:text-white hover:bg-[#0f1d38]'
-                  }`}
-                >
-                  2D MERCATOR
-                </button>
-                <button
-                  type="button"
-                  onClick={() => switchBasemap('demotiles')}
-                  className={`px-4 py-2 rounded-full font-bold text-xs tracking-wider transition-all duration-200 ${
-                    basemap === 'demotiles'
-                      ? 'bg-[#0c2444] text-[#38bdf8] border-2 border-[#38bdf8] shadow-[0_0_16px_rgba(56,189,248,0.6)]'
-                      : 'bg-[#0a1228]/80 text-[#7aa0c4] border border-[#1e3a5f] hover:border-[#38bdf8]/70 hover:text-white hover:bg-[#0f1d38]'
-                  }`}
-                >
-                  LIGHT VECTOR
-                </button>
-                <button
-                  type="button"
-                  onClick={() => switchBasemap('satellite')}
-                  className={`px-4 py-2 rounded-full font-bold text-xs tracking-wider transition-all duration-200 ${
-                    basemap === 'satellite'
-                      ? 'bg-[#0c2444] text-[#38bdf8] border-2 border-[#38bdf8] shadow-[0_0_18px_rgba(56,189,248,0.7)]'
-                      : 'bg-[#0a1228]/80 text-[#7aa0c4] border border-[#1e3a5f] hover:border-[#38bdf8]/70 hover:text-white hover:bg-[#0f1d38]'
-                  }`}
-                >
-                  SATELLITE ORTHO
-                </button>
-                <button
-                  type="button"
-                  onClick={() => switchBasemap('terrain')}
-                  className={`px-4 py-2 rounded-full font-bold text-xs tracking-wider transition-all duration-200 ${
-                    basemap === 'terrain'
-                      ? 'bg-[#0c2444] text-[#38bdf8] border-2 border-[#38bdf8] shadow-[0_0_18px_rgba(56,189,248,0.7)]'
-                      : 'bg-[#0a1228]/80 text-[#7aa0c4] border border-[#1e3a5f] hover:border-[#38bdf8]/70 hover:text-white hover:bg-[#0f1d38]'
-                  }`}
-                >
-                  3D TERRAIN DEM
-                </button>
-              </div>
+            {/* Row 1: Projection & Basemap Modes - NSA Standard Spacing */}
+            <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 scrollbar-none">
+              <button
+                type="button"
+                onClick={toggle3D}
+                style={{
+                  padding: '5px 12px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  borderRadius: '9999px',
+                  color: pitch <= 20 ? '#34d399' : '#cbd5e1',
+                  background: pitch <= 20 ? 'rgba(6, 44, 32, 0.75)' : 'rgba(10, 18, 40, 0.85)',
+                  border: pitch <= 20 ? '1px solid rgba(52, 211, 153, 0.65)' : '1px solid rgba(30, 58, 95, 0.7)',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  boxShadow: pitch <= 20 ? '0 0 12px rgba(52, 211, 153, 0.35)' : 'none',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                2D
+              </button>
+              <button
+                type="button"
+                onClick={() => switchBasemap('demotiles')}
+                style={{
+                  padding: '5px 12px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  borderRadius: '9999px',
+                  color: basemap === 'demotiles' ? '#38bdf8' : '#cbd5e1',
+                  background: basemap === 'demotiles' ? 'rgba(12, 36, 68, 0.85)' : 'rgba(10, 18, 40, 0.85)',
+                  border: basemap === 'demotiles' ? '1px solid rgba(56, 189, 248, 0.75)' : '1px solid rgba(30, 58, 95, 0.7)',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  boxShadow: basemap === 'demotiles' ? '0 0 12px rgba(56, 189, 248, 0.4)' : 'none',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                LIGHT
+              </button>
+              <button
+                type="button"
+                onClick={() => switchBasemap('satellite')}
+                style={{
+                  padding: '5px 14px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  borderRadius: '9999px',
+                  color: basemap === 'satellite' ? '#38bdf8' : '#cbd5e1',
+                  background: basemap === 'satellite' ? 'rgba(14, 75, 120, 0.65)' : 'rgba(10, 18, 40, 0.85)',
+                  border: basemap === 'satellite' ? '1px solid rgba(56, 189, 248, 0.85)' : '1px solid rgba(30, 58, 95, 0.7)',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  boxShadow: basemap === 'satellite' ? '0 0 14px rgba(56, 189, 248, 0.5), inset 0 0 8px rgba(56, 189, 248, 0.25)' : 'none',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                SATELLITE
+              </button>
+              <button
+                type="button"
+                onClick={() => switchBasemap('terrain')}
+                style={{
+                  padding: '5px 12px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  borderRadius: '9999px',
+                  color: basemap === 'terrain' ? '#38bdf8' : '#cbd5e1',
+                  background: basemap === 'terrain' ? 'rgba(12, 36, 68, 0.85)' : 'rgba(10, 18, 40, 0.85)',
+                  border: basemap === 'terrain' ? '1px solid rgba(56, 189, 248, 0.75)' : '1px solid rgba(30, 58, 95, 0.7)',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  boxShadow: basemap === 'terrain' ? '0 0 12px rgba(56, 189, 248, 0.4)' : 'none',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                TERRAIN
+              </button>
             </div>
 
-            {/* Row 2: Target & Primary Corridors */}
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-              <span className="text-[11px] font-bold text-[#7aa0c4] uppercase tracking-wider shrink-0 w-24">
-                PRIMARY:
-              </span>
-              <div className="flex items-center gap-2 flex-wrap">
+            {/* Row 2: Target & Primary Corridors - NSA Standard Spacing */}
+            <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 scrollbar-none">
+              <button
+                type="button"
+                onClick={() => handleFocusChange('GA')}
+                style={{
+                  padding: '5px 14px',
+                  fontSize: '11px',
+                  fontWeight: 800,
+                  borderRadius: '9999px',
+                  color: '#f87171',
+                  background: activeFocus === 'GA' ? 'rgba(69, 10, 10, 0.65)' : 'rgba(24, 10, 10, 0.85)',
+                  border: activeFocus === 'GA' ? '1px solid rgba(239, 68, 68, 0.85)' : '1px solid rgba(127, 29, 29, 0.65)',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  boxShadow: activeFocus === 'GA' ? '0 0 14px rgba(239, 68, 68, 0.5)' : 'none',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                GA (Target)
+              </button>
+              <button
+                type="button"
+                onClick={() => handleFocusChange('NC')}
+                style={{
+                  padding: '5px 12px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  borderRadius: '9999px',
+                  color: activeFocus === 'NC' ? '#38bdf8' : '#cbd5e1',
+                  background: activeFocus === 'NC' ? 'rgba(14, 75, 120, 0.65)' : 'rgba(10, 18, 40, 0.85)',
+                  border: activeFocus === 'NC' ? '1px solid rgba(56, 189, 248, 0.85)' : '1px solid rgba(30, 58, 95, 0.7)',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  boxShadow: activeFocus === 'NC' ? '0 0 12px rgba(56, 189, 248, 0.45)' : 'none',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                NC
+              </button>
+              {(['TN', 'FL', 'SC', 'TX'] as const).map((st) => (
                 <button
+                  key={st}
                   type="button"
-                  onClick={() => handleFocusChange('GA')}
-                  className={`px-4 py-2 rounded-full font-extrabold text-xs tracking-wider transition-all duration-200 ${
-                    activeFocus === 'GA'
-                      ? 'bg-[#2b0808] text-[#ff4d4d] border-2 border-[#ff3b3b] shadow-[0_0_20px_rgba(255,59,59,0.65)]'
-                      : 'bg-[#180a0a]/80 text-[#f87171] border border-[#7f1d1d] hover:bg-[#280d0d]'
-                  }`}
+                  onClick={() => handleFocusChange(st)}
+                  style={{
+                    padding: '5px 12px',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    borderRadius: '9999px',
+                    color: activeFocus === st ? '#38bdf8' : '#cbd5e1',
+                    background: activeFocus === st ? 'rgba(14, 75, 120, 0.65)' : 'rgba(10, 18, 40, 0.85)',
+                    border: activeFocus === st ? '1px solid rgba(56, 189, 248, 0.85)' : '1px solid rgba(30, 58, 95, 0.7)',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    boxShadow: activeFocus === st ? '0 0 12px rgba(56, 189, 248, 0.45)' : 'none',
+                    transition: 'all 0.15s ease',
+                  }}
                 >
-                  GA (Target Anchor)
+                  {st}
                 </button>
-                {(['NC', 'TN', 'FL', 'SC', 'TX'] as const).map((st) => (
-                  <button
-                    key={st}
-                    type="button"
-                    onClick={() => handleFocusChange(st)}
-                    className={`px-4 py-2 rounded-full font-bold text-xs tracking-wider transition-all duration-200 ${
-                      activeFocus === st
-                        ? 'bg-[#0c2444] text-[#38bdf8] border-2 border-[#38bdf8] shadow-[0_0_16px_rgba(56,189,248,0.6)]'
-                        : 'bg-[#0a1228]/80 text-[#7aa0c4] border border-[#1e3a5f] hover:border-[#38bdf8]/70 hover:text-white hover:bg-[#0f1d38]'
-                    }`}
-                  >
-                    {st}
-                  </button>
-                ))}
-              </div>
+              ))}
             </div>
 
-            {/* Row 3: Secondary Corridors & Viewport Metrics */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2.5 border-t border-[#1e3a5f]/50">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[11px] font-bold text-[#7aa0c4] uppercase tracking-wider shrink-0 w-24">
-                  SECONDARY:
-                </span>
+            {/* Row 3: Secondary Corridors & Viewport Metrics - NSA Standard Spacing */}
+            <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#1e3a5f]/50 flex-wrap">
+              <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 scrollbar-none">
                 {(['VA', 'AL'] as const).map((st) => (
                   <button
                     key={st}
                     type="button"
                     onClick={() => handleFocusChange(st)}
-                    className={`px-4 py-2 rounded-full font-bold text-xs tracking-wider transition-all duration-200 ${
-                      activeFocus === st
-                        ? 'bg-[#0c2444] text-[#38bdf8] border-2 border-[#38bdf8] shadow-[0_0_16px_rgba(56,189,248,0.6)]'
-                        : 'bg-[#0a1228]/80 text-[#7aa0c4] border border-[#1e3a5f] hover:border-[#38bdf8]/70 hover:text-white hover:bg-[#0f1d38]'
-                    }`}
+                    style={{
+                      padding: '5px 12px',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      borderRadius: '9999px',
+                      color: activeFocus === st ? '#38bdf8' : '#cbd5e1',
+                      background: activeFocus === st ? 'rgba(14, 75, 120, 0.65)' : 'rgba(10, 18, 40, 0.85)',
+                      border: activeFocus === st ? '1px solid rgba(56, 189, 248, 0.85)' : '1px solid rgba(30, 58, 95, 0.7)',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                      boxShadow: activeFocus === st ? '0 0 12px rgba(56, 189, 248, 0.45)' : 'none',
+                      transition: 'all 0.15s ease',
+                    }}
                   >
                     {st}
                   </button>
                 ))}
               </div>
-              
-              <div className="px-4 py-2 rounded-full bg-[#070d18]/90 border border-[#1e3a5f] text-emerald-400 font-mono text-xs flex items-center gap-2.5 shadow-[inset_0_0_12px_rgba(16,185,129,0.15)] self-start sm:self-auto">
-                <span className="text-[#7aa0c4] font-bold">VIEWPORT:</span>
-                <span className="text-white font-extrabold tracking-wide">
+
+              {/* Viewport Readout Pill */}
+              <div
+                style={{
+                  padding: '5px 12px',
+                  fontSize: '11px',
+                  fontFamily: 'monospace',
+                  color: '#94a3b8',
+                  background: 'rgba(7, 13, 24, 0.9)',
+                  border: '1px solid rgba(30, 58, 95, 0.75)',
+                  borderRadius: '9999px',
+                  whiteSpace: 'nowrap',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  boxShadow: 'inset 0 0 10px rgba(16, 185, 129, 0.1)',
+                }}
+              >
+                <span style={{ color: '#cbd5e1', fontWeight: 600 }}>
                   z{typeof zoom === 'number' && !isNaN(zoom) ? zoom.toFixed(1) : '6.0'} · p{typeof pitch === 'number' && !isNaN(pitch) ? pitch.toFixed(0) : '60'}°
                 </span>
-                <span className="text-[#38bdf8] font-bold">| WEBGL2 60FPS</span>
+                <span style={{ color: '#38bdf8', fontWeight: 700 }}>| WEBGL2</span>
               </div>
             </div>
 
