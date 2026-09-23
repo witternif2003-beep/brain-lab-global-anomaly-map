@@ -13,17 +13,44 @@ export default function Footer() {
           {/* Brand Col */}
           <div className="space-y-3 md:col-span-1">
             <div className="flex items-center space-x-3">
-              <div className="relative w-7 h-7 rounded-full overflow-hidden p-0.5 border border-[#38bdf8] bg-[#131d2c] shrink-0">
+              <div
+                className="relative shrink-0 rounded-full flex items-center justify-center"
+                style={{
+                  width: '36px',
+                  height: '36px',
+                  minWidth: '36px',
+                  minHeight: '36px',
+                  maxWidth: '36px',
+                  maxHeight: '36px',
+                  aspectRatio: '1 / 1',
+                  borderRadius: '50%',
+                  flexShrink: 0,
+                  filter: 'drop-shadow(0 0 8px rgba(56,189,248,0.65))',
+                  background: 'transparent',
+                  border: 'none',
+                  padding: 0,
+                }}
+              >
                 <Image
-                  src="/assets/brain-lab-emblem-64.png"
-                  alt="Brain Lab by Liliya emblem"
-                  width={28}
-                  height={28}
-                  className="w-full h-full object-cover rounded-full"
+                  src="/assets/brain-lab-emblem-official.png"
+                  alt="Central Intelligence Agency Official Seal"
+                  width={36}
+                  height={36}
+                  style={{
+                    width: '36px',
+                    height: '36px',
+                    minWidth: '36px',
+                    minHeight: '36px',
+                    objectFit: 'contain',
+                    aspectRatio: '1 / 1',
+                    borderRadius: '50%',
+                    display: 'block',
+                  }}
+                  className="rounded-full"
                 />
               </div>
-              <span className="font-bold text-[#f8fafc] text-sm tracking-wider">
-                BRAIN LAB <span className="text-[#38bdf8] text-xs font-normal">BY LILIYA</span>
+              <span className="font-bold text-[#f8fafc] text-sm tracking-wider font-mono">
+                BRAIN LAB <span className="text-[#38bdf8] text-xs font-bold">BY LILIYA</span>
               </span>
             </div>
             <p className="text-[11px] text-[#94a3b8] leading-relaxed font-sans">
