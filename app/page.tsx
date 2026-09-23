@@ -47,7 +47,7 @@ export default function DashboardPage() {
         {/* Hero Content Layer */}
         <div className="relative z-10 flex flex-col items-center space-y-4 max-w-4xl w-full">
           
-          {/* Official IC / NSA Admin Approved Primary Header Seal (Standardized 64px Anchor & Elevation) */}
+          {/* Official IC / NSA Admin Approved Primary Header Seal (Verified Conformal Circular Model & True Blue Bezel) */}
           <div className="flex items-center space-x-4 mb-2 p-2 rounded-2xl glass-panel border border-[#38bdf8]/50 shadow-[0_0_25px_rgba(56,189,248,0.35)]">
             <div
               className="relative shrink-0 rounded-full flex items-center justify-center"
@@ -61,10 +61,11 @@ export default function DashboardPage() {
                 aspectRatio: '1 / 1',
                 borderRadius: '50%',
                 flexShrink: 0,
-                filter: 'drop-shadow(0 0 18px rgba(56,189,248,0.75))',
-                background: 'transparent',
-                border: 'none',
+                border: '2px solid #38bdf8',
+                boxShadow: '0 0 16px rgba(56, 189, 248, 0.75), inset 0 0 8px rgba(56, 189, 248, 0.45)',
+                background: '#070d18',
                 padding: 0,
+                overflow: 'hidden',
               }}
             >
               <Image
@@ -73,10 +74,8 @@ export default function DashboardPage() {
                 width={64}
                 height={64}
                 style={{
-                  width: '64px',
-                  height: '64px',
-                  minWidth: '64px',
-                  minHeight: '64px',
+                  width: '100%',
+                  height: '100%',
                   objectFit: 'contain',
                   aspectRatio: '1 / 1',
                   borderRadius: '50%',
