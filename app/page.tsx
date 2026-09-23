@@ -47,8 +47,28 @@ export default function DashboardPage() {
         {/* Hero Content Layer */}
         <div className="relative z-10 flex flex-col items-center space-y-4 max-w-4xl w-full">
           
-          {/* Centered Rotating Glowing Neon Circular Emblem (1/10th scale, pure longitudinal spin) */}
-          <RotatingHeroEmblem className="mb-1" />
+          {/* Official IC / NSA Admin Approved Primary Header Seal (Standardized 64px Anchor & Elevation) */}
+          <div className="flex items-center space-x-4 mb-2 p-2 rounded-2xl glass-panel border border-[#38bdf8]/50 shadow-[0_0_25px_rgba(56,189,248,0.35)]">
+            <div className="relative w-14 h-14 sm:w-16 sm:h-16 shrink-0 rounded-full p-1 bg-[#070d18] border-2 border-[#38bdf8] shadow-lg flex items-center justify-center">
+              <Image
+                src="/assets/brain-lab-emblem.png"
+                alt="Official Brain Lab Intelligence Seal"
+                width={64}
+                height={64}
+                className="w-full h-full object-contain aspect-square rounded-full drop-shadow"
+                priority
+              />
+            </div>
+            <div className="flex flex-col text-left">
+              <span className="font-mono text-xs uppercase tracking-widest text-[#38bdf8] font-bold flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                CENTRAL INTELLIGENCE INTEGRATION
+              </span>
+              <span className="font-mono text-base sm:text-lg font-extrabold text-white tracking-tight">
+                BRAIN LAB <span className="text-[#38bdf8]">BY LILIYA</span>
+              </span>
+            </div>
+          </div>
 
           {/* Subtitle & Headline */}
           <div className="space-y-2">
