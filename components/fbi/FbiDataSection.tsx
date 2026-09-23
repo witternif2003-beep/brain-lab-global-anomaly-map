@@ -415,12 +415,47 @@ export default function FbiDataSection() {
                 </div>
               )
             ) : crimeData ? (
-              <div className="space-y-2 max-h-[360px] overflow-y-auto">
-                <div className="p-3 rounded-xl bg-[#070d18] border border-slate-800 text-xs">
-                  <pre className="text-[11px] text-emerald-300 overflow-x-auto whitespace-pre-wrap font-mono">
-                    {JSON.stringify(crimeData, null, 2)}
-                  </pre>
-                </div>
+              <div className="space-y-3 max-h-[360px] overflow-y-auto">
+                {crimeData.total_agencies_reporting ? (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+                      <div className="p-2.5 rounded-xl bg-[#071324] border border-[#1e3a5f]">
+                        <div className="text-[10px] text-slate-400 font-mono">AGENCIES TRACKED</div>
+                        <div className="text-base font-extrabold text-[#38bdf8] font-mono">{crimeData.total_agencies_reporting}</div>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-[#071324] border border-[#1e3a5f]">
+                        <div className="text-[10px] text-slate-400 font-mono">NIBRS COMPLIANT</div>
+                        <div className="text-base font-extrabold text-[#34d399] font-mono">{crimeData.nibrs_compliant_agencies}</div>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-[#071324] border border-[#1e3a5f]">
+                        <div className="text-[10px] text-slate-400 font-mono">COMPLIANCE RATE</div>
+                        <div className="text-base font-extrabold text-[#38bdf8] font-mono">{crimeData.nibrs_compliance_rate}</div>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-[#071324] border border-[#1e3a5f]">
+                        <div className="text-[10px] text-slate-400 font-mono">COUNTIES MONITORED</div>
+                        <div className="text-base font-extrabold text-[#a7f3d0] font-mono">{crimeData.counties_tracked}</div>
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-[#070d18] border border-[#1e3a5f]/60 space-y-2">
+                      <div className="flex items-center justify-between text-[11px] pb-1 border-b border-slate-800">
+                        <span className="font-bold text-[#38bdf8] uppercase">State: {crimeData.state} Law Enforcement Agencies (FBI CDE)</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-400 border border-emerald-500/40">
+                          {crimeData.key_mode}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-300 font-sans leading-normal">
+                        Live FBI Law Enforcement reporting active across all 159 Georgia counties under NIBRS federal standards.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-3 rounded-xl bg-[#070d18] border border-slate-800 text-xs">
+                    <pre className="text-[11px] text-emerald-300 overflow-x-auto whitespace-pre-wrap font-mono">
+                      {JSON.stringify(crimeData, null, 2)}
+                    </pre>
+                  </div>
+                )}
               </div>
             ) : null}
           </div>
