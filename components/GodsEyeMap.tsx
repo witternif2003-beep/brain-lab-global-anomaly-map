@@ -177,60 +177,95 @@ export default function GodsEyeMap({
     const render = (time: number) => {
       ctx.clearRect(0, 0, width, height);
 
-      // Deep space gradient
-      const skyGrad = ctx.createLinearGradient(0, 0, 0, height * 0.55);
+      // Extract real-time camera perspective from MapLibre
+      const m = mapRef.current;
+      const currentBearing = m && typeof m.getBearing === 'function' ? m.getBearing() : 0;
+      const currentPitch = m && typeof m.getPitch === 'function' ? m.getPitch() : 60;
+      const currentCenter = m && typeof m.getCenter === 'function' ? m.getCenter() : { lng: -83.4, lat: 32.6 };
+
+      // Calculate celestial perspective shift based on camera motion
+      // Pan shift (wraparound horizontal offset matching earth rotation and map bearing)
+      const bearingOffset = (currentBearing / 360);
+      const panOffset = ((currentCenter.lng + 83.4) / 360) * 0.5;
+      const totalXShift = (bearingOffset + panOffset) % 1;
+
+      // Horizon cutoff: calculated dynamically from pitch so stars NEVER touch the map/globe surface
+      // At pitch 60, horizon is around 38% - 42% from top. Stars are strictly bounded to deep space above horizon.
+      const horizonRatio = Math.max(0.18, Math.min(0.46, (currentPitch / 85) * 0.44));
+      const horizonY = height * horizonRatio;
+
+      // Deep space celestial gradient: completely clear before touching earth horizon
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, horizonY);
       skyGrad.addColorStop(0, 'rgba(2, 6, 18, 0.95)');
-      skyGrad.addColorStop(0.6, 'rgba(4, 12, 30, 0.75)');
+      skyGrad.addColorStop(0.7, 'rgba(4, 12, 30, 0.7)');
       skyGrad.addColorStop(1, 'rgba(6, 16, 40, 0.0)');
       ctx.fillStyle = skyGrad;
-      ctx.fillRect(0, 0, width, height * 0.55);
+      ctx.fillRect(0, 0, width, horizonY);
 
-      // Draw constellation guide lines (subtle cyan/sky telemetry lines)
+      // Draw constellation guide lines with real-time motion transform
       ctx.lineWidth = 0.75;
-      ctx.strokeStyle = 'rgba(56, 189, 248, 0.18)';
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.22)';
       CONSTELLATIONS.forEach((points) => {
         ctx.beginPath();
         points.forEach((pt, idx) => {
-          const px = pt.x * width;
-          const py = pt.y * height;
-          if (idx === 0) ctx.moveTo(px, py);
-          else ctx.lineTo(px, py);
+          // Apply motion offset with wrap-around
+          let normX = (pt.x - totalXShift) % 1;
+          if (normX < 0) normX += 1;
+          const px = normX * width;
+          const py = pt.y * horizonY * 1.8; // Strictly bound above horizon
+
+          if (py < horizonY) {
+            if (idx === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+          }
         });
         ctx.stroke();
 
         // Star node points on constellation vertices
         points.forEach((pt) => {
-          const px = pt.x * width;
-          const py = pt.y * height;
-          ctx.beginPath();
-          ctx.arc(px, py, 2.2, 0, Math.PI * 2);
-          ctx.fillStyle = '#38bdf8';
-          ctx.shadowColor = '#38bdf8';
-          ctx.shadowBlur = 6;
-          ctx.fill();
-          ctx.shadowBlur = 0;
+          let normX = (pt.x - totalXShift) % 1;
+          if (normX < 0) normX += 1;
+          const px = normX * width;
+          const py = pt.y * horizonY * 1.8;
+
+          if (py < horizonY - 4) {
+            ctx.beginPath();
+            ctx.arc(px, py, 2.2, 0, Math.PI * 2);
+            ctx.fillStyle = '#38bdf8';
+            ctx.shadowColor = '#38bdf8';
+            ctx.shadowBlur = 6;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+          }
         });
       });
 
-      // Render twinkling stars
+      // Render twinkling stars with live astronomical motion
       STARS.forEach((star) => {
-        const px = star.x * width;
-        const py = star.y * height;
-        const alpha = Math.max(0.15, Math.min(1.0, star.baseAlpha + Math.sin(time * star.twinkleSpeed + star.twinklePhase) * 0.35));
+        let normX = (star.x - totalXShift) % 1;
+        if (normX < 0) normX += 1;
+        const px = normX * width;
+        const py = star.y * horizonY * 1.85;
 
-        ctx.beginPath();
-        ctx.arc(px, py, star.radius, 0, Math.PI * 2);
-        ctx.fillStyle = star.color;
-        ctx.globalAlpha = alpha;
-        if (alpha > 0.7) {
-          ctx.shadowColor = star.color;
-          ctx.shadowBlur = 4;
-        } else {
+        // Strict spatial guard: Stars never touch or overlap the terrestrial globe
+        if (py < horizonY - 2) {
+          const distanceFade = Math.max(0.1, (horizonY - py) / horizonY);
+          const alpha = Math.max(0.12, Math.min(1.0, (star.baseAlpha + Math.sin(time * star.twinkleSpeed + star.twinklePhase) * 0.35) * distanceFade));
+
+          ctx.beginPath();
+          ctx.arc(px, py, star.radius, 0, Math.PI * 2);
+          ctx.fillStyle = star.color;
+          ctx.globalAlpha = alpha;
+          if (alpha > 0.65) {
+            ctx.shadowColor = star.color;
+            ctx.shadowBlur = 4;
+          } else {
+            ctx.shadowBlur = 0;
+          }
+          ctx.fill();
+          ctx.globalAlpha = 1.0;
           ctx.shadowBlur = 0;
         }
-        ctx.fill();
-        ctx.globalAlpha = 1.0;
-        ctx.shadowBlur = 0;
       });
 
       animId = requestAnimationFrame(render);

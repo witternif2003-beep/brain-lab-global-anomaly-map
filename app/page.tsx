@@ -1,4 +1,5 @@
 "use client";
+import FbiDataSection from "../components/fbi/FbiDataSection";
 import React, { useState } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
@@ -369,6 +370,9 @@ export default function DashboardPage() {
         </div>
 
       </div>
+
+      {/* FBI Data Sources Section — Live Wanted & Crime Data Explorer + Restricted Tiles */}
+      <FbiDataSection />
 
       {/* Surface 1 Bottom Feeds: Continuous Georgia Anomaly Radar Streams */}
       <div className="glass-panel border border-white/10 rounded-2xl p-5 shadow-2xl space-y-4 font-mono">
