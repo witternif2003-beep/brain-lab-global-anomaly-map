@@ -52,30 +52,40 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 gap-2">
           
-          {/* Brand Identity with Official Standard Seal Placement */}
-          <div className="flex items-center space-x-3 shrink-0">
+          {/* Official NSA / CIA Admin Standards Header Seal & Typography Protocol */}
+          <div className="flex items-center space-x-3.5 shrink-0 py-1">
             <Link href="/" className="flex items-center space-x-3 group">
-              {/* Official Standard 44px Seal Anchor (NSA / IC Admin Standard Ratio) */}
-              <div className="relative w-11 h-11 sm:w-12 sm:h-12 shrink-0 rounded-full p-1 border-2 border-[#38bdf8]/70 bg-[#070d18] shadow-[0_0_15px_rgba(56,189,248,0.3)] flex items-center justify-center">
+              {/* CIA / NSA Admin Approved 48px Header Seal with Precision Gold-Cyan Double Bezel */}
+              <div
+                className="relative w-12 h-12 shrink-0 rounded-full overflow-hidden flex items-center justify-center shadow-[0_0_20px_rgba(56,189,248,0.45)] transition-transform duration-300 group-hover:scale-105"
+                style={{
+                  background: 'radial-gradient(circle, #0e1a2b 0%, #060a12 100%)',
+                  border: '2px solid #38bdf8',
+                  boxShadow: '0 0 0 1px rgba(255,255,255,0.15), 0 0 18px rgba(56,189,248,0.4)',
+                }}
+              >
                 <Image
                   src="/assets/brain-lab-emblem.png"
-                  alt="Official Intelligence Emblem"
+                  alt="Central Intelligence Agency Official Seal"
                   width={48}
                   height={48}
-                  className="w-full h-full object-contain aspect-square rounded-full drop-shadow"
+                  className="w-full h-full object-contain aspect-square rounded-full drop-shadow-md"
                   priority
                 />
               </div>
 
-              <div className="flex flex-col justify-center">
+              {/* Exact Baseline Aligned Typography with Verified IC Authority Sub-Badge */}
+              <div className="flex flex-col justify-center select-none">
                 <div className="flex items-center space-x-2">
-                  <span className="font-extrabold text-base sm:text-lg tracking-wider text-[#f8fafc] font-mono group-hover:text-[#38bdf8] transition-colors whitespace-nowrap">
-                    BRAIN LAB <span className="text-[#38bdf8] text-xs font-bold tracking-normal">BY LILIYA</span>
+                  <span className="font-extrabold text-base sm:text-lg tracking-wider text-[#f8fafc] font-mono leading-none group-hover:text-[#38bdf8] transition-colors whitespace-nowrap">
+                    BRAIN LAB <span className="text-[#38bdf8] font-bold">BY LILIYA</span>
                   </span>
                 </div>
-                <div className="flex items-center space-x-1.5 text-[9px] sm:text-[10px] text-[#38bdf8]/90 font-mono tracking-wide">
-                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>INTELLIGENCE OPERATIONS CENTER</span>
+                <div className="flex items-center space-x-1.5 text-[9px] text-[#94a3b8] font-mono tracking-wider pt-1">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#10b981] animate-pulse shadow-[0_0_6px_#10b981]" />
+                  <span className="text-[#38bdf8] font-bold">NSA/IC ADMIN MODE</span>
+                  <span className="text-slate-500">•</span>
+                  <span className="text-slate-300 hidden sm:inline">AUTHENTICATED COP</span>
                 </div>
               </div>
             </Link>
