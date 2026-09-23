@@ -37,6 +37,12 @@
   from { opacity: 0; }
 }
 
+/* Reset link styling globally to avoid default browser blue / purple visited colors */
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
 /* Kill native button chrome everywhere */
 button {
   appearance: none;
