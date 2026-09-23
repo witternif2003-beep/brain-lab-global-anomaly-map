@@ -1059,16 +1059,7 @@ export default function GodsEyeMap({
       <div className="lg:col-span-8 flex flex-col space-y-3">
         <div className="relative w-full h-[500px] sm:h-[580px] rounded-2xl overflow-hidden border border-[#28394e] bg-[#0f172a] shadow-2xl">
           <div ref={containerRef} className="absolute inset-0" />
-          <MapMenuOverlay
-            pitch={typeof pitch === 'number' && !isNaN(pitch) ? pitch : 60}
-            zoom={typeof zoom === 'number' && !isNaN(zoom) ? zoom : 6.0}
-            basemap={basemap}
-            activeFocus={activeFocus}
-            onToggle3D={toggle3D}
-            onSwitchBasemap={(l) => switchBasemap(l)}
-            onSelectState={(s) => handleFocusChange(s)}
-            mapRef={mapRef}
-          />
+          {/* MapMenuOverlay removed - Diagnostics integrated into bottom control matrix */}
           {/* Real-Time Outbound Person Telemetry Stream (GA -> Ally States) - Positioned safely below 3-row HUD without overlap */}
           <div className="absolute bottom-3 right-16 z-10 rounded-xl bg-[#090d16]/95 border border-[#38bdf8]/40 p-2.5 backdrop-blur shadow-2xl max-w-[340px] text-xs font-mono space-y-1.5 hidden md:block">
             <div className="flex items-center justify-between border-b border-slate-800 pb-1">
