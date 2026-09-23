@@ -960,6 +960,126 @@ export default function GodsEyeMap({
             </div>
           </div>
         </div>
+
+        {/* STANDALONE MAP MENU WIDGET DIRECTLY BENEATH THE MAP ITSELF */}
+        <div className="w-full flex items-center justify-between p-3.5 rounded-xl bg-slate-950/85 backdrop-blur-md border border-slate-800/80 shadow-2xl font-mono text-xs overflow-x-auto">
+          <div className="flex flex-col gap-2 w-full">
+            <div className="flex items-center justify-between border-b border-slate-800/60 pb-1.5">
+              <span className="text-[11px] font-bold text-sky-400 tracking-wider flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                GOD'S EYE STANDALONE COMMAND MATRIX // 3-ROW TACTICAL HUD
+              </span>
+              <span className="text-[10px] text-slate-500">
+                AIP-20 ANTI-HALLUCINATION HARDENING ACTIVE
+              </span>
+            </div>
+
+            {/* Row 1: Base Layers */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[10px] text-slate-500 uppercase tracking-wider w-16">Projection:</span>
+              <button
+                type="button"
+                onClick={toggle3D}
+                className={`px-3 py-1 rounded font-bold text-xs transition-all ${
+                  pitch <= 20
+                    ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-500/50 shadow-[0_0_10px_rgba(52,211,153,0.3)]'
+                    : 'bg-slate-900 text-slate-400 border border-slate-700/50 hover:bg-slate-800'
+                }`}
+              >
+                2D MERCATOR
+              </button>
+              <button
+                type="button"
+                onClick={() => switchBasemap('demotiles')}
+                className={`px-3 py-1 rounded font-bold text-xs transition-all ${
+                  basemap === 'demotiles'
+                    ? 'bg-cyan-950/60 text-cyan-400 border border-cyan-500/50 shadow-[0_0_10px_rgba(56,189,248,0.3)]'
+                    : 'bg-slate-900 text-slate-400 border border-slate-700/50 hover:bg-slate-800'
+                }`}
+              >
+                LIGHT VECTOR
+              </button>
+              <button
+                type="button"
+                onClick={() => switchBasemap('satellite')}
+                className={`px-3 py-1 rounded font-bold text-xs transition-all ${
+                  basemap === 'satellite'
+                    ? 'bg-cyan-950/60 text-cyan-400 border border-cyan-500/50 shadow-[0_0_10px_rgba(56,189,248,0.3)]'
+                    : 'bg-slate-900 text-slate-400 border border-slate-700/50 hover:bg-slate-800'
+                }`}
+              >
+                SATELLITE ORTHO
+              </button>
+              <button
+                type="button"
+                onClick={() => switchBasemap('terrain')}
+                className={`px-3 py-1 rounded font-bold text-xs transition-all ${
+                  basemap === 'terrain'
+                    ? 'bg-cyan-950/60 text-cyan-400 border border-cyan-500/50 shadow-[0_0_10px_rgba(56,189,248,0.3)]'
+                    : 'bg-slate-900 text-slate-400 border border-slate-700/50 hover:bg-slate-800'
+                }`}
+              >
+                3D TERRAIN DEM
+              </button>
+            </div>
+
+            {/* Row 2: Target & Primary Corridors */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[10px] text-slate-500 uppercase tracking-wider w-16">Primary:</span>
+              <button
+                type="button"
+                onClick={() => handleFocusChange('GA')}
+                className={`px-3 py-1 rounded font-bold text-xs transition-all ${
+                  activeFocus === 'GA'
+                    ? 'bg-red-950/60 text-rose-400 border border-rose-500/70 shadow-[0_0_12px_rgba(244,63,94,0.4)]'
+                    : 'bg-red-950/20 text-rose-400/80 border border-rose-900/40 hover:bg-red-900/40'
+                }`}
+              >
+                GA (Target Anchor)
+              </button>
+              {(['NC', 'TN', 'FL', 'SC', 'TX'] as const).map((st) => (
+                <button
+                  key={st}
+                  type="button"
+                  onClick={() => handleFocusChange(st)}
+                  className={`px-3 py-1 rounded font-bold text-xs transition-all ${
+                    activeFocus === st
+                      ? 'bg-sky-950/60 text-sky-300 border border-sky-400/70 shadow-[0_0_12px_rgba(56,189,248,0.4)]'
+                      : 'bg-slate-900 text-slate-400 border border-slate-700/50 hover:bg-slate-800'
+                  }`}
+                >
+                  {st}
+                </button>
+              ))}
+            </div>
+
+            {/* Row 3: Secondary Corridors & Viewport Telemetry */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[10px] text-slate-500 uppercase tracking-wider w-16">Secondary:</span>
+              {(['VA', 'AL'] as const).map((st) => (
+                <button
+                  key={st}
+                  type="button"
+                  onClick={() => handleFocusChange(st)}
+                  className={`px-3 py-1 rounded font-bold text-xs transition-all ${
+                    activeFocus === st
+                      ? 'bg-sky-950/60 text-sky-300 border border-sky-400/70 shadow-[0_0_12px_rgba(56,189,248,0.4)]'
+                      : 'bg-slate-900 text-slate-400 border border-slate-700/50 hover:bg-slate-800'
+                  }`}
+                >
+                  {st}
+                </button>
+              ))}
+              <div className="px-3 py-1 rounded bg-slate-900/90 text-emerald-400 border border-emerald-500/40 font-mono text-xs flex items-center gap-2 ml-auto">
+                <span>VIEWPORT:</span>
+                <span className="text-white font-bold">
+                  z{typeof zoom === 'number' && !isNaN(zoom) ? zoom.toFixed(1) : '6.0'} · p{typeof pitch === 'number' && !isNaN(pitch) ? pitch.toFixed(0) : '60'}°
+                </span>
+                <span className="text-slate-500">| WEBGL2 60FPS</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Side Inspector (4 Cols) */}
