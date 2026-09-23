@@ -8,12 +8,12 @@ import { Activity, AlertTriangle, ArrowRight, ShieldCheck, Zap, Globe, TrendingU
 import Link from "next/link";
 import RotatingHeroEmblem from "../components/RotatingHeroEmblem";
 
-// Dynamic load GodsEyeMap (God's Eye SIGINT Level Visualization) for SSR safety with WebGL/Canvas
-const GodsEyeMap = dynamic(() => import("../components/GodsEyeMap"), {
+// Dynamic load StateMap for SSR safety with WebGL/Canvas
+const StateMap = dynamic(() => import("../components/StateMap"), {
   ssr: false,
   loading: () => (
-    <div className="w-full h-[640px] glass-card border border-white/10 rounded-xl flex items-center justify-center font-mono text-xs text-[#38bdf8] animate-pulse">
-      INITIALIZING GOD'S EYE SATELLITE TELEMETRY & VECTOR TILES...
+    <div className="w-full h-[480px] glass-card border border-white/10 rounded-xl flex items-center justify-center font-mono text-xs text-[#94a3b8] animate-pulse">
+      INITIALIZING SATELLITE TELEMETRY & VECTOR TILES...
     </div>
   ),
 });
@@ -233,14 +233,14 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Interactive Vector Map (God's Eye SIGINT Visualization) */}
-          <div className="w-full min-h-[640px]">
-            <GodsEyeMap
+          {/* Interactive Vector Map */}
+          <div className="w-full h-[480px]">
+            <StateMap
               anomalies={GEORGIA_ANOMALIES}
               competitors={COMPETITOR_STATES}
               selectedState={selectedState}
               onSelectState={(code) => setSelectedState(code)}
-              onAnomalyClick={(anom) => setSelectedAnomaly(anom)}
+              onSelectAnomaly={(anom) => setSelectedAnomaly(anom)}
             />
           </div>
 
