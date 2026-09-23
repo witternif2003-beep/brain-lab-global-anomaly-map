@@ -12,7 +12,7 @@ import RotatingHeroEmblem from "../components/RotatingHeroEmblem";
 const StateMap = dynamic(() => import("../components/StateMap"), {
   ssr: false,
   loading: () => (
-    <div className="w-full h-[480px] glass-card border border-white/10 rounded-xl flex items-center justify-center font-mono text-xs text-[#94a3b8] animate-pulse">
+    <div className="w-full h-[65vh] min-h-[420px] glass-card border border-white/10 rounded-xl flex items-center justify-center font-mono text-xs text-[#38bdf8] animate-pulse">
       INITIALIZING SATELLITE TELEMETRY & VECTOR TILES...
     </div>
   ),
@@ -234,7 +234,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Interactive Vector Map */}
-          <div className="w-full h-[480px]">
+          <div className="w-full h-[65vh] min-h-[420px]">
             <StateMap
               anomalies={GEORGIA_ANOMALIES}
               competitors={COMPETITOR_STATES}

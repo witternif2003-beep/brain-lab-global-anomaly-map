@@ -629,19 +629,29 @@ export default function StateMap({
       console.error('[maplibre]', e?.error?.message ?? e);
     });
 
-    map.on('load', async () => {
+    const handleReady = async () => {
       try {
         if (typeof window !== 'undefined') {
           (window as any).__map = map;
-          console.log('[Map] maxZoom:', map.getMaxZoom(), 'minZoom:', map.getMinZoom());
         }
         await addMapLayers(map);
-        setReady(true);
       } catch (err) {
-        console.error('[Map] Layer initialization failed:', err);
-        try {
-          map.setStyle('https://demotiles.maplibre.org/style.json');
-        } catch {}
+        console.warn('[Map] Layer add non-fatal:', err);
+      } finally {
+        setReady(true);
+      }
+    };
+
+    map.on('load', handleReady);
+    map.on('style.load', () => {
+      try {
+        (map as any).setProjection?.({ type: 'globe' });
+      } catch {}
+      // In case load already fired or style.load is ready first
+      if (!map.loaded()) {
+        // will fire on load
+      } else {
+        handleReady();
       }
     });
 
@@ -886,8 +896,20 @@ export default function StateMap({
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-[480px] min-h-[380px] rounded-xl overflow-hidden border border-[#28394e] bg-[#0f172a] shadow-2xl"
+      className="relative w-full h-[65vh] min-h-[420px] rounded-xl overflow-hidden border border-[#28394e] bg-[#05070f] shadow-2xl"
+      style={{ minHeight: '420px', height: '65vh' }}
     >
+      {!ready && (
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-[#05070f]/95 text-center p-4">
+          <div className="w-6 h-6 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin mb-3" />
+          <span className="font-mono text-xs text-[#38bdf8] tracking-wider animate-pulse">
+            INITIALIZING SATELLITE TELEMETRY & VECTOR TILES...
+          </span>
+          <span className="font-mono text-[10px] text-slate-500 mt-1">
+            ESTABLISHING WEBGPU / MAPLIBRE ENGINE
+          </span>
+        </div>
+      )}
       <MapDebugOverlay mapRef={mapRef} />
       {/* Top Left Perspective & Telemetry Strip */}
       <div
