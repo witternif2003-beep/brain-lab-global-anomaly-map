@@ -28,85 +28,129 @@ export default function MapMenuOverlay({
 
   return (
     <>
-      {/* Diagnostics Pill - Top Right */}
+      {/* Diagnostics Pill - Top Right - Identical to IMG_6586.jpeg */}
       <MapDebugOverlay mapRef={mapRef} />
 
-      {/* Main 3-Row Matrix Menu - Top Left matching IMG_6586.jpeg */}
+      {/* Main 3-Row Matrix Menu - Top Left - Identical to IMG_6586.jpeg */}
       <div
-        className="absolute top-3 left-3 z-20 flex flex-col gap-1 p-2 rounded-lg bg-slate-950/80 backdrop-blur-md border border-slate-800/80 text-xs font-mono shadow-xl w-max pointer-events-auto"
+        className="absolute top-2 left-2 z-20 flex flex-col gap-1 p-1 rounded-md text-xs font-mono shadow-2xl pointer-events-auto"
         style={{
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.7), inset 0 0 12px rgba(14, 165, 233, 0.08)',
+          background: 'rgba(8, 14, 26, 0.75)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+          border: '1px solid rgba(30, 41, 59, 0.65)',
         }}
       >
-        {/* Row 1: Base Layers */}
-        <div className="flex gap-1">
+        {/* ROW 1: 2D | LIGHT | SATELLITE | TERRAIN | vertical divider */}
+        <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={onToggle3D}
-            className={`px-3 py-1 rounded transition-colors font-bold ${
-              is2D
-                ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-800/50 hover:bg-emerald-900/60'
-                : 'bg-slate-800/40 text-slate-400 border border-slate-700/50 hover:bg-slate-700/60'
-            }`}
+            style={{
+              padding: '4px 10px',
+              fontSize: '11px',
+              fontWeight: 700,
+              borderRadius: '6px',
+              color: '#34d399',
+              background: 'rgba(6, 44, 32, 0.55)',
+              border: '1px solid rgba(16, 185, 129, 0.35)',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              boxShadow: 'inset 0 0 8px rgba(16, 185, 129, 0.15)',
+            }}
           >
-            {is2D ? '2D' : '3D'}
+            2D
           </button>
           <button
             type="button"
             onClick={() => onSwitchBasemap('demotiles')}
-            className={`px-3 py-1 rounded transition-colors ${
-              basemap === 'demotiles'
-                ? 'bg-cyan-950/40 text-cyan-400 border border-cyan-800/50 hover:bg-cyan-900/60'
-                : 'bg-slate-800/40 text-slate-400 border border-slate-700/50 hover:bg-slate-700/60'
-            }`}
+            style={{
+              padding: '4px 10px',
+              fontSize: '11px',
+              fontWeight: 700,
+              borderRadius: '6px',
+              color: basemap === 'demotiles' ? '#38bdf8' : '#cbd5e1',
+              background: basemap === 'demotiles' ? 'rgba(14, 165, 233, 0.3)' : 'rgba(15, 23, 42, 0.6)',
+              border: basemap === 'demotiles' ? '1px solid rgba(56, 189, 248, 0.7)' : '1px solid rgba(51, 65, 85, 0.5)',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
           >
             LIGHT
           </button>
           <button
             type="button"
             onClick={() => onSwitchBasemap('satellite')}
-            className={`px-3 py-1 rounded transition-colors ${
-              basemap === 'satellite'
-                ? 'bg-cyan-950/40 text-cyan-400 border border-cyan-800/50 hover:bg-cyan-900/60 shadow-[0_0_12px_rgba(56,189,248,0.3)]'
-                : 'bg-slate-800/40 text-slate-400 border border-slate-700/50 hover:bg-slate-700/60'
-            }`}
+            style={{
+              padding: '4px 10px',
+              fontSize: '11px',
+              fontWeight: 700,
+              borderRadius: '6px',
+              color: '#38bdf8',
+              background: 'rgba(14, 75, 120, 0.55)',
+              border: '1px solid rgba(56, 189, 248, 0.75)',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              boxShadow: '0 0 10px rgba(56, 189, 248, 0.35), inset 0 0 8px rgba(56, 189, 248, 0.2)',
+            }}
           >
             SATELLITE
           </button>
           <button
             type="button"
             onClick={() => onSwitchBasemap('terrain')}
-            className={`px-3 py-1 rounded transition-colors ${
-              basemap === 'terrain'
-                ? 'bg-cyan-950/40 text-cyan-400 border border-cyan-800/50 hover:bg-cyan-900/60'
-                : 'bg-slate-800/40 text-slate-400 border border-slate-700/50 hover:bg-slate-700/60'
-            }`}
+            style={{
+              padding: '4px 10px',
+              fontSize: '11px',
+              fontWeight: 700,
+              borderRadius: '6px',
+              color: basemap === 'terrain' ? '#38bdf8' : '#cbd5e1',
+              background: basemap === 'terrain' ? 'rgba(14, 165, 233, 0.3)' : 'rgba(15, 23, 42, 0.6)',
+              border: basemap === 'terrain' ? '1px solid rgba(56, 189, 248, 0.7)' : '1px solid rgba(51, 65, 85, 0.5)',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
           >
             TERRAIN
           </button>
+          {/* Subtle vertical divider in row 1 matching photo */}
+          <div style={{ width: 1, height: 16, background: 'rgba(51, 65, 85, 0.6)', marginLeft: 2 }} />
         </div>
 
-        {/* Row 2: State Filters (Target & Neighbors) */}
-        <div className="flex gap-1">
+        {/* ROW 2: GA (Target) | NC | TN | FL | SC | TX */}
+        <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={() => onSelectState('GA')}
-            className={`px-3 py-1 rounded transition-colors font-bold ${
-              activeFocus === 'GA'
-                ? 'bg-red-950/40 text-red-500 border border-red-800/50 hover:bg-red-900/60 shadow-[0_0_12px_rgba(239,68,68,0.4)]'
-                : 'bg-red-950/20 text-red-400/80 border border-red-900/40 hover:bg-red-900/40'
-            }`}
+            style={{
+              padding: '4px 10px',
+              fontSize: '11px',
+              fontWeight: 700,
+              borderRadius: '6px',
+              color: '#ef4444',
+              background: 'rgba(69, 10, 10, 0.35)',
+              border: '1px solid rgba(220, 38, 38, 0.45)',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
           >
             GA (Target)
           </button>
           <button
             type="button"
             onClick={() => onSelectState('NC')}
-            className={`px-3 py-1 rounded transition-colors ${
-              activeFocus === 'NC'
-                ? 'bg-blue-950/40 text-blue-400 border border-blue-800/50 hover:bg-blue-900/60 shadow-[0_0_12px_rgba(56,189,248,0.4)]'
-                : 'bg-slate-800/40 text-slate-400 border border-slate-700/50 hover:bg-slate-700/60'
-            }`}
+            style={{
+              padding: '4px 10px',
+              fontSize: '11px',
+              fontWeight: 700,
+              borderRadius: '6px',
+              color: '#38bdf8',
+              background: 'rgba(14, 75, 120, 0.55)',
+              border: '1px solid rgba(56, 189, 248, 0.75)',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              boxShadow: '0 0 10px rgba(56, 189, 248, 0.35)',
+            }}
           >
             NC
           </button>
@@ -115,34 +159,58 @@ export default function MapMenuOverlay({
               key={st}
               type="button"
               onClick={() => onSelectState(st)}
-              className={`px-3 py-1 rounded transition-colors ${
-                activeFocus === st
-                  ? 'bg-blue-950/40 text-blue-400 border border-blue-800/50 hover:bg-blue-900/60 shadow-[0_0_12px_rgba(56,189,248,0.4)]'
-                  : 'bg-slate-800/40 text-slate-400 border border-slate-700/50 hover:bg-slate-700/60'
-              }`}
+              style={{
+                padding: '4px 10px',
+                fontSize: '11px',
+                fontWeight: 700,
+                borderRadius: '6px',
+                color: activeFocus === st ? '#38bdf8' : '#cbd5e1',
+                background: activeFocus === st ? 'rgba(14, 75, 120, 0.55)' : 'rgba(15, 23, 42, 0.6)',
+                border: activeFocus === st ? '1px solid rgba(56, 189, 248, 0.75)' : '1px solid rgba(51, 65, 85, 0.5)',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+              }}
             >
               {st}
             </button>
           ))}
         </div>
 
-        {/* Row 3: Secondary Filters & Telemetry */}
-        <div className="flex gap-1 items-center">
+        {/* ROW 3: VA | AL | divider | z6.0 · p60° */}
+        <div className="flex items-center gap-1">
           {(['VA', 'AL'] as const).map((st) => (
             <button
               key={st}
               type="button"
               onClick={() => onSelectState(st)}
-              className={`px-3 py-1 rounded transition-colors ${
-                activeFocus === st
-                  ? 'bg-blue-950/40 text-blue-400 border border-blue-800/50 hover:bg-blue-900/60 shadow-[0_0_12px_rgba(56,189,248,0.4)]'
-                  : 'bg-slate-800/40 text-slate-400 border border-slate-700/50 hover:bg-slate-700/60'
-              }`}
+              style={{
+                padding: '4px 10px',
+                fontSize: '11px',
+                fontWeight: 700,
+                borderRadius: '6px',
+                color: activeFocus === st ? '#38bdf8' : '#cbd5e1',
+                background: activeFocus === st ? 'rgba(14, 75, 120, 0.55)' : 'rgba(15, 23, 42, 0.6)',
+                border: activeFocus === st ? '1px solid rgba(56, 189, 248, 0.75)' : '1px solid rgba(51, 65, 85, 0.5)',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+              }}
             >
               {st}
             </button>
           ))}
-          <div className="px-3 py-1 rounded bg-slate-900/60 text-slate-400 border border-slate-800/50 ml-1 text-[11px] font-mono whitespace-nowrap">
+          <div style={{ width: 1, height: 16, background: 'rgba(51, 65, 85, 0.6)', margin: '0 2px' }} />
+          <div
+            style={{
+              padding: '3px 8px',
+              fontSize: '11px',
+              fontFamily: 'monospace',
+              color: '#94a3b8',
+              background: 'rgba(15, 23, 42, 0.6)',
+              border: '1px solid rgba(51, 65, 85, 0.5)',
+              borderRadius: '6px',
+              whiteSpace: 'nowrap',
+            }}
+          >
             z{typeof zoom === 'number' && !isNaN(zoom) ? zoom.toFixed(1) : '6.0'} · p{typeof pitch === 'number' && !isNaN(pitch) ? pitch.toFixed(0) : '60'}°
           </div>
         </div>
