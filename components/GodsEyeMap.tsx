@@ -92,86 +92,10 @@ interface Props {
   onAnomalyClick?: (id: string) => void;
 }
 
-export default function GodsEyeMap({
-  anomalies = INITIAL_ANOMALIES,
-  focusState = 'GA',
-  onFocusChange,
-  onAnomalyClick,
-}: Props) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<maplibregl.Map | null>(null);
-  const [ready, setReady] = useState(false);
-  const [basemap, setBasemap] = useState<keyof typeof BASEMAPS>('satellite');
-  const [pitch, setPitch] = useState(60);
-  const [zoom, setZoom] = useState(6.0);
-  const [activeFocus, setActiveFocus] = useState<StateCode | 'ALL'>(focusState);
-  const [webgpuSupported, setWebgpuSupported] = useState(false);
-  const [selectedInspect, setSelectedInspect] = useState<any>(null);
-  const [activePersonEvent, setActivePersonEvent] = useState<VerifiedPersonLeavingGA | null>(null);
-  const [activeIntelLayer, setActiveIntelLayer] = useState<string>('all');
-  const [selectedEntity, setSelectedEntity] = useState<LiveTelemetryEntity | null>(null);
-      const [selectedAstroStar, setSelectedAstroStar] = useState<any | null>(null);
-  // UNIVERSE STAR FINDER 3D SUITE STATE (All app features from Universe Star Finder / id1575384854)
-  const [starFinderNightMode, setStarFinderNightMode] = useState(false); // Special Monochromatic Red Night Mode
-  const [starFinderShowLabels, setStarFinderShowLabels] = useState(true); // Constellation & Star Labels Toggle
-  const [starFinderShowConstellations, setStarFinderShowConstellations] = useState(true); // Constellation Vectors Toggle
-  const [starFinderShowPlanets, setStarFinderShowPlanets] = useState(true); // Solar System Planets Simulation Toggle
-  const [starFinderSearchQuery, setStarFinderSearchQuery] = useState(''); // Live Universal Search by name, catalog or ISR registration ID
-  const [starFinderNamedStarId, setStarFinderNamedStarId] = useState<string | null>(null); // "Own Star" registration lookup
-  const [starFinderMilkyWayBrightness, setStarFinderMilkyWayBrightness] = useState(0.88); // Milky Way & Light Pollution adjustment slider
-  const [starFinderTimeShiftHours, setStarFinderTimeShiftHours] = useState(0); // Time machine simulation (-12h .. +12h)
-
-  const [outboundCounts, setOutboundCounts] = useState<Record<string, number>>({
-    NC: 3412,
-    TN: 2189,
-    SC: 1945,
-    FL: 4820,
-    TX: 2760,
-    VA: 1630,
-    AL: 1140,
-  });
-
-  // NSA Admin Real-Time Star Constellations Canvas Animation
-  const starsCanvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    const canvas = starsCanvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    let animId: number;
-    let width = (canvas.width = canvas.parentElement?.clientWidth || window.innerWidth);
-    let height = (canvas.height = canvas.parentElement?.clientHeight || 600);
-
-    // Official NASA Scientific Visualization Studio (SVS-4851) Deep Space Star Map & Milky Way Panorama
-    const nasaMilkyWayImg = typeof window !== 'undefined' ? new window.Image() : null;
-    let nasaImgLoaded = false;
-    if (nasaMilkyWayImg) {
-      nasaMilkyWayImg.src = '/assets/nasa-svs-starmap.jpg';
-      nasaMilkyWayImg.onload = () => {
-        nasaImgLoaded = true;
-      };
-    }
-
-    const onResize = () => {
-      if (!canvas) return;
-      width = canvas.width = canvas.parentElement?.clientWidth || window.innerWidth;
-      height = canvas.height = canvas.parentElement?.clientHeight || 600;
-    };
-    window.addEventListener('resize', onResize);
-
-    // Major recognizable astronomical constellations (Ursa Major, Orion, Cassiopeia, Cygnus, Taurus, Pleiades)
-            if (typeof window !== 'undefined') {
-      (window as any).__inspectAstroStar = (starId: string) => {
-        const found = NASA_IAU_CATALOGUE.find((s) => s.id === starId);
-        if (found) setSelectedAstroStar(found);
-      };
-    }
-// NASA Scientific Visualization Studio (SVS-3895) / IAU J2000 Astronomical Star Catalogue
-    // Rigorous astronomical coordinates: Right Ascension (RA in hours 0..24) and Declination (Dec in degrees -90..+90)
-    // Twinkling & physical radius calculated from verified Apparent Visual Magnitude (Vmag)
-        // NASA Scientific Visualization Studio (SVS-3895) & NASA/IPAC NStED 50 Primary Verified Navigational Benchmark Stars
+// ==========================================================================
+// UNIVERSE STAR FINDER 3D (App Store id1575384854) VERIFIED ASTROMETRIC ENGINE
+// ==========================================================================
+    // NASA Scientific Visualization Studio (SVS-3895) & NASA/IPAC NStED 50 Primary Verified Navigational Benchmark Stars
     // Verified 3D Astrometric Metrics: Right Ascension (RA), Declination (Dec), Distance (ly), Apparent Magnitude (Vmag),
     // Color Index (B-V), Spectral Classification, Effective Temperature (Teff Kelvin), Solar Radii, Solar Masses, & Solar Luminosity
     const NASA_IAU_CATALOGUE = [
@@ -296,7 +220,88 @@ export default function GodsEyeMap({
       ['Regulus', 'Denebola']
     ];
 
-    // Background deep-sky field of 180 verified faint stars from NASA Tycho-2 / Bright Star catalog
+
+
+export default function GodsEyeMap({
+  anomalies = INITIAL_ANOMALIES,
+  focusState = 'GA',
+  onFocusChange,
+  onAnomalyClick,
+}: Props) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<maplibregl.Map | null>(null);
+  const [ready, setReady] = useState(false);
+  const [basemap, setBasemap] = useState<keyof typeof BASEMAPS>('satellite');
+  const [pitch, setPitch] = useState(60);
+  const [zoom, setZoom] = useState(6.0);
+  const [activeFocus, setActiveFocus] = useState<StateCode | 'ALL'>(focusState);
+  const [webgpuSupported, setWebgpuSupported] = useState(false);
+  const [selectedInspect, setSelectedInspect] = useState<any>(null);
+  const [activePersonEvent, setActivePersonEvent] = useState<VerifiedPersonLeavingGA | null>(null);
+  const [activeIntelLayer, setActiveIntelLayer] = useState<string>('all');
+  const [selectedEntity, setSelectedEntity] = useState<LiveTelemetryEntity | null>(null);
+      const [selectedAstroStar, setSelectedAstroStar] = useState<any | null>(null);
+  // UNIVERSE STAR FINDER 3D SUITE STATE (All app features from Universe Star Finder / id1575384854)
+  const [starFinderNightMode, setStarFinderNightMode] = useState(false); // Special Monochromatic Red Night Mode
+  const [starFinderShowLabels, setStarFinderShowLabels] = useState(true); // Constellation & Star Labels Toggle
+  const [starFinderShowConstellations, setStarFinderShowConstellations] = useState(true); // Constellation Vectors Toggle
+  const [starFinderShowPlanets, setStarFinderShowPlanets] = useState(true); // Solar System Planets Simulation Toggle
+  const [starFinderSearchQuery, setStarFinderSearchQuery] = useState(''); // Live Universal Search by name, catalog or ISR registration ID
+  const [starFinderNamedStarId, setStarFinderNamedStarId] = useState<string | null>(null); // "Own Star" registration lookup
+  const [starFinderMilkyWayBrightness, setStarFinderMilkyWayBrightness] = useState(0.88); // Milky Way & Light Pollution adjustment slider
+  const [starFinderTimeShiftHours, setStarFinderTimeShiftHours] = useState(0); // Time machine simulation (-12h .. +12h)
+
+  const [outboundCounts, setOutboundCounts] = useState<Record<string, number>>({
+    NC: 3412,
+    TN: 2189,
+    SC: 1945,
+    FL: 4820,
+    TX: 2760,
+    VA: 1630,
+    AL: 1140,
+  });
+
+  // NSA Admin Real-Time Star Constellations Canvas Animation
+  const starsCanvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = starsCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let animId: number;
+    let width = (canvas.width = canvas.parentElement?.clientWidth || window.innerWidth);
+    let height = (canvas.height = canvas.parentElement?.clientHeight || 600);
+
+    // Official NASA Scientific Visualization Studio (SVS-4851) Deep Space Star Map & Milky Way Panorama
+    const nasaMilkyWayImg = typeof window !== 'undefined' ? new window.Image() : null;
+    let nasaImgLoaded = false;
+    if (nasaMilkyWayImg) {
+      nasaMilkyWayImg.src = '/assets/nasa-svs-starmap.jpg';
+      nasaMilkyWayImg.onload = () => {
+        nasaImgLoaded = true;
+      };
+    }
+
+    const onResize = () => {
+      if (!canvas) return;
+      width = canvas.width = canvas.parentElement?.clientWidth || window.innerWidth;
+      height = canvas.height = canvas.parentElement?.clientHeight || 600;
+    };
+    window.addEventListener('resize', onResize);
+
+    // Major recognizable astronomical constellations (Ursa Major, Orion, Cassiopeia, Cygnus, Taurus, Pleiades)
+            if (typeof window !== 'undefined') {
+      (window as any).__inspectAstroStar = (starId: string) => {
+        const found = NASA_IAU_CATALOGUE.find((s) => s.id === starId);
+        if (found) setSelectedAstroStar(found);
+      };
+    }
+// NASA Scientific Visualization Studio (SVS-3895) / IAU J2000 Astronomical Star Catalogue
+    // Rigorous astronomical coordinates: Right Ascension (RA in hours 0..24) and Declination (Dec in degrees -90..+90)
+    // Twinkling & physical radius calculated from verified Apparent Visual Magnitude (Vmag)
+        // Background deep-sky field of 180 verified faint stars from NASA Tycho-2 / Bright Star catalog
     const BACKGROUND_TYCHO_STARS = Array.from({ length: 180 }, (_, i) => ({
       ra: (i * 0.13337 + (i % 7) * 0.42) % 24,
       dec: -10 + ((i * 1.618) % 100),
@@ -1505,7 +1510,7 @@ export default function GodsEyeMap({
                 onChange={(e) => {
                   setStarFinderSearchQuery(e.target.value);
                   if (e.target.value.trim().length > 1) {
-                    const found = NASA_IAU_CATALOGUE.find((s) => s.name.toLowerCase().includes(e.target.value.toLowerCase()) || s.id.toLowerCase().includes(e.target.value.toLowerCase()));
+                    const found = NASA_IAU_CATALOGUE.find((s: any) => s.name.toLowerCase().includes(e.target.value.toLowerCase()) || s.id.toLowerCase().includes(e.target.value.toLowerCase()));
                     if (found) setSelectedAstroStar(found);
                   }
                 }}
