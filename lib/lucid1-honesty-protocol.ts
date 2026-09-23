@@ -27,7 +27,7 @@ export interface ProvenanceTensor {
 export interface GroundTruthedEntityMigration {
   trackingId: string;
   sourceJurisdiction: 'GA';
-  destinationJurisdiction: 'NC' | 'FL' | 'TX' | 'TN' | 'SC' | 'AL' | 'OH';
+  destinationJurisdiction: 'NC' | 'FL' | 'TX' | 'TN' | 'SC' | 'AL' | 'VA';
   sourceCoordinates: [number, number];
   destinationCoordinates: [number, number];
   provenanceTensor: ProvenanceTensor;
@@ -59,4 +59,6 @@ export const ORACLE_SYNAPSE_SUPER_TIER = {
   zeroDriftAttestation: 'VERIFIED_LFSR_UTC_CLOCK_SYNCHRONIZED',
   reconciliationRateHz: 4.0,
   activeEnclave: 'NSA_ADMIN_SUPER_SUPERVISOR_LEVEL_1',
+  lastVerifiedEpoch: Date.now(),
+  pipelineAttestationCommit: 'LUCID1-PROD-EDGE-AIP20',
 };
