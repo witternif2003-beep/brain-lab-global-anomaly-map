@@ -106,12 +106,14 @@ export default function FbiDataSection() {
   const [crimeFrom, setCrimeFrom] = useState<string>('01-2023');
   const [crimeTo, setCrimeTo] = useState<string>('12-2023');
 
-  // Autonomous Real-Time Stream Engine: Continuously populates and rotates live FBI investigations every 4 seconds
+  // NSA Admin Autonomous Real-Time Stream Engine:
+  // Jitter-free background polling with smooth in-place rotation and seamless multi-page ingestion
   useEffect(() => {
     let cancelled = false;
+    let currentPage = 1;
     let streamInterval: NodeJS.Timeout;
 
-    const pullLiveFeed = async (page: number) => {
+    const pullLiveFeed = async (page: number, isInitial: boolean = false) => {
       try {
         const query = new URLSearchParams();
         query.set('page', String(page));
@@ -129,52 +131,54 @@ export default function FbiDataSection() {
         if (!cancelled && data.items && data.items.length > 0) {
           setWantedItems((prev) => {
             const incoming = data.items;
-            // Build dynamic merged continuous feed: new items prepended with live rotation
             const existingUids = new Set(prev.map(i => i.uid));
             const freshItems = incoming.filter((i: any) => !existingUids.has(i.uid));
-            
-            // If all exist, cyclically rotate records to provide active live stream telemetry
+
+            // Smooth cycle: if no fresh items, rotate top-to-bottom without DOM collapse
             if (freshItems.length === 0 && prev.length > 0) {
-              const rotated = [...prev.slice(1), prev[0]];
-              return rotated;
+              return [...prev.slice(1), prev[0]];
             }
 
-            const combined = [...freshItems, ...prev];
-            return combined.slice(0, 40);
+            return [...freshItems, ...prev].slice(0, 50);
           });
           setWantedTotal(data.total ?? 0);
-          setWantedLoading(false);
+          setWantedError(null);
           setLastLivePulse(new Date().toLocaleTimeString());
           setStreamTick((t) => t + 1);
         }
       } catch (err: any) {
-        if (!cancelled) {
+        if (!cancelled && isInitial) {
           setWantedError(err.message || 'Failed to fetch FBI Wanted data');
+        }
+      } finally {
+        if (!cancelled && isInitial) {
           setWantedLoading(false);
         }
       }
     };
 
+    // Initial load displays loading indicator once
     setWantedLoading(true);
-    pullLiveFeed(wantedPage);
+    pullLiveFeed(1, true);
 
-    // Continuous auto-population cadence: polls & rotates every 4 seconds
+    // Continuous real-time rotation every 3.5 seconds in background WITHOUT toggling loading indicator
     streamInterval = setInterval(() => {
-      setWantedPage((prev) => (prev >= 6 ? 1 : prev + 1));
-    }, 4000);
+      currentPage = currentPage >= 6 ? 1 : currentPage + 1;
+      pullLiveFeed(currentPage, false);
+    }, 3500);
 
     return () => {
       cancelled = true;
       clearInterval(streamInterval);
     };
-  }, [wantedCategory, wantedPage]);
+  }, [wantedCategory]);
 
-  // Continuous live stream for FBI CDE incident telemetry & agency audit
+  // Continuous jitter-free background verification for FBI CDE incident telemetry & agency audit
   useEffect(() => {
     let cancelled = false;
     let crimeTimer: NodeJS.Timeout;
 
-    const fetchLiveCrime = async () => {
+    const fetchLiveCrime = async (isInitial: boolean = false) => {
       try {
         const query = new URLSearchParams({
           level: crimeLevel,
@@ -196,21 +200,26 @@ export default function FbiDataSection() {
         const data = await res.json();
         if (!cancelled) {
           setCrimeData(data);
-          setCrimeLoading(false);
+          setCrimeError(null);
         }
       } catch (err: any) {
-        if (!cancelled) {
+        if (!cancelled && isInitial) {
           setCrimeError(err.message || 'Failed to fetch FBI Crime data');
+        }
+      } finally {
+        if (!cancelled && isInitial) {
           setCrimeLoading(false);
         }
       }
     };
 
     setCrimeLoading(true);
-    fetchLiveCrime();
+    fetchLiveCrime(true);
 
-    // Auto-refresh CDE agency telemetry every 10 seconds
-    crimeTimer = setInterval(fetchLiveCrime, 10000);
+    // Auto-refresh CDE agency telemetry every 10 seconds in background without UI collapse
+    crimeTimer = setInterval(() => {
+      fetchLiveCrime(false);
+    }, 10000);
 
     return () => {
       cancelled = true;

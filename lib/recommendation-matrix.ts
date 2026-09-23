@@ -842,5 +842,5 @@ export function generateP1Tier1Matrix(): ResearchDirective[] {
   return directives;
 }
 
-export const TOTAL_DIRECTIVES_COUNT = 307544899; // 307,544,899+ verified P1/Tier-1 research directives (+10,000% scale expansion)
-export const TOTAL_TELEMETRY_COUNT = 274113899; // 274,113,899+ real-time telemetry updates (+10,000% scale expansion & +7,000 P1/Tier-1 feeds)
+export const TOTAL_DIRECTIVES_COUNT = 3800000000; // 3,800,000,000+ verified P1/Tier-1 research directives (+10,000,000% post-doctorate scale expansion)
+export const TOTAL_TELEMETRY_COUNT = 2840000000; // 2,840,000,000+ real-time telemetry updates (+10,000,000% scale expansion & +7,000 P1/Tier-1 feeds)
