@@ -55,13 +55,22 @@ export default function Navbar() {
           {/* Official NSA / CIA Admin Standards Header Seal & Typography Protocol */}
           <div className="flex items-center space-x-3.5 shrink-0 py-1">
             <Link href="/" className="flex items-center space-x-3 group">
-              {/* CIA / NSA Admin Approved 48px Header Seal with Precision Gold-Cyan Double Bezel */}
+              {/* NSA / CIA Admin Approved Perfect Circular Header Seal (Locked 1:1 Aspect Ratio) */}
               <div
-                className="relative w-12 h-12 shrink-0 rounded-full overflow-hidden flex items-center justify-center shadow-[0_0_20px_rgba(56,189,248,0.45)] transition-transform duration-300 group-hover:scale-105"
+                className="relative shrink-0 rounded-full overflow-hidden flex items-center justify-center shadow-[0_0_22px_rgba(56,189,248,0.5)] transition-transform duration-300 group-hover:scale-105"
                 style={{
+                  width: '48px',
+                  height: '48px',
+                  minWidth: '48px',
+                  minHeight: '48px',
+                  maxWidth: '48px',
+                  maxHeight: '48px',
+                  aspectRatio: '1 / 1',
+                  borderRadius: '50%',
                   background: 'radial-gradient(circle, #0e1a2b 0%, #060a12 100%)',
                   border: '2px solid #38bdf8',
                   boxShadow: '0 0 0 1px rgba(255,255,255,0.15), 0 0 18px rgba(56,189,248,0.4)',
+                  flexShrink: 0,
                 }}
               >
                 <Image
@@ -69,7 +78,15 @@ export default function Navbar() {
                   alt="Central Intelligence Agency Official Seal"
                   width={48}
                   height={48}
-                  className="w-full h-full object-contain aspect-square rounded-full drop-shadow-md"
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    aspectRatio: '1 / 1',
+                    borderRadius: '50%',
+                    display: 'block',
+                  }}
+                  className="rounded-full drop-shadow-md"
                   priority
                 />
               </div>

@@ -49,13 +49,34 @@ export default function DashboardPage() {
           
           {/* Official IC / NSA Admin Approved Primary Header Seal (Standardized 64px Anchor & Elevation) */}
           <div className="flex items-center space-x-4 mb-2 p-2 rounded-2xl glass-panel border border-[#38bdf8]/50 shadow-[0_0_25px_rgba(56,189,248,0.35)]">
-            <div className="relative w-14 h-14 sm:w-16 sm:h-16 shrink-0 rounded-full p-1 bg-[#070d18] border-2 border-[#38bdf8] shadow-lg flex items-center justify-center">
+            <div
+              className="relative shrink-0 rounded-full p-1 bg-[#070d18] border-2 border-[#38bdf8] shadow-lg flex items-center justify-center overflow-hidden"
+              style={{
+                width: '64px',
+                height: '64px',
+                minWidth: '64px',
+                minHeight: '64px',
+                maxWidth: '64px',
+                maxHeight: '64px',
+                aspectRatio: '1 / 1',
+                borderRadius: '50%',
+                flexShrink: 0,
+              }}
+            >
               <Image
                 src="/assets/brain-lab-emblem.png"
                 alt="Official Brain Lab Intelligence Seal"
                 width={64}
                 height={64}
-                className="w-full h-full object-contain aspect-square rounded-full drop-shadow"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  aspectRatio: '1 / 1',
+                  borderRadius: '50%',
+                  display: 'block',
+                }}
+                className="rounded-full drop-shadow"
                 priority
               />
             </div>
