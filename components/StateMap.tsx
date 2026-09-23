@@ -880,14 +880,14 @@ export default function StateMap({
       className="relative w-full h-[480px] min-h-[380px] rounded-xl overflow-hidden border border-[#28394e] bg-[#0f172a] shadow-2xl"
     >
       <MapDebugOverlay mapRef={mapRef} />
-      {/* 3D / Perspective HUD Toggle Button — glass style */}
+      {/* Top Left Perspective & Telemetry Strip */}
       <div
-        className="absolute top-3 right-3 z-10 flex flex-col items-end gap-1 p-1 rounded-lg"
+        className="absolute top-3 left-3 z-10 flex items-center gap-2 p-1.5 rounded-lg"
         style={{
-          background: 'rgba(15, 23, 42, 0.35)',
+          background: 'rgba(8, 14, 26, 0.85)',
           backdropFilter: 'blur(12px)',
           WebkitBackdropFilter: 'blur(12px)',
-          border: '1px solid rgba(148, 163, 184, 0.15)',
+          border: '1px solid rgba(148, 163, 184, 0.2)',
         }}
       >
         <button
@@ -897,20 +897,20 @@ export default function StateMap({
             WebkitAppearance: 'none',
             padding: '4px 10px',
             fontSize: '10px',
-            fontWeight: 600,
+            fontWeight: 700,
             letterSpacing: '0.05em',
-            color: '#34d399',
-            background: 'transparent',
-            border: '1px solid rgba(52, 211, 153, 0.3)',
+            color: pitch <= 20 ? '#34d399' : '#cbd5e1',
+            background: pitch <= 20 ? 'rgba(16, 185, 129, 0.2)' : 'transparent',
+            border: pitch <= 20 ? '1px solid rgba(52, 211, 153, 0.6)' : '1px solid rgba(148, 163, 184, 0.3)',
             borderRadius: '6px',
             cursor: 'pointer',
             whiteSpace: 'nowrap',
           }}
         >
-          {pitch > 20 ? '2D MERCATOR' : '3D GLOBE / TERRAIN'}
+          {pitch > 20 ? '3D' : '2D'}
         </button>
-        <div style={{ fontSize: '9px', fontFamily: 'monospace', color: '#94a3b8', padding: '2px 6px' }}>
-          z{mapRef.current && typeof zoom === 'number' && !isNaN(zoom) ? zoom.toFixed(1) : '--'} · p{typeof pitch === 'number' && !isNaN(pitch) ? pitch.toFixed(0) : '0'}° · WEBGL2
+        <div style={{ fontSize: '10px', fontFamily: 'monospace', color: '#94a3b8', padding: '2px 6px' }}>
+          z{mapRef.current && typeof zoom === 'number' && !isNaN(zoom) ? zoom.toFixed(1) : '5.7'} · p{typeof pitch === 'number' && !isNaN(pitch) ? pitch.toFixed(0) : '55'}° · WEBGL2
         </div>
       </div>
 

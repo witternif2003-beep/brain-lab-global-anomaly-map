@@ -59,23 +59,23 @@ export default function MapDebugOverlay({ mapRef }: { mapRef: React.MutableRefOb
         fontFamily: 'monospace',
       }}
     >
-      {/* NSA ADMIN / ORACLE-SYNAPSE Modernized Dropdown Toggle */}
+      {/* Exact Pill from IMG_6586.jpeg: ● DIAGNOSTICS ▼ */}
       <button
         type="button"
         onClick={() => setIsOpen(prev => !prev)}
         style={{
           appearance: 'none',
           WebkitAppearance: 'none',
-          background: 'rgba(8, 14, 26, 0.92)',
-          border: '1px solid rgba(14, 165, 233, 0.45)',
+          background: 'rgba(8, 20, 28, 0.92)',
+          border: '1px solid rgba(16, 185, 129, 0.45)',
           borderRadius: 8,
-          padding: '6px 12px',
-          color: '#38bdf8',
-          fontSize: 10,
+          padding: '6px 14px',
+          color: '#34d399',
+          fontSize: 11,
           fontWeight: 700,
           letterSpacing: '0.08em',
           cursor: 'pointer',
-          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.6), inset 0 0 10px rgba(14, 165, 233, 0.12)',
+          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.6), inset 0 0 10px rgba(16, 185, 129, 0.15)',
           display: 'flex',
           alignItems: 'center',
           gap: 8,
@@ -84,12 +84,12 @@ export default function MapDebugOverlay({ mapRef }: { mapRef: React.MutableRefOb
           transition: 'all 0.2s ease',
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.borderColor = 'rgba(56, 189, 248, 0.8)';
-          e.currentTarget.style.boxShadow = '0 0 12px rgba(56, 189, 248, 0.4)';
+          e.currentTarget.style.borderColor = 'rgba(52, 211, 153, 0.85)';
+          e.currentTarget.style.boxShadow = '0 0 14px rgba(52, 211, 153, 0.45)';
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.borderColor = 'rgba(14, 165, 233, 0.45)';
-          e.currentTarget.style.boxShadow = '0 4px 16px rgba(0, 0, 0, 0.6), inset 0 0 10px rgba(14, 165, 233, 0.12)';
+          e.currentTarget.style.borderColor = 'rgba(16, 185, 129, 0.45)';
+          e.currentTarget.style.boxShadow = '0 4px 16px rgba(0, 0, 0, 0.6), inset 0 0 10px rgba(16, 185, 129, 0.15)';
         }}
       >
         <span
@@ -98,21 +98,21 @@ export default function MapDebugOverlay({ mapRef }: { mapRef: React.MutableRefOb
             width: 7,
             height: 7,
             borderRadius: '50%',
-            background: '#10b981',
-            boxShadow: '0 0 8px #10b981',
+            background: '#34d399',
+            boxShadow: '0 0 8px #34d399',
           }}
         />
-        <span>NSA ORACLE // DIAGNOSTICS</span>
-        <span style={{ color: '#0ea5e9', fontSize: 9 }}>{isOpen ? '▲' : '▼'}</span>
+        <span>DIAGNOSTICS</span>
+        <span style={{ color: '#34d399', fontSize: 10 }}>{isOpen ? '▲' : '▼'}</span>
       </button>
 
-      {/* Modernized Full-Spectrum HUD Panel */}
+      {/* NSA Admin Level Forensic HUD Menu */}
       {isOpen && (
         <div
           style={{
             marginTop: 8,
-            background: 'rgba(4, 9, 20, 0.96)',
-            border: '1px solid rgba(14, 165, 233, 0.4)',
+            background: 'rgba(4, 10, 22, 0.96)',
+            border: '1px solid rgba(14, 165, 233, 0.45)',
             borderRadius: 10,
             padding: '12px 14px',
             fontSize: 11,
@@ -137,7 +137,7 @@ export default function MapDebugOverlay({ mapRef }: { mapRef: React.MutableRefOb
           >
             <div>
               <div style={{ fontWeight: 800, color: '#38bdf8', fontSize: 11, letterSpacing: '0.05em' }}>
-                LUCID-1 / AIP-20 SYNAPSE
+                NSA ORACLE-SYNAPSE // DIAGNOSTICS
               </div>
               <div style={{ fontSize: 9, color: '#64748b' }}>
                 CLASSIFICATION: TOP SECRET // SI // NOFORN
@@ -154,7 +154,7 @@ export default function MapDebugOverlay({ mapRef }: { mapRef: React.MutableRefOb
                 border: '1px solid rgba(16, 185, 129, 0.3)',
               }}
             >
-              HONESTY PROTOCOL ACTIVE
+              HONESTY ACTIVE
             </div>
           </div>
 
