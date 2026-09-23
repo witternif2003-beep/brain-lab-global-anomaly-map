@@ -450,10 +450,61 @@ export default function FbiDataSection() {
                     </div>
                   </div>
                 ) : (
-                  <div className="p-3 rounded-xl bg-[#070d18] border border-slate-800 text-xs">
-                    <pre className="text-[11px] text-emerald-300 overflow-x-auto whitespace-pre-wrap font-mono">
-                      {JSON.stringify(crimeData, null, 2)}
-                    </pre>
+                  <div className="space-y-3">
+                    {/* Render Real Offense Rates / Counts Table if returned by FBI CDE */}
+                    {crimeData.offenses && crimeData.offenses.rates ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-[11px] pb-1 border-b border-[#1e3a5f]/60">
+                          <span className="font-bold text-[#34d399] uppercase tracking-wide">
+                            OFFENSE RATES PER 100K RESIDENTS (FBI CDE LIVE)
+                          </span>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-400 border border-emerald-500/40">
+                            {crimeData.key_mode || 'PROVISIONED'}
+                          </span>
+                        </div>
+                        <div className="overflow-x-auto rounded-xl border border-[#1e3a5f]/60 bg-[#070d18]">
+                          <table className="w-full text-left text-[11px] font-mono">
+                            <thead className="bg-[#0c1e36] text-[#38bdf8] text-[10px] uppercase border-b border-[#1e3a5f]/60">
+                              <tr>
+                                <th className="p-2">Series / Scope</th>
+                                <th className="p-2 text-right">Q1 (Avg)</th>
+                                <th className="p-2 text-right">Q2 (Avg)</th>
+                                <th className="p-2 text-right">Q3 (Avg)</th>
+                                <th className="p-2 text-right">Q4 (Avg)</th>
+                                <th className="p-2 text-right">Annual Total</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-800/60">
+                              {Object.entries(crimeData.offenses.rates).map(([series, rates]: [string, any]) => {
+                                const vals = Object.values(rates || {}).map((v) => Number(v) || 0);
+                                const q1 = vals.slice(0, 3).reduce((a, b) => a + b, 0) / 3 || 0;
+                                const q2 = vals.slice(3, 6).reduce((a, b) => a + b, 0) / 3 || 0;
+                                const q3 = vals.slice(6, 9).reduce((a, b) => a + b, 0) / 3 || 0;
+                                const q4 = vals.slice(9, 12).reduce((a, b) => a + b, 0) / 3 || 0;
+                                const total = vals.reduce((a, b) => a + b, 0);
+
+                                return (
+                                  <tr key={series} className="hover:bg-[#0c1e36]/40 transition-colors">
+                                    <td className="p-2 text-slate-200 font-semibold">{series}</td>
+                                    <td className="p-2 text-right text-slate-300">{q1.toFixed(2)}</td>
+                                    <td className="p-2 text-right text-slate-300">{q2.toFixed(2)}</td>
+                                    <td className="p-2 text-right text-slate-300">{q3.toFixed(2)}</td>
+                                    <td className="p-2 text-right text-slate-300">{q4.toFixed(2)}</td>
+                                    <td className="p-2 text-right font-bold text-[#38bdf8]">{total.toFixed(2)}</td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-3 rounded-xl bg-[#070d18] border border-slate-800 text-xs">
+                        <pre className="text-[11px] text-emerald-300 overflow-x-auto whitespace-pre-wrap font-mono">
+                          {JSON.stringify(crimeData, null, 2)}
+                        </pre>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
