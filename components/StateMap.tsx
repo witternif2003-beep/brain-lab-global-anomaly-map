@@ -914,19 +914,31 @@ export default function StateMap({
         </div>
       </div>
 
-      {/* Overlay Radar Legend (Bottom Right) */}
-      <div className="absolute bottom-3 left-3 bg-[#131d2c]/90 backdrop-blur-md border border-[#28394e] rounded-lg p-2 text-[10px] text-slate-300 font-mono shadow-xl flex items-center space-x-3 pointer-events-none z-10">
+      {/* NSA ORACLE Full-Spectrum Glass Legend (Bottom Left) */}
+      <div
+        className="absolute bottom-3 left-3 pointer-events-none z-10 flex flex-wrap items-center gap-2 sm:gap-3 px-3 py-1.5 rounded-lg text-[10px] font-mono shadow-2xl"
+        style={{
+          background: 'rgba(8, 14, 26, 0.88)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+          border: '1px solid rgba(14, 165, 233, 0.35)',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.6), inset 0 0 12px rgba(14, 165, 233, 0.1)',
+        }}
+      >
         <div className="flex items-center space-x-1.5">
-          <span className="w-2.5 h-2.5 rounded-full bg-[#dc2626] border border-white" />
-          <span>Critical Anomaly</span>
+          <span className="w-2.5 h-2.5 rounded-full bg-[#ef4444] border border-[#fca5a5] shadow-[0_0_8px_#ef4444]" />
+          <span className="text-rose-300 font-bold">Critical</span>
         </div>
         <div className="flex items-center space-x-1.5">
-          <span className="w-2.5 h-2.5 rounded-full bg-[#00e5ff]" />
-          <span>High Severity</span>
+          <span className="w-2.5 h-2.5 rounded-full bg-[#00e5ff] shadow-[0_0_8px_#00e5ff]" />
+          <span className="text-cyan-300 font-bold">High Severity</span>
         </div>
         <div className="flex items-center space-x-1.5">
-          <span className="w-2.5 h-2.5 rounded-sm bg-[#00ff9d]" />
-          <span>Medium Severity</span>
+          <span className="w-2.5 h-2.5 rounded-sm bg-[#10b981] shadow-[0_0_8px_#10b981]" />
+          <span className="text-emerald-300 font-bold">Medium Severity</span>
+        </div>
+        <div className="hidden sm:flex items-center space-x-1.5 pl-2 border-l border-cyan-500/30 text-[9px] text-[#38bdf8]">
+          <span>LUCID-1 HONESTY // 4-D TRACE</span>
         </div>
       </div>
     </div>
