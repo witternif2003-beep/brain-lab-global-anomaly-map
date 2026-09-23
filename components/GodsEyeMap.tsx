@@ -896,9 +896,9 @@ export default function GodsEyeMap({
               border: '1px solid rgba(148, 163, 184, 0.15)',
             }}
           >
-            {/* 3D GLOBE toggle */}
+            {/* 2D / 3D PERSPECTIVE TOGGLE */}
             <button
-              key="3d-globe"
+              key="2d-toggle"
               type="button"
               onClick={toggle3D}
               style={{
@@ -906,17 +906,18 @@ export default function GodsEyeMap({
                 WebkitAppearance: 'none',
                 padding: '4px 10px',
                 fontSize: '10px',
-                fontWeight: 600,
-                letterSpacing: '0.05em',
-                color: '#34d399',
-                background: 'transparent',
-                border: '1px solid rgba(52, 211, 153, 0.3)',
+                fontWeight: 700,
+                letterSpacing: '0.06em',
+                color: pitch <= 20 ? '#34d399' : '#cbd5e1',
+                background: pitch <= 20 ? 'rgba(16, 185, 129, 0.2)' : 'transparent',
+                border: pitch <= 20 ? '1px solid rgba(52, 211, 153, 0.6)' : '1px solid rgba(148, 163, 184, 0.25)',
                 borderRadius: '6px',
                 cursor: 'pointer',
                 whiteSpace: 'nowrap',
+                transition: 'all 180ms ease',
               }}
             >
-              {pitch > 20 ? '2D' : '3D GLOBE'}
+              {pitch > 20 ? '3D' : '2D'}
             </button>
 
             {/* Layer toggles */}
