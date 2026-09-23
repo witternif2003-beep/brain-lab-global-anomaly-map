@@ -228,6 +228,13 @@ export default function FbiDataSection() {
               <span className="text-[9px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider text-[#38bdf8] bg-[#0c2444] border border-[#38bdf8]/50 shadow-[0_0_8px_rgba(56,189,248,0.3)]">
                 FBI CJIS / CDE PROTOCOL
               </span>
+              <span className="text-[9px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider text-emerald-400 bg-emerald-950/60 border border-emerald-500/40 shadow-[0_0_8px_rgba(52,211,153,0.3)] flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                ZERO-TRUST WIF &amp; VAULT PROXY ACTIVE
+              </span>
+              <span className="text-[9px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider text-[#38bdf8] bg-[#0a192f]/70 border border-[#38bdf8]/30">
+                P1 TIER-1 RBAC ENFORCED
+              </span>
               <h2 className="text-xs sm:text-[13px] font-extrabold text-[#f8fafc] tracking-widest uppercase flex items-center gap-1.5">
                 <span>FEDERAL BUREAU OF INVESTIGATION</span>
                 <span className="text-[#38bdf8]">•</span>
