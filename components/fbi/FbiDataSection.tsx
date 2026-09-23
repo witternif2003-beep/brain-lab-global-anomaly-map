@@ -490,13 +490,13 @@ export default function FbiDataSection() {
                       </div>
                     </div>
 
-                    <div className="p-3 rounded-xl bg-[#070d18] border border-[#1e3a5f]/60 space-y-2">
-                      <div className="flex items-center justify-between text-[11px] pb-1 border-b border-slate-800">
-                        <span className="font-bold text-[#38bdf8] tracking-wider uppercase flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-[#38bdf8] animate-pulse"></span>
-                          STATE: {crimeData.state} LAW ENFORCEMENT AGENCIES (FBI CDE)
+                    <div className="p-3 rounded-2xl bg-[#0a1526]/90 border border-[#1e3a5f]/80 space-y-2.5 shadow-[0_4px_16px_rgba(0,0,0,0.4)]">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] pb-1.5 border-b border-[#1e3a5f]/70">
+                        <span className="font-bold text-[#38bdf8] tracking-wider uppercase flex items-center gap-2 truncate">
+                          <span className="w-2 h-2 rounded-full bg-[#38bdf8] animate-pulse shrink-0"></span>
+                          <span className="truncate">STATE: {crimeData.state} LAW ENFORCEMENT AGENCIES (FBI CDE)</span>
                         </span>
-                        <span className="text-[10px] px-2.5 py-1 rounded-full bg-emerald-950/90 text-emerald-300 border border-emerald-500/50 shadow-[0_0_8px_rgba(52,211,153,0.3)] font-mono font-bold tracking-wider">
+                        <span className="self-start sm:self-auto shrink-0 text-[10px] px-2.5 py-1 rounded-full bg-emerald-950/90 text-emerald-300 border border-emerald-500/50 shadow-[0_0_8px_rgba(52,211,153,0.3)] font-mono font-bold tracking-wider">
                           🔒 {crimeData.key_mode}
                         </span>
                       </div>
