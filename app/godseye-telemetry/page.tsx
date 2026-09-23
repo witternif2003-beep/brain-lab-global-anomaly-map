@@ -26,40 +26,55 @@ export default function GodsEyeTelemetryPage() {
       {/* Main GodsEye Interactive Vector Map */}
       <GodsEyeMap />
 
-      {/* Comprehensive GodsEye Ingestion Architecture Matrix */}
-      <div className="glass-panel border border-white/10 rounded-2xl p-6 shadow-2xl space-y-4">
-        <div className="flex items-center justify-between border-b border-white/10 pb-3">
-          <h3 className="text-sm font-bold text-white flex items-center space-x-2">
-            <Database className="w-4 h-4 text-emerald-400" />
-            <span>GODSEYE INGESTION PROTOCOL & GEORGIA TELEMETRY RELEVANCE</span>
-          </h3>
-          <span className="text-xs text-slate-400">23+ Intelligence Layers • 14 Production Live Feeds</span>
+      {/* Comprehensive GodsEye Ingestion Architecture Matrix — NSA Admin Modern Oval Glass Theme */}
+      <div className="w-full rounded-[36px] bg-[#080e1a]/85 backdrop-blur-2xl border border-[#38bdf8]/40 p-5 sm:p-7 shadow-[0_20px_60px_rgba(0,0,0,0.85),inset_0_1px_2px_rgba(56,189,248,0.35)] space-y-5 font-mono text-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#1e3a5f]/60 gap-2">
+          <div className="flex items-center gap-2.5">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 shadow-[0_0_10px_#10b981]"></span>
+            </span>
+            <h3 className="text-xs sm:text-[13px] font-extrabold text-[#38bdf8] tracking-widest uppercase flex items-center gap-2">
+              <Database className="w-4 h-4 text-[#38bdf8]" />
+              <span>GODSEYE INGESTION PROTOCOL & GEORGIA TELEMETRY RELEVANCE</span>
+            </h3>
+          </div>
+          <div className="flex items-center gap-2 text-[10px] text-emerald-400 bg-[#062018]/90 px-3.5 py-1 rounded-full border border-emerald-500/50 font-bold uppercase tracking-wider self-start sm:self-auto shadow-[0_0_12px_rgba(52,211,153,0.25)]">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            23+ INTELLIGENCE LAYERS • 14 PRODUCTION FEEDS LIVE
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {GODSEYE_INTEL_LAYERS.map((layer) => (
-            <div key={layer.id} className="glass-card p-4 rounded-xl border border-white/10 space-y-2">
+            <div
+              key={layer.id}
+              className="rounded-[24px] bg-[#0a1228]/80 backdrop-blur-xl border border-[#1e3a5f] hover:border-[#38bdf8]/70 p-4 space-y-2.5 shadow-[0_8px_24px_rgba(0,0,0,0.6)] transition-all duration-200"
+            >
               <div className="flex items-center justify-between text-[10px]">
-                <span className="px-2 py-0.5 rounded glass-panel text-slate-300 border border-white/10 font-bold">
+                <span className="px-3 py-1 rounded-full bg-[#0c2444] text-[#38bdf8] border border-[#38bdf8]/50 font-bold tracking-wider uppercase shadow-[0_0_8px_rgba(56,189,248,0.3)]">
                   {layer.category}
                 </span>
-                <span className="text-emerald-400 font-bold">{layer.updateCadence}</span>
+                <span className="text-emerald-400 font-bold flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  {layer.updateCadence}
+                </span>
               </div>
 
-              <h4 className="text-xs font-bold text-white" style={{ color: layer.color }}>
+              <h4 className="text-xs font-bold tracking-wide" style={{ color: layer.color }}>
                 {layer.name}
               </h4>
 
-              <div className="text-[11px] text-slate-400">
-                Tracking: <span className="text-white font-semibold">{layer.entityCount}</span>
+              <div className="text-[11px] text-slate-400 font-mono">
+                Tracking: <span className="text-white font-extrabold">{layer.entityCount}</span>
               </div>
 
               <p className="text-[11px] text-slate-300 font-sans leading-relaxed pt-1">
                 {layer.georgiaRelevance}
               </p>
 
-              <div className="text-[10px] text-slate-500 pt-1 border-t border-slate-900">
-                Provider: {layer.provider}
+              <div className="text-[10px] text-slate-500 pt-2 border-t border-[#1e3a5f]/60 font-mono">
+                Provider: <span className="text-slate-400">{layer.provider}</span>
               </div>
             </div>
           ))}

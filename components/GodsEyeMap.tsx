@@ -120,6 +120,131 @@ export default function GodsEyeMap({
     AL: 1140,
   });
 
+  // NSA Admin Real-Time Star Constellations Canvas Animation
+  const starsCanvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = starsCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let animId: number;
+    let width = (canvas.width = canvas.parentElement?.clientWidth || window.innerWidth);
+    let height = (canvas.height = canvas.parentElement?.clientHeight || 600);
+
+    const onResize = () => {
+      if (!canvas) return;
+      width = canvas.width = canvas.parentElement?.clientWidth || window.innerWidth;
+      height = canvas.height = canvas.parentElement?.clientHeight || 600;
+    };
+    window.addEventListener('resize', onResize);
+
+    // Major recognizable astronomical constellations (Ursa Major, Orion, Cassiopeia, Cygnus, Taurus, Pleiades)
+    const STARS = Array.from({ length: 160 }, (_, i) => ({
+      x: Math.random(),
+      y: Math.random() * 0.52, // Sky hemisphere above horizon
+      radius: Math.random() * 1.6 + 0.4,
+      baseAlpha: Math.random() * 0.6 + 0.35,
+      twinkleSpeed: Math.random() * 0.03 + 0.015,
+      twinklePhase: Math.random() * Math.PI * 2,
+      color: i % 7 === 0 ? '#38bdf8' : i % 11 === 0 ? '#a7f3d0' : '#ffffff',
+    }));
+
+    // Real constellation star lines (normalized [x, y])
+    const CONSTELLATIONS = [
+      // Big Dipper (Ursa Major)
+      [
+        { x: 0.18, y: 0.12 }, { x: 0.22, y: 0.14 }, { x: 0.25, y: 0.17 },
+        { x: 0.29, y: 0.18 }, { x: 0.32, y: 0.24 }, { x: 0.27, y: 0.26 },
+        { x: 0.25, y: 0.20 }, { x: 0.29, y: 0.18 }
+      ],
+      // Cassiopeia (W)
+      [
+        { x: 0.72, y: 0.08 }, { x: 0.76, y: 0.13 }, { x: 0.79, y: 0.10 },
+        { x: 0.83, y: 0.15 }, { x: 0.87, y: 0.11 }
+      ],
+      // Orion's Belt & Shield
+      [
+        { x: 0.48, y: 0.15 }, { x: 0.51, y: 0.17 }, { x: 0.54, y: 0.19 }, // belt
+      ],
+      // Cygnus (Northern Cross)
+      [
+        { x: 0.38, y: 0.06 }, { x: 0.40, y: 0.14 }, { x: 0.42, y: 0.22 },
+      ]
+    ];
+
+    const render = (time: number) => {
+      ctx.clearRect(0, 0, width, height);
+
+      // Deep space gradient
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, height * 0.55);
+      skyGrad.addColorStop(0, 'rgba(2, 6, 18, 0.95)');
+      skyGrad.addColorStop(0.6, 'rgba(4, 12, 30, 0.75)');
+      skyGrad.addColorStop(1, 'rgba(6, 16, 40, 0.0)');
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(0, 0, width, height * 0.55);
+
+      // Draw constellation guide lines (subtle cyan/sky telemetry lines)
+      ctx.lineWidth = 0.75;
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.18)';
+      CONSTELLATIONS.forEach((points) => {
+        ctx.beginPath();
+        points.forEach((pt, idx) => {
+          const px = pt.x * width;
+          const py = pt.y * height;
+          if (idx === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        });
+        ctx.stroke();
+
+        // Star node points on constellation vertices
+        points.forEach((pt) => {
+          const px = pt.x * width;
+          const py = pt.y * height;
+          ctx.beginPath();
+          ctx.arc(px, py, 2.2, 0, Math.PI * 2);
+          ctx.fillStyle = '#38bdf8';
+          ctx.shadowColor = '#38bdf8';
+          ctx.shadowBlur = 6;
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        });
+      });
+
+      // Render twinkling stars
+      STARS.forEach((star) => {
+        const px = star.x * width;
+        const py = star.y * height;
+        const alpha = Math.max(0.15, Math.min(1.0, star.baseAlpha + Math.sin(time * star.twinkleSpeed + star.twinklePhase) * 0.35));
+
+        ctx.beginPath();
+        ctx.arc(px, py, star.radius, 0, Math.PI * 2);
+        ctx.fillStyle = star.color;
+        ctx.globalAlpha = alpha;
+        if (alpha > 0.7) {
+          ctx.shadowColor = star.color;
+          ctx.shadowBlur = 4;
+        } else {
+          ctx.shadowBlur = 0;
+        }
+        ctx.fill();
+        ctx.globalAlpha = 1.0;
+        ctx.shadowBlur = 0;
+      });
+
+      animId = requestAnimationFrame(render);
+    };
+
+    animId = requestAnimationFrame(render);
+
+    return () => {
+      cancelAnimationFrame(animId);
+      window.removeEventListener('resize', onResize);
+    };
+  }, []);
+
+
   // Sync internal state with external prop if provided
   useEffect(() => {
     setActiveFocus(focusState);
@@ -1059,6 +1184,12 @@ export default function GodsEyeMap({
       <div className="lg:col-span-8 flex flex-col space-y-3">
         <div className="relative w-full h-[500px] sm:h-[580px] rounded-2xl overflow-hidden border border-[#28394e] bg-[#0f172a] shadow-2xl">
           <div ref={containerRef} className="absolute inset-0" />
+          {/* Real-time twinkling stars and NSA Admin Star Constellations */}
+          <canvas
+            ref={starsCanvasRef}
+            className="absolute inset-0 pointer-events-none z-0"
+            style={{ width: '100%', height: '100%' }}
+          />
           {/* MapMenuOverlay removed - Diagnostics integrated into bottom control matrix */}
           {/* Real-Time Outbound Person Telemetry Stream (GA -> Ally States) - Positioned safely below 3-row HUD without overlap */}
           <div className="absolute bottom-3 right-16 z-10 rounded-xl bg-[#090d16]/95 border border-[#38bdf8]/40 p-2.5 backdrop-blur shadow-2xl max-w-[340px] text-xs font-mono space-y-1.5 hidden md:block">
