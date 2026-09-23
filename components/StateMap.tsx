@@ -916,7 +916,7 @@ export default function StateMap({
 
       {/* NSA ORACLE Full-Spectrum Glass Legend (Bottom Left) */}
       <div
-        className="absolute bottom-3 left-3 pointer-events-none z-10 flex flex-wrap items-center gap-2 sm:gap-3 px-3 py-1.5 rounded-lg text-[10px] font-mono shadow-2xl"
+        className="absolute bottom-12 left-3 pointer-events-none z-10 flex flex-wrap items-center gap-2 sm:gap-3 px-3 py-1.5 rounded-lg text-[10px] font-mono shadow-2xl"
         style={{
           background: 'rgba(8, 14, 26, 0.88)',
           backdropFilter: 'blur(16px)',

@@ -59,38 +59,25 @@ const INITIAL_ANOMALIES: AnomalyFeature[] = GEORGIA_ANOMALIES.map((a, idx) => ({
 }));
 
 interface Props {
-  anomalies?: any;
+  anomalies?: AnomalyFeature[];
   focusState?: StateCode | 'ALL';
-  selectedState?: string;
-  competitors?: any;
   onFocusChange?: (s: StateCode | 'ALL') => void;
-  onSelectState?: (s: any) => void;
-  onAnomalyClick?: (anomalyOrId: any) => void;
-  onSelectAnomaly?: (anomalyOrId: any) => void;
+  onAnomalyClick?: (id: string) => void;
 }
 
 export default function GodsEyeMap({
   anomalies = INITIAL_ANOMALIES,
-  focusState,
-  selectedState,
-  competitors,
+  focusState = 'GA',
   onFocusChange,
-  onSelectState,
   onAnomalyClick,
-  onSelectAnomaly,
 }: Props) {
-  const effectiveFocus = (selectedState || focusState || 'GA') as StateCode | 'ALL';
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const [ready, setReady] = useState(false);
   const [basemap, setBasemap] = useState<keyof typeof BASEMAPS>('satellite');
   const [pitch, setPitch] = useState(60);
   const [zoom, setZoom] = useState(6.0);
-  const [activeFocus, setActiveFocus] = useState<StateCode | 'ALL'>(effectiveFocus);
-
-  useEffect(() => {
-    if (effectiveFocus) setActiveFocus(effectiveFocus);
-  }, [effectiveFocus]);
+  const [activeFocus, setActiveFocus] = useState<StateCode | 'ALL'>(focusState);
   const [webgpuSupported, setWebgpuSupported] = useState(false);
   const [selectedInspect, setSelectedInspect] = useState<any>(null);
   const [activePersonEvent, setActivePersonEvent] = useState<VerifiedPersonLeavingGA | null>(null);
@@ -852,7 +839,6 @@ export default function GodsEyeMap({
   const handleFocusChange = (state: StateCode | 'ALL') => {
     setActiveFocus(state);
     if (onFocusChange) onFocusChange(state);
-    if (onSelectState) onSelectState(state);
 
     const map = mapRef.current;
     if (!map || !ready) return;
