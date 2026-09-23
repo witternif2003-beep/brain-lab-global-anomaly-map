@@ -549,7 +549,16 @@ export default function GodsEyeMap({
       cooperativeGestures: false,
     } as any);
 
-    // Navigation controls (Zoom + Compass + Pitch)
+    // Geolocate control (Locate icon at top of right rail)
+    map.addControl(
+      new maplibregl.GeolocateControl({
+        positionOptions: { enableHighAccuracy: true },
+        trackUserLocation: true,
+      } as any),
+      'top-right'
+    );
+
+    // Navigation controls (Zoom +/- and 3D Tilt Compass at bottom right rail)
     map.addControl(
       new maplibregl.NavigationControl({
         visualizePitch: true,
@@ -559,22 +568,10 @@ export default function GodsEyeMap({
       'bottom-right'
     );
 
-    // Scale bar (km / miles)
+    // Scale bar (imperial, 50 mi)
     map.addControl(
       new maplibregl.ScaleControl({ maxWidth: 120, unit: 'imperial' }),
       'bottom-left'
-    );
-
-    // Fullscreen control
-    map.addControl(new maplibregl.FullscreenControl(), 'top-right');
-
-    // Geolocate control
-    map.addControl(
-      new maplibregl.GeolocateControl({
-        positionOptions: { enableHighAccuracy: true },
-        trackUserLocation: true,
-      } as any),
-      'bottom-right'
     );
 
     // Configure projection safely once style loads (per official MapLibre specification)
@@ -960,6 +957,57 @@ export default function GodsEyeMap({
             </div>
           </div>
         </div>
+
+        
+      {/* Pixel-perfect control styling matching IMG_6584 exactly */}
+      <style jsx global>{`
+        .maplibregl-ctrl-top-right {
+          top: 72px !important;
+          right: 14px !important;
+        }
+        .maplibregl-ctrl-bottom-right {
+          bottom: 24px !important;
+          right: 14px !important;
+        }
+        .maplibregl-ctrl-group {
+          background: rgba(255, 255, 255, 0.95) !important;
+          border-radius: 8px !important;
+          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35) !important;
+          border: 1px solid rgba(203, 213, 225, 0.7) !important;
+          overflow: hidden !important;
+        }
+        .maplibregl-ctrl-group button {
+          width: 34px !important;
+          height: 34px !important;
+          border: none !important;
+          background: transparent !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          cursor: pointer !important;
+          transition: background-color 0.15s ease !important;
+        }
+        .maplibregl-ctrl-group button:hover {
+          background-color: rgba(226, 232, 240, 0.9) !important;
+        }
+        .maplibregl-ctrl-group button + button {
+          border-top: 1px solid rgba(226, 232, 240, 0.9) !important;
+        }
+        .maplibregl-ctrl-scale {
+          background: rgba(255, 255, 255, 0.88) !important;
+          backdrop-filter: blur(8px) !important;
+          border: 2px solid #0f172a !important;
+          border-top: none !important;
+          color: #0f172a !important;
+          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+          font-size: 11px !important;
+          font-weight: 700 !important;
+          padding: 2px 6px !important;
+          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3) !important;
+          margin-left: 14px !important;
+          margin-bottom: 14px !important;
+        }
+      `}</style>
 
         {/* STANDALONE MAP MENU WIDGET DIRECTLY BENEATH THE MAP ITSELF */}
         <div className="w-full flex items-center justify-between p-3.5 rounded-xl bg-slate-950/85 backdrop-blur-md border border-slate-800/80 shadow-2xl font-mono text-xs overflow-x-auto">
