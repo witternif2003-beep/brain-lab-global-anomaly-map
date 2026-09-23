@@ -886,18 +886,18 @@ export default function GodsEyeMap({
           <div ref={containerRef} className="absolute inset-0" />
           <MapDebugOverlay mapRef={mapRef} />
 
-          {/* Layer + Focus label bar — exact grid layout matching IMG_6584.jpeg */}
+          {/* Clean 3-Row Tactical HUD matching IMG_6586.jpeg exactly */}
           <div
-            className="absolute top-3 left-3 z-20 flex flex-col gap-1.5 p-2 rounded-xl max-w-[calc(100vw-140px)] shadow-2xl"
+            className="absolute top-3 left-3 z-20 flex flex-col gap-1 p-1.5 rounded-lg shadow-2xl pointer-events-auto"
             style={{
-              background: 'rgba(11, 19, 36, 0.85)',
+              background: 'rgba(8, 14, 26, 0.82)',
               backdropFilter: 'blur(16px)',
               WebkitBackdropFilter: 'blur(16px)',
-              border: '1px solid rgba(148, 163, 184, 0.2)',
+              border: '1px solid rgba(148, 163, 184, 0.18)',
             }}
           >
             {/* ROW 1: 2D | LIGHT | SATELLITE | TERRAIN */}
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1">
               <button
                 key="2d-toggle"
                 type="button"
@@ -905,8 +905,8 @@ export default function GodsEyeMap({
                 style={{
                   appearance: 'none',
                   WebkitAppearance: 'none',
-                  padding: '5px 12px',
-                  fontSize: '11px',
+                  padding: '4px 10px',
+                  fontSize: '10px',
                   fontWeight: 700,
                   letterSpacing: '0.06em',
                   color: pitch <= 20 ? '#34d399' : '#cbd5e1',
@@ -957,7 +957,7 @@ export default function GodsEyeMap({
             </div>
 
             {/* ROW 2: GA (Target) | NC | TN | FL | SC | TX */}
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1">
               {(['GA', 'NC', 'TN', 'FL', 'SC', 'TX'] as const).map((s) => {
                 const isTarget = s === 'GA';
                 const isActive = activeFocus === s;
@@ -1011,7 +1011,7 @@ export default function GodsEyeMap({
             </div>
 
             {/* ROW 3: VA | AL | z6.0 · p60° telemetry */}
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1">
               {(['VA', 'AL'] as const).map((s) => {
                 const isActive = activeFocus === s;
                 return (
@@ -1044,8 +1044,8 @@ export default function GodsEyeMap({
               {/* Viewport Telemetry Badge matching z6.0 · p60° */}
               <div
                 style={{
-                  padding: '5px 12px',
-                  fontSize: '11px',
+                  padding: '4px 10px',
+                  fontSize: '10px',
                   fontFamily: 'monospace',
                   fontWeight: 600,
                   color: '#94a3b8',
@@ -1060,8 +1060,8 @@ export default function GodsEyeMap({
             </div>
           </div>
 
-          {/* Real-Time Outbound Person Telemetry Stream (GA -> Ally States) */}
-          <div className="absolute top-14 left-3 z-10 rounded-xl bg-[#090d16]/95 border border-[#38bdf8]/40 p-2.5 backdrop-blur shadow-2xl max-w-[340px] text-xs font-mono space-y-1.5">
+          {/* Real-Time Outbound Person Telemetry Stream (GA -> Ally States) - Positioned safely below 3-row HUD without overlap */}
+          <div className="absolute bottom-3 right-16 z-10 rounded-xl bg-[#090d16]/95 border border-[#38bdf8]/40 p-2.5 backdrop-blur shadow-2xl max-w-[340px] text-xs font-mono space-y-1.5 hidden md:block">
             <div className="flex items-center justify-between border-b border-slate-800 pb-1">
               <span className="flex items-center gap-1.5 text-cyan-400 font-bold text-[10px] tracking-wider uppercase">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
