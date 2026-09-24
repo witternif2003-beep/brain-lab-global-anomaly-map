@@ -26,10 +26,13 @@ import {
   MapPin, 
   Radio, 
   Flame, 
-  Globe2 
+  Globe2,
+  TrendingUp,
+  Award
 } from 'lucide-react';
 import { 
   CORE_FBI_MCP_SKILLS, 
+  POST_DOC_PIPELINES,
   FBI_TOTAL_SKILLS_COUNT, 
   FBI_VALIDATED_DATA_MULTIPLIER, 
   FBI_RECOMMENDATIONS_EXPANSION, 
@@ -330,10 +333,10 @@ export default function FbiDataSection() {
           <div
             className="relative shrink-0 rounded-full flex items-center justify-center p-0.5"
             style={{
-              width: '54px',
-              height: '54px',
-              minWidth: '54px',
-              minHeight: '54px',
+              width: '56px',
+              height: '56px',
+              minWidth: '56px',
+              minHeight: '56px',
               aspectRatio: '1 / 1',
               borderRadius: '50%',
               border: '2px solid #00e5ff',
@@ -345,8 +348,8 @@ export default function FbiDataSection() {
             <Image
               src="/assets/fbi-seal-official.png"
               alt="Official Seal of the Federal Bureau of Investigation"
-              width={50}
-              height={50}
+              width={52}
+              height={52}
               style={{
                 width: '100%',
                 height: '100%',
@@ -748,7 +751,41 @@ export default function FbiDataSection() {
               </div>
             </div>
 
+            {/* Research Pipelines Showcase */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {POST_DOC_PIPELINES.map((pipe) => (
+                <div key={pipe.id} className="p-4 rounded-2xl bg-[#020b18]/90 border border-[#00e5ff]/40 space-y-2.5">
+                  <div className="flex items-center justify-between text-[10px]">
+                    <span className="text-[#00e5ff] font-bold px-2 py-0.5 rounded bg-[#00395c] border border-[#00e5ff]/50">
+                      {pipe.id}
+                    </span>
+                    <span className="text-[#69f0ae] font-bold bg-[#002b1b] px-2 py-0.5 rounded border border-[#00ff88]/50">
+                      {pipe.status}
+                    </span>
+                  </div>
+                  <h4 className="text-xs font-black text-white">{pipe.domain}</h4>
+                  <div className="text-[11px] text-[#ffd54f] font-semibold">{pipe.title}</div>
+                  <p className="text-[10px] text-slate-300 leading-relaxed font-sans">{pipe.summary}</p>
+                  
+                  <div className="pt-2 border-t border-[#00e5ff]/20 space-y-1 text-[10px]">
+                    <div className="flex justify-between text-slate-300">
+                      <span>P1 Directives:</span>
+                      <strong className="text-[#00e5ff]">+{pipe.p1DirectivesCount.toLocaleString()}</strong>
+                    </div>
+                    <div className="flex justify-between text-slate-300">
+                      <span>Recommendations:</span>
+                      <strong className="text-[#69f0ae]">+{pipe.recommendationsCount.toLocaleString()}</strong>
+                    </div>
+                    <div className="flex justify-between text-slate-300">
+                      <span>Quantum Verification:</span>
+                      <strong className="text-[#e0aaff]">{pipe.quantumVerificationRate}</strong>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
               <div className="p-4 rounded-2xl bg-[#020b18]/90 border border-[#00e5ff]/40 space-y-2">
                 <div className="flex items-center gap-2 text-[#00e5ff] font-bold text-xs uppercase">
                   <Flame className="w-4 h-4 text-[#00e5ff]" />
@@ -920,7 +957,7 @@ export default function FbiDataSection() {
           <span className="text-[#00e5ff] font-bold uppercase">FBI POST-DOCTORATE BENCHMARK:</span>
           <span className="text-slate-200">1,000,000+ Skills &amp; MCP Servers • 70,000X Verified Data Only • +10,000% Recommendations</span>
         </div>
-        <div className="text-[#69f0ae] font-bold text-[11px] shrink-0 bg-[#002617]/90 px-3.5 py-1.5 rounded-full border border-[#00ff88]/70 shadow-[0_0_12px_rgba(0,255,136,0.35)]">
+        <div className="text-[#69f0ae] font-bold text-[11px] shrink-0 bg-[#002b1b]/90 px-3.5 py-1.5 rounded-full border border-[#00ff88]/70 shadow-[0_0_12px_rgba(0,255,136,0.35)]">
           28 CFR PART 20 &amp; CJIS SECURITY POLICY v5.9.1 COMPLIANT
         </div>
       </div>

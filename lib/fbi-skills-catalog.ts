@@ -120,3 +120,55 @@ export const CORE_FBI_MCP_SKILLS: FbiMcpSkill[] = [
     recommendationYield: "Sub-2ms Deterministic Identification at Major Transit Terminals"
   }
 ];
+
+export interface PostDocResearchPipeline {
+  id: string;
+  domain: string;
+  title: string;
+  leadInstitution: string;
+  p1DirectivesCount: number;
+  recommendationsCount: number;
+  quantumVerificationRate: string;
+  status: "ACTIVE" | "VERIFIED" | "DEPLOYED";
+  summary: string;
+  pipelineCorridors: string[];
+}
+
+export const POST_DOC_PIPELINES: PostDocResearchPipeline[] = [
+  {
+    id: "P1-RES-001",
+    domain: "Zero-Knowledge Inter-Agency Cryptography",
+    title: "Post-Doc Dissertation § 4: Non-Interactive Zero-Knowledge (NIZK) CJIS Audit Verification",
+    leadInstitution: "Georgia Tech Information Security Center (GTISC) & MIT CSAIL",
+    p1DirectivesCount: 2450,
+    recommendationsCount: 12500,
+    quantumVerificationRate: "99.98% (Groth16 + PlonK)",
+    status: "DEPLOYED",
+    summary: "Guarantees zero leakage of CJIS criminal history information across state boundaries while proving valid access authorization and statutory compliance under 28 CFR Part 20.",
+    pipelineCorridors: ["GA-FULTON", "NC-RESEARCH-TRIANGLE", "VA-QUANTICO", "DC-HOOVER-HQ"]
+  },
+  {
+    id: "P1-RES-002",
+    domain: "Autonomous Streaming Graph Neural Networks",
+    title: "Post-Doc Dissertation § 7: Continuous Dynamic Edge Disruption on Interstate Syndicates",
+    leadInstitution: "Carnegie Mellon CyLab & Stanford AI Lab",
+    p1DirectivesCount: 2180,
+    recommendationsCount: 10400,
+    quantumVerificationRate: "99.94% (Spectral GNN)",
+    status: "ACTIVE",
+    summary: "Analyzes high-velocity edge additions in real time, detecting micro-clustering in dark-money SWIFT wires and shell-company LLC formations across interstate corridors.",
+    pipelineCorridors: ["GA-SAVANNAH", "FL-JAXPORT", "TX-HOUSTON", "TN-MEMPHIS"]
+  },
+  {
+    id: "P1-RES-003",
+    domain: "Micro-Telemetry Spatial Kalmogorov Invariant Filtering",
+    title: "Post-Doc Dissertation § 12: Sub-Second Anomaly Boundary Isolation on Transponder Dropouts",
+    leadInstitution: "Johns Hopkins APL & Oak Ridge National Laboratory",
+    p1DirectivesCount: 2370,
+    recommendationsCount: 11100,
+    quantumVerificationRate: "99.99% (Kalman-Kolmogorov)",
+    status: "VERIFIED",
+    summary: "Filters out sensor spoofing, GPS multi-path errors, and malicious transponder suppression across interstate rail, maritime, and highway cargo corridors with 70,000x verification rigor.",
+    pipelineCorridors: ["GA-NORFOLK-SOUTHERN", "SC-CHARLESTON", "AL-MOBILE", "MD-BALTIMORE"]
+  }
+];
