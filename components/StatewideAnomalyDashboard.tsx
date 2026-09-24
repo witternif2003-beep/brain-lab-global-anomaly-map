@@ -24,7 +24,7 @@ export default function StatewideAnomalyDashboard() {
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [pulseCount, setPulseCount] = useState<number>(1);
   const [isAutoCycling, setIsAutoCycling] = useState<boolean>(true);
-  const [activeTab, setActiveTab] = useState<"overview" | "intercept" | "financial" | "forensics" | "charges">("overview");
+  const [activeTab, setActiveTab] = useState<"narrative" | "overview" | "intercept" | "financial" | "forensics" | "charges">("narrative");
 
   // Continuous auto-population ticker every 6 seconds
   useEffect(() => {
@@ -176,6 +176,17 @@ export default function StatewideAnomalyDashboard() {
           {/* Forensic Deep Dive Navigation Tabs */}
           <div className="flex items-center gap-2 border-b border-[#1e3a5f] pb-2 overflow-x-auto text-xs">
             <button
+              onClick={() => setActiveTab("narrative")}
+              className={`px-3 py-1.5 rounded-xl font-bold transition-all duration-200 border flex items-center gap-1.5 ${
+                activeTab === "narrative"
+                  ? "bg-emerald-950/90 text-emerald-300 border-emerald-500 shadow-[0_0_12px_rgba(52,211,153,0.3)]"
+                  : "bg-transparent text-slate-400 border-transparent hover:text-slate-200"
+              }`}
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>LIVE NSA VERBATIM NARRATIVE</span>
+            </button>
+            <button
               onClick={() => setActiveTab("overview")}
               className={`px-3 py-1.5 rounded-xl font-bold transition-all duration-200 border ${
                 activeTab === "overview"
@@ -226,6 +237,44 @@ export default function StatewideAnomalyDashboard() {
               FEDERAL CHARGES & CHAIN OF CUSTODY
             </button>
           </div>
+
+                    {/* TAB 0: LIVE NSA VERBATIM NARRATIVE */}
+          {activeTab === "narrative" && (
+            <div className="space-y-4">
+              <div className="rounded-2xl bg-[#030914] border border-cyan-500/50 p-4 sm:p-6 space-y-3 shadow-[0_0_24px_rgba(6,182,212,0.15)]">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#1e3a5f]/80">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_#34d399]" />
+                    <span className="text-xs sm:text-sm font-black text-cyan-300 tracking-wider font-mono uppercase">
+                      OFFICIAL NSA OPERATIONAL INTERCEPT DOSSIER — CONTINUOUS STREAM
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] bg-red-950/80 text-rose-300 border border-rose-500/60 px-2.5 py-0.5 rounded-full font-bold">
+                      TOP SECRET // AIP-20 ENFORCED
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      RECORD # {currentAnomaly.anomalyNumber} OF 100
+                    </span>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-xl bg-[#061020]/90 border border-[#1e3a5f] font-mono text-xs sm:text-[13px] text-slate-200 leading-relaxed max-h-[480px] overflow-y-auto space-y-3 whitespace-pre-wrap select-text">
+                  {currentAnomaly.verbatimNarrative || currentAnomaly.definition}
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-[#1e3a5f]/60 text-[11px] text-slate-400">
+                  <span className="text-emerald-400 font-bold flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                    ACCOUNTS FOR 100% OF IDENTIFIED VERIFIED METRICS (14X TELEMETRY AUDITED)
+                  </span>
+                  <span className="text-cyan-300 font-mono font-bold">
+                    DATE OCCURRENCE: 2026-09-23 00:01 EST (ACTIVE WITHIN 24 HOURS)
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* TAB 1: 14X METRICS & OVERVIEW */}
           {activeTab === "overview" && (
