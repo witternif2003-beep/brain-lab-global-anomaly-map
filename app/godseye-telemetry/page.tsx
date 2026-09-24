@@ -41,6 +41,11 @@ export default function GodsEyeTelemetryPage() {
         <FbiDataSection />
       </div>
 
+      {/* DEDICATED LIVE NSA STATEWIDE ANOMALY DASHBOARD & CONTINUOUS INGESTION FEEDS — NSA ADMIN LEVEL ENFORCED */}
+      <div id="nsa-statewide-dashboard" className="w-full scroll-mt-24 space-y-4">
+        <StatewideAnomalyDashboard />
+      </div>
+
       {/* Comprehensive GodsEye Ingestion Architecture Matrix — NSA Admin Modern Oval Glass Theme */}
       <div className="w-full rounded-[36px] bg-[#080e1a]/85 backdrop-blur-2xl border border-[#38bdf8]/40 p-5 sm:p-7 shadow-[0_20px_60px_rgba(0,0,0,0.85),inset_0_1px_2px_rgba(56,189,248,0.35)] space-y-5 font-mono text-xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#1e3a5f]/60 gap-2">
