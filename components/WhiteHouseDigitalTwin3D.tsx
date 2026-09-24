@@ -4,23 +4,14 @@ import React, { useEffect, useRef, useState } from "react";
 import { 
   ShieldAlert, 
   Crosshair, 
-  Layers, 
   Maximize2, 
   Minimize2, 
-  RotateCw, 
   Play, 
   Pause, 
-  CheckCircle2, 
-  Sparkles, 
-  Terminal, 
-  Activity, 
-  Radio, 
   Cpu, 
-  SlidersHorizontal,
-  ChevronRight,
-  Eye,
-  Flame,
-  ExternalLink
+  Activity,
+  Layers,
+  Sparkles
 } from "lucide-react";
 import { WHITE_HOUSE_ANOMALIES, WhiteHouseAnomalyNode } from "../lib/whitehouse-digital-twin";
 
@@ -131,12 +122,6 @@ export default function WhiteHouseDigitalTwin3D() {
       }
 
       // Draw Architectural Volume Outlines (Verified HABS Dimensions in Meters)
-      // 1. Executive Residence: 51m wide x 26m deep x 18m high (centered at 0, 0)
-      // 2. West Wing: 20m wide x 32m deep x 8m high (centered at +28m, -5m)
-      // 3. East Wing: 18m wide x 28m deep x 8m high (centered at -26m, -4m)
-      // 4. West Colonnade: connects Residence to West Wing
-      // 5. East Colonnade: connects Residence to East Wing
-
       const drawBox = (
         bx: number, by: number, bz: number, 
         bw: number, bd: number, bh: number, 
@@ -210,10 +195,14 @@ export default function WhiteHouseDigitalTwin3D() {
       drawBox(-15, -4, 0, 8, 4, 4, "rgba(0, 229, 255, 0.5)", "rgba(0, 229, 255, 0.04)");
 
       // North Portico (Porte-Cochère Pediment)
-      drawBox(0, 13, 0, 16, 6, 12, "rgba(255, 170, 0, 0.65)", "rgba(255, 170, 0, 0.06)");
+      drawBox(0, 13, 0, 16, 6, 12, "rgba(0, 229, 255, 0.65)", "rgba(0, 229, 255, 0.06)");
 
-      // Render Verified Anomaly Nodes with Exact ±5cm Centimeter Anchors
-      WHITE_HOUSE_ANOMALIES.forEach((anom) => {
+      // Render Verified Anomaly Nodes with Exact ±2.0cm Centimeter Anchors
+      const filteredAnomalies = activeSector === "ALL" 
+        ? WHITE_HOUSE_ANOMALIES 
+        : WHITE_HOUSE_ANOMALIES.filter((a) => a.sector === activeSector);
+
+      filteredAnomalies.forEach((anom) => {
         // Convert centimeters to meters for projection
         const x_m = anom.exactCoordinatesCentimeter.x_cm / 100;
         const y_m = anom.exactCoordinatesCentimeter.y_cm / 100;
@@ -263,12 +252,12 @@ export default function WhiteHouseDigitalTwin3D() {
 
     animId = requestAnimationFrame(render);
     return () => cancelAnimationFrame(animId);
-  }, [isRotating, pitchAngle, selectedAnomaly, radarPulse, zoomLevel]);
+  }, [isRotating, pitchAngle, selectedAnomaly, radarPulse, zoomLevel, activeSector]);
 
   return (
     <div className={`space-y-4 font-mono ${isFullscreen ? "fixed inset-0 z-50 bg-[#020714]/98 p-4 sm:p-8 overflow-y-auto" : "w-full"}`}>
       
-      {/* 3D Canvas Container Enclosure with 4-Color Ambient Glass */}
+      {/* 3D Canvas Container Enclosure with Ambient Glass */}
       <div 
         ref={containerRef}
         className="relative rounded-[32px] sm:rounded-[44px] bg-gradient-to-b from-[#051124]/95 via-[#030c1c]/98 to-[#010610]/98 border-2 border-[#00e5ff]/60 p-4 sm:p-6 shadow-[0_20px_70px_rgba(0,229,255,0.25),0_0_90px_rgba(0,0,0,0.9)] overflow-hidden"
@@ -281,10 +270,10 @@ export default function WhiteHouseDigitalTwin3D() {
                 <span className="w-2 h-2 rounded-full bg-[#00ff88] animate-ping shrink-0" />
                 <span>NSA ADMIN LEVEL COP // REPLICA DIGITAL TWIN</span>
               </span>
-              <span className="px-3 py-1 rounded-full bg-[#2a0845]/90 text-[#e0aaff] border border-[#bd00ff]/80 text-[10px] font-bold tracking-wider">
-                ±5.0 CM ARCHITECTURAL RESOLUTION
+              <span className="px-3 py-1 rounded-full bg-[#002b4d]/90 text-[#00e5ff] border border-[#00e5ff]/80 text-[10px] font-bold tracking-wider">
+                ±2.0 CM ARCHITECTURAL RESOLUTION
               </span>
-              <span className="px-3 py-1 rounded-full bg-[#331e00]/90 text-[#ffd54f] border border-[#ffaa00]/70 text-[10px] font-bold tracking-wider">
+              <span className="px-3 py-1 rounded-full bg-[#002238]/90 text-[#80deea] border border-[#00e5ff]/60 text-[10px] font-bold tracking-wider">
                 5 VERIFIED ANOMALIES ACTIVE
               </span>
             </div>
@@ -337,15 +326,15 @@ export default function WhiteHouseDigitalTwin3D() {
           />
 
           {/* On-Canvas Sector Switcher */}
-          <div className="absolute top-3 left-3 flex flex-wrap items-center gap-1.5 bg-[#020b18]/85 p-1.5 rounded-2xl border border-[#00e5ff]/40 backdrop-blur-md">
+          <div className="absolute top-3 left-3 right-3 sm:right-auto flex flex-wrap items-center gap-1.5 bg-[#020b18]/90 p-1.5 rounded-2xl border border-[#00e5ff]/40 backdrop-blur-md z-10 shadow-lg">
             {["ALL", "WEST_WING", "SITUATION_ROOM", "EXECUTIVE_RESIDENCE", "EAST_WING", "ROSE_GARDEN"].map((sec) => (
               <button
                 key={sec}
                 onClick={() => setActiveSector(sec)}
                 className={`px-2.5 py-1 rounded-xl text-[10px] font-bold transition-all ${
                   activeSector === sec
-                    ? "bg-[#00395c] text-[#00e5ff] border border-[#00e5ff] shadow-[0_0_10px_rgba(0,229,255,0.4)]"
-                    : "text-slate-400 hover:text-white"
+                    ? "bg-[#00e5ff]/20 text-[#00e5ff] border border-[#00e5ff] shadow-[0_0_10px_rgba(0,229,255,0.4)]"
+                    : "text-slate-400 hover:text-white border border-transparent"
                 }`}
               >
                 {sec.replace("_", " ")}
@@ -354,9 +343,9 @@ export default function WhiteHouseDigitalTwin3D() {
           </div>
 
           {/* Live Viewport Calibration Metric */}
-          <div className="absolute bottom-3 right-3 text-[10px] text-slate-400 bg-[#020b18]/90 px-3 py-1.5 rounded-xl border border-[#00e5ff]/30 backdrop-blur-md flex items-center gap-2">
+          <div className="absolute bottom-3 right-3 text-[10px] text-[#80deea] bg-[#020b18]/90 px-3 py-1.5 rounded-xl border border-[#00e5ff]/40 backdrop-blur-md flex items-center gap-2 z-10 shadow-md">
             <span className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse" />
-            <span>RADAR PULSE #{radarPulse} • WEBGL2 60FPS • CALIBRATION ±5CM</span>
+            <span>RADAR #{radarPulse} • WEBGL2 60FPS • CALIBRATION ±2.0CM</span>
           </div>
         </div>
 
@@ -371,14 +360,15 @@ export default function WhiteHouseDigitalTwin3D() {
                 {selectedAnomaly.code} // {selectedAnomaly.anomalyClass}
               </span>
             </div>
-            <div className="text-[11px] text-[#ffd54f] font-bold">
-              Z-SCORE: {selectedAnomaly.zScore.toFixed(2)}σ (EXTREME DEVIATION)
+            <div className="text-[11px] text-[#69f0ae] font-bold flex items-center gap-1.5">
+              <Activity className="w-3.5 h-3.5 text-[#00ff88]" />
+              <span>Z-SCORE: {selectedAnomaly.zScore.toFixed(2)}σ (EXTREME DEVIATION)</span>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
             <div className="p-3 rounded-xl bg-[#020b18]/85 border border-[#00e5ff]/35 space-y-1">
-              <div className="text-[#80deea] font-bold">ARCHITECTURAL ANCHOR:</div>
+              <div className="text-[#00e5ff] font-bold">ARCHITECTURAL ANCHOR:</div>
               <div className="text-white font-semibold">{selectedAnomaly.roomAnchor}</div>
               <div className="text-[10px] text-[#00ff88] pt-1">
                 EXACT COORDS: X={selectedAnomaly.exactCoordinatesCentimeter.x_cm}cm, Y={selectedAnomaly.exactCoordinatesCentimeter.y_cm}cm, Z={selectedAnomaly.exactCoordinatesCentimeter.z_elevation_cm}cm ({selectedAnomaly.exactCoordinatesCentimeter.precision_tolerance})
@@ -386,13 +376,13 @@ export default function WhiteHouseDigitalTwin3D() {
             </div>
 
             <div className="p-3 rounded-xl bg-[#020b18]/85 border border-[#00e5ff]/35 space-y-1">
-              <div className="text-[#ffd54f] font-bold">SIGNAL SIGNATURE &amp; FREQUENCY:</div>
+              <div className="text-[#00e5ff] font-bold">SIGNAL SIGNATURE &amp; FREQUENCY:</div>
               <div className="text-slate-200">{selectedAnomaly.signalSignature}</div>
-              <div className="text-[10px] text-[#e0aaff] pt-1">FREQ: {selectedAnomaly.measuredFrequency}</div>
+              <div className="text-[10px] text-[#e0aaff] pt-1 font-mono">FREQ: {selectedAnomaly.measuredFrequency}</div>
             </div>
 
             <div className="p-3 rounded-xl bg-[#020b18]/85 border border-[#00e5ff]/35 space-y-1">
-              <div className="text-[#ff80ab] font-bold">ATTRIBUTION &amp; MITIGATION:</div>
+              <div className="text-[#00e5ff] font-bold">ATTRIBUTION &amp; MITIGATION:</div>
               <div className="text-slate-200">{selectedAnomaly.sourceAttribution}</div>
               <div className="text-[10px] text-[#69f0ae] pt-1 font-bold">ACTION: {selectedAnomaly.mitigationProtocol}</div>
             </div>
@@ -400,7 +390,7 @@ export default function WhiteHouseDigitalTwin3D() {
 
           {/* Anomaly Quick Select Row */}
           <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-[#00e5ff]/20">
-            <span className="text-[10px] text-slate-400 font-bold uppercase">INSPECT ANOMALY:</span>
+            <span className="text-[10px] text-[#80deea] font-bold uppercase">INSPECT ANOMALY:</span>
             {WHITE_HOUSE_ANOMALIES.map((anom) => (
               <button
                 key={anom.id}
