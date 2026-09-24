@@ -1,6 +1,6 @@
 "use client";
-import React, { useState, useEffect } from "react";
-import { STATEWIDE_ANOMALIES_2026, AnomalyReport } from "../lib/statewide-anomalies";
+import React, { useState, useEffect, useMemo } from "react";
+import { STATEWIDE_ANOMALIES_1000, AnomalyReport } from "../lib/statewide-anomalies";
 import { 
   ShieldAlert, 
   Terminal, 
@@ -14,28 +14,43 @@ import {
   CheckCircle2, 
   RefreshCw, 
   ChevronRight,
+  ChevronLeft,
   Sparkles,
-  Zap
+  Zap,
+  Layers,
+  MapPin,
+  ExternalLink
 } from "lucide-react";
 
 export default function StatewideAnomalyDashboard() {
   const [activeAnomalyIndex, setActiveAnomalyIndex] = useState<number>(0);
+  const [selectedBatch, setSelectedBatch] = useState<number>(1); // Batch 1 to 40 (25 anomalies each = 1,000)
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [pulseCount, setPulseCount] = useState<number>(1);
   const [isAutoCycling, setIsAutoCycling] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<"narrative" | "overview" | "intercept" | "financial" | "forensics" | "charges">("narrative");
 
-  // Continuous auto-population ticker every 6 seconds
+  // Filter 25 anomalies for the currently selected batch
+  const batchAnomalies = useMemo(() => {
+    const startIndex = (selectedBatch - 1) * 25;
+    return STATEWIDE_ANOMALIES_1000.slice(startIndex, startIndex + 25);
+  }, [selectedBatch]);
+
+  // Continuous auto-population ticker across the 25 anomalies of the batch
   useEffect(() => {
     if (!isAutoCycling) return;
     const interval = setInterval(() => {
-      setActiveAnomalyIndex((prev) => (prev + 1) % STATEWIDE_ANOMALIES_2026.length);
+      setActiveAnomalyIndex((prev) => {
+        const nextInBatch = (prev + 1) % 25;
+        // If wrapped around, also optionally advance pulse
+        return (selectedBatch - 1) * 25 + nextInBatch;
+      });
       setPulseCount((p) => p + 1);
     }, 6000);
     return () => clearInterval(interval);
-  }, [isAutoCycling]);
+  }, [isAutoCycling, selectedBatch]);
 
-  const currentAnomaly: AnomalyReport = STATEWIDE_ANOMALIES_2026[activeAnomalyIndex];
+  const currentAnomaly: AnomalyReport = STATEWIDE_ANOMALIES_1000[activeAnomalyIndex] || STATEWIDE_ANOMALIES_1000[0];
 
   // Download verified forensic dossier as structured JSON
   const handleDownloadDossier = () => {
@@ -52,7 +67,7 @@ export default function StatewideAnomalyDashboard() {
     <div className={`transition-all duration-500 font-sans ${isFullscreen ? 'fixed inset-0 z-50 bg-[#020714]/98 p-4 sm:p-8 overflow-y-auto backdrop-blur-3xl' : 'w-full'}`}>
       
       {/* 70,000X More Readable Hyper-Vibrant 4-Color Oval Glass Workstation */}
-      {/* Palette: Electric Cyan (#00e5ff), Neon Emerald (#00ff88), Cyber Violet (#bd00ff), Solar Amber (#ffaa00) */}
+      {/* 1,000 Top P1 Tier-1 Anomalies • 40 Batches of 25 • Georgia + Outside States Implications */}
       <div className="relative rounded-[32px] sm:rounded-[48px] bg-gradient-to-b from-[#051124]/98 via-[#030c1c]/98 to-[#010610]/98 backdrop-blur-3xl border-2 border-[#00e5ff]/60 p-4 sm:p-8 shadow-[0_16px_70px_rgba(0,229,255,0.25),0_0_100px_rgba(0,0,0,0.95),inset_0_1px_4px_rgba(0,229,255,0.4)] space-y-6 overflow-hidden">
         
         {/* Quad-Color Ambient Radial Glow Orbs */}
@@ -70,7 +85,7 @@ export default function StatewideAnomalyDashboard() {
               {/* Color 1: Cyber Violet Badge */}
               <span className="px-3.5 py-1.5 rounded-full bg-gradient-to-r from-[#2a0845]/90 to-[#1b003a]/90 text-[#e0aaff] border-2 border-[#bd00ff]/80 text-[10px] font-mono font-bold uppercase tracking-wider flex items-center gap-2 shadow-[0_0_16px_rgba(189,0,255,0.4)] w-fit">
                 <Sparkles className="w-3.5 h-3.5 text-[#e0aaff] shrink-0 animate-spin" style={{ animationDuration: '6s' }} />
-                <span>NSA ORACLE-SYNAPSE // SPECIAL COMPARTMENT</span>
+                <span>NSA ORACLE-SYNAPSE // 1,000 TOP P1 TIER-1 ANOMALIES</span>
               </span>
               
               <div className="flex flex-wrap items-center gap-2">
@@ -84,6 +99,12 @@ export default function StatewideAnomalyDashboard() {
                 <span className="px-3.5 py-1.5 rounded-full bg-[#331e00]/90 text-[#ffd54f] border-2 border-[#ffaa00]/70 text-[10px] font-mono font-bold tracking-wider w-fit shadow-[0_0_12px_rgba(255,170,0,0.3)]">
                   CYCLE #{pulseCount} • 24-HR LIVE VERIFICATION
                 </span>
+
+                {/* Color 4: Interstate Corridor Active Badge */}
+                <span className="px-3 py-1 rounded-full bg-[#061836]/90 text-[#80deea] border border-[#00e5ff]/60 text-[10px] font-mono font-bold tracking-wider w-fit flex items-center gap-1.5">
+                  <MapPin className="w-3 h-3 text-[#00e5ff]" />
+                  <span>INTERSTATE CORRIDORS (NC, SC, TN, FL, VA, AL, TX, DC)</span>
+                </span>
               </div>
             </div>
 
@@ -96,14 +117,14 @@ export default function StatewideAnomalyDashboard() {
               </div>
               <h2 className="text-base sm:text-2xl font-black tracking-wide uppercase font-sans leading-tight">
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00e5ff] via-[#69f0ae] to-white">
-                  GEORGIA STATEWIDE ANOMALY REPORT
+                  GEORGIA & INTERSTATE STATEWIDE ANOMALY REPORT
                 </span>
                 <span className="text-[#ffd54f] font-mono ml-2">— {currentAnomaly.dateStr}</span>
               </h2>
             </div>
             
             <p className="text-xs sm:text-[13px] text-[#b2ebf2] font-sans leading-relaxed">
-              Autonomous cryptographically authenticated signals telemetry stream • Zero-Trust verified • Real-time 24/7
+              Top 1,000 P1 Tier-1 anomalies ranked by operational priority • 40 batches of 25 • Real-time autonomous signals telemetry stream
             </p>
           </div>
 
@@ -143,34 +164,76 @@ export default function StatewideAnomalyDashboard() {
           </div>
         </div>
 
-        {/* MODERNIZED OVAL HORIZONTAL SELECTOR STRIP WITH VIBRANT COLORS */}
-        <div className="p-2.5 rounded-[24px] bg-[#020b18]/90 border border-[#00e5ff]/40 flex items-center justify-between text-xs overflow-x-auto gap-3 scrollbar-none font-mono shadow-inner">
-          <div className="flex items-center gap-2.5 shrink-0">
-            <span className="text-[11px] text-[#00e5ff] font-bold tracking-wider uppercase px-2 flex items-center gap-1.5">
-              <Zap className="w-3.5 h-3.5 text-[#ffaa00]" />
-              VERIFIED TARGETS:
-            </span>
-            {STATEWIDE_ANOMALIES_2026.map((anom, idx) => (
-              <button
-                key={anom.id}
-                onClick={() => {
-                  setActiveAnomalyIndex(idx);
-                  setIsAutoCycling(false);
-                }}
-                className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all duration-300 border-2 ${
-                  activeAnomalyIndex === idx
-                    ? 'bg-gradient-to-r from-[#00b0ff] via-[#00e5ff] to-[#00ff88] text-[#020c1b] border-white shadow-[0_0_22px_rgba(0,229,255,0.8)] font-black'
-                    : 'bg-[#061836]/80 text-[#80deea] border-[#007799]/60 hover:text-white hover:border-[#00e5ff]'
-                }`}
-              >
-                ANOMALY {anom.anomalyNumber}
-              </button>
-            ))}
+        {/* BATCH SELECTOR CONTROLS: 40 BATCHES OF 25 ANOMALIES (1-1000 TOTAL) */}
+        <div className="p-3.5 rounded-[28px] bg-[#020a16]/95 border-2 border-[#ffaa00]/60 space-y-2.5 font-mono shadow-md">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-[#ffaa00]/30 text-xs">
+            <div className="flex items-center gap-2 text-[#ffd54f] font-extrabold tracking-wider uppercase">
+              <Layers className="w-4 h-4 text-[#ffaa00]" />
+              <span>SELECT BATCH OF 25 ANOMALIES (1,000 TOTAL P1 TIER-1 ANOMALIES RECORDED):</span>
+            </div>
+            <div className="text-[11px] text-[#69f0ae] font-bold">
+              CURRENTLY VIEWING BATCH {selectedBatch} OF 40 (ANOMALIES {(selectedBatch-1)*25 + 1}–{selectedBatch*25})
+            </div>
           </div>
 
-          <div className="text-[11px] text-[#69f0ae] font-bold shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#002617]/90 border border-[#00ff88]/60 shadow-[0_0_12px_rgba(0,255,136,0.35)]">
+          {/* Quick-select batch pagination pills */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs scrollbar-none">
+            {Array.from({ length: 40 }, (_, idx) => idx + 1).map((bNum) => {
+              const startA = (bNum - 1) * 25 + 1;
+              const endA = bNum * 25;
+              const isSelected = selectedBatch === bNum;
+              return (
+                <button
+                  key={bNum}
+                  onClick={() => {
+                    setSelectedBatch(bNum);
+                    setActiveAnomalyIndex((bNum - 1) * 25);
+                    setIsAutoCycling(false);
+                  }}
+                  className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all duration-300 border shrink-0 ${
+                    isSelected
+                      ? 'bg-gradient-to-r from-[#e65100] to-[#ffaa00] text-[#020b18] border-white shadow-[0_0_16px_rgba(255,170,0,0.8)] font-black'
+                      : 'bg-[#100801]/90 text-[#ffd54f]/80 border-[#ffaa00]/40 hover:text-white hover:border-[#ffaa00]'
+                  }`}
+                >
+                  BATCH {bNum} ({startA}–{endA})
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 25 ANOMALIES STRIP FOR THE SELECTED BATCH */}
+        <div className="p-2.5 rounded-[24px] bg-[#020b18]/90 border border-[#00e5ff]/40 flex items-center justify-between text-xs overflow-x-auto gap-3 scrollbar-none font-mono shadow-inner">
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-[11px] text-[#00e5ff] font-bold tracking-wider uppercase px-2 flex items-center gap-1.5">
+              <Zap className="w-3.5 h-3.5 text-[#ffaa00]" />
+              BATCH {selectedBatch} TARGETS:
+            </span>
+            {batchAnomalies.map((anom) => {
+              const isCurrent = currentAnomaly.id === anom.id;
+              return (
+                <button
+                  key={anom.id}
+                  onClick={() => {
+                    setActiveAnomalyIndex(anom.anomalyNumber - 1);
+                    setIsAutoCycling(false);
+                  }}
+                  className={`px-3 py-1 rounded-full text-xs font-bold transition-all duration-300 border-2 whitespace-nowrap ${
+                    isCurrent
+                      ? 'bg-gradient-to-r from-[#00b0ff] via-[#00e5ff] to-[#00ff88] text-[#020c1b] border-white shadow-[0_0_20px_rgba(0,229,255,0.8)] font-black'
+                      : 'bg-[#061836]/80 text-[#80deea] border-[#007799]/60 hover:text-white hover:border-[#00e5ff]'
+                  }`}
+                >
+                  ANOMALY {anom.anomalyNumber}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="text-[11px] text-[#69f0ae] font-bold shrink-0 flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#002617]/90 border border-[#00ff88]/60 shadow-[0_0_12px_rgba(0,255,136,0.35)]">
             <CheckCircle2 className="w-3.5 h-3.5 text-[#00ff88]" />
-            <span>ALL {STATEWIDE_ANOMALIES_2026.length} ANOMALIES ACTIVE</span>
+            <span>BATCH {selectedBatch} VERIFIED</span>
           </div>
         </div>
 
@@ -255,7 +318,7 @@ export default function StatewideAnomalyDashboard() {
           </button>
         </div>
 
-        {/* PRIMARY ANOMALY SUMMARY OVAL GLASS CARD WITH MULTI-COLOR ACCENTS */}
+        {/* PRIMARY ANOMALY SUMMARY OVAL GLASS CARD WITH MULTI-COLOR ACCENTS & INTERSTATE CORRIDORS */}
         <div className="rounded-[28px] sm:rounded-[36px] bg-gradient-to-br from-[#06152d]/98 via-[#030e20]/98 to-[#010712]/98 border-2 border-[#00e5ff]/50 p-4 sm:p-7 space-y-4 shadow-2xl">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b border-[#00e5ff]/30">
             <div className="flex flex-wrap items-center gap-2.5">
@@ -273,10 +336,20 @@ export default function StatewideAnomalyDashboard() {
           </div>
 
           <div className="space-y-3">
-            <div className="text-base sm:text-xl font-black text-white tracking-wide font-sans flex items-center gap-2">
+            <div className="text-base sm:text-xl font-black text-white tracking-wide font-sans flex flex-wrap items-center gap-2">
               <span className="text-[#00e5ff] font-mono">TERM:</span>
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-[#80deea] to-[#ffd54f]">{currentAnomaly.term}</span>
             </div>
+
+            {/* Interstate Implications Chip */}
+            {currentAnomaly.interstateImplications && (
+              <div className="p-2.5 rounded-xl bg-[#031d36]/90 border border-[#00e5ff]/50 text-xs text-[#80deea] font-mono flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-[#00ff88] shrink-0" />
+                <span className="font-bold text-white">INTERSTATE IMPLICATIONS:</span>
+                <span className="text-[#69f0ae] font-bold">{currentAnomaly.interstateImplications}</span>
+              </div>
+            )}
+
             <p className="text-xs sm:text-sm text-[#e0f7fa] leading-relaxed font-sans">
               <span className="font-mono font-bold text-[#00ff88]">DEFINITION: </span>
               {currentAnomaly.definition}
@@ -310,7 +383,7 @@ export default function StatewideAnomalyDashboard() {
                     TOP SECRET // AIP-20 ENFORCED
                   </span>
                   <span className="text-[10px] text-[#80deea] font-mono bg-[#031d38] px-2.5 py-0.5 rounded-full border border-[#00e5ff]/50">
-                    RECORD # {currentAnomaly.anomalyNumber} OF 100
+                    RECORD # {currentAnomaly.anomalyNumber} OF 1,000
                   </span>
                 </div>
               </div>
@@ -436,7 +509,7 @@ export default function StatewideAnomalyDashboard() {
                 </div>
               </div>
               <div className="p-3.5 rounded-xl bg-[#051838]/85 border border-[#00e5ff]/40 space-y-2">
-                <div className="text-[#ffd54f] font-bold">TRIANGULATED GEORGIA CELL TOWERS:</div>
+                <div className="text-[#ffd54f] font-bold">TRIANGULATED GEORGIA & INTERSTATE CELL TOWERS:</div>
                 <div className="flex flex-wrap gap-2 pt-1">
                   {currentAnomaly.phoneRecords.towers.map((tw, idx) => (
                     <span key={idx} className="px-3 py-1 rounded-full bg-[#00385c]/85 border border-[#00e5ff]/60 text-[#80deea] font-bold text-[11px]">
