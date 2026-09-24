@@ -61,7 +61,7 @@ export default function GodsEyeTelemetryPage() {
           </div>
           <div className="flex items-center gap-2 text-[10px] text-emerald-400 bg-[#062018]/90 px-3.5 py-1 rounded-full border border-emerald-500/50 font-bold uppercase tracking-wider self-start sm:self-auto shadow-[0_0_12px_rgba(52,211,153,0.25)]">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            23+ INTELLIGENCE LAYERS • 14 PRODUCTION FEEDS LIVE
+            23+ INTELLIGENCE LAYERS • 20 PRODUCTION FEEDS LIVE
           </div>
         </div>
 

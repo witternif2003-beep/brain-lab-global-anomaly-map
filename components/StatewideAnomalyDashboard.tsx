@@ -61,19 +61,21 @@ export default function StatewideAnomalyDashboard() {
         {/* TOP HUD BAR: High-Clearance Responsive Status Header */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between pb-5 border-b border-amber-500/30 gap-4">
           <div className="space-y-3">
-            {/* Badges row with proper wrapping and gap */}
-            <div className="flex flex-wrap items-center gap-2 pt-1">
-              <span className="px-3.5 py-1.5 rounded-full bg-gradient-to-r from-amber-950/90 to-yellow-950/90 text-amber-200 border border-amber-500/60 text-[10px] font-mono font-bold uppercase tracking-widest flex items-center gap-1.5 shadow-[0_0_12px_rgba(217,119,6,0.35)]">
-                <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-spin" style={{ animationDuration: '6s' }} />
-                NSA ORACLE-SYNAPSE // SPECIAL COMPARTMENT
+            {/* Responsive badges with clean spacing and no collisions */}
+            <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2.5 pt-1">
+              <span className="px-3.5 py-1.5 rounded-full bg-gradient-to-r from-amber-950/90 to-yellow-950/90 text-amber-200 border border-amber-500/60 text-[10px] font-mono font-bold uppercase tracking-wider flex items-center gap-2 shadow-[0_0_12px_rgba(217,119,6,0.35)] w-fit">
+                <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0 animate-spin" style={{ animationDuration: '6s' }} />
+                <span>NSA ORACLE-SYNAPSE // SPECIAL COMPARTMENT</span>
               </span>
-              <span className="px-3.5 py-1.5 rounded-full bg-[#1b1504]/90 text-amber-300 border border-amber-500/50 text-[10px] font-mono font-bold uppercase tracking-widest flex items-center gap-1.5 shadow-[0_0_10px_rgba(217,119,6,0.25)]">
-                <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping shrink-0" />
-                AIP-20 ANTI-HALLUCINATION ENFORCED
-              </span>
-              <span className="px-3.5 py-1.5 rounded-full bg-[#161003]/90 text-amber-200 border border-amber-500/40 text-[10px] font-mono font-bold tracking-wider">
-                CYCLE #{pulseCount} • 24-HR LIVE VERIFICATION
-              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="px-3 py-1 rounded-full bg-[#1b1504]/90 text-amber-300 border border-amber-500/50 text-[10px] font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-[0_0_10px_rgba(217,119,6,0.25)] w-fit">
+                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping shrink-0" />
+                  <span>AIP-20 ANTI-HALLUCINATION ENFORCED</span>
+                </span>
+                <span className="px-3 py-1 rounded-full bg-[#161003]/90 text-amber-200 border border-amber-500/40 text-[10px] font-mono font-bold tracking-wider w-fit">
+                  CYCLE #{pulseCount} • 24-HR LIVE VERIFICATION
+                </span>
+              </div>
             </div>
 
             {/* Title with White Letters and Amber Glow Accent */}
