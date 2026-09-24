@@ -179,8 +179,81 @@ export const GODSEYE_INTEL_LAYERS: IntelLayerConfig[] = [
     georgiaRelevance: "Early warning situational awareness during southeastern severe storm outbreaks and logistics disruptions.",
     active: true,
     color: "#22d3ee"
+  },
+  {
+    id: "layer-undersea-cables",
+    name: "Global Undersea Submarine Telecom Cables",
+    category: "Infrastructure",
+    icon: "Network",
+    entityCount: "550+ Cable Systems",
+    updateCadence: "Real-time topology stream",
+    provider: "TeleGeography / ITU Submarine Cable Database",
+    georgiaRelevance: "Monitors Atlantic landing connections and terrestrial fiber backhaul feeding Atlanta tech and data center nodes.",
+    active: true,
+    color: "#2dd4bf"
+  },
+  {
+    id: "layer-gdacs",
+    name: "GDACS Global Disaster Alerts & Coordination",
+    category: "Seismic/Geophysical",
+    icon: "AlertTriangle",
+    entityCount: "350+ Active Disaster Events",
+    updateCadence: "5 min (multi-hazard polling)",
+    provider: "UN / EC Global Disaster Alert and Coordination System",
+    georgiaRelevance: "Monitors East Coast tropical cyclones, storm surge vectors, and regional FEMA Region IV emergency declarations.",
+    active: true,
+    color: "#f59e0b"
+  },
+  {
+    id: "layer-ocean-buoys",
+    name: "NOAA NDBC Live Ocean Buoys & Coastal Telemetry",
+    category: "Maritime",
+    icon: "Anchor",
+    entityCount: "1,200+ Ocean Buoys",
+    updateCadence: "10 min (wave & meteorological feed)",
+    provider: "NOAA National Data Buoy Center (NDBC)",
+    georgiaRelevance: "Continuous wave height, barometric pressure, and surface current telemetry off Savannah, Tybee Island, and Brunswick approaches.",
+    active: true,
+    color: "#38bdf8"
+  },
+  {
+    id: "layer-radio-browser",
+    name: "Worldwide Local Radio Broadcast & Frequency Intercepts",
+    category: "Signals & Geopolitics",
+    icon: "Radio",
+    entityCount: "35,000+ Stations",
+    updateCadence: "Sub-second audio & signal stream",
+    provider: "Radio Browser Open SIGINT Network",
+    georgiaRelevance: "Tactical VHF/UHF and municipal broadcast monitoring across Georgia public safety, aviation, and emergency frequencies.",
+    active: true,
+    color: "#a78bfa"
+  },
+  {
+    id: "layer-power-outages",
+    name: "US DOE ODIN & WRI Global Power Plant Grid Telemetry",
+    category: "Infrastructure",
+    icon: "Zap",
+    entityCount: "35,000+ Power Plants & Outages",
+    updateCadence: "1 min (outage monitor)",
+    provider: "US Department of Energy ODIN & WRI Energy Database",
+    georgiaRelevance: "Monitors Plant Vogtle Units 1-4 nuclear baseload, Southern Company distribution nodes, and statewide county-by-county power outages.",
+    active: true,
+    color: "#fbbf24"
+  },
+  {
+    id: "layer-volcanoes",
+    name: "Smithsonian Global Volcanism & Ash Advisory Telemetry",
+    category: "Seismic/Geophysical",
+    icon: "Flame",
+    entityCount: "1,400+ Holocene Volcanoes",
+    updateCadence: "Hourly VAAC updates",
+    provider: "Smithsonian Institution / USGS Global Volcanism Program",
+    georgiaRelevance: "Tracks high-altitude Caribbean and Atlantic volcanic ash clouds impacting transatlantic approach routes into KATL.",
+    active: true,
+    color: "#f87171"
   }
 ];
+
 
 export interface LiveTelemetryEntity {
   id: string;
@@ -318,77 +391,5 @@ export const SAMPLE_LIVE_ENTITIES: LiveTelemetryEntity[] = [
     heading: 0,
     status: "NORMAL",
     source: "crt.sh Certificate Transparency & Nmap Scanner"
-  },
-  {
-    id: "layer-undersea-cables",
-    name: "Global Undersea Submarine Telecom Cables",
-    category: "Infrastructure",
-    icon: "Network",
-    entityCount: "550+ Cable Systems",
-    updateCadence: "Real-time topology stream",
-    provider: "TeleGeography / ITU Submarine Cable Database",
-    georgiaRelevance: "Monitors Atlantic landing connections and terrestrial fiber backhaul feeding Atlanta tech and data center nodes.",
-    active: true,
-    color: "#2dd4bf"
-  },
-  {
-    id: "layer-gdacs",
-    name: "GDACS Global Disaster Alerts & Coordination",
-    category: "Seismic/Geophysical",
-    icon: "AlertTriangle",
-    entityCount: "350+ Active Disaster Events",
-    updateCadence: "5 min (multi-hazard polling)",
-    provider: "UN / EC Global Disaster Alert and Coordination System",
-    georgiaRelevance: "Monitors East Coast tropical cyclones, storm surge vectors, and regional FEMA Region IV emergency declarations.",
-    active: true,
-    color: "#f59e0b"
-  },
-  {
-    id: "layer-ocean-buoys",
-    name: "NOAA NDBC Live Ocean Buoys & Coastal Telemetry",
-    category: "Maritime",
-    icon: "Anchor",
-    entityCount: "1,200+ Ocean Buoys",
-    updateCadence: "10 min (wave & meteorological feed)",
-    provider: "NOAA National Data Buoy Center (NDBC)",
-    georgiaRelevance: "Continuous wave height, barometric pressure, and surface current telemetry off Savannah, Tybee Island, and Brunswick approaches.",
-    active: true,
-    color: "#38bdf8"
-  },
-  {
-    id: "layer-radio-browser",
-    name: "Worldwide Local Radio Broadcast & Frequency Intercepts",
-    category: "Signals & Geopolitics",
-    icon: "Radio",
-    entityCount: "35,000+ Stations",
-    updateCadence: "Sub-second audio & signal stream",
-    provider: "Radio Browser Open SIGINT Network",
-    georgiaRelevance: "Tactical VHF/UHF and municipal broadcast monitoring across Georgia public safety, aviation, and emergency frequencies.",
-    active: true,
-    color: "#a78bfa"
-  },
-  {
-    id: "layer-power-outages",
-    name: "US DOE ODIN & WRI Global Power Plant Grid Telemetry",
-    category: "Infrastructure",
-    icon: "Zap",
-    entityCount: "35,000+ Power Plants & Outages",
-    updateCadence: "1 min (outage monitor)",
-    provider: "US Department of Energy ODIN & WRI Energy Database",
-    georgiaRelevance: "Monitors Plant Vogtle Units 1-4 nuclear baseload, Southern Company distribution nodes, and statewide county-by-county power outages.",
-    active: true,
-    color: "#fbbf24"
-  },
-  {
-    id: "layer-volcanoes",
-    name: "Smithsonian Global Volcanism & Ash Advisory Telemetry",
-    category: "Seismic/Geophysical",
-    icon: "Flame",
-    entityCount: "1,400+ Holocene Volcanoes",
-    updateCadence: "Hourly VAAC updates",
-    provider: "Smithsonian Institution / USGS Global Volcanism Program",
-    georgiaRelevance: "Tracks high-altitude Caribbean and Atlantic volcanic ash clouds impacting transatlantic approach routes into KATL.",
-    active: true,
-    color: "#f87171"
   }
 ];
