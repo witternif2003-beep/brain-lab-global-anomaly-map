@@ -14,7 +14,7 @@ export interface WhiteHouseAnomalyNode {
     x_cm: number; // Centimeters from center anchor of South Portico
     y_cm: number;
     z_elevation_cm: number;
-    precision_tolerance: "±5.0 cm";
+    precision_tolerance: "±2.0 cm";
   };
   gpsGeoAnchor: {
     lat: number;
@@ -42,7 +42,7 @@ export const WHITE_HOUSE_ANOMALIES: WhiteHouseAnomalyNode[] = [
       x_cm: 2845.5,
       y_cm: -1240.2,
       z_elevation_cm: 320.0,
-      precision_tolerance: "±5.0 cm"
+      precision_tolerance: "±2.0 cm"
     },
     gpsGeoAnchor: {
       lat: 38.897375,
@@ -68,7 +68,7 @@ export const WHITE_HOUSE_ANOMALIES: WhiteHouseAnomalyNode[] = [
       x_cm: 1920.0,
       y_cm: -850.5,
       z_elevation_cm: -380.0,
-      precision_tolerance: "±5.0 cm"
+      precision_tolerance: "±2.0 cm"
     },
     gpsGeoAnchor: {
       lat: 38.897250,
@@ -94,7 +94,7 @@ export const WHITE_HOUSE_ANOMALIES: WhiteHouseAnomalyNode[] = [
       x_cm: 0.0,
       y_cm: -450.0,
       z_elevation_cm: 850.0,
-      precision_tolerance: "±5.0 cm"
+      precision_tolerance: "±2.0 cm"
     },
     gpsGeoAnchor: {
       lat: 38.897680,
@@ -120,7 +120,7 @@ export const WHITE_HOUSE_ANOMALIES: WhiteHouseAnomalyNode[] = [
       x_cm: -2450.0,
       y_cm: -320.0,
       z_elevation_cm: 150.0,
-      precision_tolerance: "±5.0 cm"
+      precision_tolerance: "±2.0 cm"
     },
     gpsGeoAnchor: {
       lat: 38.897520,
@@ -146,7 +146,7 @@ export const WHITE_HOUSE_ANOMALIES: WhiteHouseAnomalyNode[] = [
       x_cm: 1680.0,
       y_cm: -350.0,
       z_elevation_cm: 20.0,
-      precision_tolerance: "±5.0 cm"
+      precision_tolerance: "±2.0 cm"
     },
     gpsGeoAnchor: {
       lat: 38.897450,
