@@ -28,7 +28,7 @@ export default function StatewideAnomalyDashboard() {
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [pulseCount, setPulseCount] = useState<number>(1);
   const [isAutoCycling, setIsAutoCycling] = useState<boolean>(true);
-  const [activeTab, setActiveTab] = useState<"narrative" | "overview" | "intercept" | "financial" | "forensics" | "charges">("narrative");
+  const [activeTab, setActiveTab] = useState<"narrative" | "batch_list" | "overview" | "intercept" | "financial" | "forensics" | "charges">("narrative");
 
   // Filter 25 anomalies for the currently selected batch
   const batchAnomalies = useMemo(() => {
@@ -238,7 +238,7 @@ export default function StatewideAnomalyDashboard() {
         </div>
 
         {/* 4-COLOR DYNAMIC TABS NAVIGATION: Cyan, Emerald, Violet, Amber */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 text-xs font-mono">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2.5 text-xs font-mono">
           {/* Tab 1: Emerald Neon */}
           <button
             onClick={() => setActiveTab("narrative")}
@@ -250,6 +250,19 @@ export default function StatewideAnomalyDashboard() {
           >
             <FileText className="w-3.5 h-3.5 text-[#00ff88] shrink-0" />
             <span className="truncate">NSA NARRATIVE</span>
+          </button>
+
+          {/* Tab: Amber Batch List (25) */}
+          <button
+            onClick={() => setActiveTab("batch_list")}
+            className={`px-3.5 py-3 rounded-2xl font-bold transition-all duration-300 border-2 flex items-center justify-center gap-2 ${
+              activeTab === "batch_list"
+                ? "bg-gradient-to-r from-[#4d2600] to-[#261300] text-[#ffd54f] border-[#ffaa00] shadow-[0_0_24px_rgba(255,170,0,0.6)]"
+                : "bg-[#1c0d00]/80 text-[#ffe082] border-[#e65100]/60 hover:text-white hover:border-[#ffaa00]"
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5 text-[#ffaa00] shrink-0" />
+            <span className="truncate">BATCH 25 LIST</span>
           </button>
 
           {/* Tab 2: Cyan Neon */}
@@ -401,6 +414,65 @@ export default function StatewideAnomalyDashboard() {
                 <span className="text-[#ffd54f] font-bold">
                   OCCURRENCE: 2026-09-23 00:01 EST (ACTIVE WITHIN 24 HOURS)
                 </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB: BATCH 25 ANOMALIES LIST VIEW (SHOWING ALL 25 IN CURRENT BATCH WITH OUTSIDE STATE IMPLICATIONS) */}
+        {activeTab === "batch_list" && (
+          <div className="space-y-4 font-mono">
+            <div className="p-4 sm:p-6 rounded-[28px] bg-gradient-to-b from-[#140b00]/95 to-[#070400]/98 border-2 border-[#ffaa00]/60 space-y-4 shadow-[0_0_40px_rgba(255,170,0,0.25)]">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b border-[#ffaa00]/35">
+                <div className="flex items-center gap-2.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#ffaa00] animate-pulse shadow-[0_0_14px_#ffaa00]" />
+                  <span className="text-xs sm:text-sm font-black text-[#ffd54f] tracking-wider uppercase">
+                    BATCH {selectedBatch} OF 40 — COMPLETE 25 ANOMALY ROSTER (PRIORITY RANKED)
+                  </span>
+                </div>
+                <div className="text-[11px] text-[#69f0ae] bg-[#002b1b] px-3 py-1 rounded-full border border-[#00ff88]/60 font-bold">
+                  25 OF 1,000 P1 TIER-1 ANOMALIES ACTIVE
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[600px] overflow-y-auto pr-1">
+                {batchAnomalies.map((anom) => {
+                  const isCurrent = currentAnomaly.id === anom.id;
+                  return (
+                    <div
+                      key={anom.id}
+                      onClick={() => {
+                        setActiveAnomalyIndex(anom.anomalyNumber - 1);
+                        setIsAutoCycling(false);
+                      }}
+                      className={`p-3.5 rounded-2xl border-2 transition-all duration-300 cursor-pointer space-y-2 ${
+                        isCurrent
+                          ? 'bg-[#002f4d]/90 border-[#00e5ff] shadow-[0_0_18px_rgba(0,229,255,0.5)]'
+                          : 'bg-[#071324]/80 border-[#00e5ff]/30 hover:border-[#00e5ff]/80 hover:bg-[#0c1f38]'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2 text-xs">
+                        <span className="px-2.5 py-0.5 rounded-full bg-[#00ff88]/20 text-[#69f0ae] border border-[#00ff88]/50 text-[10px] font-bold">
+                          {anom.id} [P1 #{anom.anomalyNumber}]
+                        </span>
+                        <span className="text-[10px] text-[#ffd54f] font-bold bg-[#ffaa00]/20 px-2 py-0.5 rounded border border-[#ffaa00]/40">
+                          {anom.timestampEst}
+                        </span>
+                      </div>
+
+                      <div className="text-xs sm:text-sm font-black text-white hover:text-[#00e5ff] transition-colors truncate">
+                        {anom.term}
+                      </div>
+
+                      {anom.interstateImplications && (
+                        <div className="text-[11px] text-[#80deea] flex items-center gap-1.5 pt-1 border-t border-[#00e5ff]/20">
+                          <MapPin className="w-3 h-3 text-[#00ff88] shrink-0" />
+                          <span className="truncate">Interstate: <strong className="text-[#69f0ae]">{anom.interstateImplications}</strong></span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
