@@ -1,10 +1,9 @@
 "use client";
 import React from "react";
-import ThreatGlobe3D from "../../components/ThreatGlobe3D";
+import WhiteHouseDigitalTwin3D from "../../components/WhiteHouseDigitalTwin3D";
 import PageEmblemHeader from "../../components/PageEmblemHeader";
 import { RealTimeSparkline } from "../../components/RealTimeSparkline";
-import { Globe, ShieldAlert, Cpu, CheckCircle2, TrendingUp } from "lucide-react";
-import { GEORGIA_ANOMALIES, COMPETITOR_STATES } from "../../lib/data";
+import { Globe, ShieldAlert, Cpu, CheckCircle2, TrendingUp, Building2 } from "lucide-react";
 
 export default function ThreatGlobePage() {
   return (
@@ -12,66 +11,69 @@ export default function ThreatGlobePage() {
       
       {/* Page Header */}
       <PageEmblemHeader
-        badgeText="Operational Visualization Layer"
-        badgeIcon={<Globe className="w-4 h-4 text-sky-400" />}
-        title="3D THREAT GLOBE COMMON OPERATING PICTURE (COP)"
-        description="Physical multi-source signal correlation projected onto an interactive 3D geospatial sphere. Correlates Port of Savannah logistics bottlenecks, legislative tax sunsets (HB 463), and consumer macro debt spikes before editorial news cycles emerge."
+        badgeText="NSA Admin Level Operational Picture"
+        badgeIcon={<Building2 className="w-4 h-4 text-[#00e5ff]" />}
+        title="WHITE HOUSE COMMON OPERATING PICTURE (COP) & DIGITAL TWIN"
+        description="Physical multi-source signal correlation and architectural digital twin replica derived from official Library of Congress HABS DC-37 and NPS surveys. Each physical and RF vector anomaly identified within 5 centimeters of architectural grounding."
         rightElement={
-          <div className="glass-card px-4 py-2.5 rounded-xl border border-white/10 text-right shadow-lg">
-            <div className="text-[10px] text-slate-500">LIVE ORBIT FEED</div>
-            <div className="text-emerald-400 font-bold text-lg">ONLINE • 100+ FEEDS</div>
+          <div className="glass-card px-4 py-2.5 rounded-2xl border-2 border-[#00e5ff]/50 text-right shadow-[0_0_20px_rgba(0,229,255,0.25)] bg-[#020b18]/90">
+            <div className="text-[10px] text-[#80deea] font-bold">DIGITAL TWIN STATUS</div>
+            <div className="text-[#69f0ae] font-black text-lg flex items-center justify-end gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse"></span>
+              <span>ONLINE • ±5CM VERIFIED</span>
+            </div>
           </div>
         }
       />
 
-      {/* 3D Canvas Globe */}
-      <ThreatGlobe3D />
+      {/* NSA ADMIN LEVEL WHITE HOUSE DIGITAL TWIN 3D WORKSTATION */}
+      <WhiteHouseDigitalTwin3D />
 
-      {/* 60 FPS Canvas Real-Time Telemetry Sparklines (React Bypassed Hot-Path) */}
+      {/* 60 FPS Canvas Real-Time Telemetry Sparklines */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <RealTimeSparkline
           channelKey="gridLoadMW"
-          label="Georgia Power High-Density Grid Reserve Margin"
-          unit="18,450 MW"
+          label="White House Complex Sub-Station Power Inflow Reserve Margin"
+          unit="13,850 kVA"
           strokeColor="#00e5ff"
         />
         <RealTimeSparkline
           channelKey="portTEUVelocity"
-          label="Savannah Mason Mega Rail Intermodal Velocity"
-          unit="541,405 TEU"
+          label="SCIF Environmental Air Gap & Grounded Shield Impedance"
+          unit="0.042 Ω"
           strokeColor="#00ff9d"
         />
       </div>
 
-      {/* Under-Globe Telemetry Breakdown */}
+      {/* Under-Workstation Telemetry Breakdown */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <div className="glass-panel border border-white/10 p-4 rounded-xl space-y-2">
-          <div className="flex items-center space-x-2 text-rose-400 text-xs font-bold">
+        <div className="p-4 rounded-2xl bg-[#031528]/90 border border-[#00e5ff]/40 space-y-2 shadow-lg">
+          <div className="flex items-center space-x-2 text-[#00e5ff] text-xs font-bold">
             <ShieldAlert className="w-4 h-4" />
-            <span>Pillar 1: Logistics Infrastructure</span>
+            <span>Pillar 1: TEMPEST Acoustic Refraction</span>
           </div>
           <p className="text-slate-300 text-xs font-sans leading-relaxed">
-            Continuous AIS vessel telemetry tracks Port of Savannah berthing congestion (+67.8% dwell deviation) and Mason Mega Rail intermodal dispatch velocity. Exploited by South Carolina and Tennessee.
+            Continuous optical laser vibrometry mitigation across exterior laminated fenestration. Laser return deflection monitored via active piezoelectric transducer arrays under CNSSAM TEMPEST 01-13 standard.
           </p>
         </div>
 
-        <div className="glass-panel border border-white/10 p-4 rounded-xl space-y-2">
-          <div className="flex items-center space-x-2 text-sky-400 text-xs font-bold">
+        <div className="p-4 rounded-2xl bg-[#031528]/90 border border-[#00ff88]/40 space-y-2 shadow-lg">
+          <div className="flex items-center space-x-2 text-[#69f0ae] text-xs font-bold">
             <Cpu className="w-4 h-4" />
-            <span>Pillar 2: Incentive Parity (HB 463)</span>
+            <span>Pillar 2: Subterranean RF & Acoustic DAS</span>
           </div>
           <p className="text-slate-300 text-xs font-sans leading-relaxed">
-            Statutory repeal of Headquarters Tax Credit, Port activity credits, and medical device manufacturing credits effective Jan 1, 2026, with total tax credit sunset in 2032. Exploited by North Carolina and Texas.
+            Distributed Acoustic Sensing (DAS) over fiber-optic perimeter lines eliminates blind spots from unauthorized boring or subterranean conduit penetration within 5cm accuracy tolerance.
           </p>
         </div>
 
-        <div className="glass-panel border border-white/10 p-4 rounded-xl space-y-2">
-          <div className="flex items-center space-x-2 text-sky-400 text-xs font-bold">
+        <div className="p-4 rounded-2xl bg-[#031528]/90 border border-[#bd00ff]/40 space-y-2 shadow-lg">
+          <div className="flex items-center space-x-2 text-[#e0aaff] text-xs font-bold">
             <TrendingUp className="w-4 h-4" />
-            <span>Pillar 3: Consumer & Labor Distress</span>
+            <span>Pillar 3: Zero-Trust SCIF Isolation</span>
           </div>
           <p className="text-slate-300 text-xs font-sans leading-relaxed">
-            Georgia ranks 7th most financially distressed state in the US; 13.9% credit card delinquency rate. Healthcare ranks 49th for access, opening corporate talent recruitment pipelines for Florida and North Carolina.
+            All West Wing, Situation Room, and Executive Residence RF signatures verified against baseline harmonic spectra. Automated Faraday gasket compression triggers upon Z &gt; 2.5σ variance.
           </p>
         </div>
       </div>
