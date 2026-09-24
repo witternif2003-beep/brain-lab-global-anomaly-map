@@ -1,5 +1,5 @@
-import StatewideAnomalyDashboard from "../../components/StatewideAnomalyDashboard";
 "use client";
+import StatewideAnomalyDashboard from "../../components/StatewideAnomalyDashboard";
 import FbiDataSection from "../../components/fbi/FbiDataSection";
 import React, { useState, useEffect } from "react";
 import GodsEyeMap from "../../components/GodsEyeMap";
