@@ -6,6 +6,7 @@ import { globalDessDetector } from "../../../../lib/dess";
 import { globalAutoSadDetector } from "../../../../lib/autosad";
 import { globalArcusPool } from "../../../../lib/arcus";
 import { computeWeightedL2Norm } from "../../../../lib/provenance-norm";
+import { buildReferenceLineage } from "../../../../lib/echo-chamber-dag";
 import { MISSION_VECTORS, TOTAL_DIRECTIVES_COUNT } from "../../../../lib/recommendation-matrix";
 
 export const runtime = "edge";
@@ -44,12 +45,15 @@ export async function GET() {
     activeArcusPool.reduce((acc, m) => acc + m.reliabilityScore, 0) / activeArcusPool.length
   ).toFixed(3);
 
+  // Echo-chamber cycle detection on the reference citation lineage
+  const lineageReport = buildReferenceLineage().analyze();
+
   // Provenance norm evaluation
   const reconciliationNormScore = computeWeightedL2Norm({
     reliability: 0.96,
     credibility: 0.94,
     freshness: 0.95,
-    cycleEntropy: 0.92,
+    cycleEntropy: lineageReport.cycleEntropy,
   });
 
   return NextResponse.json({
@@ -88,6 +92,13 @@ export async function GET() {
     provenanceNorm: {
       reconciliationNormScore,
       formula: "weighted-L2-norm (wR=0.35, wC=0.30, wDt=0.20, wH=0.15)",
+    },
+    echoChamberDetection: {
+      cycleEntropy: lineageReport.cycleEntropy,
+      elementaryCycles: lineageReport.cycles.length,
+      edgesOnCycles: lineageReport.edgesOnCycles,
+      edgeCount: lineageReport.edgeCount,
+      algorithm: "Johnson elementary circuits + exp(-gamma*HopCount) credibility decay",
     },
     dessEvolvingProxy: {
       score: dessResult.score,
