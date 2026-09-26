@@ -56,15 +56,14 @@ function buildVolumeMesh(v: ArchitecturalVolume): THREE.Object3D {
 
   const color = new THREE.Color(v.color);
   const estimate = v.provenance === "FOOTPRINT_EST";
-  const material = new THREE.MeshPhysicalMaterial({
+  const material = new THREE.MeshStandardMaterial({
     color,
     transparent: true,
-    opacity: estimate ? 0.08 : 0.28,
-    roughness: 0.25,
-    metalness: 0.1,
-    transmission: estimate ? 0 : 0.35,
+    opacity: estimate ? 0.1 : 0.42,
+    roughness: 0.35,
+    metalness: 0.05,
     emissive: color,
-    emissiveIntensity: estimate ? 0.05 : 0.18,
+    emissiveIntensity: estimate ? 0.08 : 0.25,
     side: THREE.DoubleSide,
     depthWrite: false,
   });
@@ -134,6 +133,8 @@ export default function WhiteHouseDigitalTwin3D() {
   const [selectedAnomaly, setSelectedAnomaly] = useState<WhiteHouseAnomalyNode>(WHITE_HOUSE_ANOMALIES[0]);
   const [selectedVolume, setSelectedVolume] = useState<ArchitecturalVolume | null>(null);
   const [fps, setFps] = useState(0);
+  const [drawCalls, setDrawCalls] = useState(0);
+  const [glError, setGlError] = useState<string | null>(null);
 
   const isRotatingRef = useRef(true);
   const selectedAnomalyRef = useRef(selectedAnomaly.id);
@@ -166,12 +167,24 @@ export default function WhiteHouseDigitalTwin3D() {
     const mount = mountRef.current;
     if (!mount) return;
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance", failIfMajorPerformanceCaveat: false });
+    } catch (err) {
+      setGlError(`WebGL unavailable: ${err instanceof Error ? err.message : String(err)}`);
+      return;
+    }
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.setSize(mount.clientWidth || 1, mount.clientHeight || 1);
+    renderer.setClearColor(0x03101f, 1);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.1;
+    renderer.domElement.style.width = "100%";
+    renderer.domElement.style.height = "100%";
+    renderer.domElement.style.display = "block";
     mount.appendChild(renderer.domElement);
+    const onContextLost = (e: Event) => { e.preventDefault(); setGlError("WebGL context lost — reload the page"); };
+    renderer.domElement.addEventListener("webglcontextlost", onContextLost);
 
     const scene = new THREE.Scene();
     scene.fog = new THREE.FogExp2(0x020b18, 0.0045);
@@ -306,6 +319,8 @@ export default function WhiteHouseDigitalTwin3D() {
       const now = performance.now();
       if (now - lastFps >= 1000) {
         setFps(frames);
+        setDrawCalls(renderer.info.render.calls);
+        if (renderer.info.render.calls === 0) setGlError("Renderer produced 0 draw calls");
         frames = 0;
         lastFps = now;
       }
@@ -317,6 +332,7 @@ export default function WhiteHouseDigitalTwin3D() {
       ro.disconnect();
       renderer.domElement.removeEventListener("pointerdown", onDown);
       renderer.domElement.removeEventListener("pointerup", onUp);
+      renderer.domElement.removeEventListener("webglcontextlost", onContextLost);
       controls.dispose();
       scene.traverse((o) => {
         if (o instanceof THREE.Mesh || o instanceof THREE.LineSegments) {
@@ -409,17 +425,22 @@ export default function WhiteHouseDigitalTwin3D() {
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-3">
           <div className={`relative w-full ${isFullscreen ? "h-[60vh]" : "h-[340px] sm:h-[500px]"} rounded-xl overflow-hidden border border-[#00e5ff]/20 bg-[#03101f] cursor-grab active:cursor-grabbing`}>
             <div ref={mountRef} className="absolute inset-0 touch-none" />
+            {glError && (
+              <div className="absolute inset-0 flex items-center justify-center bg-[#03101f]/90 text-center p-4 text-xs text-[#ff80ab] font-bold">
+                3D RENDER FAULT: {glError}
+              </div>
+            )}
             <div className="absolute top-2 left-2 text-[9px] sm:text-[10px] text-slate-300 bg-[#020b18]/85 px-2.5 py-1.5 rounded-lg border border-[#00e5ff]/30 backdrop-blur-md pointer-events-none space-y-0.5">
               <div className="text-[#00e5ff] font-bold">DRAG orbit • WHEEL zoom • CLICK room / marker</div>
-              <div className="flex items-center gap-2">
-                <span className="inline-block w-2 h-2 rounded-sm bg-[#38bdf8]" /> surveyed volume
-                <span className="inline-block w-2 h-2 rounded-sm border border-dashed border-[#c084fc]" /> footprint estimate
-                <span className="inline-block w-2 h-2 rounded-full bg-[#ff1744]" /> anomaly
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-sm bg-[#38bdf8]" />surveyed volume</span>
+                <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-sm border border-dashed border-[#c084fc]" />footprint estimate</span>
+                <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-full bg-[#ff1744]" />anomaly</span>
               </div>
             </div>
             <div className="absolute bottom-2 right-2 text-[9px] sm:text-[10px] text-[#80deea] bg-[#020b18]/90 px-2.5 py-1 rounded-lg border border-[#00e5ff]/40 backdrop-blur-md flex items-center gap-1.5 pointer-events-none">
               <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88] animate-pulse" />
-              <span>WEBGL2 • {fps} FPS • 1 UNIT = 1 M</span>
+              <span>{glError ? "WEBGL FAULT" : "WEBGL OK"} • {fps} FPS • {drawCalls} DRAWS • 1 UNIT = 1 M</span>
             </div>
           </div>
 
