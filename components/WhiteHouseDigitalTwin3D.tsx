@@ -18,37 +18,69 @@ import { WHITE_HOUSE_ANOMALIES, WhiteHouseAnomalyNode } from "../lib/whitehouse-
 export default function WhiteHouseDigitalTwin3D() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+
+  // User interactive state
   const [isRotating, setIsRotating] = useState<boolean>(true);
-  const [rotationAngle, setRotationAngle] = useState<number>(0.35);
-  const [pitchAngle, setPitchAngle] = useState<number>(0.42);
   const [selectedAnomaly, setSelectedAnomaly] = useState<WhiteHouseAnomalyNode>(WHITE_HOUSE_ANOMALIES[0]);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [activeSector, setActiveSector] = useState<string>("ALL");
-  const [radarPulse, setRadarPulse] = useState<number>(0);
+  const [radarPulseDisplay, setRadarPulseDisplay] = useState<number>(1);
   const [zoomLevel, setZoomLevel] = useState<number>(1.0);
 
-  // Drag interaction state
+  // Animation & input refs to guarantee zero React render thrashing
+  const rotRef = useRef<number>(0.35);
+  const pitchRef = useRef<number>(0.42);
+  const isRotatingRef = useRef<boolean>(true);
+  const zoomRef = useRef<number>(1.0);
+  const selectedAnomalyRef = useRef<WhiteHouseAnomalyNode>(WHITE_HOUSE_ANOMALIES[0]);
+  const activeSectorRef = useRef<string>("ALL");
+  const radarTickRef = useRef<number>(0);
   const isDraggingRef = useRef<boolean>(false);
   const lastMousePosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
-  // Radar pulse ticker
+  // Sync state to refs immediately
+  useEffect(() => {
+    isRotatingRef.current = isRotating;
+  }, [isRotating]);
+
+  useEffect(() => {
+    zoomRef.current = zoomLevel;
+  }, [zoomLevel]);
+
+  useEffect(() => {
+    selectedAnomalyRef.current = selectedAnomaly;
+  }, [selectedAnomaly]);
+
+  useEffect(() => {
+    activeSectorRef.current = activeSector;
+  }, [activeSector]);
+
+  // Low-frequency ticker for UI HUD badge to avoid React re-renders every 50ms
   useEffect(() => {
     const interval = setInterval(() => {
-      setRadarPulse((p) => (p + 1) % 100);
-    }, 50);
+      setRadarPulseDisplay((p) => (p % 99) + 1);
+    }, 1000);
     return () => clearInterval(interval);
   }, []);
 
-  // Continuous 60fps 3D Wireframe Render Engine
+  // Single-mount stable 60 FPS Render Loop (Never teardown/recreate on state changes)
   useEffect(() => {
     let animId: number;
-    let currentRot = rotationAngle;
 
     const render = () => {
+      radarTickRef.current = (radarTickRef.current + 1) % 10000;
       const canvas = canvasRef.current;
-      if (!canvas) return;
+
+      if (!canvas) {
+        animId = requestAnimationFrame(render);
+        return;
+      }
+
       const ctx = canvas.getContext("2d");
-      if (!ctx) return;
+      if (!ctx) {
+        animId = requestAnimationFrame(render);
+        return;
+      }
 
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const width = canvas.clientWidth;
@@ -59,9 +91,11 @@ export default function WhiteHouseDigitalTwin3D() {
         return;
       }
 
-      if (canvas.width !== Math.floor(width * dpr) || canvas.height !== Math.floor(height * dpr)) {
-        canvas.width = Math.floor(width * dpr);
-        canvas.height = Math.floor(height * dpr);
+      const targetW = Math.floor(width * dpr);
+      const targetH = Math.floor(height * dpr);
+      if (canvas.width !== targetW || canvas.height !== targetH) {
+        canvas.width = targetW;
+        canvas.height = targetH;
       }
 
       ctx.save();
@@ -79,27 +113,27 @@ export default function WhiteHouseDigitalTwin3D() {
       // Coordinate Grid Matrix Ground Plane
       const cx = width / 2;
       const cy = height / 2 + 15;
-      const scale = (Math.min(width, height) / 95) * zoomLevel;
+      const scale = (Math.min(width, height) / 95) * zoomRef.current;
 
-      if (isRotating && !isDraggingRef.current) {
-        currentRot += 0.005;
+      if (isRotatingRef.current && !isDraggingRef.current) {
+        rotRef.current += 0.005;
       }
+
+      const currentRot = rotRef.current;
+      const pitchAngle = pitchRef.current;
 
       // 3D Isometric Projection Helper
       const project = (x_m: number, y_m: number, z_m: number) => {
-        // Rotate around Y axis
         const cosR = Math.cos(currentRot);
         const sinR = Math.sin(currentRot);
         const rotX = x_m * cosR - y_m * sinR;
         const rotY = x_m * sinR + y_m * cosR;
 
-        // Pitch tilt around X axis
         const cosP = Math.cos(pitchAngle);
         const sinP = Math.sin(pitchAngle);
         const projY = rotY * sinP - z_m * cosP;
         const projZ = rotY * cosP + z_m * sinP;
 
-        // Perspective depth
         const fov = 600;
         const depthFactor = fov / (fov + projZ * 8);
 
@@ -110,7 +144,7 @@ export default function WhiteHouseDigitalTwin3D() {
         };
       };
 
-      // Draw Ground Grid Lines (5-meter and 1-meter sub-grids)
+      // Draw Ground Grid Lines
       ctx.lineWidth = 1;
       ctx.strokeStyle = "rgba(0, 229, 255, 0.12)";
       for (let gx = -45; gx <= 45; gx += 5) {
@@ -130,7 +164,7 @@ export default function WhiteHouseDigitalTwin3D() {
         ctx.stroke();
       }
 
-      // Draw Architectural Volume Outlines (Verified HABS Dimensions in Meters)
+      // Draw Architectural Volume Outlines
       const drawBox = (
         bx: number, by: number, bz: number, 
         bw: number, bd: number, bh: number, 
@@ -186,51 +220,52 @@ export default function WhiteHouseDigitalTwin3D() {
       // South Portico Semicircular Ionic Projection
       const porticoCenter = project(0, -12, 0);
       ctx.beginPath();
-      ctx.arc(porticoCenter.px, porticoCenter.py, 18 * zoomLevel, 0, Math.PI);
+      ctx.arc(porticoCenter.px, porticoCenter.py, 18 * zoomRef.current, 0, Math.PI);
       ctx.strokeStyle = "rgba(0, 255, 136, 0.8)";
       ctx.lineWidth = 2;
       ctx.stroke();
 
-      // West Wing (Oval Office, Cabinet Room, Situation Room downstairs)
+      // West Wing
       drawBox(28, -5, 0, 20, 30, 8, "rgba(0, 255, 136, 0.75)", "rgba(0, 255, 136, 0.08)");
 
-      // East Wing (Family Theater, Visitors Entrance)
+      // East Wing
       drawBox(-26, -4, 0, 18, 26, 8, "rgba(189, 0, 255, 0.75)", "rgba(189, 0, 255, 0.08)");
 
-      // West Colonnade Connector
+      // Colonnade Connectors
       drawBox(16, -4, 0, 8, 4, 4, "rgba(0, 229, 255, 0.5)", "rgba(0, 229, 255, 0.04)");
-
-      // East Colonnade Connector
       drawBox(-15, -4, 0, 8, 4, 4, "rgba(0, 229, 255, 0.5)", "rgba(0, 229, 255, 0.04)");
 
-      // North Portico (Porte-Cochère Pediment)
+      // North Portico
       drawBox(0, 13, 0, 16, 6, 12, "rgba(0, 229, 255, 0.65)", "rgba(0, 229, 255, 0.06)");
 
-      // Render Verified Anomaly Nodes with Exact ±2.0cm Centimeter Anchors
-      const filteredAnomalies = activeSector === "ALL" 
+      // Render Verified Anomaly Nodes
+      const curSector = activeSectorRef.current;
+      const curSelected = selectedAnomalyRef.current;
+      const filteredAnomalies = curSector === "ALL" 
         ? WHITE_HOUSE_ANOMALIES 
-        : WHITE_HOUSE_ANOMALIES.filter((a) => a.sector === activeSector);
+        : WHITE_HOUSE_ANOMALIES.filter((a) => a.sector === curSector);
+
+      const pulsePhase = (radarTickRef.current % 60);
 
       filteredAnomalies.forEach((anom) => {
-        // Convert centimeters to meters for projection
         const x_m = anom.exactCoordinatesCentimeter.x_cm / 100;
         const y_m = anom.exactCoordinatesCentimeter.y_cm / 100;
         const z_m = anom.exactCoordinatesCentimeter.z_elevation_cm / 100;
 
         const pos = project(x_m, y_m, z_m);
-        const isSelected = selectedAnomaly.id === anom.id;
+        const isSelected = curSelected.id === anom.id;
 
-        // Radar ping wave expanding from each anomaly node
-        const pingRadius = (radarPulse % 40) * 0.8;
+        // Radar ping wave
+        const pingRadius = pulsePhase * 0.7;
         ctx.beginPath();
         ctx.arc(pos.px, pos.py, pingRadius, 0, Math.PI * 2);
         ctx.strokeStyle = isSelected 
-          ? `rgba(255, 23, 68, ${Math.max(0, 1 - pingRadius / 32)})` 
-          : `rgba(0, 229, 255, ${Math.max(0, 0.7 - pingRadius / 32)})`;
+          ? `rgba(255, 23, 68, ${Math.max(0, 1 - pingRadius / 42)})` 
+          : `rgba(0, 229, 255, ${Math.max(0, 0.7 - pingRadius / 42)})`;
         ctx.lineWidth = 1.5;
         ctx.stroke();
 
-        // Glowing Core Anomaly Pin
+        // Core Anomaly Pin
         ctx.beginPath();
         ctx.arc(pos.px, pos.py, isSelected ? 7 : 4.5, 0, Math.PI * 2);
         ctx.fillStyle = isSelected ? "#ff1744" : "#00e5ff";
@@ -239,7 +274,7 @@ export default function WhiteHouseDigitalTwin3D() {
         ctx.lineWidth = 1.5;
         ctx.stroke();
 
-        // Altitude leader line down to ground plane
+        // Altitude leader line down to ground
         const groundPos = project(x_m, y_m, 0);
         ctx.beginPath();
         ctx.moveTo(pos.px, pos.py);
@@ -262,7 +297,7 @@ export default function WhiteHouseDigitalTwin3D() {
 
     animId = requestAnimationFrame(render);
     return () => cancelAnimationFrame(animId);
-  }, [isRotating, pitchAngle, selectedAnomaly, radarPulse, zoomLevel, activeSector]);
+  }, []);
 
   // Touch and Mouse Orbit Handlers
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -277,8 +312,8 @@ export default function WhiteHouseDigitalTwin3D() {
     const dy = e.clientY - lastMousePosRef.current.y;
     lastMousePosRef.current = { x: e.clientX, y: e.clientY };
 
-    setRotationAngle((rot) => rot + dx * 0.008);
-    setPitchAngle((pitch) => Math.max(0.1, Math.min(1.2, pitch - dy * 0.008)));
+    rotRef.current += dx * 0.008;
+    pitchRef.current = Math.max(0.1, Math.min(1.2, pitchRef.current - dy * 0.008));
   };
 
   const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -383,7 +418,7 @@ export default function WhiteHouseDigitalTwin3D() {
           {/* Live Viewport Calibration Metric */}
           <div className="absolute bottom-2 right-2 text-[9px] sm:text-[10px] text-[#80deea] bg-[#020b18]/90 px-2.5 py-1 rounded-lg border border-[#00e5ff]/40 backdrop-blur-md flex items-center gap-1.5 shadow-md pointer-events-none">
             <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88] animate-pulse" />
-            <span>RADAR #{radarPulse} • WEBGL2 60FPS • ±2.0CM</span>
+            <span>RADAR #{radarPulseDisplay} • WEBGL2 60FPS • ±2.0CM</span>
           </div>
         </div>
 
