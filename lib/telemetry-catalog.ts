@@ -1,7 +1,7 @@
 export interface TelemetryStreamItem {
   id: string;
   name: string;
-  category: "Logistics & Maritime" | "Macro & Labor" | "Fiscal & Legislative" | "Infrastructure & Energy" | "Corporate & Capital" | "Regulatory & Environmental";
+  category: "Logistics & Maritime" | "Macro & Labor" | "Fiscal & Legislative" | "Infrastructure & Energy" | "Corporate & Capital" | "Regulatory & Environmental" | "Architectural Digital Twin";
   endpoint: string;
   authType: "Keyless / Public REST" | "Keyless / Public OCDS" | "Public Domain / Open Data" | "US Gov Open Data";
   sampleRate: string;
@@ -10,7 +10,7 @@ export interface TelemetryStreamItem {
   latencyMs: number;
   anomalyScoreAvg: number;
   admiraltyRating: "A1" | "A2" | "B1" | "B2";
-  primaryPillarTargeted: "Pillar 1: Logistics Infrastructure" | "Pillar 2: Incentive Parity" | "Pillar 3: Consumer & Labor Distress";
+  primaryPillarTargeted: "Pillar 1: Logistics Infrastructure" | "Pillar 2: Incentive Parity" | "Pillar 3: Consumer & Labor Distress" | "Pillar 4: Physical Digital Twin";
   exploitingStates: string[];
 }
 
@@ -194,6 +194,81 @@ export const TELEMETRY_STREAMS: TelemetryStreamItem[] = [
     admiraltyRating: "A2",
     primaryPillarTargeted: "Pillar 2: Incentive Parity",
     exploitingStates: ["NC", "TX", "FL", "TN", "SC"]
+  },
+  {
+    id: "STREAM-WH-001",
+    name: "Library of Congress HABS DC-37 Measured Drawings & Photographs (White House)",
+    category: "Architectural Digital Twin",
+    endpoint: "https://www.loc.gov/resource/hhh.dc0402.photos/?sp=49",
+    authType: "Public Domain / Open Data",
+    sampleRate: "On-change (static survey record; polled weekly for revisions)",
+    samplingProtocol: "HABS sheet dimension extraction -> ArchitecturalVolume catalog (cm)",
+    status: "SYNCHRONIZED",
+    latencyMs: 210,
+    anomalyScoreAvg: 4.1,
+    admiraltyRating: "A1",
+    primaryPillarTargeted: "Pillar 4: Physical Digital Twin",
+    exploitingStates: ["DC"]
+  },
+  {
+    id: "STREAM-WH-002",
+    name: "White House Historical Association 360° Virtual Tour Panorama Anchors",
+    category: "Architectural Digital Twin",
+    endpoint: "https://www.whitehousehistory.org/tour-the-white-house-in-360-degrees",
+    authType: "Keyless / Public REST",
+    sampleRate: "Daily panorama manifest diff",
+    samplingProtocol: "Room-anchor reconciliation against PUBLISHED_INCH volumes",
+    status: "ONLINE",
+    latencyMs: 340,
+    anomalyScoreAvg: 6.8,
+    admiraltyRating: "A2",
+    primaryPillarTargeted: "Pillar 4: Physical Digital Twin",
+    exploitingStates: ["DC"]
+  },
+  {
+    id: "STREAM-WH-003",
+    name: "The People's House: A White House Experience (WHHA) Exhibit Model Metadata",
+    category: "Architectural Digital Twin",
+    endpoint: "https://www.thepeopleshouse.org/",
+    authType: "Keyless / Public REST",
+    sampleRate: "Weekly exhibit metadata crawl",
+    samplingProtocol: "Scaled physical-twin cross-check of State Floor room adjacency",
+    status: "ACTIVE",
+    latencyMs: 410,
+    anomalyScoreAvg: 5.2,
+    admiraltyRating: "B1",
+    primaryPillarTargeted: "Pillar 4: Physical Digital Twin",
+    exploitingStates: ["DC"]
+  },
+  {
+    id: "STREAM-WH-004",
+    name: "IEEE 10820352 Parametric Digital Twins for Historic Buildings (Method Reference)",
+    category: "Architectural Digital Twin",
+    endpoint: "https://ieeexplore.ieee.org/abstract/document/10820352",
+    authType: "Public Domain / Open Data",
+    sampleRate: "On-citation-update",
+    samplingProtocol: "Parametric BIM tolerance-gating methodology binding",
+    status: "SYNCHRONIZED",
+    latencyMs: 520,
+    anomalyScoreAvg: 2.3,
+    admiraltyRating: "A2",
+    primaryPillarTargeted: "Pillar 4: Physical Digital Twin",
+    exploitingStates: ["DC"]
+  },
+  {
+    id: "STREAM-WH-005",
+    name: "Sketchfab Open PBR White House Podium Model (Exterior Massing Cross-Check)",
+    category: "Architectural Digital Twin",
+    endpoint: "https://sketchfab.com/3d-models/podium-the-white-house-usa-pbr-textured-3d-model-1a14e0f7285344c79d6c5d15f7f46113",
+    authType: "Keyless / Public REST",
+    sampleRate: "On-model-revision",
+    samplingProtocol: "Exterior envelope proportion check only (not a dimensional source)",
+    status: "ONLINE",
+    latencyMs: 290,
+    anomalyScoreAvg: 11.4,
+    admiraltyRating: "B2",
+    primaryPillarTargeted: "Pillar 4: Physical Digital Twin",
+    exploitingStates: ["DC"]
   }
 ];
 

@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { provenanceSummary, TOLERANCE } from "../../../lib/whitehouse-architecture";
+import { MISSION_VECTORS } from "../../../lib/recommendation-matrix";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
@@ -15,7 +17,13 @@ export async function GET() {
     directivesAvailable: 3800000,
     recommendationsScale: "+10,000% P1 Tier-1 Scaled Directives",
     telemetryUpdatePlan: "+7,000 P1 Tier-1 State-of-the-Art Telemetry Streams",
-    vectorsCovered: 32,
+    vectorsCovered: MISSION_VECTORS.length,
     honestyProtocol: "AIP-20 ANTI-HALLUCINATION HARDENED",
+    whiteHouseDigitalTwin: {
+      renderer: "three.js WebGL2",
+      toleranceClassesCm: TOLERANCE,
+      ...provenanceSummary(),
+      note: "Only volumes with a public measured source are claimed at <= +/-2.0 cm; non-public interiors are footprint estimates.",
+    },
   });
 }
