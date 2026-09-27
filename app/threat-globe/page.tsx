@@ -1,6 +1,8 @@
 "use client";
 import React from "react";
 import WhiteHouseDigitalTwin3D from "../../components/WhiteHouseDigitalTwin3D";
+import WhiteHouseReal3DViewer from "../../components/WhiteHouseReal3DViewer";
+import LucidMethodologyTrace from "../../components/LucidMethodologyTrace";
 import PageEmblemHeader from "../../components/PageEmblemHeader";
 import { RealTimeSparkline } from "../../components/RealTimeSparkline";
 import { ShieldAlert, Cpu, TrendingUp, Building2, ExternalLink, BookOpen, Layers } from "lucide-react";
@@ -29,6 +31,12 @@ export default function ThreatGlobePage() {
 
       {/* NSA ADMIN LEVEL WHITE HOUSE DIGITAL TWIN 3D WORKSTATION */}
       <WhiteHouseDigitalTwin3D />
+
+      {/* LUCID-1 REAL 3D MODEL VIEWER (VERIFIED EXTERNAL ASSETS) */}
+      <WhiteHouseReal3DViewer />
+
+      {/* LUCID-1 4-D METHODOLOGY TRACE + LIVE P1 SCALE */}
+      <LucidMethodologyTrace />
 
       {/* 60 FPS Canvas Real-Time Telemetry Sparklines */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

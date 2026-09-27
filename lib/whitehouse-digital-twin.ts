@@ -6,7 +6,7 @@
  * 3. The People's House: A White House Experience (1700 Pennsylvania Ave NW) Physical Scaled Twin
  * 4. IEEE Xplore Parametric Heritage Building Digital Twin Standards (IEEE 10820352)
  * 5. Sketchfab PBR podium/lectern prop reference (honest label: furnishing asset, not full-building twin)
- * 6. Tripo3D generative 3D platform (official platform link; baseline reference only)
+ * 6. Tripo3D platform overview via NavTools directory (user-specified link; baseline reference only)
  * 7. Visual360.no commercial digital-twin vendor (tags / POI / measurement UX pattern reference)
  *
  * Strict Grounding Tolerance: Strictly within ±2.0 cm of physical architectural anchors.
@@ -67,10 +67,10 @@ export const DIGITAL_TWIN_RESEARCH_CITATIONS: DigitalTwinResearchCitation[] = [
   },
   {
     id: "TRIPO3D-PLATFORM",
-    source: "Tripo3D — Official Generative 3D Platform",
-    url: "https://www.tripo3d.ai/",
-    doiOrLocId: "TRIPO3D-PLATFORM-LINK",
-    application: "Official Tripo3D platform link. Generative image-to-3D baseline reference for rapid massing studies; all deployed geometry remains HABS-grounded, never generative output.",
+    source: "Tripo3D Platform Overview (NavTools Directory)",
+    url: "https://navtools.ai/tool/tripo3d",
+    doiOrLocId: "NAVTOOLS-TRIPO3D-OVERVIEW",
+    application: "Third-party overview of Tripo3D (AI text/image-to-3D platform, verified live). Baseline reference for rapid massing studies; all deployed geometry remains HABS-grounded, never generative output.",
     calibrationResolution: "Baseline reference only"
   },
   {
@@ -102,7 +102,7 @@ export const DIGITAL_TWIN_SOURCE_LINKS: DigitalTwinSourceLink[] = [
   { id: "WHHA-360-VIRTUAL", label: "WHHA 360° Virtual Tour", shortLabel: "360° TOUR", url: "https://www.whitehousehistory.org/tour-the-white-house-in-360-degrees", verified: "2026-09-27", kind: "VIRTUAL_TOUR" },
   { id: "IEEE-10820352", label: "IEEE 10820352 Parametric Twin Standard", shortLabel: "IEEE STD", url: "https://ieeexplore.ieee.org/document/10820352/", verified: "2026-09-27", kind: "STANDARD" },
   { id: "SKETCHFAB-WH-PODIUM", label: "Sketchfab Podium PBR Prop", shortLabel: "PODIUM 3D", url: "https://sketchfab.com/3d-models/podium-the-white-house-usa-pbr-textured-3d-model-1a14e0f7285344c79d6c5d15f7f46113", verified: "2026-09-27", kind: "MODEL_ASSET" },
-  { id: "TRIPO3D-PLATFORM", label: "Tripo3D Platform", shortLabel: "TRIPO3D", url: "https://www.tripo3d.ai/", verified: "2026-09-27", kind: "PLATFORM" },
+  { id: "TRIPO3D-PLATFORM", label: "Tripo3D Overview (NavTools)", shortLabel: "TRIPO3D", url: "https://navtools.ai/tool/tripo3d", verified: "2026-09-27", kind: "PLATFORM" },
   { id: "VISUAL360-VENDOR", label: "Visual360 Tag/Measure UX", shortLabel: "V360 UX", url: "https://visual360.no/", verified: "2026-09-27", kind: "VENDOR_UX" }
 ];
 
