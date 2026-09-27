@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { provenanceSummary, TOLERANCE } from "../../../lib/whitehouse-architecture";
-import { registrySummary } from "../../../lib/anomaly-registry-meta";
+import { US_JURISDICTIONS } from "../../../lib/us-jurisdictions";
 import { MISSION_VECTORS } from "../../../lib/recommendation-matrix";
 
 export const runtime = "edge";
@@ -20,7 +20,14 @@ export async function GET() {
     telemetryUpdatePlan: "+7,000 P1 Tier-1 State-of-the-Art Telemetry Streams",
     vectorsCovered: MISSION_VECTORS.length,
     honestyProtocol: "AIP-20 ANTI-HALLUCINATION HARDENED",
-    anomalyRegistry: registrySummary(),
+    anomalyRegistry: {
+      mode: "LIVE_VERIFIED_SOURCES_ONLY",
+      sources: ["NWS active alerts", "USGS M2.5+ 7-day feed", "CISA Known Exploited Vulnerabilities", "FEMA disaster declarations (365d)"],
+      jurisdictions: US_JURISDICTIONS.length,
+      feedEndpoint: "/api/anomalies/verified",
+      auditEndpoint: "/api/audit/anomalies",
+      note: "No synthetic or hand-curated anomaly records are served; counts vary with live source activity.",
+    },
     whiteHouseDigitalTwin: {
       renderer: "three.js WebGL2",
       toleranceClassesCm: TOLERANCE,

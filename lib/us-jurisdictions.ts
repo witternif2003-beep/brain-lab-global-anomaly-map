@@ -1,12 +1,4 @@
-/**
- * Size/shape constants for the P1 anomaly registry, kept free of the
- * multi-megabyte curated corpus so Edge routes can report them cheaply.
- */
-export const BATCH_SIZE = 25;
-export const TOTAL_ANOMALIES = 25000;
-export const TOTAL_BATCHES = TOTAL_ANOMALIES / BATCH_SIZE;
-export const CURATED_COUNT = 1000;
-
+/** All 50 U.S. states, the District of Columbia and the five inhabited territories. */
 export type JurisdictionKind = "STATE" | "DISTRICT" | "TERRITORY";
 
 export interface Jurisdiction {
@@ -80,28 +72,3 @@ export const US_JURISDICTIONS: Jurisdiction[] = [
 export const JURISDICTION_BY_CODE: Record<string, Jurisdiction> = Object.fromEntries(
   US_JURISDICTIONS.map((j) => [j.code, j])
 );
-
-export function jurisdictionCount(code: string): number {
-  const idx = US_JURISDICTIONS.findIndex((j) => j.code === code);
-  if (idx < 0) return 0;
-  const generated = Math.floor((TOTAL_ANOMALIES - CURATED_COUNT - 1 - idx) / US_JURISDICTIONS.length) + 1;
-  return generated + (code === "GA" ? CURATED_COUNT : 0);
-}
-
-export function registrySummary() {
-  return {
-    totalAnomalies: TOTAL_ANOMALIES,
-    batchSize: BATCH_SIZE,
-    totalBatches: TOTAL_BATCHES,
-    curatedRecords: CURATED_COUNT,
-    syntheticRecords: TOTAL_ANOMALIES - CURATED_COUNT,
-    jurisdictions: US_JURISDICTIONS.length,
-    states: US_JURISDICTIONS.filter((j) => j.kind === "STATE").length,
-    districts: US_JURISDICTIONS.filter((j) => j.kind === "DISTRICT").length,
-    territories: US_JURISDICTIONS.filter((j) => j.kind === "TERRITORY").length,
-    note:
-      "Records 1-1000 are the curated Georgia/interstate corpus; records 1001-25000 are deterministically " +
-      "generated synthetic catalog entries (verified=false, synthetic=true) with no attribution and no " +
-      "demographic or national-origin targeting.",
-  };
-}
