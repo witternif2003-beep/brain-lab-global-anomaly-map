@@ -118,7 +118,8 @@ export function batchCountFor(code: string): number {
   return Math.ceil(jurisdictionByCode(code).quota / BATCH_SIZE);
 }
 
-/** Self-check: totals derive from quotas — GA 1,000, 0 sourced elsewhere, 55 awaiting. */
+/** Self-check: totals derive from quotas — GA 1,000 curated; territories excluded
+ * from awaiting (live federal feeds mapped); 51 awaiting catalog mapping. */
 export function catalogTotals(): {
   jurisdictions: number;
   total: number;
@@ -129,6 +130,6 @@ export function catalogTotals(): {
   const ga = jurisdictionByCode("GA").quota;
   const rest = JURISDICTIONS.filter((j) => j.code !== "GA");
   const sourced = rest.reduce((a, j) => a + j.quota, 0);
-  const awaiting = rest.filter((j) => j.quota === 0).length;
+  const awaiting = rest.filter((j) => j.quota === 0 && j.type !== "territory").length;
   return { jurisdictions: JURISDICTIONS.length, total: ga + sourced, ga, sourced, awaiting };
 }

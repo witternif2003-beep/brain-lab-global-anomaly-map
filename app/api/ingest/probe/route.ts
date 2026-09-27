@@ -7,9 +7,67 @@ export const dynamic = "force-dynamic";
  * Phase-2 ingest probe — runtime portal-liveness check per jurisdiction.
  *
  * HONESTY PROTOCOL: this endpoint is the ONLY thing allowed to claim a portal
- * is reachable, and only on a live HTTP 200 with a parseable Socrata payload.
- * Reachable portals still serve 0 records until a dataset mapping exists.
+ * is reachable, and only on a live HTTP 200 with a parseable Socrata/CKAN
+ * payload. Reachable portals still serve 0 records until a dataset mapping
+ * exists. Both platform paths are tried in parallel; the adapter's declared
+ * platform is preferred when both parse (CA/OK/VA/HI are CKAN-verified).
  */
+interface Attempt {
+  ok: boolean;
+  http: number;
+  text: string;
+}
+
+async function tryFetch(url: string): Promise<Attempt | null> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 8000);
+  try {
+    const res = await fetch(url, {
+      signal: ctrl.signal,
+      headers: {
+        Accept: "application/json",
+        "User-Agent": "brain-lab-ingest-probe/1.0"
+      },
+      cache: "no-store"
+    });
+    const text = await res.text();
+    return { ok: res.ok, http: res.status, text };
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function parseSocrata(text: string): number | null {
+  try {
+    const rec = JSON.parse(text) as {
+      count?: unknown;
+      resultSetSize?: unknown;
+      results?: unknown;
+    };
+    if (typeof rec.count === "number") return rec.count;
+    if (typeof rec.resultSetSize === "number") return rec.resultSetSize;
+    if (Array.isArray(rec.results)) return rec.results.length;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function parseCkan(text: string): number | null {
+  try {
+    const rec = JSON.parse(text) as {
+      success?: unknown;
+      result?: { count?: unknown };
+    };
+    if (rec.success === true && typeof rec.result?.count === "number") return rec.result.count;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const code = (searchParams.get("code") || "").toUpperCase();
@@ -34,62 +92,75 @@ export async function GET(req: Request) {
   }
 
   const base = cfg.openDataPortal.replace(/\/$/, "");
-  try {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 8000);
-    let res: Response;
-    try {
-      res = await fetch(`${base}/api/search/views.json?search=anomaly&limit=3`, {
-        signal: ctrl.signal,
-        headers: {
-          Accept: "application/json",
-          "User-Agent": "brain-lab-ingest-probe/1.0"
-        },
-        cache: "no-store"
-      });
-    } finally {
-      clearTimeout(timer);
-    }
-    if (!res.ok) {
-      return NextResponse.json({
-        code,
-        portal: base,
-        status: "PORTAL-ERROR",
-        reachable: false,
-        http: res.status,
-        records: 0,
-        checkedAt
-      });
-    }
-    const data: unknown = await res.json().catch(() => null);
-    const rec = (data ?? {}) as { count?: unknown; resultSetSize?: unknown; results?: unknown };
-    const datasetsIndexed =
-      typeof rec.count === "number"
-        ? rec.count
-        : typeof rec.resultSetSize === "number"
-          ? rec.resultSetSize
-          : Array.isArray(rec.results)
-            ? rec.results.length
-            : null;
-    return NextResponse.json({
-      code,
-      portal: base,
-      status: "PORTAL-REACHABLE-FEED-UNMAPPED",
-      reachable: true,
-      datasetsIndexed,
-      records: 0,
-      checkedAt,
-      note: "Portal responds; no anomaly dataset mapped. 0 records served."
-    });
-  } catch (e) {
+  const [soc, ckn] = await Promise.all([
+    tryFetch(`${base}/api/search/views.json?search=anomaly&limit=3`),
+    tryFetch(`${base}/api/3/action/package_search?q=anomaly&rows=3`)
+  ]);
+
+  if (!soc && !ckn) {
     return NextResponse.json({
       code,
       portal: base,
       status: "PORTAL-UNREACHABLE",
       reachable: false,
-      reason: e instanceof Error ? e.message : "fetch failed",
+      reason: "fetch failed on both Socrata and CKAN paths",
       records: 0,
       checkedAt
     });
   }
+
+  const socCount = soc?.ok ? parseSocrata(soc.text) : null;
+  const cknCount = ckn?.ok ? parseCkan(ckn.text) : null;
+  const preferCkan = cfg.portalPlatform === "ckan";
+  const pick: { platform: string; n: number } | null =
+    preferCkan && cknCount !== null
+      ? { platform: "ckan", n: cknCount }
+      : !preferCkan && socCount !== null
+        ? { platform: "socrata", n: socCount }
+        : cknCount !== null
+          ? { platform: "ckan", n: cknCount }
+          : socCount !== null
+            ? { platform: "socrata", n: socCount }
+            : null;
+
+  if (pick) {
+    return NextResponse.json({
+      code,
+      portal: base,
+      platform: pick.platform,
+      status: "PORTAL-REACHABLE-FEED-UNMAPPED",
+      reachable: true,
+      datasetsIndexed: pick.n,
+      records: 0,
+      checkedAt,
+      note: `Portal responds (${pick.platform}); no anomaly dataset mapped. 0 records served.`
+    });
+  }
+
+  const anyHost = (soc !== null && soc.ok) || (ckn !== null && ckn.ok);
+  if (anyHost) {
+    return NextResponse.json({
+      code,
+      portal: base,
+      platform: null,
+      status: "PORTAL-NO-DATA-API",
+      reachable: true,
+      datasetsIndexed: null,
+      records: 0,
+      checkedAt,
+      note: "Host responds but exposes no Socrata/CKAN search API. 0 records served."
+    });
+  }
+
+  const firstHttp = preferCkan ? (ckn?.http ?? soc?.http) : (soc?.http ?? ckn?.http);
+  return NextResponse.json({
+    code,
+    portal: base,
+    status: "PORTAL-ERROR",
+    reachable: false,
+    http: firstHttp ?? 0,
+    records: 0,
+    checkedAt,
+    note: "Both Socrata and CKAN search paths failed."
+  });
 }

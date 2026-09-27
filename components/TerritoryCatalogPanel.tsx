@@ -196,6 +196,8 @@ export default function TerritoryCatalogPanel() {
         of {BATCH_SIZE}
       </div>
 
+      <FedTotalsLine />
+
       <div className="border-t border-[#b45309]/30" />
 
       {/* Grouped jurisdiction tabs — states / district / territories */}
@@ -253,8 +255,10 @@ export default function TerritoryCatalogPanel() {
           </span>
         </div>
         <p className="text-[11px] sm:text-xs text-[#69f0ae] font-bold leading-relaxed">
-          GA carries the curated 1–1,000 corpus. All other jurisdictions serve records ONLY from
-          mapped verified feeds — 0 records until a source is wired. No synthetic data.
+          GA carries the curated 1–1,000 corpus. Territory tabs render live federal records
+          (fetched per visit — sourced, not verified findings). All other jurisdictions serve
+          records ONLY from mapped verified feeds — 0 records until a source is wired. No
+          synthetic data.
         </p>
       </div>
 
@@ -301,6 +305,7 @@ export default function TerritoryCatalogPanel() {
       )}
 
       {!isGA && meta.type === "territory" && <FedFeedPanel code={jurisdiction} name={meta.name} />}
+      {!isGA && meta.type === "territory" && <FedRecordCards code={jurisdiction} name={meta.name} />}
 
       {/* Realtime query controls */}
       <div className="flex flex-col sm:flex-row gap-2">
@@ -328,7 +333,9 @@ export default function TerritoryCatalogPanel() {
             placeholder={
               isGA
                 ? `Realtime query — ${meta.name} P1 index…`
-                : `No feed mapped — query unavailable for ${meta.name}`
+                : meta.type === "territory"
+                  ? `Federal records render below — full text in VIEW JSON`
+                  : `No feed mapped — query unavailable for ${meta.name}`
             }
             className="w-full rounded-lg bg-[#171006] border border-[#b45309]/60 focus:border-[#f5a623] outline-none pl-9 pr-3 py-2 text-[12px] sm:text-xs text-slate-100 placeholder:text-slate-500 min-h-[36px] [color-scheme:dark] disabled:opacity-40"
           />
@@ -342,7 +349,9 @@ export default function TerritoryCatalogPanel() {
             ? `QUERY RESULTS — ${queryRows.length.toLocaleString()} MATCHES (FIRST 50 SHOWN)`
             : isGA
               ? `BATCH ${batch} OF ${batches} • RECORDS ${batchStart.toLocaleString()}–${batchEnd.toLocaleString()} OF ${meta.quota.toLocaleString()} • ${meta.name.toUpperCase()}`
-              : `NO BATCHES — FEED NOT MAPPED • ${meta.name.toUpperCase()} • 0 RECORDS`}
+              : meta.type === "territory"
+                ? `FEDERAL FEEDS MAPPED • ${meta.name.toUpperCase()} • LIVE RECORDS BELOW`
+                : `NO BATCHES — FEED NOT MAPPED • ${meta.name.toUpperCase()} • 0 RECORDS`}
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -390,7 +399,7 @@ export default function TerritoryCatalogPanel() {
             No records match this filter in {meta.name}.
           </p>
         )}
-        {!isGA && (
+        {!isGA && meta.type !== "territory" && (
           <div className="rounded-2xl border border-dashed border-[#00e5ff]/50 bg-[#002b4d]/20 p-4 text-center space-y-1.5">
             <div className="text-[11px] sm:text-xs font-black tracking-[0.2em] text-[#00e5ff]">
               AWAITING REAL-TIME INGESTION
@@ -558,6 +567,199 @@ function FedFeedPanel({ code, name }: { code: string; name: string }) {
           PROBED IN {typeof payload.elapsed_ms === "number" ? `${payload.elapsed_ms}MS` : "—"} •
           EVERY RECORD CARRIES source_url + retrieved_at + sha256
         </div>
+      )}
+    </div>
+  );
+}
+
+/* Live federal-record count across all 5 territories — fetched once per mount
+   from /api/ingest/territories/probe. Sums BLS observations + EPA summaries +
+   EDGAR registrants + World Bank observations. Fails silent (no line) if the
+   probe is unreachable — never a guessed number. */
+function FedTotalsLine() {
+  const [total, setTotal] = useState<number | null>(null);
+  const [failed, setFailed] = useState<boolean>(false);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/ingest/territories/probe?wb=1", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled) return;
+        let n = 0;
+        const raw = (d as { results?: unknown }).results;
+        const results: Array<{ results?: Record<string, unknown> }> = Array.isArray(raw)
+          ? (raw as Array<{ results?: Record<string, unknown> }>)
+          : [];
+        for (const t of results) {
+          const r = t.results ?? {};
+          for (const [k, v] of Object.entries(r)) {
+            if (k === "WORLDBANK" && v !== null && typeof v === "object" && !("ok" in v)) {
+              for (const sub of Object.values(v as Record<string, { count?: unknown }>)) {
+                if (typeof sub?.count === "number") n += sub.count;
+              }
+            } else if (v !== null && typeof v === "object" && "count" in v) {
+              const c = (v as { count?: unknown }).count;
+              if (typeof c === "number") n += c;
+            }
+          }
+        }
+        setTotal(n);
+      })
+      .catch(() => {
+        if (!cancelled) setFailed(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  if (failed) return null;
+  if (total === null) {
+    return (
+      <div className="text-center text-[10px] sm:text-[11px] font-bold text-slate-500 animate-pulse">
+        COUNTING LIVE FEDERAL RECORDS…
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-2xl sm:rounded-full border border-[#69f0ae]/50 px-4 py-1.5 text-center text-[10px] sm:text-[11px] font-black tracking-widest text-[#69f0ae] uppercase">
+      Federal live: {total.toLocaleString()} records • 5 territories (BLS + EPA + EDGAR + WB)
+    </div>
+  );
+}
+
+const WB_LABELS: Record<string, string> = {
+  "NY.GDP.MKTP.CD": "GDP (CURRENT US$)",
+  "SP.POP.TOTL": "POPULATION, TOTAL",
+  "SL.UEM.TOTL.ZS": "UNEMPLOYMENT (% OF LABOR FORCE)"
+};
+
+function fedSources(code: string): Array<{ key: string; label: string; url: string; cap: number }> {
+  const base = "/api/ingest/territories/records?code=" + code;
+  return [
+    { key: "BLS-LAUS", label: "BLS LAUS — UNEMPLOYMENT RATE", url: base + "&source=BLS-LAUS", cap: 12 },
+    { key: "EPA-ECHO", label: "EPA ECHO — COMPLIANCE SUMMARY", url: base + "&source=EPA-ECHO", cap: 4 },
+    { key: "SEC-EDGAR", label: "SEC EDGAR — REGISTRANTS BY STATE", url: base + "&source=SEC-EDGAR", cap: 12 },
+    { key: "WB-GDP", label: "WORLD BANK — " + (WB_LABELS["NY.GDP.MKTP.CD"] ?? "GDP"), url: base + "&source=WORLDBANK&indicator=NY.GDP.MKTP.CD", cap: 8 },
+    { key: "WB-POP", label: "WORLD BANK — " + (WB_LABELS["SP.POP.TOTL"] ?? "POPULATION"), url: base + "&source=WORLDBANK&indicator=SP.POP.TOTL", cap: 8 },
+    { key: "WB-UNE", label: "WORLD BANK — " + (WB_LABELS["SL.UEM.TOTL.ZS"] ?? "UNEMPLOYMENT"), url: base + "&source=WORLDBANK&indicator=SL.UEM.TOTL.ZS", cap: 8 }
+  ];
+}
+
+/* Territory record cards — same output shape as the GA corpus cards, but every
+   row is fetched live from a federal API in this visit. Caps keep tabs fast;
+   VIEW FULL JSON links expose the complete payload with provenance. */
+function FedRecordCards({ code, name }: { code: string; name: string }) {
+  interface Prov {
+    source_id: string;
+    source_url: string;
+    retrieved_at: string;
+    sha256: string;
+    http_status: number;
+  }
+  interface RecPayload {
+    records?: Array<Record<string, any>>;
+    provenance?: Prov | null;
+    note?: string;
+    error?: string;
+  }
+  const [data, setData] = useState<Record<string, RecPayload> | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    setData(null);
+    const sources = fedSources(code);
+    Promise.all(
+      sources.map((s) =>
+        fetch(s.url, { cache: "no-store" })
+          .then((r) => r.json())
+          .then((d) => ({ key: s.key, payload: d as RecPayload }))
+          .catch(() => ({ key: s.key, payload: { error: "fetch failed" } as RecPayload }))
+      )
+    ).then((pairs) => {
+      if (cancelled) return;
+      const out: Record<string, RecPayload> = {};
+      for (const p of pairs) out[p.key] = p.payload;
+      setData(out);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [code]);
+  const sources = fedSources(code);
+  if (!data) {
+    return (
+      <div className="rounded-xl border border-[#69f0ae]/30 bg-[#002b1b]/20 px-3 py-2 text-[10px] sm:text-[11px] font-bold text-slate-300 animate-pulse">
+        FETCHING FEDERAL RECORDS FOR {name.toUpperCase()}…
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-2.5">
+      {sources.map((s) => {
+        const p = data[s.key] ?? {};
+        const recs = Array.isArray(p.records) ? p.records : [];
+        const prov = p.provenance ?? null;
+        return (
+          <div key={s.key} className="rounded-2xl border border-[#69f0ae]/40 bg-[#002b1b]/20 p-3 space-y-1.5">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] sm:text-[11px] font-black">
+              <span className="text-[#69f0ae] tracking-widest">{s.label}</span>
+              <span className="text-slate-400">
+                {recs.length > 0
+                  ? `${recs.length} FETCHED • SHOWING ${Math.min(s.cap, recs.length)}`
+                  : (p.note ?? p.error ?? "0 RECORDS")}
+              </span>
+              <a href={s.url} target="_blank" rel="noreferrer" className="text-[#f5a623] underline underline-offset-2">
+                VIEW FULL JSON ↗
+              </a>
+            </div>
+            {recs.length === 0 && p.note && (
+              <p className="text-[11px] text-slate-400 font-bold">{p.note}</p>
+            )}
+            {recs.slice(0, s.cap).map((r, i) => (
+              <FedCard key={s.key + "-" + i} source={s.key} r={r} />
+            ))}
+            {prov && (
+              <div className="text-[9px] sm:text-[10px] text-slate-500 font-bold break-all">
+                FETCHED {prov.retrieved_at} • HTTP {prov.http_status} • sha256 {prov.sha256.slice(0, 16)}… •{" "}
+                <a href={prov.source_url} target="_blank" rel="noreferrer" className="text-[#f5a623] underline underline-offset-2">
+                  SOURCE ↗
+                </a>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function FedCard({ source, r }: { source: string; r: Record<string, any> }) {
+  let title = "";
+  let sub = "";
+  let link: string | null = null;
+  if (source === "BLS-LAUS") {
+    title = `${String(r.period_name ?? "")} ${String(r.year ?? "")} — UNEMPLOYMENT ${String(r.value ?? "?")}%`;
+    sub = String(r.series_id ?? "");
+  } else if (source === "EPA-ECHO") {
+    const n = Number(r.active_facilities ?? 0).toLocaleString();
+    title = `${n} ACTIVE FACILITIES — ${String(r.territory ?? "")}`;
+    sub = `CAA ${String(r.caa_rows ?? 0)} • CWA ${String(r.cwa_rows ?? 0)} • RCRA ${String(r.rcra_rows ?? 0)} • TRI ${String(r.tri_rows ?? 0)} • INSPECTIONS ${String(r.inspections ?? 0)} • PENALTIES ${String(r.total_penalties ?? "—")}`;
+  } else if (source === "SEC-EDGAR") {
+    title = `CIK ${String(r.cik ?? "?")} • ${String(r.state ?? "")}`;
+    sub = `UPDATED ${String(r.updated ?? "?")} — COMPANY NAMES NOT SUPPLIED BY SEC`;
+    link = typeof r.edgar_url === "string" && r.edgar_url.length > 0 ? r.edgar_url : null;
+  } else {
+    const v: unknown = r.value;
+    title = `${String(r.year ?? "")} — ${String(r.indicator_name ?? r.indicator_id ?? "")}`;
+    sub = `${typeof v === "number" ? v.toLocaleString() : "N/A"} • ${String(r.indicator_id ?? "")}`;
+  }
+  return (
+    <div className="rounded-xl border border-white/10 bg-black/30 px-2.5 py-1.5 space-y-0.5">
+      <div className="text-slate-100 font-bold text-[11px] sm:text-xs leading-snug break-words">{title}</div>
+      <div className="text-[10px] sm:text-[11px] text-[#f5a623]/90 font-bold break-words">{sub}</div>
+      {link && (
+        <a href={link} target="_blank" rel="noreferrer" className="text-[10px] sm:text-[11px] text-[#f5a623] underline underline-offset-2 font-bold">
+          FILING INDEX ↗
+        </a>
       )}
     </div>
   );
