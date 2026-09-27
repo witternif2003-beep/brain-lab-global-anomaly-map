@@ -29,6 +29,19 @@ export default function StatewideAnomalyDashboard() {
   const [pulseCount, setPulseCount] = useState<number>(1);
   const [isAutoCycling, setIsAutoCycling] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<"narrative" | "batch_list" | "overview" | "intercept" | "financial" | "forensics" | "charges">("narrative");
+  // Live Eastern Time header — replaces frozen report date; per-record occurrence dates untouched.
+  const [liveNow, setLiveNow] = useState<Date | null>(null);
+  useEffect(() => {
+    setLiveNow(new Date());
+    const t = setInterval(() => setLiveNow(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const liveDateStr = liveNow
+    ? new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", month: "long", day: "numeric", year: "numeric" }).format(liveNow).toUpperCase()
+    : "SYNCING…";
+  const liveTimeStr = liveNow
+    ? new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true, timeZoneName: "short" }).format(liveNow)
+    : "";
 
   // Filter 25 anomalies for the currently selected batch
   const batchAnomalies = useMemo(() => {
@@ -119,7 +132,7 @@ export default function StatewideAnomalyDashboard() {
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00e5ff] via-[#69f0ae] to-white">
                   GEORGIA & INTERSTATE STATEWIDE ANOMALY REPORT
                 </span>
-                <span className="text-[#ffd54f] font-mono ml-2">— {currentAnomaly.dateStr}</span>
+                <span className="text-[#ffd54f] font-mono ml-2 tabular-nums">— {liveDateStr}{liveTimeStr ? ` • ${liveTimeStr}` : ""}</span>
               </h2>
             </div>
             
