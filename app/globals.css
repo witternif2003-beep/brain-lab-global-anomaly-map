@@ -1,3 +1,5 @@
+@layer theme, reset, tokens, base, layout, components, utilities, overrides;
+
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);
 
@@ -5,7 +7,6 @@
    1. CASCADE LAYER DECLARATION
    Order determines precedence (first = lowest)
    ========================================= */
-@layer theme, reset, tokens, base, layout, components, utilities, overrides;
 
 /* =========================================
    2. VIEW TRANSITIONS API

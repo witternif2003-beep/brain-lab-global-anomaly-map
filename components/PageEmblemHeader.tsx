@@ -22,7 +22,7 @@ export default function PageEmblemHeader({
       <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
         
         {/* Left Section with Official Standard Header Seal Placement */}
-        <div className="flex items-start space-x-4">
+        <div className="flex items-start space-x-4 min-w-0">
           {/* Official Standard 56px Header Insignia with Conformal Cyan Bezel */}
           <div className="relative shrink-0 pt-0.5" style={{ flexShrink: 0 }}>
             <div
@@ -64,13 +64,13 @@ export default function PageEmblemHeader({
             </div>
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 min-w-0 flex-1">
             <div className="inline-flex items-center space-x-2 px-3 py-0.5 rounded-full text-[10px] font-semibold glass-pill text-[#38bdf8] shadow-sm">
               {badgeIcon && <span>{badgeIcon}</span>}
               <span className="font-mono tracking-wide uppercase">{badgeText}</span>
             </div>
 
-            <h1 className="text-lg sm:text-xl md:text-2xl font-extrabold text-[#f8fafc] tracking-tight font-mono leading-tight">
+            <h1 className="text-lg sm:text-xl md:text-2xl font-extrabold text-[#f8fafc] tracking-tight font-mono leading-tight break-words [overflow-wrap:anywhere]">
               {title}
             </h1>
 
