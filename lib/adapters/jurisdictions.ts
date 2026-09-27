@@ -67,7 +67,7 @@ export const JURISDICTION_ADAPTERS: Record<string, JurisdictionAdapterConfig> = 
   KY: A("KY", "Kentucky", "state", "https://data.kentucky.gov/"),
   LA: A("LA", "Louisiana", "state", "https://data.louisiana.gov/"),
   ME: A("ME", "Maine", "state", "https://data.maine.gov/"),
-  MD: A("MD", "Maryland", "state", "https://data.maryland.gov/"),
+  MD: A("MD", "Maryland", "state", "https://opendata.maryland.gov/"),
   MA: A("MA", "Massachusetts", "state", "https://data.mass.gov/"),
   MI: A("MI", "Michigan", "state", "https://data.michigan.gov/"),
   MN: A("MN", "Minnesota", "state", "https://data.mn.gov/"),

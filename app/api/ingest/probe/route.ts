@@ -62,13 +62,15 @@ export async function GET(req: Request) {
       });
     }
     const data: unknown = await res.json().catch(() => null);
-    const rec = (data ?? {}) as { resultSetSize?: unknown; results?: unknown };
+    const rec = (data ?? {}) as { count?: unknown; resultSetSize?: unknown; results?: unknown };
     const datasetsIndexed =
-      typeof rec.resultSetSize === "number"
-        ? rec.resultSetSize
-        : Array.isArray(rec.results)
-          ? rec.results.length
-          : null;
+      typeof rec.count === "number"
+        ? rec.count
+        : typeof rec.resultSetSize === "number"
+          ? rec.resultSetSize
+          : Array.isArray(rec.results)
+            ? rec.results.length
+            : null;
     return NextResponse.json({
       code,
       portal: base,
