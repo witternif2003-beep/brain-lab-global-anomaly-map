@@ -5,7 +5,7 @@ export function initWebVitals() {
   const log = (m: any) => {
     // 2026 Core Web Vitals telemetry reporting
     if (process.env.NODE_ENV !== "production") {
-      (process.env.NODE_ENV === "production" ? () => {} : console.log)(`[vitals] ${m.name} = ${m.value.toFixed(1)}ms (${m.rating})`);
+      console.log(`[vitals] ${m.name} = ${m.value.toFixed(1)}ms (${m.rating})`);
     }
   };
   try {
