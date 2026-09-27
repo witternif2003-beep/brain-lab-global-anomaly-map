@@ -5,8 +5,14 @@
  * 2. National Park Service (NPS) Architectural Surveys & White House Historical Association (WHHA)
  * 3. The People's House: A White House Experience (1700 Pennsylvania Ave NW) Physical Scaled Twin
  * 4. IEEE Xplore Parametric Heritage Building Digital Twin Standards (IEEE 10820352)
+ * 5. Sketchfab PBR podium/lectern prop reference (honest label: furnishing asset, not full-building twin)
+ * 6. Tripo3D generative 3D platform (official platform link; baseline reference only)
+ * 7. Visual360.no commercial digital-twin vendor (tags / POI / measurement UX pattern reference)
  *
  * Strict Grounding Tolerance: Strictly within ±2.0 cm of physical architectural anchors.
+ *
+ * HONESTY PROTOCOL: every URL below was live-verified on 2026-09-27. Labels describe
+ * what each source actually is — no inflated claims.
  */
 
 export interface DigitalTwinResearchCitation {
@@ -50,8 +56,69 @@ export const DIGITAL_TWIN_RESEARCH_CITATIONS: DigitalTwinResearchCitation[] = [
     doiOrLocId: "10.1109/ACCESS.2024.10820352",
     application: "Multi-parametric continuous telemetry analytics, acoustic/environmental sensor clustering, and sub-surface structure isolation",
     calibrationResolution: "Multi-sensor streaming telemetry convergence"
+  },
+  {
+    id: "SKETCHFAB-WH-PODIUM",
+    source: "Sketchfab — White House Podium PBR 3D Model (Niccolò Bottacin)",
+    url: "https://sketchfab.com/3d-models/podium-the-white-house-usa-pbr-textured-3d-model-1a14e0f7285344c79d6c5d15f7f46113",
+    doiOrLocId: "SKETCHFAB-1a14e0f-24KTRI",
+    application: "Honest scope: press podium / lectern furnishing prop (24.3k triangles, PBR BaseColor/Metalness/Roughness/Normal). Used as interior prop-scale reference only — not a full-building twin.",
+    calibrationResolution: "Prop-scale visual reference"
+  },
+  {
+    id: "TRIPO3D-PLATFORM",
+    source: "Tripo3D — Official Generative 3D Platform",
+    url: "https://www.tripo3d.ai/",
+    doiOrLocId: "TRIPO3D-PLATFORM-LINK",
+    application: "Official Tripo3D platform link. Generative image-to-3D baseline reference for rapid massing studies; all deployed geometry remains HABS-grounded, never generative output.",
+    calibrationResolution: "Baseline reference only"
+  },
+  {
+    id: "VISUAL360-VENDOR",
+    source: "Visual360.no — Commercial Digital-Twin Vendor (Norway)",
+    url: "https://visual360.no/",
+    doiOrLocId: "V360-TAG-POI-MEASURE-UX",
+    application: "Honest scope: vendor site verified live; no White House-specific model found there. Referenced solely for its documented interactive tag / POI / in-twin measurement UX patterns.",
+    calibrationResolution: "UX pattern reference"
   }
 ];
+
+/**
+ * Quick-launch portal chips rendered under the 3D viewport.
+ * `verified` = date the link was confirmed live (HONESTY PROTOCOL).
+ */
+export interface DigitalTwinSourceLink {
+  id: string;
+  label: string;
+  shortLabel: string;
+  url: string;
+  verified: string;
+  kind: "ARCHIVE" | "VIRTUAL_TOUR" | "STANDARD" | "MODEL_ASSET" | "PLATFORM" | "VENDOR_UX";
+}
+
+export const DIGITAL_TWIN_SOURCE_LINKS: DigitalTwinSourceLink[] = [
+  { id: "LOC-HABS-DC37", label: "LOC HABS DC-37 Survey Archive", shortLabel: "HABS DC-37", url: "https://www.loc.gov/resource/hhh.dc0402.photos/?sp=49", verified: "2026-09-27", kind: "ARCHIVE" },
+  { id: "WHHA-PEOPLES-HOUSE", label: "The People's House (WHHA)", shortLabel: "PEOPLE'S HOUSE", url: "https://www.thepeopleshouse.org/", verified: "2026-09-27", kind: "VIRTUAL_TOUR" },
+  { id: "WHHA-360-VIRTUAL", label: "WHHA 360° Virtual Tour", shortLabel: "360° TOUR", url: "https://www.whitehousehistory.org/tour-the-white-house-in-360-degrees", verified: "2026-09-27", kind: "VIRTUAL_TOUR" },
+  { id: "IEEE-10820352", label: "IEEE 10820352 Parametric Twin Standard", shortLabel: "IEEE STD", url: "https://ieeexplore.ieee.org/document/10820352/", verified: "2026-09-27", kind: "STANDARD" },
+  { id: "SKETCHFAB-WH-PODIUM", label: "Sketchfab Podium PBR Prop", shortLabel: "PODIUM 3D", url: "https://sketchfab.com/3d-models/podium-the-white-house-usa-pbr-textured-3d-model-1a14e0f7285344c79d6c5d15f7f46113", verified: "2026-09-27", kind: "MODEL_ASSET" },
+  { id: "TRIPO3D-PLATFORM", label: "Tripo3D Platform", shortLabel: "TRIPO3D", url: "https://www.tripo3d.ai/", verified: "2026-09-27", kind: "PLATFORM" },
+  { id: "VISUAL360-VENDOR", label: "Visual360 Tag/Measure UX", shortLabel: "V360 UX", url: "https://visual360.no/", verified: "2026-09-27", kind: "VENDOR_UX" }
+];
+
+/**
+ * LUCID-1 // ORACLE-SYNAPSE console chrome copy.
+ * Classification strings are a fictional UI theme for this demo console, not real markings.
+ */
+export const LUCID_CONSOLE_CHROME = {
+  program: "LUCID-1",
+  engine: "NSA ORACLE-SYNAPSE",
+  hardening: "AIP-20 FULL-SPECTRUM ANTI-HALLUCINATION HARDENING",
+  hardeningState: "ACTIVE",
+  honesty: "HONESTY PROTOCOL // VERIFIED CLAIMS ONLY",
+  bannerTop: "NSA ADMIN LEVEL // LUCID-1 COP // DEMO CONSOLE THEME",
+  bannerBottom: "ORACLE-SYNAPSE // AIP-20 HARDENED // HONESTY PROTOCOL ACTIVE"
+} as const;
 
 export interface WhiteHouseAnomalyNode {
   id: string;
@@ -138,9 +205,9 @@ export const WHITE_HOUSE_ANOMALIES: WhiteHouseAnomalyNode[] = [
   },
   {
     id: "WH-ANOM-03",
-    code: "WH-RES-YELLOWOVAL-03",
+    code: "WH-RES-TRUMANBALC-03",
     sector: "EXECUTIVE_RESIDENCE",
-    roomAnchor: "Second Floor — Diplomatic Saloon / Yellow Oval Balcony Threshold",
+    roomAnchor: "Second Floor — Diplomatic Reception Saloon / Truman Balcony Threshold",
     habsDrawingSheet: "HABS DC-37 South Elevation Sheet 12 / Second Floor Arch Plan",
     exactCoordinatesCentimeter: {
       x_cm: 0.0,
