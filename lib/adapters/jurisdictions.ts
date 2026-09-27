@@ -115,24 +115,24 @@ export interface FederalFeed {
 }
 
 /**
- * Federal aggregator registry. Documented for adapter routing; NONE is wired
- * to the catalog yet (wired:false everywhere). Wiring a feed requires a tested
- * dataset mapping + provenance surfacing, not just a URL.
+ * Federal aggregator registry. Four feeds are WIRED for the 5 territories
+ * (live-verified 2026-09-27 via /api/ingest/territories/probe, provenance on
+ * every record). OSHA-IMIS (bulk CSV only) and IODA remain unwired.
  */
 export const FEDERAL_FEEDS: FederalFeed[] = [
   {
     id: "SEC-EDGAR",
     label: "SEC EDGAR company filings",
     endpoint: "https://data.sec.gov/submissions/CIK{cik}.json",
-    access: "Open, User-Agent required, no key",
-    wired: false
+    access: "Open browse, User-Agent required, no key — territories live (CIK/state/updated; names omitted upstream)",
+    wired: true
   },
   {
     id: "EPA-ECHO",
     label: "EPA ECHO enforcement cases",
     endpoint: "https://echodata.epa.gov/echo/case_rest_services.get_cases",
-    access: "Open web services",
-    wired: false
+    access: "Open web services — territories live (aggregate summaries)",
+    wired: true
   },
   {
     id: "OSHA-IMIS",
@@ -145,8 +145,8 @@ export const FEDERAL_FEEDS: FederalFeed[] = [
     id: "BLS-LAUS",
     label: "BLS labor timeseries",
     endpoint: "https://api.bls.gov/publicAPI/v2/timeseries/data/",
-    access: "API key required",
-    wired: false
+    access: "Open v2, no key, rate-limited — territories live (PR only; VI unpublished)",
+    wired: true
   },
   {
     id: "IODA",
@@ -159,7 +159,7 @@ export const FEDERAL_FEEDS: FederalFeed[] = [
     id: "WORLDBANK",
     label: "World Bank indicators",
     endpoint: "https://api.worldbank.org/v2/country/{cc}/indicator/{ic}?format=json",
-    access: "Open, no key",
-    wired: false
+    access: "Open, no key — territories live (all 5 iso3 verified)",
+    wired: true
   }
 ];

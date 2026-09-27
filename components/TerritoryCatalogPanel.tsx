@@ -300,6 +300,8 @@ export default function TerritoryCatalogPanel() {
         </div>
       )}
 
+      {!isGA && meta.type === "territory" && <FedFeedPanel code={jurisdiction} name={meta.name} />}
+
       {/* Realtime query controls */}
       <div className="flex flex-col sm:flex-row gap-2">
         <div className="flex flex-wrap gap-1.5 shrink-0">
@@ -449,6 +451,114 @@ export default function TerritoryCatalogPanel() {
       <div className="rounded-lg bg-[#f5a623]/5 border border-[#b45309]/30 px-3 py-1 text-center text-[8px] sm:text-[9px] font-bold tracking-[0.2em] text-[#f5a623]/70 uppercase">
         ORACLE-SYNAPSE // AIP-20 HARDENED // NO SYNTHETIC DATA — SOURCED RECORDS ONLY
       </div>
+    </div>
+  );
+}
+
+/* Federal sourced-data panel — territory tabs only. Renders live fetch counts
+   from /api/ingest/territories/probe with raw-JSON view links. "Fetched" means
+   a live API returned rows in this run — not a verified finding. */
+function FedFeedPanel({ code, name }: { code: string; name: string }) {
+  interface SourceResult {
+    ok: boolean;
+    count?: number;
+    note?: string;
+    error?: string;
+  }
+  interface ProbePayload {
+    results?: Array<{ results?: Record<string, SourceResult | Record<string, SourceResult>> }>;
+    elapsed_ms?: number;
+  }
+  const [payload, setPayload] = useState<ProbePayload | null>(null);
+  const [failed, setFailed] = useState<boolean>(false);
+  useEffect(() => {
+    let cancelled = false;
+    setPayload(null);
+    setFailed(false);
+    fetch("/api/ingest/territories/probe?only=" + code + "&wb=1", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => {
+        if (!cancelled) setPayload(d as ProbePayload);
+      })
+      .catch(() => {
+        if (!cancelled) setFailed(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [code]);
+  const tabResults = payload?.results?.[0]?.results;
+  const entries: Array<[string, SourceResult | Record<string, SourceResult>]> = tabResults
+    ? Object.entries(tabResults)
+    : [];
+  const viewUrl = (source: string, indicator?: string) =>
+    "/api/ingest/territories/records?code=" + code + "&source=" + source + (indicator ? "&indicator=" + indicator : "");
+  return (
+    <div className="rounded-xl border border-[#69f0ae]/40 bg-[#002b1b]/30 px-3 py-2 space-y-1.5 text-[10px] sm:text-[11px] font-bold">
+      <div className="text-[#69f0ae] tracking-widest">
+        FEDERAL SOURCED DATA — {name.toUpperCase()} (FETCHED LIVE, NOT VERIFIED FINDINGS)
+      </div>
+      {!payload && !failed && (
+        <span className="animate-pulse text-slate-300">PROBING FEDERAL FEEDS…</span>
+      )}
+      {failed && (
+        <span className="text-[#ff80ab]">FEDERAL PROBE FAILED — RETRY BY RESELECTING TAB</span>
+      )}
+      {entries.map(([src, val]) => {
+        if (src === "WORLDBANK" && typeof val === "object" && !("ok" in (val as object))) {
+          const sub = Object.entries(val as Record<string, SourceResult>);
+          return (
+            <div key={src} className="space-y-1">
+              <div className="text-slate-400">WORLDBANK:</div>
+              {sub.map(([ind, r]) => (
+                <div key={ind} className="flex flex-wrap items-center gap-x-2 pl-2 text-slate-300">
+                  <span className="break-all">{ind}</span>
+                  {r.ok ? (
+                    <span className="text-[#69f0ae]">{r.count ?? 0} OBS</span>
+                  ) : (
+                    <span className="text-[#ff80ab]">ERROR</span>
+                  )}
+                  <a
+                    href={viewUrl("WORLDBANK", ind)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[#f5a623] underline underline-offset-2"
+                  >
+                    VIEW JSON
+                  </a>
+                </div>
+              ))}
+            </div>
+          );
+        }
+        const r = val as SourceResult;
+        return (
+          <div key={src} className="flex flex-wrap items-center gap-x-2 text-slate-300">
+            <span>{src}:</span>
+            {r.ok ? (
+              <span className="text-[#69f0ae]">{r.note ?? `${r.count ?? 0} RECORDS`}</span>
+            ) : (
+              <span className="text-[#ff80ab] break-all">{r.error ?? "ERROR"}</span>
+            )}
+            {r.ok && (
+              <a
+                href={viewUrl(src)}
+                target="_blank"
+                rel="noreferrer"
+                className="text-[#f5a623] underline underline-offset-2"
+              >
+                VIEW JSON
+              </a>
+            )}
+          </div>
+        );
+      })}
+      {payload && (
+        <div className="text-slate-500">
+          PROBED IN {typeof payload.elapsed_ms === "number" ? `${payload.elapsed_ms}MS` : "—"} •
+          EVERY RECORD CARRIES source_url + retrieved_at + sha256
+        </div>
+      )}
     </div>
   );
 }
