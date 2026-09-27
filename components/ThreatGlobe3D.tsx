@@ -51,7 +51,6 @@ export default function ThreatGlobe3D() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [isRotating, setIsRotating] = useState<boolean>(true);
-  const [rotationAngle, setRotationAngle] = useState<number>(-0.45);
   const [activeGodsEyeLayer, setActiveGodsEyeLayer] = useState<string>("ALL");
   const [selectedPin, setSelectedPin] = useState<{ code: string; title: string; detail: string } | null>(null);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
@@ -61,6 +60,17 @@ export default function ThreatGlobe3D() {
   const liveAnomalies = useTelemetryStore((s) => s.anomalies);
   const connectionStatus = useTelemetryStore((s) => s.connectionStatus);
 
+  // AIP-20 ref-mirrored render state: the 30 FPS canvas loop mounts once and
+  // never re-subscribes, eliminating React re-render thrash on telemetry ticks.
+  const angleRef = useRef<number>(-0.45);
+  const isRotatingRef = useRef<boolean>(true);
+  const vesselsRef = useRef<typeof liveVessels>([]);
+  const anomaliesRef = useRef<typeof liveAnomalies>([]);
+
+  useEffect(() => { isRotatingRef.current = isRotating; }, [isRotating]);
+  useEffect(() => { vesselsRef.current = liveVessels; }, [liveVessels]);
+  useEffect(() => { anomaliesRef.current = liveAnomalies; }, [liveAnomalies]);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
@@ -69,7 +79,6 @@ export default function ThreatGlobe3D() {
     if (!ctx) return;
 
     let animId: number;
-    let angle = rotationAngle;
     let isVisible = true;
     let lastRenderTime = 0;
     const targetFpsInterval = 1000 / 30; // 30 FPS cap for high thermal efficiency
@@ -86,6 +95,7 @@ export default function ThreatGlobe3D() {
 
     const render = () => {
       if (!canvas || !container) return;
+      const angle = angleRef.current;
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const rect = container.getBoundingClientRect();
       const width = Math.floor(rect.width * dpr);
@@ -245,7 +255,7 @@ export default function ThreatGlobe3D() {
       });
 
       // Render Real-Time Live Vessels from SSE Telemetry Store
-      liveVessels.forEach((v, vIdx) => {
+      vesselsRef.current.forEach((v, vIdx) => {
         const phi = (v.lat * Math.PI) / 180;
         const theta = ((v.lng + angle * 60 + 180) * Math.PI) / 180;
         const z = radius * Math.cos(phi) * Math.cos(theta);
@@ -270,7 +280,7 @@ export default function ThreatGlobe3D() {
       });
 
       // Render Real-Time Anomalies from SSE Telemetry Store
-      liveAnomalies.forEach((anom, idx) => {
+      anomaliesRef.current.forEach((anom, idx) => {
         const [lon, lat] = anom.coordinates;
         const phi = (lat * Math.PI) / 180;
         const theta = ((lon + angle * 60 + 180) * Math.PI) / 180;
@@ -340,10 +350,10 @@ export default function ThreatGlobe3D() {
 
       ctx.restore(); // restore dpr
 
-      if (isRotating) {
-        angle += 0.003;
+      if (isRotatingRef.current) {
+        angleRef.current += 0.003;
       }
-      animId = requestAnimationFrame(render);
+      // NOTE: render() never schedules frames - throttledRender owns the loop.
     };
 
     const throttledRender = (now: number = performance.now()) => {
@@ -355,6 +365,7 @@ export default function ThreatGlobe3D() {
       if (elapsed >= targetFpsInterval) {
         lastRenderTime = now - (elapsed % targetFpsInterval);
         render();
+        animId = requestAnimationFrame(throttledRender);
       } else {
         animId = requestAnimationFrame(throttledRender);
       }
@@ -367,7 +378,7 @@ export default function ThreatGlobe3D() {
       document.removeEventListener("visibilitychange", onVis);
       cancelAnimationFrame(animId);
     };
-  }, [isRotating, rotationAngle, activeGodsEyeLayer, liveVessels, liveAnomalies]);
+  }, []);
 
   return (
     <div className="w-full space-y-4 font-mono">
@@ -392,7 +403,7 @@ export default function ThreatGlobe3D() {
             <span>{isRotating ? "Pause Orbit" : "Resume Orbit"}</span>
           </button>
           <button
-            onClick={() => setRotationAngle((p) => p - 0.25)}
+            onClick={() => { angleRef.current -= 0.25; }}
             className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-[#8595a8] hover:text-white"
             title="Rotate West"
           >

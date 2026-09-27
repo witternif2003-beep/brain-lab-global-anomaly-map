@@ -78,10 +78,23 @@ function initParticles() {
 let last = performance.now();
 let frameAccum = 0, frameCount = 0, lastReport = performance.now();
 
+// Worker-safe frame scheduler: requestAnimationFrame does not exist in Worker
+// scope (ReferenceError) - fall back to setTimeout with idle back-off.
+function nextFrame(idle) {
+  if (typeof requestAnimationFrame === "function") {
+    requestAnimationFrame(loop);
+    return;
+  }
+  setTimeout(() => loop(performance.now()), idle ? 500 : 1000 / 60);
+}
+
 function loop(now) {
   if (!running) return;
-  requestAnimationFrame(loop);
-  if (!visible || quality === "static") return;
+  if (!visible || quality === "static") {
+    nextFrame(true);
+    return;
+  }
+  nextFrame(false);
 
   const dt = Math.min(32, now - last);
   last = now;

@@ -35,17 +35,35 @@ export default function AmbientBackground({ className = "" }: { className?: stri
           useAmbientStore.getState().setTelemetry({ fps, particles, frameMs });
         };
 
+        let disposed = false;
+        let resizeTimer: ReturnType<typeof setTimeout> | null = null;
+        let batteryCleanup: (() => void) | null = null;
+
+        // Debounced resize: coalesce continuous resize/orientation bursts into
+        // a single worker re-allocation (120 ms trailing edge).
         const onResize = () => {
-          const nw = Math.floor(window.innerWidth * Math.min(window.devicePixelRatio || 1, 2));
-          const nh = Math.floor(window.innerHeight * Math.min(window.devicePixelRatio || 1, 2));
-          worker.postMessage({ type: "resize", width: nw, height: nh });
+          if (disposed) return;
+          if (resizeTimer) clearTimeout(resizeTimer);
+          resizeTimer = setTimeout(() => {
+            if (disposed) return;
+            const nw = Math.floor(window.innerWidth * Math.min(window.devicePixelRatio || 1, 2));
+            const nh = Math.floor(window.innerHeight * Math.min(window.devicePixelRatio || 1, 2));
+            worker.postMessage({ type: "resize", width: nw, height: nh });
+          }, 120);
         };
         window.addEventListener("resize", onResize);
+
+        // Surface worker runtime faults honestly instead of failing silent.
+        worker.onerror = () => {
+          useAmbientStore.getState().setQuality("static");
+        };
 
         // Battery status adaptation
         if ("getBattery" in navigator) {
           (navigator as any).getBattery?.().then((battery: any) => {
+            if (disposed) return;
             const update = () => {
+              if (disposed) return;
               const mode = battery.charging || battery.level > 0.75 ? "high"
                 : battery.level > 0.4 ? "medium"
                 : battery.level > 0.2 ? "low"
@@ -56,6 +74,10 @@ export default function AmbientBackground({ className = "" }: { className?: stri
             update();
             battery.addEventListener("levelchange", update);
             battery.addEventListener("chargingchange", update);
+            batteryCleanup = () => {
+              battery.removeEventListener("levelchange", update);
+              battery.removeEventListener("chargingchange", update);
+            };
           });
         }
 
@@ -71,9 +93,13 @@ export default function AmbientBackground({ className = "" }: { className?: stri
         document.addEventListener("visibilitychange", onVis);
 
         return () => {
+          disposed = true;
+          if (resizeTimer) clearTimeout(resizeTimer);
+          if (batteryCleanup) batteryCleanup();
           window.removeEventListener("resize", onResize);
           io.disconnect();
           document.removeEventListener("visibilitychange", onVis);
+          worker.onerror = null;
           worker.postMessage({ type: "stop" });
           worker.terminate();
           workerRef.current = null;

@@ -17,5 +17,7 @@ export async function GET() {
     telemetryUpdatePlan: "+7,000 P1 Tier-1 State-of-the-Art Telemetry Streams",
     vectorsCovered: 32,
     honestyProtocol: "AIP-20 ANTI-HALLUCINATION HARDENED",
+    standardRevision: "NSA-ADMIN-MODE-REV2-FREEZE-SWEEP",
+    hardeningPatches: 4,
   });
 }

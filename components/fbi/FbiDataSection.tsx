@@ -323,7 +323,7 @@ export default function FbiDataSection() {
       <div className="absolute top-0 right-1/4 w-96 h-96 bg-[#00e5ff]/15 rounded-full blur-[130px] pointer-events-none -z-10" />
       <div className="absolute top-1/3 left-10 w-96 h-96 bg-[#00ff88]/12 rounded-full blur-[130px] pointer-events-none -z-10" />
       <div className="absolute bottom-10 right-10 w-96 h-96 bg-[#bd00ff]/15 rounded-full blur-[130px] pointer-events-none -z-10" />
-      <div className="absolute bottom-0 left-1/3 w-80 h-80 bg-[#ffaa00]/12 rounded-full blur-[110px] pointer-events-none -z-10" />
+      <div className="absolute bottom-0 left-1/3 w-80 h-80 bg-[#00e5ff]/12 rounded-full blur-[110px] pointer-events-none -z-10" />
 
       {/* HEADER: High-Contrast 4-Color Badges & Conformal Official Seal */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between pb-5 border-b border-[#00e5ff]/35 gap-4">
@@ -374,7 +374,7 @@ export default function FbiDataSection() {
                 <span>1,000,000+ SKILLS &amp; MCP PATCHES</span>
               </span>
 
-              <span className="px-3 py-1 rounded-full bg-[#331e00]/90 text-[#ffd54f] border-2 border-[#ffaa00]/70 text-[10px] font-bold tracking-wider shadow-[0_0_12px_rgba(255,170,0,0.3)]">
+              <span className="px-3 py-1 rounded-full bg-[#002b4d]/90 text-[#80deea] border-2 border-[#00e5ff]/70 text-[10px] font-bold tracking-wider shadow-[0_0_12px_rgba(0,229,255,0.3)]">
                 70,000X VERIFIED DATA • +10,000% REC EXPANSION
               </span>
 
@@ -388,7 +388,7 @@ export default function FbiDataSection() {
             <h2 className="text-base sm:text-lg font-black tracking-wider uppercase text-white flex flex-wrap items-center gap-x-2.5 gap-y-1">
               <span className="text-white drop-shadow-[0_2px_10px_rgba(255,255,255,0.3)]">FEDERAL BUREAU OF INVESTIGATION</span>
               <span className="text-[#00e5ff]">•</span>
-              <span className="bg-gradient-to-r from-[#00e5ff] via-[#69f0ae] to-[#ffd54f] bg-clip-text text-transparent font-extrabold">
+              <span className="bg-gradient-to-r from-[#00e5ff] via-[#69f0ae] to-[#80deea] bg-clip-text text-transparent font-extrabold">
                 DATABASE CAPABILITIES &amp; POST-DOCTORATE WORKSTATION
               </span>
             </h2>
@@ -592,9 +592,9 @@ export default function FbiDataSection() {
               </div>
             ) : crimeError ? (
               crimeError.includes('FBI_API_KEY not configured') ? (
-                <div className="p-4 rounded-2xl bg-[#331e00]/95 border-2 border-[#ffaa00]/70 text-[#ffd54f] text-xs space-y-2">
-                  <div className="font-bold flex items-center gap-2 text-[#ffd54f]">
-                    <AlertOctagon className="w-4 h-4 text-[#ffaa00]" />
+                <div className="p-4 rounded-2xl bg-[#002b4d]/95 border-2 border-[#00e5ff]/70 text-[#80deea] text-xs space-y-2">
+                  <div className="font-bold flex items-center gap-2 text-[#80deea]">
+                    <AlertOctagon className="w-4 h-4 text-[#00e5ff]" />
                     <span>FBI_API_KEY Provisioning Advisory</span>
                   </div>
                   <p className="text-[11px] text-slate-200 font-sans leading-relaxed">
@@ -630,7 +630,7 @@ export default function FbiDataSection() {
                       
                       <div className="p-3 rounded-2xl bg-[#001f14]/90 border border-[#00ff88]/50 shadow-[0_2px_12px_rgba(0,0,0,0.4)]">
                         <div className="text-[10px] text-slate-300 font-mono font-bold tracking-wider">COMPLIANCE RATE</div>
-                        <div className="text-lg font-black text-[#ffd54f] font-mono mt-0.5">
+                        <div className="text-lg font-black text-[#80deea] font-mono mt-0.5">
                           {(
                             ((Number(crimeData.nibrs_compliant_agencies || 516) + ((activeCountyIndex * 2) % 23)) /
                               (Number(crimeData.total_agencies_reporting || 664) + ((activeCountyIndex * 3) % 27))) *
@@ -764,7 +764,7 @@ export default function FbiDataSection() {
                     </span>
                   </div>
                   <h4 className="text-xs font-black text-white">{pipe.domain}</h4>
-                  <div className="text-[11px] text-[#ffd54f] font-semibold">{pipe.title}</div>
+                  <div className="text-[11px] text-[#80deea] font-semibold">{pipe.title}</div>
                   <p className="text-[10px] text-slate-300 leading-relaxed font-sans">{pipe.summary}</p>
                   
                   <div className="pt-2 border-t border-[#00e5ff]/20 space-y-1 text-[10px]">
@@ -816,7 +816,7 @@ export default function FbiDataSection() {
                 <p className="text-[11px] text-slate-200 leading-relaxed font-sans">
                   Cross-state telemetry correlation maps escape and smuggling routes across NC, SC, TN, FL, VA, AL, TX, DC, and MD with automated FBI field office notifications.
                 </p>
-                <div className="text-[10px] text-[#ffd54f] font-bold pt-1">I-85 / I-75 / I-95 Strategic Coverage</div>
+                <div className="text-[10px] text-[#80deea] font-bold pt-1">I-85 / I-75 / I-95 Strategic Coverage</div>
               </div>
             </div>
 
@@ -879,7 +879,7 @@ export default function FbiDataSection() {
                     <span className="px-2.5 py-0.5 rounded-full bg-[#2a004d] text-[#e0aaff] border border-[#bd00ff]/60 text-[10px] font-bold">
                       {skill.id} • {skill.tier}
                     </span>
-                    <span className="text-[10px] text-[#ffd54f] font-bold bg-[#331e00] px-2 py-0.5 rounded-full border border-[#ffaa00]/50">
+                    <span className="text-[10px] text-[#80deea] font-bold bg-[#002b4d] px-2 py-0.5 rounded-full border border-[#00e5ff]/50">
                       {skill.category}
                     </span>
                   </div>
@@ -895,7 +895,7 @@ export default function FbiDataSection() {
                   <div className="space-y-1 text-[10px] text-slate-300 font-sans border-t border-[#bd00ff]/20 pt-2">
                     <div><strong className="text-[#00e5ff]">Statute:</strong> {skill.statutoryBasis}</div>
                     <div><strong className="text-[#69f0ae]">Quantum Safety:</strong> {skill.quantumSafetyAudit}</div>
-                    <div><strong className="text-[#ffd54f]">Corridor:</strong> {skill.interstateRouting}</div>
+                    <div><strong className="text-[#80deea]">Corridor:</strong> {skill.interstateRouting}</div>
                     <div><strong className="text-[#e0aaff]">Alpha Yield:</strong> {skill.recommendationYield}</div>
                   </div>
                 </div>
@@ -929,7 +929,7 @@ export default function FbiDataSection() {
                   {db.reason}
                 </p>
                 <div className="p-2.5 rounded-xl bg-[#120006] border border-[#ff1744]/30 space-y-1 text-[10px]">
-                  <div className="text-[#ffd54f] font-mono"><strong>CLEARANCE:</strong> {db.securityClearance}</div>
+                  <div className="text-[#80deea] font-mono"><strong>CLEARANCE:</strong> {db.securityClearance}</div>
                   <div className="text-[#00e5ff] font-mono"><strong>TIER:</strong> {db.architectureTier}</div>
                 </div>
               </div>
