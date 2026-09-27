@@ -125,7 +125,10 @@ export async function fetchCsvDataset(a: {
     const f = a.sortField;
     parsed.sort((x, y) => mdyKey(y[f] ?? "") - mdyKey(x[f] ?? ""));
   }
-  const page = parsed.slice(0, rows);
+  const keep = a.fields && a.fields.length > 0 ? new Set(a.fields) : null;
+  const thin = (r: Record<string, string>): Record<string, unknown> =>
+    keep ? Object.fromEntries(Object.entries(r).filter(([k]) => keep.has(k))) : r;
+  const page = parsed.slice(0, rows).map(thin);
   const prov = makeProvenance({
     source_id: a.sourceId,
     jurisdiction: a.jurisdiction,
