@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { provenanceSummary, TOLERANCE } from "../../../lib/whitehouse-architecture";
+import { registrySummary } from "../../../lib/anomaly-registry-meta";
 import { MISSION_VECTORS } from "../../../lib/recommendation-matrix";
 
 export const runtime = "edge";
@@ -19,6 +20,7 @@ export async function GET() {
     telemetryUpdatePlan: "+7,000 P1 Tier-1 State-of-the-Art Telemetry Streams",
     vectorsCovered: MISSION_VECTORS.length,
     honestyProtocol: "AIP-20 ANTI-HALLUCINATION HARDENED",
+    anomalyRegistry: registrySummary(),
     whiteHouseDigitalTwin: {
       renderer: "three.js WebGL2",
       toleranceClassesCm: TOLERANCE,
