@@ -122,7 +122,7 @@ export function batchCountFor(code: string): number {
 
 /** Self-check: totals derive from quotas — GA 1,000 curated; territories excluded
  * from awaiting (live federal feeds mapped) as are states with mapped datasets
- * (STATE_DATASETS registry); 42 awaiting catalog mapping. */
+ * (STATE_DATASETS registry); 37 awaiting catalog mapping. */
 export function catalogTotals(): {
   jurisdictions: number;
   total: number;

@@ -252,6 +252,112 @@ export const STATE_DATASETS: Record<string, StateDatasetConfig[]> = {
         sub: "{Provider Type} • {Nature of Complaint} • {Number of Claims Received} CLAIMS"
       }
     }
+  ],
+  PA: [
+    {
+      source_id: "PA-HR-COMPLAINTS",
+      label: "PA HUMAN RELATIONS DISCRIMINATION COMPLAINTS",
+      dataset_id: "i3hm-qnwp",
+      order_by: "",
+      select: ["state_fiscal_year", "subject_area", "act_of_harm", "protected_class", "allegations"],
+      cap: 10,
+      card: {
+        title: "{subject_area} — {act_of_harm}",
+        sub: "FY{state_fiscal_year} • {protected_class} • {allegations}"
+      }
+    }
+  ],
+  MO: [
+    {
+      source_id: "MO-KCPD-CRIME",
+      label: "KANSAS CITY KCPD CRIME DATA 2026 (CITY-SOURCED)",
+      dataset_id: "f7wj-ckmw",
+      order_by: "report_date",
+      select: ["offense", "description", "report", "address", "city", "report_date"],
+      cap: 10,
+      card: {
+        title: "{offense} — {description}",
+        sub: "REPORT {report} • {address}, {city} • {report_date:date}"
+      }
+    },
+    {
+      source_id: "MO-KC-VIOLATIONS",
+      label: "KANSAS CITY CODE VIOLATIONS (CITY-SOURCED)",
+      dataset_id: "vq3e-m9ge",
+      order_by: "date_found",
+      select: ["violationid", "ordinance", "casenumber", "street_address", "vio_status", "date_found"],
+      cap: 10,
+      card: {
+        title: "VIOLATION {violationid} — {ordinance}",
+        sub: "CASE {casenumber} • {street_address} • {vio_status} • FOUND {date_found:date}"
+      }
+    }
+  ],
+  IL: [
+    {
+      source_id: "IL-URBANA-ARRESTS",
+      label: "URBANA POLICE ARRESTS (CITY-SOURCED)",
+      dataset_id: "s2ps-ct5e",
+      order_by: "date_of_arrest",
+      select: ["incident_number", "crime_code_description", "arrest_type_description", "date_of_arrest", "statute"],
+      cap: 10,
+      card: {
+        title: "ARREST {incident_number} — {crime_code_description}",
+        sub: "{arrest_type_description} • {date_of_arrest:date} • {statute}"
+      }
+    },
+    {
+      source_id: "IL-URBANA-NUISANCE",
+      label: "URBANA NUISANCE COMPLAINTS (CITY-SOURCED)",
+      dataset_id: "64q4-57u5",
+      order_by: "date_reported",
+      select: ["file_number", "type_of_complaint", "street_name", "disposition", "date_reported"],
+      cap: 10,
+      card: {
+        title: "NUISANCE {file_number} — {type_of_complaint}",
+        sub: "{street_name} • {disposition} • REPORTED {date_reported:date}"
+      }
+    }
+  ],
+  VT: [
+    {
+      source_id: "VT-STALBANS-STOPS",
+      label: "ST. ALBANS TRAFFIC STOP DATA 2021 (CITY-SOURCED)",
+      dataset_id: "qdts-zasz",
+      order_by: "",
+      select: ["incident_number", "call_type", "ticket_violation", "stop_based_on", "issued_to_gender", "issued_to_age"],
+      cap: 10,
+      card: {
+        title: "STOP {incident_number} — {call_type}",
+        sub: "{ticket_violation} • {stop_based_on} • {issued_to_gender}/{issued_to_age}"
+      }
+    }
+  ],
+  CO: [
+    {
+      source_id: "CO-BOULDER-INSP",
+      label: "BOULDER COUNTY RESTAURANT INSPECTIONS (COUNTY-SOURCED)",
+      dataset_id: "6ytb-f2cq",
+      order_by: "rec_date",
+      select: ["name", "result", "address", "b1_situs_city", "score", "rec_date"],
+      cap: 10,
+      card: {
+        title: "{name} — {result}",
+        sub: "{address}, {b1_situs_city} • SCORE {score} • {rec_date:date}"
+      }
+    },
+    {
+      source_id: "CO-ARRESTS",
+      label: "CO ARREST TOTALS BY AGENCY-YEAR (AGGREGATED)",
+      dataset_id: "xi5f-mkzt",
+      order_by: "year",
+      select: ["agency", "year", "drivingundertheinfluence", "drugabuseviolationsgrandtotal", "aggravatedassault", "burglary"],
+      cap: 10,
+      card: {
+        title: "{agency} — {year}",
+        sub: "DUI {drivingundertheinfluence} • DRUG {drugabuseviolationsgrandtotal} • ASSAULT {aggravatedassault} • BURGLARY {burglary}"
+      }
+    }
   ]
 
 };
