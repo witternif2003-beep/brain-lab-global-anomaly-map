@@ -32,12 +32,14 @@ export interface StateDatasetConfig {
   select: string[];
   /** Max record cards rendered per dataset tab visit. */
   cap: number;
-  /** Platform adapter: socrata (default) or ckan datastore. */
-  platform?: "socrata" | "ckan";
+  /** Platform adapter: socrata (default), ckan datastore, arcgis layer, or direct csv. */
+  platform?: "socrata" | "ckan" | "arcgis" | "csv";
   /** CKAN datastore resource id (required when platform is ckan). */
   resource_id?: string;
   /** Optional SoQL $where guard (e.g. drop junk null-key rows that sort first). */
   where?: string;
+  /** Layer/CSV endpoint for arcgis + csv platforms ("ckan-package:<name>" auto-resolves). */
+  service_url?: string;
   /** Generic card template (see StateCard renderer). */
   card: StateDatasetCard;
 }
@@ -253,6 +255,20 @@ export const STATE_DATASETS: Record<string, StateDatasetConfig[]> = {
         title: "Q{Qtr} {Year} — {Plan Name}",
         sub: "{Provider Type} • {Nature of Complaint} • {Number of Claims Received} CLAIMS"
       }
+    },
+    {
+      source_id: "CA-SI-FRAUD",
+      label: "CA SUSPENDED & INELIGIBLE PROVIDER LIST (FRAUD)",
+      dataset_id: "provider-suspended-and-ineligible-list-si-list",
+      platform: "csv",
+      service_url: "ckan-package:provider-suspended-and-ineligible-list-si-list",
+      order_by: "Date of Suspension",
+      select: [],
+      cap: 10,
+      card: {
+        title: "{Last Name}, {First Name} — {Provider Type}",
+        sub: "LIC {License Number} • SUSPENDED {Date of Suspension} • {Active Period}"
+      }
     }
   ],
   PA: [
@@ -359,6 +375,36 @@ export const STATE_DATASETS: Record<string, StateDatasetConfig[]> = {
       card: {
         title: "{agency} — {year}",
         sub: "DUI {drivingundertheinfluence} • DRUG {drugabuseviolationsgrandtotal} • ASSAULT {aggravatedassault} • BURGLARY {burglary}"
+      }
+    }
+  ],
+  DC: [
+    {
+      source_id: "DC-CRIME30",
+      label: "DC MPD CRIME INCIDENTS — LAST 30 DAYS",
+      dataset_id: "dc3289eab3d2400ea49c154863312434",
+      platform: "arcgis",
+      service_url: "https://maps2.dcgis.dc.gov/dcgis/rest/services/FEEDS/MPD/FeatureServer/39",
+      order_by: "REPORT_DAT",
+      select: ["CCN", "REPORT_DAT", "OFFENSE", "METHOD", "BLOCK", "WARD", "DISTRICT"],
+      cap: 10,
+      card: {
+        title: "{OFFENSE} — {METHOD}",
+        sub: "CCN {CCN} • {BLOCK} • WARD {WARD} • {REPORT_DAT:epoch}"
+      }
+    },
+    {
+      source_id: "DC-ARRESTS",
+      label: "DC MPD ADULT ARRESTS",
+      dataset_id: "f51106084ee148ab858013c3e32634d2",
+      platform: "arcgis",
+      service_url: "https://maps2.dcgis.dc.gov/dcgis/rest/services/DCGIS_DATA/Public_Safety_WebMercator/MapServer/38",
+      order_by: "DATE_",
+      select: ["ARREST_NUMBER", "CATEGORY", "DESCRIPTION", "AGE", "SEX", "DEFENDANT_DISTRICT", "DATE_"],
+      cap: 10,
+      card: {
+        title: "ARREST {ARREST_NUMBER} — {CATEGORY}",
+        sub: "{DESCRIPTION} • AGE {AGE} • {SEX} • {DEFENDANT_DISTRICT} • {DATE_:epoch}"
       }
     }
   ]

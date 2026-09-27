@@ -882,7 +882,7 @@ function StateRecordCards({ code, name }: { code: string; name: string }) {
 }
 
 function renderCardTemplate(t: string, r: Record<string, any>): string {
-  return t.replace(/\{([A-Za-z0-9_ ]+?)(?::(money|date))?\}/g, (_m: string, f: string, mod: string) => {
+  return t.replace(/\{([A-Za-z0-9_ ]+?)(?::(money|date|epoch))?\}/g, (_m: string, f: string, mod: string) => {
     const v: unknown = r[f];
     if (v === null || v === undefined || v === "") return "?";
     if (mod === "money") {
@@ -892,6 +892,12 @@ function renderCardTemplate(t: string, r: Record<string, any>): string {
         : "?";
     }
     if (mod === "date") return String(v).slice(0, 10);
+    if (mod === "epoch") {
+      const n = Number(v);
+      if (!Number.isFinite(n)) return "?";
+      const dt = new Date(n);
+      return Number.isNaN(dt.getTime()) ? "?" : dt.toISOString().slice(0, 10);
+    }
     return String(v);
   });
 }

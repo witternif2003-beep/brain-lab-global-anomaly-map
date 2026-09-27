@@ -3,6 +3,8 @@ import { JURISDICTION_ADAPTERS } from "../../../../../lib/adapters/jurisdictions
 import { STATE_DATASETS } from "../../../../../lib/adapters/state-datasets";
 import { fetchSocrataDataset } from "../../../../../lib/connectors/socrata";
 import { fetchCkanDataset } from "../../../../../lib/connectors/ckan";
+import { fetchArcgisLayer } from "../../../../../lib/connectors/arcgis";
+import { fetchCsvDataset } from "../../../../../lib/connectors/csv";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -28,6 +30,44 @@ export async function GET(req: Request) {
   }
 
   try {
+    if (cfg.platform === "arcgis") {
+      if (!cfg.service_url)
+        return NextResponse.json({ error: "arcgis dataset missing service_url" }, { status: 400 });
+      const r = await fetchArcgisLayer({
+        layerUrl: cfg.service_url,
+        sourceId: cfg.source_id,
+        jurisdiction: code,
+        outFields: cfg.select,
+        orderBy: cfg.order_by,
+        rows
+      });
+      return NextResponse.json({
+        code,
+        source: cfg.source_id,
+        label: cfg.label,
+        dataset_id: cfg.dataset_id,
+        ...r
+      });
+    }
+    if (cfg.platform === "csv") {
+      if (!cfg.service_url)
+        return NextResponse.json({ error: "csv dataset missing service_url" }, { status: 400 });
+      const r = await fetchCsvDataset({
+        serviceUrl: cfg.service_url,
+        portal,
+        sourceId: cfg.source_id,
+        jurisdiction: code,
+        sortField: cfg.order_by,
+        rows
+      });
+      return NextResponse.json({
+        code,
+        source: cfg.source_id,
+        label: cfg.label,
+        dataset_id: cfg.dataset_id,
+        ...r
+      });
+    }
     if (cfg.platform === "ckan") {
       if (!cfg.resource_id)
         return NextResponse.json({ error: "ckan dataset missing resource_id" }, { status: 400 });
