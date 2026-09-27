@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { JURISDICTION_ADAPTERS } from "../../../../lib/adapters/jurisdictions";
+import { STATE_DATASETS } from "../../../../lib/adapters/state-datasets";
 
 export const dynamic = "force-dynamic";
 
@@ -93,7 +94,7 @@ export async function GET(req: Request) {
 
   const base = cfg.openDataPortal.replace(/\/$/, "");
   const [soc, ckn] = await Promise.all([
-    tryFetch(`${base}/api/search/views.json?search=anomaly&limit=3`),
+    tryFetch(`${base}/api/search/views.json?q=anomaly&limit=3`),
     tryFetch(`${base}/api/3/action/package_search?q=anomaly&rows=3`)
   ]);
 
@@ -123,17 +124,22 @@ export async function GET(req: Request) {
             ? { platform: "socrata", n: socCount }
             : null;
 
+  const mappedCount = STATE_DATASETS[code]?.length ?? 0;
   if (pick) {
     return NextResponse.json({
       code,
       portal: base,
       platform: pick.platform,
-      status: "PORTAL-REACHABLE-FEED-UNMAPPED",
+      status: mappedCount > 0 ? "PORTAL-REACHABLE-FEED-MAPPED" : "PORTAL-REACHABLE-FEED-UNMAPPED",
       reachable: true,
       datasetsIndexed: pick.n,
+      datasetsMapped: mappedCount,
       records: 0,
       checkedAt,
-      note: `Portal responds (${pick.platform}); no anomaly dataset mapped. 0 records served.`
+      note:
+        mappedCount > 0
+          ? `Portal responds (${pick.platform}); ${mappedCount} state datasets mapped; live records via /api/ingest/states/records.`
+          : `Portal responds (${pick.platform}); no anomaly dataset mapped. 0 records served.`
     });
   }
 

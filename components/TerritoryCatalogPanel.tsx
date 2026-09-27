@@ -11,6 +11,7 @@ import {
   jurisdictionByCode
 } from "../lib/territory-catalog";
 import { JURISDICTION_ADAPTERS } from "../lib/adapters/jurisdictions";
+import { STATE_DATASETS } from "../lib/adapters/state-datasets";
 
 type StatusFilter = "ALL" | "CURATED";
 
@@ -101,6 +102,7 @@ export default function TerritoryCatalogPanel() {
 
   // Phase 2: non-GA tabs serve records ONLY from mapped verified feeds (none yet).
   const adapter = JURISDICTION_ADAPTERS[jurisdiction];
+  const stateFeeds = STATE_DATASETS[jurisdiction] ?? null;
 
   // Rows for the active tab + batch, before search/status filtering.
   const tabRows = useMemo<PanelRow[]>(() => {
@@ -266,7 +268,7 @@ export default function TerritoryCatalogPanel() {
       {!isGA && adapter && (
         <div className="rounded-xl border border-[#00e5ff]/40 bg-[#002b4d]/30 px-3 py-2 space-y-1 text-[10px] sm:text-[11px] font-bold">
           <div className="text-[#00e5ff] tracking-widest">
-            SOURCE STATUS — {meta.name.toUpperCase()}: AWAITING REAL-TIME INGESTION
+            SOURCE STATUS — {meta.name.toUpperCase()}: {stateFeeds ? "STATE FEEDS MAPPED — LIVE RECORDS BELOW" : "AWAITING REAL-TIME INGESTION"}
           </div>
           <div className="text-slate-300 break-all">PORTAL: {adapter.openDataPortal}</div>
           <div className="text-slate-300">
@@ -275,10 +277,16 @@ export default function TerritoryCatalogPanel() {
             ) : probe.reachable ? (
               <span className="text-[#69f0ae]">
                 {probe.status} •{" "}
-                {typeof probe.datasetsIndexed === "number"
-                  ? `${probe.datasetsIndexed.toLocaleString()} DATASETS INDEXED`
-                  : "INDEX COUNT N/A"}{" "}
-                • FEED NOT MAPPED • 0 RECORDS SERVED
+                {stateFeeds ? (
+                  <>LIVE RECORDS BELOW</>
+                ) : (
+                  <>
+                    {typeof probe.datasetsIndexed === "number"
+                      ? `${probe.datasetsIndexed.toLocaleString()} ANOMALY-MATCHING DATASETS`
+                      : "INDEX COUNT N/A"}{" "}
+                    • FEED NOT MAPPED • 0 RECORDS SERVED
+                  </>
+                )}
               </span>
             ) : (
               <span className="text-[#ff80ab]">
@@ -306,6 +314,7 @@ export default function TerritoryCatalogPanel() {
 
       {!isGA && meta.type === "territory" && <FedFeedPanel code={jurisdiction} name={meta.name} />}
       {!isGA && meta.type === "territory" && <FedRecordCards code={jurisdiction} name={meta.name} />}
+      {!isGA && stateFeeds && <StateRecordCards code={jurisdiction} name={meta.name} />}
 
       {/* Realtime query controls */}
       <div className="flex flex-col sm:flex-row gap-2">
@@ -335,7 +344,9 @@ export default function TerritoryCatalogPanel() {
                 ? `Realtime query — ${meta.name} P1 index…`
                 : meta.type === "territory"
                   ? `Federal records render below — full text in VIEW JSON`
-                  : `No feed mapped — query unavailable for ${meta.name}`
+                  : stateFeeds
+                    ? `State records render below — full text in VIEW JSON`
+                    : `No feed mapped — query unavailable for ${meta.name}`
             }
             className="w-full rounded-lg bg-[#171006] border border-[#b45309]/60 focus:border-[#f5a623] outline-none pl-9 pr-3 py-2 text-[12px] sm:text-xs text-slate-100 placeholder:text-slate-500 min-h-[36px] [color-scheme:dark] disabled:opacity-40"
           />
@@ -351,7 +362,9 @@ export default function TerritoryCatalogPanel() {
               ? `BATCH ${batch} OF ${batches} • RECORDS ${batchStart.toLocaleString()}–${batchEnd.toLocaleString()} OF ${meta.quota.toLocaleString()} • ${meta.name.toUpperCase()}`
               : meta.type === "territory"
                 ? `FEDERAL FEEDS MAPPED • ${meta.name.toUpperCase()} • LIVE RECORDS BELOW`
-                : `NO BATCHES — FEED NOT MAPPED • ${meta.name.toUpperCase()} • 0 RECORDS`}
+                : stateFeeds
+                  ? `STATE FEEDS MAPPED • ${meta.name.toUpperCase()} • LIVE RECORDS BELOW`
+                  : `NO BATCHES — FEED NOT MAPPED • ${meta.name.toUpperCase()} • 0 RECORDS`}
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -399,7 +412,7 @@ export default function TerritoryCatalogPanel() {
             No records match this filter in {meta.name}.
           </p>
         )}
-        {!isGA && meta.type !== "territory" && (
+        {!isGA && meta.type !== "territory" && !stateFeeds && (
           <div className="rounded-2xl border border-dashed border-[#00e5ff]/50 bg-[#002b4d]/20 p-4 text-center space-y-1.5">
             <div className="text-[11px] sm:text-xs font-black tracking-[0.2em] text-[#00e5ff]">
               AWAITING REAL-TIME INGESTION
@@ -759,6 +772,131 @@ function FedCard({ source, r }: { source: string; r: Record<string, any> }) {
       {link && (
         <a href={link} target="_blank" rel="noreferrer" className="text-[10px] sm:text-[11px] text-[#f5a623] underline underline-offset-2 font-bold">
           FILING INDEX ↗
+        </a>
+      )}
+    </div>
+  );
+}
+
+/* State record cards — same output shape as the territory federal cards, but
+   rows come from mapped state open-data datasets (STATE_DATASETS registry)
+   via /api/ingest/states/records. Fetched live per tab visit; every section
+   carries provenance with source_url + retrieved_at + sha256. */
+function StateRecordCards({ code, name }: { code: string; name: string }) {
+  interface Prov {
+    source_id: string;
+    source_url: string;
+    retrieved_at: string;
+    sha256: string;
+    http_status: number;
+  }
+  interface RecPayload {
+    records?: Array<Record<string, any>>;
+    provenance?: Prov | null;
+    note?: string;
+    total_count?: number | null;
+    error?: string;
+  }
+  const cfgs = STATE_DATASETS[code] ?? [];
+  const [data, setData] = useState<Record<string, RecPayload> | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    setData(null);
+    Promise.all(
+      cfgs.map((c) =>
+        fetch(`/api/ingest/states/records?code=${code}&source=${c.source_id}&rows=${c.cap}`, {
+          cache: "no-store"
+        })
+          .then((r) => r.json())
+          .then((d) => ({ key: c.source_id, payload: d as RecPayload }))
+          .catch(() => ({ key: c.source_id, payload: { error: "fetch failed" } as RecPayload }))
+      )
+    ).then((pairs) => {
+      if (cancelled) return;
+      const out: Record<string, RecPayload> = {};
+      for (const p of pairs) out[p.key] = p.payload;
+      setData(out);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [code]);
+  if (!data) {
+    return (
+      <div className="rounded-xl border border-[#69f0ae]/30 bg-[#002b1b]/20 px-3 py-2 text-[10px] sm:text-[11px] font-bold text-slate-300 animate-pulse">
+        FETCHING STATE RECORDS FOR {name.toUpperCase()}…
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-2.5">
+      {cfgs.map((c) => {
+        const p = data[c.source_id] ?? {};
+        const recs = Array.isArray(p.records) ? p.records : [];
+        const prov = p.provenance ?? null;
+        const url = `/api/ingest/states/records?code=${code}&source=${c.source_id}&rows=${c.cap}`;
+        return (
+          <div key={c.source_id} className="rounded-2xl border border-[#69f0ae]/40 bg-[#002b1b]/20 p-3 space-y-1.5">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] sm:text-[11px] font-black">
+              <span className="text-[#69f0ae] tracking-widest">{c.label}</span>
+              <span className="text-slate-400">{p.note ?? p.error ?? "0 RECORDS"}</span>
+              <a href={url} target="_blank" rel="noreferrer" className="text-[#f5a623] underline underline-offset-2">
+                VIEW FULL JSON ↗
+              </a>
+            </div>
+            {recs.length === 0 && p.note && (
+              <p className="text-[11px] text-slate-400 font-bold">{p.note}</p>
+            )}
+            {recs.slice(0, c.cap).map((r, i) => (
+              <StateCard key={c.source_id + "-" + i} source={c.source_id} r={r} />
+            ))}
+            {prov && (
+              <div className="text-[9px] sm:text-[10px] text-slate-500 font-bold break-all">
+                FETCHED {prov.retrieved_at} • HTTP {prov.http_status} • sha256 {prov.sha256.slice(0, 16)}… •{" "}
+                <a href={prov.source_url} target="_blank" rel="noreferrer" className="text-[#f5a623] underline underline-offset-2">
+                  SOURCE ↗
+                </a>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function StateCard({ source, r }: { source: string; r: Record<string, any> }) {
+  let title = "";
+  let sub = "";
+  let link: string | null = null;
+  let linkLabel = "";
+  if (source === "NY-TAX-WARRANTS") {
+    const amt = Number(r.warrant_filed_amount);
+    const usd = Number.isFinite(amt)
+      ? "$" + amt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      : "AMOUNT N/A";
+    title = `${usd} TAX WARRANT — ${String(r.debtor_name_1 ?? "?")}`;
+    sub = `${String(r.warrant_id ?? "?")} • ${String(r.status_code ?? "?")} • FILED ${String(r.warrant_filed_date ?? "?").slice(0, 10)} • ${String(r.city ?? "?")}, ${String(r.county_code ?? "?")} CO.`;
+    const u: unknown = (r as { url?: unknown }).url;
+    const href = typeof u === "string" ? u : typeof u === "object" && u !== null && typeof (u as { url?: unknown }).url === "string" ? String((u as { url: unknown }).url) : null;
+    if (href) {
+      link = href;
+      linkLabel = "WARRANT RECORD ↗";
+    }
+  } else if (source === "NY-OIG-COMPLAINTS") {
+    title = `INTAKE ${String(r.intake ?? "?")} — ${String(r.case_type ?? r.oig_office ?? "?")}`;
+    sub = `${String(r.agency ?? "?")} • SOURCE: ${String(r.intake_source ?? "?")} • ${String(r.sort_order ?? "?").slice(0, 10)}`;
+  } else {
+    title = String(r.title ?? r.id ?? JSON.stringify(r).slice(0, 100));
+    sub = JSON.stringify(r).slice(0, 160);
+  }
+  return (
+    <div className="rounded-xl border border-white/10 bg-black/30 px-2.5 py-1.5 space-y-0.5">
+      <div className="text-slate-100 font-bold text-[11px] sm:text-xs leading-snug break-words">{title}</div>
+      <div className="text-[10px] sm:text-[11px] text-[#f5a623]/90 font-bold break-words">{sub}</div>
+      {link && (
+        <a href={link} target="_blank" rel="noreferrer" className="text-[10px] sm:text-[11px] text-[#f5a623] underline underline-offset-2 font-bold">
+          {linkLabel}
         </a>
       )}
     </div>

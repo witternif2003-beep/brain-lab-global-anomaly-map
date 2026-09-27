@@ -10,6 +10,8 @@
  *   lib/adapters/jurisdictions.ts; runtime portal-liveness in app/api/ingest/probe.
  */
 
+import { STATE_DATASETS } from "./adapters/state-datasets";
+
 export type JurisdictionType = "state" | "district" | "territory";
 
 export interface Jurisdiction {
@@ -119,7 +121,8 @@ export function batchCountFor(code: string): number {
 }
 
 /** Self-check: totals derive from quotas — GA 1,000 curated; territories excluded
- * from awaiting (live federal feeds mapped); 51 awaiting catalog mapping. */
+ * from awaiting (live federal feeds mapped) as are states with mapped datasets
+ * (STATE_DATASETS registry); 50 awaiting catalog mapping. */
 export function catalogTotals(): {
   jurisdictions: number;
   total: number;
@@ -130,6 +133,6 @@ export function catalogTotals(): {
   const ga = jurisdictionByCode("GA").quota;
   const rest = JURISDICTIONS.filter((j) => j.code !== "GA");
   const sourced = rest.reduce((a, j) => a + j.quota, 0);
-  const awaiting = rest.filter((j) => j.quota === 0 && j.type !== "territory").length;
+  const awaiting = rest.filter((j) => j.quota === 0 && j.type !== "territory" && !STATE_DATASETS[j.code]).length;
   return { jurisdictions: JURISDICTIONS.length, total: ga + sourced, ga, sourced, awaiting };
 }
