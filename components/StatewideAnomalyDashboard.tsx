@@ -41,7 +41,23 @@ const SOURCE_LABEL: Record<VerifiedAnomaly["source"], string> = {
 function fmt(iso?: string) {
   if (!iso) return "—";
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString("en-US", { timeZone: "America/New_York", hour12: false }) + " ET";
+  return Number.isNaN(d.getTime()) ? iso : clockLabel(d);
+}
+
+const CLOCK_FMT = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/New_York",
+  year: "numeric", month: "2-digit", day: "2-digit",
+  hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
+});
+
+function clockLabel(d: Date) {
+  const p = Object.fromEntries(CLOCK_FMT.formatToParts(d).map((x) => [x.type, x.value]));
+  const hh = p.hour === "24" ? "00" : p.hour;
+  return `${p.year}-${p.month}-${p.day} ${hh}:${p.minute}:${p.second} ET`;
+}
+
+function utcLabel(d: Date) {
+  return d.toISOString().slice(11, 19) + "Z";
 }
 
 function severityClass(sev: string) {
@@ -64,6 +80,13 @@ export default function StatewideAnomalyDashboard() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isAutoCycling, setIsAutoCycling] = useState(true);
   const [activeTab, setActiveTab] = useState<"narrative" | "batch_list" | "jurisdictions" | "provenance" | "feeds">("narrative");
+  const [now, setNow] = useState<Date | null>(null);
+
+  useEffect(() => {
+    setNow(new Date());
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -207,8 +230,14 @@ export default function StatewideAnomalyDashboard() {
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00e5ff] via-[#69f0ae] to-white">
                   U.S. STATES &amp; TERRITORIES ANOMALY REPORT — {jurisdictionLabel}
                 </span>
-                <span className="text-[#ff9de6] font-mono ml-2">— {feed ? fmt(feed.retrievedAt) : "LOADING"}</span>
+                <span className="text-[#ff9de6] font-mono tabular-nums ml-2 whitespace-nowrap" suppressHydrationWarning>
+                  — {now ? clockLabel(now) : "--:--:-- ET"}
+                  <span className="text-[#ff9de6]/60 text-[0.8em] ml-2">{now ? utcLabel(now) : ""}</span>
+                </span>
               </h2>
+              <div className="text-[10px] font-mono text-[#80deea]/80 mt-1 tabular-nums">
+                LIVE CLOCK • LAST FEED POLL {feed ? fmt(feed.retrievedAt) : "PENDING"}
+              </div>
             </div>
 
             <p className="text-xs sm:text-[13px] text-[#b2ebf2] font-sans leading-relaxed">
