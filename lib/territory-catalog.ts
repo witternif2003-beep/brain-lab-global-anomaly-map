@@ -1,15 +1,13 @@
 /**
- * LUCID-1 Territory Catalog — 56-jurisdiction P1 anomaly index, 50,000 records in batches of 25.
+ * LUCID-1 Territory Catalog — Phase 2: verified-ingestion architecture.
  *
  * HONESTY PROTOCOL (hard constraint):
  * - Georgia (GA) serves its REAL curated corpus (STATEWIDE_ANOMALIES_1000, verified:true).
- * - Every other jurisdiction serves DETERMINISTIC SYNTHETIC catalog records, always labeled
- *   SYNTHETIC — UNVERIFIED, with fictional-training-data narratives. Nothing generated here is
- *   presented as verified, and no real company/person is accused of anything.
- * - Neutral facility/incident framing only: no actor-attribution fiction, no demographic quotas.
- *
- * Determinism: mulberry32 seeded per (jurisdiction, index). No Date.now/Math.random, so
- * server prerender and client hydration produce identical output.
+ * - Every other jurisdiction serves records ONLY from a mapped verified feed. No feed is
+ *   mapped yet, so non-GA quotas are 0 and their tabs honestly render AWAITING INGESTION.
+ * - The deterministic synthetic PRNG was REMOVED (Phase-2 directive: no synthetic data).
+ *   Nothing in this file generates records. Source routing lives in
+ *   lib/adapters/jurisdictions.ts; runtime portal-liveness in app/api/ingest/probe.
  */
 
 export type JurisdictionType = "state" | "district" | "territory";
@@ -18,39 +16,20 @@ export interface Jurisdiction {
   code: string;
   name: string;
   type: JurisdictionType;
-  /** Real geographic centroid — venue pins only, jittered deterministically per record. */
+  /** Real geographic centroid — venue metadata only. */
   lat: number;
   lng: number;
   /** Real county / municipality names used as venue tags (no accusation attached). */
   counties: string[];
-  /** Record quota. GA quota equals the real curated corpus size. */
+  /**
+   * Record quota. GA quota equals the real curated corpus size. All other quotas
+   * are 0 until a verified feed is mapped for that jurisdiction.
+   */
   quota: number;
-}
-
-export interface SyntheticRecord {
-  id: string;
-  jurisdiction: string;
-  jurisdictionName: string;
-  county: string;
-  sector: string;
-  facility: string;
-  incident: string;
-  term: string;
-  priority: number;
-  batch: number;
-  severity: "P1";
-  status: "SYNTHETIC — UNVERIFIED";
-  validationCode: string;
-  venuePin: { lat: number; lng: number };
-  forensicFlags: string[];
-  ledgerNote: string;
-  narrative: string;
 }
 
 export const BATCH_SIZE = 25;
 export const GA_QUOTA = 1000;
-export const SYNTHETIC_TOTAL = 49000;
-export const CATALOG_TOTAL = 50000;
 
 const J: Array<[string, string, JurisdictionType, number, number, string[]]> = [
   ["AL", "Alabama", "state", 32.37, -86.3, ["Jefferson", "Mobile", "Madison", "Montgomery", "Tuscaloosa"]],
@@ -111,20 +90,20 @@ const J: Array<[string, string, JurisdictionType, number, number, string[]]> = [
   ["MP", "Northern Mariana Islands", "territory", 15.18, 145.75, ["Saipan", "Tinian", "Rota"]]
 ];
 
-/** Quota plan: GA serves its real 1,000-record corpus; the other 55 split 49,000. */
+/**
+ * Quota plan: GA serves its real 1,000-record corpus; every other jurisdiction
+ * is 0 until a verified feed is mapped for it.
+ */
 function buildJurisdictions(): Jurisdiction[] {
-  const rows = J.map(([code, name, type, lat, lng, counties]) => ({ code, name, type, lat, lng, counties }));
-  const others = rows.filter((r) => r.code !== "GA").sort((a, b) => (a.code < b.code ? -1 : 1));
-  const base = Math.floor(SYNTHETIC_TOTAL / others.length); // 890
-  let remainder = SYNTHETIC_TOTAL - base * others.length; // 50
-  const quota = new Map<string, number>();
-  for (const r of others) {
-    const extra = remainder > 0 ? 1 : 0;
-    if (remainder > 0) remainder -= 1;
-    quota.set(r.code, base + extra);
-  }
-  quota.set("GA", GA_QUOTA);
-  return rows.map((r) => ({ ...r, quota: quota.get(r.code) ?? 0 }));
+  return J.map(([code, name, type, lat, lng, counties]) => ({
+    code,
+    name,
+    type,
+    lat,
+    lng,
+    counties,
+    quota: code === "GA" ? GA_QUOTA : 0
+  }));
 }
 
 export const JURISDICTIONS: Jurisdiction[] = buildJurisdictions();
@@ -139,140 +118,17 @@ export function batchCountFor(code: string): number {
   return Math.ceil(jurisdictionByCode(code).quota / BATCH_SIZE);
 }
 
-/** Deterministic PRNG — identical output on server and client. */
-export function mulberry32(seed: number): () => number {
-  let a = seed >>> 0;
-  return () => {
-    a |= 0;
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-export function jurisdictionSeed(code: string): number {
-  let h = 2166136261;
-  for (let i = 0; i < code.length; i++) {
-    h ^= code.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return h >>> 0;
-}
-
-const SECTORS: Array<{ sector: string; facilities: string[] }> = [
-  { sector: "POWER GRID", facilities: ["substation SCADA relay", "transmission intertie monitor", "distribution feeder PLC"] },
-  { sector: "WATER / SCADA", facilities: ["treatment plant PLC array", "reservoir level sensor mesh", "pump station RTU"] },
-  { sector: "BROADCAST RF", facilities: ["UHF transmission monitor", "studio-transmitter link", "EAS relay node"] },
-  { sector: "TELECOM FIBER", facilities: ["fiber splice cabinet", "central office OLT shelf", "microwave backhaul hop"] },
-  { sector: "PORT / MARITIME", facilities: ["crane automation controller", "harbor radar feed", "cargo manifest gateway"] },
-  { sector: "AVIATION", facilities: ["surface radar processor", "navaid monitor", "baggage PLC line"] },
-  { sector: "HOSPITAL BMS", facilities: ["building automation panel", "medical gas sensor bus", "backup generator ATS"] },
-  { sector: "DAM / RESERVOIR", facilities: ["spillway gate controller", "seepage sensor string", "hydro governor PLC"] },
-  { sector: "TRANSIT SIGNAL", facilities: ["rail interlocking PLC", "traction power monitor", "fare gate controller"] },
-  { sector: "PIPELINE", facilities: ["compressor station RTU", "pressure sensor manifold", "leak detection fiber"] },
-  { sector: "DATA CENTER", facilities: ["UPS transfer switch", "CRAC control bus", "PDU metering strip"] },
-  { sector: "TRAFFIC SYSTEMS", facilities: ["signal cabinet controller", "freeway sensor loop", "toll gantry PLC"] }
-];
-
-const INCIDENTS = [
-  "unscheduled configuration push",
-  "firmware checksum drift",
-  "rogue RF carrier",
-  "reboot cluster",
-  "telemetry latency spike",
-  "authentication anomaly",
-  "sensor drift excursion",
-  "failover test fault"
-];
-
-const FORENSIC_FLAGS = [
-  "log gap 00:12-00:14 UTC",
-  "SNMP trap storm (120/min)",
-  "NTP offset +340ms",
-  "VLAN flap x7",
-  "watchdog reset",
-  "CRC error burst",
-  "BGP dampening event",
-  "UPS transfer event",
-  "TLS handshake failures",
-  "DNS query entropy spike"
-];
-
-/**
- * Generate synthetic catalog record `index` (0-based) for a jurisdiction.
- * Throws for GA — Georgia always serves its real curated corpus, never generated rows.
- */
-export function generateSyntheticRecord(code: string, index: number): SyntheticRecord {
-  if (code === "GA") throw new Error("GA serves curated corpus only");
-  const j = jurisdictionByCode(code);
-  if (index < 0 || index >= j.quota) throw new Error(`Index ${index} out of quota for ${code}`);
-  const rand = mulberry32((jurisdictionSeed(code) + index * 2654435761) >>> 0);
-  const pick = <T,>(arr: T[]): T => arr[Math.floor(rand() * arr.length) % arr.length];
-
-  const county = pick(j.counties);
-  const sectorRow = pick(SECTORS);
-  const facility = pick(sectorRow.facilities);
-  const incident = pick(INCIDENTS);
-  const priority = index + 1;
-  const batch = Math.floor(index / BATCH_SIZE) + 1;
-  const id = `${code}-SYN-${String(priority).padStart(4, "0")}`;
-  const flags = Array.from({ length: 3 }, () => pick(FORENSIC_FLAGS)).filter(
-    (v, i, a) => a.indexOf(v) === i
-  );
-  while (flags.length < 3) flags.push(pick(FORENSIC_FLAGS));
-
-  const lat = +(j.lat + (rand() - 0.5) * 0.3).toFixed(4);
-  const lng = +(j.lng + (rand() - 0.5) * 0.3).toFixed(4);
-
-  return {
-    id,
-    jurisdiction: code,
-    jurisdictionName: j.name,
-    county,
-    sector: sectorRow.sector,
-    facility,
-    incident,
-    term: `${county} — ${facility} ${incident} [Priority ${priority}]`,
-    priority,
-    batch,
-    severity: "P1",
-    status: "SYNTHETIC — UNVERIFIED",
-    validationCode: `${id}-UNVERIFIED`,
-    venuePin: { lat, lng },
-    forensicFlags: flags,
-    ledgerNote: "SIMULATED LEDGER FLAG — fictional training fixture, no real funds or accounts.",
-    narrative:
-      `Automated monitor flagged ${incident} at ${facility} (${county}, ${j.name}). ` +
-      `Synthetic catalog record generated for interface load testing — no verified event, ` +
-      `no attribution, no real-world entity implicated.`
-  };
-}
-
-/** Lightweight index row for realtime search/filter without materializing full records. */
-export interface CatalogIndexRow {
-  id: string;
-  term: string;
-  sector: string;
-  county: string;
-  batch: number;
-}
-
-export function buildJurisdictionIndex(code: string): CatalogIndexRow[] {
-  const j = jurisdictionByCode(code);
-  const rows: CatalogIndexRow[] = [];
-  for (let i = 0; i < j.quota; i++) {
-    const r = generateSyntheticRecord(code, i);
-    rows.push({ id: r.id, term: r.term, sector: r.sector, county: r.county, batch: r.batch });
-  }
-  return rows;
-}
-
-export const SECTOR_NAMES = SECTORS.map((s) => s.sector);
-
-/** Self-check: quotas must sum to exactly 50,000 with GA contributing its real 1,000. */
-export function catalogTotals(): { jurisdictions: number; total: number; ga: number; synthetic: number } {
+/** Self-check: totals derive from quotas — GA 1,000, 0 sourced elsewhere, 55 awaiting. */
+export function catalogTotals(): {
+  jurisdictions: number;
+  total: number;
+  ga: number;
+  sourced: number;
+  awaiting: number;
+} {
   const ga = jurisdictionByCode("GA").quota;
-  const synthetic = JURISDICTIONS.filter((j) => j.code !== "GA").reduce((a, j) => a + j.quota, 0);
-  return { jurisdictions: JURISDICTIONS.length, total: ga + synthetic, ga, synthetic };
+  const rest = JURISDICTIONS.filter((j) => j.code !== "GA");
+  const sourced = rest.reduce((a, j) => a + j.quota, 0);
+  const awaiting = rest.filter((j) => j.quota === 0).length;
+  return { jurisdictions: JURISDICTIONS.length, total: ga + sourced, ga, sourced, awaiting };
 }

@@ -6,16 +6,13 @@ import { STATEWIDE_ANOMALIES_1000 } from "../lib/statewide-anomalies";
 import {
   JURISDICTIONS,
   BATCH_SIZE,
-  SECTOR_NAMES,
   batchCountFor,
-  buildJurisdictionIndex,
   catalogTotals,
-  generateSyntheticRecord,
-  jurisdictionByCode,
-  type CatalogIndexRow
+  jurisdictionByCode
 } from "../lib/territory-catalog";
+import { JURISDICTION_ADAPTERS } from "../lib/adapters/jurisdictions";
 
-type StatusFilter = "ALL" | "CURATED" | "SYNTHETIC";
+type StatusFilter = "ALL" | "CURATED";
 
 interface PanelRow {
   id: string;
@@ -52,7 +49,16 @@ export default function TerritoryCatalogPanel() {
   const [batch, setBatch] = useState<number>(1);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
   const [query, setQuery] = useState<string>("");
-  const [sector, setSector] = useState<string>("ALL_SECTORS");
+  const [probe, setProbe] = useState<{
+    status: string;
+    reachable: boolean;
+    portal?: string;
+    datasetsIndexed?: number | null;
+    reason?: string;
+    http?: number;
+    checkedAt?: string;
+  } | null>(null);
+  const [probing, setProbing] = useState<boolean>(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [now, setNow] = useState<Date | null>(null);
 
@@ -63,85 +69,79 @@ export default function TerritoryCatalogPanel() {
     return () => clearInterval(t);
   }, []);
 
+  // Phase-2 ingest probe — live portal liveness per tab, never assumed.
+  useEffect(() => {
+    if (jurisdiction === "GA") {
+      setProbe(null);
+      return;
+    }
+    let cancelled = false;
+    setProbing(true);
+    setProbe(null);
+    fetch(`/api/ingest/probe?code=${jurisdiction}`, { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => {
+        if (!cancelled) setProbe(d);
+      })
+      .catch(() => {
+        if (!cancelled) setProbe({ status: "PROBE-REQUEST-FAILED", reachable: false });
+      })
+      .finally(() => {
+        if (!cancelled) setProbing(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [jurisdiction]);
+
   const totals = useMemo(() => catalogTotals(), []);
   const meta = jurisdictionByCode(jurisdiction);
   const isGA = jurisdiction === "GA";
   const batches = isGA ? 40 : batchCountFor(jurisdiction);
 
-  // Synthetic index for non-GA tabs (deterministic, memoized per jurisdiction).
-  const syntheticIndex = useMemo<CatalogIndexRow[]>(
-    () => (isGA ? [] : buildJurisdictionIndex(jurisdiction)),
-    [jurisdiction, isGA]
-  );
+  // Phase 2: non-GA tabs serve records ONLY from mapped verified feeds (none yet).
+  const adapter = JURISDICTION_ADAPTERS[jurisdiction];
 
-  // Rows for the active tab + batch, before search/status/sector filtering.
+  // Rows for the active tab + batch, before search/status filtering.
   const tabRows = useMemo<PanelRow[]>(() => {
-    if (isGA) {
-      const start = (batch - 1) * BATCH_SIZE;
-      return STATEWIDE_ANOMALIES_1000.slice(start, start + BATCH_SIZE).map((a) => ({
+    if (!isGA) return [];
+    const start = (batch - 1) * BATCH_SIZE;
+    return STATEWIDE_ANOMALIES_1000.slice(start, start + BATCH_SIZE).map((a) => ({
+      id: a.id,
+      term: a.term,
+      sub: `Georgia • Interstate corridor • batch ${a.batchNumber}`,
+      batch: a.batchNumber,
+      curated: a.verified === true,
+      sector: "CURATED CORPUS"
+    }));
+  }, [isGA, batch]);
+
+  // Realtime query across the FULL GA corpus when searching. Non-GA tabs have no
+  // mapped feed, so queries there honestly return zero matches.
+  const querying = isGA && query.trim().length > 0;
+  const queryRows = useMemo<PanelRow[]>(() => {
+    if (!querying || !isGA) return [];
+    const q = query.trim().toLowerCase();
+    return STATEWIDE_ANOMALIES_1000.filter((a) => !q || a.term.toLowerCase().includes(q)).map(
+      (a) => ({
         id: a.id,
         term: a.term,
         sub: `Georgia • Interstate corridor • batch ${a.batchNumber}`,
         batch: a.batchNumber,
         curated: a.verified === true,
         sector: "CURATED CORPUS"
-      }));
-    }
-    const start = (batch - 1) * BATCH_SIZE;
-    return syntheticIndex.slice(start, start + BATCH_SIZE).map((r) => ({
-      id: r.id,
-      term: r.term,
-      sub: `${meta.name} • ${r.sector} • batch ${r.batch}`,
-      batch: r.batch,
-      curated: false,
-      sector: r.sector
-    }));
-  }, [isGA, batch, syntheticIndex, meta.name]);
-
-  // Realtime query across the FULL tab corpus when searching/filtering by sector.
-  const querying = query.trim().length > 0 || sector !== "ALL_SECTORS";
-  const queryRows = useMemo<PanelRow[]>(() => {
-    if (!querying) return [];
-    const q = query.trim().toLowerCase();
-    if (isGA) {
-      return STATEWIDE_ANOMALIES_1000.filter((a) => !q || a.term.toLowerCase().includes(q)).map(
-        (a) => ({
-          id: a.id,
-          term: a.term,
-          sub: `Georgia • Interstate corridor • batch ${a.batchNumber}`,
-          batch: a.batchNumber,
-          curated: a.verified === true,
-          sector: "CURATED CORPUS"
-        })
-      );
-    }
-    return syntheticIndex
-      .filter(
-        (r) =>
-          (sector === "ALL_SECTORS" || r.sector === sector) &&
-          (!q || r.term.toLowerCase().includes(q) || r.id.toLowerCase().includes(q))
-      )
-      .map((r) => ({
-        id: r.id,
-        term: r.term,
-        sub: `${meta.name} • ${r.sector} • batch ${r.batch}`,
-        batch: r.batch,
-        curated: false,
-        sector: r.sector
-      }));
-  }, [querying, query, sector, isGA, syntheticIndex, meta.name]);
+      })
+    );
+  }, [querying, query, isGA]);
 
   const baseRows = querying ? queryRows.slice(0, 50) : tabRows;
-  const rows = baseRows.filter((r) =>
-    statusFilter === "ALL" ? true : statusFilter === "CURATED" ? r.curated : !r.curated
-  );
+  const rows = baseRows.filter((r) => (statusFilter === "ALL" ? true : r.curated));
 
   const selectJurisdiction = (code: string) => {
     setJurisdiction(code);
     setBatch(1);
     setExpandedId(null);
     setQuery("");
-    setSector("ALL_SECTORS");
   };
 
   const batchStart = (batch - 1) * BATCH_SIZE + 1;
@@ -192,7 +192,8 @@ export default function TerritoryCatalogPanel() {
       {/* Totals pill */}
       <div className="rounded-2xl sm:rounded-full border border-[#b45309] px-4 py-2 text-center text-[10px] sm:text-xs font-black tracking-widest text-[#f5a623] uppercase leading-relaxed">
         {totals.total.toLocaleString()} records • GA {totals.ga.toLocaleString()} curated +{" "}
-        {totals.synthetic.toLocaleString()} synthetic • batches of {BATCH_SIZE}
+        {totals.sourced.toLocaleString()} sourced • {totals.awaiting} awaiting ingestion • batches
+        of {BATCH_SIZE}
       </div>
 
       <div className="border-t border-[#b45309]/30" />
@@ -252,15 +253,57 @@ export default function TerritoryCatalogPanel() {
           </span>
         </div>
         <p className="text-[11px] sm:text-xs text-[#69f0ae] font-bold leading-relaxed">
-          GA carries the curated 1–1,000 corpus; all other jurisdictions are synthetic catalog
-          records (unverified).
+          GA carries the curated 1–1,000 corpus. All other jurisdictions serve records ONLY from
+          mapped verified feeds — 0 records until a source is wired. No synthetic data.
         </p>
       </div>
+
+      {/* Phase-2 source status — live probe per tab */}
+      {!isGA && adapter && (
+        <div className="rounded-xl border border-[#00e5ff]/40 bg-[#002b4d]/30 px-3 py-2 space-y-1 text-[10px] sm:text-[11px] font-bold">
+          <div className="text-[#00e5ff] tracking-widest">
+            SOURCE STATUS — {meta.name.toUpperCase()}: AWAITING REAL-TIME INGESTION
+          </div>
+          <div className="text-slate-300 break-all">PORTAL: {adapter.openDataPortal}</div>
+          <div className="text-slate-300">
+            {probing || !probe ? (
+              <span className="animate-pulse">PROBING PORTAL…</span>
+            ) : probe.reachable ? (
+              <span className="text-[#69f0ae]">
+                {probe.status} •{" "}
+                {typeof probe.datasetsIndexed === "number"
+                  ? `${probe.datasetsIndexed.toLocaleString()} DATASETS INDEXED`
+                  : "INDEX COUNT N/A"}{" "}
+                • FEED NOT MAPPED • 0 RECORDS SERVED
+              </span>
+            ) : (
+              <span className="text-[#ff80ab]">
+                {probe.status}
+                {probe.http ? ` (HTTP ${probe.http})` : ""}
+                {probe.reason ? ` — ${probe.reason.slice(0, 120)}` : ""} • 0 RECORDS SERVED
+              </span>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <a
+              href={adapter.openDataPortal}
+              target="_blank"
+              rel="noreferrer"
+              className="text-[#f5a623] underline underline-offset-2"
+            >
+              OPEN PORTAL ↗
+            </a>
+            <span className="text-slate-500">
+              {probe?.checkedAt ? `CHECKED ${probe.checkedAt}` : "CHECK ON TAB SELECT"}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Realtime query controls */}
       <div className="flex flex-col sm:flex-row gap-2">
         <div className="flex flex-wrap gap-1.5 shrink-0">
-          {(["ALL", "CURATED", "SYNTHETIC"] as StatusFilter[]).map((f) => (
+          {(["ALL", "CURATED"] as StatusFilter[]).map((f) => (
             <button
               key={f}
               onClick={() => setStatusFilter(f)}
@@ -279,24 +322,15 @@ export default function TerritoryCatalogPanel() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder={`Realtime query — ${meta.name} P1 index…`}
-            className="w-full rounded-lg bg-[#171006] border border-[#b45309]/60 focus:border-[#f5a623] outline-none pl-9 pr-3 py-2 text-[12px] sm:text-xs text-slate-100 placeholder:text-slate-500 min-h-[36px] [color-scheme:dark]"
+            disabled={!isGA}
+            placeholder={
+              isGA
+                ? `Realtime query — ${meta.name} P1 index…`
+                : `No feed mapped — query unavailable for ${meta.name}`
+            }
+            className="w-full rounded-lg bg-[#171006] border border-[#b45309]/60 focus:border-[#f5a623] outline-none pl-9 pr-3 py-2 text-[12px] sm:text-xs text-slate-100 placeholder:text-slate-500 min-h-[36px] [color-scheme:dark] disabled:opacity-40"
           />
         </div>
-        {!isGA && (
-          <select
-            value={sector}
-            onChange={(e) => setSector(e.target.value)}
-            className="rounded-lg bg-[#171006] border border-[#b45309]/60 focus:border-[#f5a623] outline-none px-2.5 py-2 text-[12px] sm:text-xs text-slate-100 min-h-[36px] [color-scheme:dark]"
-          >
-            <option value="ALL_SECTORS">ALL SECTORS</option>
-            {SECTOR_NAMES.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-        )}
       </div>
 
       {/* Batch position readout + pager */}
@@ -304,7 +338,9 @@ export default function TerritoryCatalogPanel() {
         <div className="text-[10px] sm:text-[11px] text-[#69f0ae] font-bold tracking-wider px-0.5">
           {querying
             ? `QUERY RESULTS — ${queryRows.length.toLocaleString()} MATCHES (FIRST 50 SHOWN)`
-            : `BATCH ${batch} OF ${batches} • RECORDS ${batchStart.toLocaleString()}–${batchEnd.toLocaleString()} OF ${meta.quota.toLocaleString()} • ${meta.name.toUpperCase()}`}
+            : isGA
+              ? `BATCH ${batch} OF ${batches} • RECORDS ${batchStart.toLocaleString()}–${batchEnd.toLocaleString()} OF ${meta.quota.toLocaleString()} • ${meta.name.toUpperCase()}`
+              : `NO BATCHES — FEED NOT MAPPED • ${meta.name.toUpperCase()} • 0 RECORDS`}
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -347,16 +383,26 @@ export default function TerritoryCatalogPanel() {
 
       {/* Record cards */}
       <div className="space-y-2.5">
-        {rows.length === 0 && (
+        {rows.length === 0 && isGA && (
           <p className="text-[11px] text-slate-400 font-bold px-1">
             No records match this filter in {meta.name}.
           </p>
         )}
+        {!isGA && (
+          <div className="rounded-2xl border border-dashed border-[#00e5ff]/50 bg-[#002b4d]/20 p-4 text-center space-y-1.5">
+            <div className="text-[11px] sm:text-xs font-black tracking-[0.2em] text-[#00e5ff]">
+              AWAITING REAL-TIME INGESTION
+            </div>
+            <p className="text-[11px] text-slate-300 font-bold leading-relaxed">
+              No verified feed is mapped for {meta.name}, so this tab serves 0 records. Send a
+              dataset URL or API endpoint to map this jurisdiction — records appear with
+              provenance links, never as synthetic filler.
+            </p>
+          </div>
+        )}
         {rows.map((r) => {
           const expanded = expandedId === r.id;
-          const p1num = r.id.includes("-SYN-")
-            ? (r.id.split("-SYN-")[1] || "").replace(/^0+/, "") || "0"
-            : (r.term.match(/Priority (\d+)/)?.[1] ?? "");
+          const p1num = r.term.match(/Priority (\d+)/)?.[1] ?? "";
           return (
             <div
               key={r.id}
@@ -380,7 +426,7 @@ export default function TerritoryCatalogPanel() {
                       </span>
                     ) : (
                       <span className="px-2.5 py-0.5 rounded-md bg-white/5 text-slate-300 border border-slate-500/60 text-[9px] sm:text-[10px] font-black">
-                        SYNTHETIC — UNVERIFIED
+                        PENDING SOURCE
                       </span>
                     )}
                   </span>
@@ -393,9 +439,7 @@ export default function TerritoryCatalogPanel() {
                   <span className="truncate">{r.sub}</span>
                 </div>
               </button>
-              {expanded && (
-                <RecordDetail id={r.id} curated={r.curated} jurisdiction={jurisdiction} />
-              )}
+              {expanded && <RecordDetail id={r.id} curated={r.curated} />}
             </div>
           );
         })}
@@ -403,69 +447,37 @@ export default function TerritoryCatalogPanel() {
 
       {/* Footer strip */}
       <div className="rounded-lg bg-[#f5a623]/5 border border-[#b45309]/30 px-3 py-1 text-center text-[8px] sm:text-[9px] font-bold tracking-[0.2em] text-[#f5a623]/70 uppercase">
-        ORACLE-SYNAPSE // AIP-20 HARDENED // SYNTHETIC RECORDS LABELED HONESTLY
+        ORACLE-SYNAPSE // AIP-20 HARDENED // NO SYNTHETIC DATA — SOURCED RECORDS ONLY
       </div>
     </div>
   );
 }
 
-function RecordDetail({
-  id,
-  curated,
-  jurisdiction
-}: {
-  id: string;
-  curated: boolean;
-  jurisdiction: string;
-}) {
+function RecordDetail({ id, curated }: { id: string; curated: boolean }) {
   const detail = useMemo(() => {
-    if (curated) {
-      const a = STATEWIDE_ANOMALIES_1000.find((x) => x.id === id);
-      if (!a) return null;
-      return {
-        kind: "curated" as const,
-        definition: a.definition,
-        implications: a.interstateImplications ?? "Georgia intrastate",
-        validation: `${a.id}-VERIFIED`
-      };
-    }
-    const m = id.match(/^[A-Z]{2}-SYN-(\d+)$/);
-    if (!m) return null;
-    const rec = generateSyntheticRecord(jurisdiction, parseInt(m[1], 10) - 1);
-    return { kind: "synthetic" as const, rec };
-  }, [id, curated, jurisdiction]);
+    if (!curated) return null;
+    const a = STATEWIDE_ANOMALIES_1000.find((x) => x.id === id);
+    if (!a) return null;
+    return {
+      definition: a.definition,
+      implications: a.interstateImplications ?? "Georgia intrastate",
+      validation: `${a.id}-VERIFIED`
+    };
+  }, [id, curated]);
 
   if (!detail) return null;
-  if (detail.kind === "curated") {
-    return (
-      <div className="pt-2 mt-1 border-t border-[#b45309]/30 space-y-1.5 text-[11px] sm:text-xs leading-relaxed">
-        <p className="text-slate-200 break-words">
-          <span className="text-[#f5a623] font-black">DEFINITION: </span>
-          {detail.definition.slice(0, 420)}
-          {detail.definition.length > 420 ? "…" : ""}
-        </p>
-        <p className="text-slate-300 break-words">
-          <span className="text-[#f5a623] font-black">INTERSTATE: </span>
-          {detail.implications}
-        </p>
-        <p className="text-[#69f0ae] font-bold">{detail.validation} • Full dossier in GA panel below</p>
-      </div>
-    );
-  }
-  const r = detail.rec;
   return (
     <div className="pt-2 mt-1 border-t border-[#b45309]/30 space-y-1.5 text-[11px] sm:text-xs leading-relaxed">
-      <p className="text-slate-200 break-words">{r.narrative}</p>
-      <p className="text-slate-300">
-        <span className="text-[#f5a623] font-black">VENUE PIN: </span>
-        {r.venuePin.lat.toFixed(4)}, {r.venuePin.lng.toFixed(4)} (synthetic jitter)
+      <p className="text-slate-200 break-words">
+        <span className="text-[#f5a623] font-black">DEFINITION: </span>
+        {detail.definition.slice(0, 420)}
+        {detail.definition.length > 420 ? "…" : ""}
       </p>
       <p className="text-slate-300 break-words">
-        <span className="text-[#f5a623] font-black">FLAGS: </span>
-        {r.forensicFlags.join(" • ")}
+        <span className="text-[#f5a623] font-black">INTERSTATE: </span>
+        {detail.implications}
       </p>
-      <p className="text-slate-400">{r.ledgerNote}</p>
-      <p className="text-slate-300 font-bold break-words">{r.validationCode}</p>
+      <p className="text-[#69f0ae] font-bold">{detail.validation} • Full dossier in GA panel below</p>
     </div>
   );
 }
