@@ -11,7 +11,7 @@ import {
   jurisdictionByCode
 } from "../lib/territory-catalog";
 import { JURISDICTION_ADAPTERS } from "../lib/adapters/jurisdictions";
-import { STATE_DATASETS } from "../lib/adapters/state-datasets";
+import { STATE_DATASETS, type StateDatasetConfig } from "../lib/adapters/state-datasets";
 
 type StatusFilter = "ALL" | "CURATED";
 
@@ -848,7 +848,7 @@ function StateRecordCards({ code, name }: { code: string; name: string }) {
               <p className="text-[11px] text-slate-400 font-bold">{p.note}</p>
             )}
             {recs.slice(0, c.cap).map((r, i) => (
-              <StateCard key={c.source_id + "-" + i} source={c.source_id} r={r} />
+              <StateCard key={c.source_id + "-" + i} r={r} cfg={c} />
             ))}
             {prov && (
               <div className="text-[9px] sm:text-[10px] text-slate-500 font-bold break-all">
@@ -865,30 +865,30 @@ function StateRecordCards({ code, name }: { code: string; name: string }) {
   );
 }
 
-function StateCard({ source, r }: { source: string; r: Record<string, any> }) {
-  let title = "";
-  let sub = "";
-  let link: string | null = null;
-  let linkLabel = "";
-  if (source === "NY-TAX-WARRANTS") {
-    const amt = Number(r.warrant_filed_amount);
-    const usd = Number.isFinite(amt)
-      ? "$" + amt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-      : "AMOUNT N/A";
-    title = `${usd} TAX WARRANT — ${String(r.debtor_name_1 ?? "?")}`;
-    sub = `${String(r.warrant_id ?? "?")} • ${String(r.status_code ?? "?")} • FILED ${String(r.warrant_filed_date ?? "?").slice(0, 10)} • ${String(r.city ?? "?")}, ${String(r.county_code ?? "?")} CO.`;
-    const u: unknown = (r as { url?: unknown }).url;
-    const href = typeof u === "string" ? u : typeof u === "object" && u !== null && typeof (u as { url?: unknown }).url === "string" ? String((u as { url: unknown }).url) : null;
-    if (href) {
-      link = href;
-      linkLabel = "WARRANT RECORD ↗";
+function renderCardTemplate(t: string, r: Record<string, any>): string {
+  return t.replace(/\{([a-zA-Z0-9_]+)(?::(money|date))?\}/g, (_m: string, f: string, mod: string) => {
+    const v: unknown = r[f];
+    if (v === null || v === undefined || v === "") return "?";
+    if (mod === "money") {
+      const n = Number(v);
+      return Number.isFinite(n)
+        ? "$" + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        : "?";
     }
-  } else if (source === "NY-OIG-COMPLAINTS") {
-    title = `INTAKE ${String(r.intake ?? "?")} — ${String(r.case_type ?? r.oig_office ?? "?")}`;
-    sub = `${String(r.agency ?? "?")} • SOURCE: ${String(r.intake_source ?? "?")} • ${String(r.sort_order ?? "?").slice(0, 10)}`;
-  } else {
-    title = String(r.title ?? r.id ?? JSON.stringify(r).slice(0, 100));
-    sub = JSON.stringify(r).slice(0, 160);
+    if (mod === "date") return String(v).slice(0, 10);
+    return String(v);
+  });
+}
+
+function StateCard({ r, cfg }: { r: Record<string, any>; cfg: StateDatasetConfig }) {
+  const title = renderCardTemplate(cfg.card.title, r);
+  const sub = renderCardTemplate(cfg.card.sub, r);
+  let link: string | null = null;
+  if (cfg.card.link_field) {
+    const u: unknown = r[cfg.card.link_field];
+    if (typeof u === "string" && u.length > 0) link = u;
+    else if (typeof u === "object" && u !== null && typeof (u as { url?: unknown }).url === "string")
+      link = String((u as { url: unknown }).url);
   }
   return (
     <div className="rounded-xl border border-white/10 bg-black/30 px-2.5 py-1.5 space-y-0.5">
@@ -896,7 +896,7 @@ function StateCard({ source, r }: { source: string; r: Record<string, any> }) {
       <div className="text-[10px] sm:text-[11px] text-[#f5a623]/90 font-bold break-words">{sub}</div>
       {link && (
         <a href={link} target="_blank" rel="noreferrer" className="text-[10px] sm:text-[11px] text-[#f5a623] underline underline-offset-2 font-bold">
-          {linkLabel}
+          {cfg.card.link_label ?? "RECORD ↗"}
         </a>
       )}
     </div>

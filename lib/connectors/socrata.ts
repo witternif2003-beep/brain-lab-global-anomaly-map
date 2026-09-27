@@ -79,9 +79,10 @@ export async function fetchSocrataDataset(a: {
     total_count = null;
   }
 
+  const ordered = a.orderBy.length > 0;
   const note =
     total_count !== null
-      ? `${total_count.toLocaleString()} TOTAL ROWS • SHOWING ${records.length} NEWEST`
+      ? `${total_count.toLocaleString()} TOTAL ROWS • SHOWING ${records.length}${ordered ? " NEWEST" : " ROWS"}`
       : `${records.length} ROWS FETCHED (TOTAL COUNT UNAVAILABLE)`;
   return { records, provenance: prov, note, total_count };
 }
