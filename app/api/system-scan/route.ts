@@ -11,13 +11,14 @@ export async function GET() {
     classification: 'TOP SECRET//SI//NOFORN//ORCON//HCS-PII//LIMDIS//OMEGA BLACK//ABSOLUTE//INFINITE',
     calibrationResolution: '±2.0cm_STRICT_PHYSICAL_GROUNDING',
     zeroYellowPolicy: 'VERIFIED_100%_ELECTRIC_CYAN_EMERALD_VIOLET',
-    standardRevision: 'NSA-ADMIN-MODE-REV3-SYSCHECK-HARDEN',
+    standardRevision: 'NSA-ADMIN-MODE-REV4-PERMANENT-REPAIR',
     hardeningPatches: [
       'AIP20-WORKER-SCHEDULER: OffscreenCanvas worker rAF ReferenceError eliminated via worker-safe setTimeout fallback scheduler with 500ms idle polling',
       'AIP20-THREATGLOBE-REF: threat globe render loop decoupled from React state via ref-mirror architecture with single-owner 30FPS throttled loop and visibility gating',
       'AIP20-PALETTE-SWEEP: FBI section legacy warm-tone UI hexes migrated to electric cyan palette; warm-tone-free policy re-verified across all non-excluded components',
       'AIP20-AMBIENT-HARDEN: global background resize debounced 120ms with battery listener cleanup and disposed-guard worker messaging',
-      'AIP20-PRODLOG-HARDEN: production console-noise silenced via NODE_ENV-gated diagnostic logger in telemetry/test-map/godseye layers; statewide pipeline excluded untouched'
+      'AIP20-PRODLOG-HARDEN: production console-noise silenced via NODE_ENV-gated diagnostic logger in telemetry/test-map/godseye layers; statewide pipeline excluded untouched',
+      'AIP20-FRESHNESS-BEACON: build-freshness chip on every page compares bundle commit to live /api/health with one-tap reload on drift; newest deps maplibre-gl 6.11.2 + vercel 60.1.3 under tsc+build gates'
     ],
     excludedBoundary: 'GEORGIA_INTERSTATE_STATEWIDE_PIPELINE_PRESERVED_UNTOUCHED',
     recommendationsPipeline: {

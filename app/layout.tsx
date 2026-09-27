@@ -6,6 +6,7 @@ import AmbientBackground from "../components/AmbientBackground";
 import VitalsProbe from "../components/VitalsProbe";
 import { PlatformProbe } from "../components/PlatformProbe";
 import { RealTimeStreamProvider } from "../components/RealTimeStreamProvider";
+import BuildFreshnessChip from "../components/BuildFreshnessChip";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -35,6 +36,7 @@ export default function RootLayout({
           <Navbar />
           <main className="flex-1 pb-12 relative z-10">{children}</main>
           <Footer />
+          <BuildFreshnessChip buildSha={process.env.VERCEL_GIT_COMMIT_SHA || "local"} />
         </RealTimeStreamProvider>
       </body>
     </html>
