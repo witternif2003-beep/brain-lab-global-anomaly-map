@@ -263,7 +263,17 @@ export const STATE_DATASETS: Record<string, StateDatasetConfig[]> = {
       platform: "csv",
       service_url: "ckan-package:provider-suspended-and-ineligible-list-si-list",
       order_by: "Date of Suspension",
-      select: [],
+      select: [
+        "Last Name",
+        "First Name",
+        "Middle Name",
+        "Provider Type",
+        "License Number",
+        "Provider Number",
+        "Date of Suspension",
+        "Active Period",
+        "Address(es)"
+      ],
       cap: 10,
       card: {
         title: "{Last Name}, {First Name} — {Provider Type}",
