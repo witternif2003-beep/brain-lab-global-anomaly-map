@@ -143,6 +143,49 @@ export async function GET(req: Request) {
     });
   }
 
+  // ArcGIS/CSV-mapped jurisdictions expose no Socrata/CKAN search API by
+  // design — probe the mapped feed itself so the badge stays honest.
+  const alt = (STATE_DATASETS[code] ?? []).find(
+    (c) => (c.platform === "arcgis" || c.platform === "csv") && (c.service_url ?? "").length > 0
+  );
+  if (alt?.service_url) {
+    const svc = alt.service_url;
+    const isRawCsv = alt.platform === "csv" && !svc.startsWith("ckan-package:");
+    let ok = false;
+    if (isRawCsv) {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 8000);
+      try {
+        const hr = await fetch(svc, { method: "HEAD", signal: ctrl.signal, cache: "no-store" });
+        ok = hr.ok;
+      } catch {
+        ok = false;
+      } finally {
+        clearTimeout(timer);
+      }
+    } else {
+      const probeUrl =
+        alt.platform === "arcgis"
+          ? `${svc}?f=json`
+          : `${base}/api/3/action/package_show?id=${encodeURIComponent(svc.slice("ckan-package:".length))}`;
+      ok = (await tryFetch(probeUrl))?.ok ?? false;
+    }
+    if (ok) {
+      return NextResponse.json({
+        code,
+        portal: base,
+        platform: alt.platform === "csv" ? "csv-ckan" : alt.platform,
+        status: "PORTAL-REACHABLE-FEED-MAPPED",
+        reachable: true,
+        datasetsIndexed: null,
+        datasetsMapped: mappedCount,
+        records: 0,
+        checkedAt,
+        note: `Mapped ${alt.platform} feed responds (${alt.source_id}); live records via /api/ingest/states/records.`
+      });
+    }
+  }
+
   const anyHost = (soc !== null && soc.ok) || (ckn !== null && ckn.ok);
   if (anyHost) {
     return NextResponse.json({
