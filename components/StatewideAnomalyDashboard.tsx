@@ -205,6 +205,7 @@ export default function StatewideAnomalyDashboard() {
                   U.S. STATES &amp; TERRITORIES ANOMALY REPORT — {jurisdictionLabel}
                 </span>
                 <span className="text-[#ffd54f] font-mono ml-2">— {feed ? fmt(feed.retrievedAt) : "LOADING"}</span>
+                <span className="text-[#80deea] font-mono ml-2 text-xs sm:text-base font-bold">• NOW <LiveTimestamp /></span>
               </h2>
             </div>
 
