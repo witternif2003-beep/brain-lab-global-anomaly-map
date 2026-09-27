@@ -58,7 +58,8 @@ export async function GET(req: Request) {
         sourceId: cfg.source_id,
         jurisdiction: code,
         sortField: cfg.order_by,
-        rows
+        rows,
+        fields: cfg.select
       });
       return NextResponse.json({
         code,

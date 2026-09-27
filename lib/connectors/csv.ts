@@ -76,6 +76,7 @@ export async function fetchCsvDataset(a: {
   jurisdiction: string;
   sortField?: string;
   rows?: number;
+  fields?: string[];
 }): Promise<CsvFetch> {
   const rows = Math.max(1, Math.min(100, a.rows ?? 12));
   let csvUrl = a.serviceUrl;
