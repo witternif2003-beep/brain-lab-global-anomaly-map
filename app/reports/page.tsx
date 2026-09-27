@@ -41,7 +41,7 @@ ${selectedReport.competitorActionItems.map(a => `- [${a.state}] ${a.action} (Pro
 PRIMARY AUDITED SOURCES:
 ${selectedReport.primarySources.map(s => `- ${s}`).join("\n")}
 
-DISCLAIMER: Emblem used for identification purposes only. Not affiliated with any government agency. All data is public-record open-source only.`;
+DISCLAIMER: Emblem used for identification purposes only. All data is public-record open-source only.`;
 
     const blob = new Blob([text], { type: "text/plain" });
     const url = window.URL.createObjectURL(blob);

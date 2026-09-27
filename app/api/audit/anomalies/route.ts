@@ -36,7 +36,7 @@ export async function GET() {
     checked: { records: ids.size, feeds: feed.feeds, jurisdictionsPopulated: populated.length, jurisdictionsEmpty: empty },
     perJurisdiction: feed.perJurisdiction,
     failures,
-    policy: "Only records retrievable from NWS, USGS, CISA or FEMA at request time are displayed. No synthetic, generated or hand-curated records exist in this catalog. A jurisdiction with no active source events shows zero records rather than fabricated ones.",
+    policy: "Only records retrievable from NWS, USGS, CISA, FEMA, USGS Volcano Hazards or NHC at request time are displayed. No synthetic, generated or hand-curated records exist in this catalog. A jurisdiction with no active source events shows zero records rather than fabricated ones.",
     durationMs: Date.now() - started,
   });
 }

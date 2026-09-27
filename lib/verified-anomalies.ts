@@ -10,10 +10,12 @@
  *   USGS — https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_week.geojson
  *   CISA — https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json
  *   FEMA — https://www.fema.gov/api/open/v2/DisasterDeclarationsSummaries (last 365 days)
+ *   USGS Volcano Hazards — https://volcanoes.usgs.gov/hans-public/api/volcano/getElevatedVolcanoes
+ *   NHC  — https://www.nhc.noaa.gov/CurrentStorms.json (active tropical cyclones, nationwide)
  */
 import { US_JURISDICTIONS, JURISDICTION_BY_CODE, Jurisdiction } from "./us-jurisdictions";
 
-export type VerifiedSource = "NWS" | "USGS" | "CISA_KEV" | "FEMA";
+export type VerifiedSource = "NWS" | "USGS" | "CISA_KEV" | "FEMA" | "USGS_VOLCANO" | "NHC";
 
 export interface VerifiedAnomaly {
   id: string;
@@ -63,6 +65,8 @@ const NWS_URL = "https://api.weather.gov/alerts/active?status=actual&message_typ
 const USGS_URL = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_week.geojson";
 const CISA_URL = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json";
 const KEV_LIMIT = 200;
+const VOLCANO_URL = "https://volcanoes.usgs.gov/hans-public/api/volcano/getElevatedVolcanoes";
+const NHC_URL = "https://www.nhc.noaa.gov/CurrentStorms.json";
 const FEMA_LOOKBACK_DAYS = 365;
 const FEMA_URL = `https://www.fema.gov/api/open/v2/DisasterDeclarationsSummaries?$orderby=declarationDate%20desc&$top=1000&$filter=declarationDate%20ge%20'${new Date(Date.now() - FEMA_LOOKBACK_DAYS * 86_400_000).toISOString().slice(0, 10)}'`;
 
@@ -248,6 +252,85 @@ function femaRecords(json: { DisasterDeclarationsSummaries: FemaDeclaration[] },
   });
 }
 
+interface VolcanoNotice {
+  obs_fullname: string; obs_abbr: string; volcano_name: string; vnum: string;
+  notice_identifier: string; sent_utc: string; color_code: string; alert_level: string; notice_url: string;
+}
+
+const OBSERVATORY_TO_CODE: Record<string, string> = { avo: "AK", hvo: "HI", nmi: "MP", calvo: "CA", yvo: "WY" };
+const CASCADES_VOLCANO_TO_CODE: Record<string, string> = {
+  "mount st. helens": "WA", "mount rainier": "WA", "mount baker": "WA", "glacier peak": "WA", "mount adams": "WA",
+  "mount hood": "OR", "crater lake": "OR", "three sisters": "OR", "newberry": "OR", "mount jefferson": "OR",
+  "mount shasta": "CA", "lassen volcanic center": "CA", "medicine lake": "CA",
+};
+const VOLCANO_SEVERITY: Record<string, string> = { RED: "Extreme", ORANGE: "Severe", YELLOW: "Moderate" };
+
+function volcanoRecords(json: VolcanoNotice[], retrievedAt: string): VerifiedAnomaly[] {
+  const out: VerifiedAnomaly[] = [];
+  for (const v of json) {
+    const code = OBSERVATORY_TO_CODE[v.obs_abbr] ?? CASCADES_VOLCANO_TO_CODE[v.volcano_name.toLowerCase()];
+    if (!code || !JURISDICTION_BY_CODE[code]) continue;
+    out.push({
+      id: `USGS_VOLCANO:${v.vnum}:${v.notice_identifier}`,
+      source: "USGS_VOLCANO",
+      sourceName: "USGS Volcano Hazards Program — Elevated Volcanoes (HANS)",
+      sourceUrl: VOLCANO_URL,
+      recordUrl: v.notice_url,
+      retrievedAt,
+      eventTime: new Date(v.sent_utc.replace(" ", "T") + "Z").toISOString(),
+      ...jurisdictionFields(code),
+      sector: "Volcanic Hazards",
+      event: `Volcano ${v.alert_level} — ${v.volcano_name}`,
+      headline: `${v.volcano_name}: aviation color code ${v.color_code}, alert level ${v.alert_level}`,
+      description: `${v.obs_fullname} reports ${v.volcano_name} (VNUM ${v.vnum}) at aviation color code ${v.color_code} / volcano alert level ${v.alert_level}. Latest notice ${v.notice_identifier}.`,
+      area: `${v.volcano_name}, ${JURISDICTION_BY_CODE[code].name}`,
+      severity: VOLCANO_SEVERITY[v.color_code] ?? "Minor",
+      issuer: v.obs_fullname,
+      verified: true,
+    });
+  }
+  return out;
+}
+
+interface NhcStorm {
+  id: string; binNumber: string; name: string; classification: string; intensity: string; pressure: string;
+  latitudeNumeric: number; longitudeNumeric: number; movementDir: number; movementSpeed: number; lastUpdate: string;
+  publicAdvisory: { advNum: string; issuance: string; url: string };
+}
+
+const NHC_CLASS: Record<string, string> = {
+  TD: "Tropical Depression", TS: "Tropical Storm", HU: "Hurricane", MH: "Major Hurricane",
+  STD: "Subtropical Depression", STS: "Subtropical Storm", PTC: "Potential Tropical Cyclone", PC: "Post-tropical Cyclone",
+};
+
+function nhcRecords(json: { activeStorms: NhcStorm[] }, retrievedAt: string): VerifiedAnomaly[] {
+  return json.activeStorms.map((s) => {
+    const cls = NHC_CLASS[s.classification] ?? s.classification;
+    const basin = s.binNumber.startsWith("EP") ? "Eastern Pacific" : s.binNumber.startsWith("CP") ? "Central Pacific" : "Atlantic";
+    return {
+      id: `NHC:${s.id}:${s.publicAdvisory.advNum}`,
+      source: "NHC" as const,
+      sourceName: "NOAA National Hurricane Center — Current Storms",
+      sourceUrl: NHC_URL,
+      recordUrl: s.publicAdvisory.url,
+      retrievedAt,
+      eventTime: s.publicAdvisory.issuance || s.lastUpdate,
+      jurisdictionCode: "US",
+      jurisdictionName: "United States (NHC basin advisory)",
+      jurisdictionKind: "FEDERAL" as const,
+      sector: "Tropical Cyclones",
+      event: `${cls} ${s.name} — Advisory ${s.publicAdvisory.advNum}`,
+      headline: `${cls} ${s.name}: ${s.intensity} kt, ${s.pressure} mb, ${basin} basin`,
+      description: `${cls} ${s.name} (${s.id.toUpperCase()}) located near ${s.latitudeNumeric}°, ${s.longitudeNumeric}° moving ${s.movementDir}° at ${s.movementSpeed} kt. Maximum sustained winds ${s.intensity} kt, minimum central pressure ${s.pressure} mb. Public advisory ${s.publicAdvisory.advNum}.`,
+      area: `${basin} basin — ${s.latitudeNumeric}°N, ${Math.abs(s.longitudeNumeric)}°${s.longitudeNumeric < 0 ? "W" : "E"}`,
+      severity: s.classification === "MH" ? "Extreme" : s.classification === "HU" ? "Severe" : "Moderate",
+      coords: { lat: s.latitudeNumeric, lon: s.longitudeNumeric },
+      issuer: "NOAA National Hurricane Center",
+      verified: true as const,
+    };
+  });
+}
+
 async function fetchJson<T>(url: string, revalidate: number): Promise<T> {
   const res = await fetch(url, {
     headers: { "User-Agent": UA, Accept: "application/geo+json, application/json" },
@@ -264,6 +347,8 @@ export async function loadVerifiedFeed(): Promise<VerifiedFeed> {
     { source: "USGS", url: USGS_URL, run: async () => usgsRecords(await fetchJson(USGS_URL, 120), retrievedAt) },
     { source: "CISA_KEV", url: CISA_URL, run: async () => cisaRecords(await fetchJson(CISA_URL, 3600), retrievedAt) },
     { source: "FEMA", url: FEMA_URL, run: async () => femaRecords(await fetchJson(FEMA_URL, 900), retrievedAt) },
+    { source: "USGS_VOLCANO", url: VOLCANO_URL, run: async () => volcanoRecords(await fetchJson(VOLCANO_URL, 600), retrievedAt) },
+    { source: "NHC", url: NHC_URL, run: async () => nhcRecords(await fetchJson(NHC_URL, 600), retrievedAt) },
   ];
   const settled = await Promise.allSettled(jobs.map((j) => j.run()));
   const records: VerifiedAnomaly[] = [];

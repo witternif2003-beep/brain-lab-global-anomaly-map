@@ -16,7 +16,7 @@ export default function ComplianceNotice() {
               MANDATORY COMPLIANCE NOTICE:
             </span>
             <span className="text-[#cbd5e1] text-[10px] sm:text-xs font-mono">
-              Emblem used for identification purposes only. Not affiliated with any government agency.
+              Emblem used for identification purposes only.
             </span>
           </div>
         </div>

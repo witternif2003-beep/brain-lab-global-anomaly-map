@@ -33,6 +33,8 @@ const SOURCE_LABEL: Record<VerifiedAnomaly["source"], string> = {
   USGS: "USGS",
   CISA_KEV: "CISA KEV",
   FEMA: "FEMA",
+  USGS_VOLCANO: "USGS VOLCANO",
+  NHC: "NHC",
 };
 
 function fmt(iso?: string) {
@@ -44,7 +46,7 @@ function fmt(iso?: string) {
 function severityClass(sev: string) {
   switch (sev) {
     case "Extreme": return "text-[#ff80ab] bg-[#3d0014]/90 border-[#ff1744]/70";
-    case "Severe": return "text-[#ffd54f] bg-[#331e00]/90 border-[#ffaa00]/70";
+    case "Severe": return "text-[#ff9de6] bg-[#33002a]/90 border-[#ff2bd6]/70";
     case "Moderate": return "text-[#80deea] bg-[#041630] border-[#00e5ff]/60";
     default: return "text-[#69f0ae] bg-[#002b1b]/90 border-[#00ff88]/60";
   }
@@ -168,7 +170,7 @@ export default function StatewideAnomalyDashboard() {
         <div className="absolute top-0 right-1/4 w-96 h-96 bg-[#00e5ff]/15 rounded-full blur-[130px] pointer-events-none -z-10" />
         <div className="absolute top-1/3 left-10 w-96 h-96 bg-[#00ff88]/12 rounded-full blur-[130px] pointer-events-none -z-10" />
         <div className="absolute bottom-10 right-10 w-96 h-96 bg-[#bd00ff]/15 rounded-full blur-[130px] pointer-events-none -z-10" />
-        <div className="absolute bottom-0 left-1/3 w-80 h-80 bg-[#ffaa00]/12 rounded-full blur-[110px] pointer-events-none -z-10" />
+        <div className="absolute bottom-0 left-1/3 w-80 h-80 bg-[#ff2bd6]/12 rounded-full blur-[110px] pointer-events-none -z-10" />
 
         {/* HEADER */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between pb-5 border-b border-[#00e5ff]/35 gap-4">
@@ -183,7 +185,7 @@ export default function StatewideAnomalyDashboard() {
                   <span className="w-2 h-2 rounded-full bg-[#00ff88] animate-ping shrink-0" />
                   <span>AIP-20 ANTI-HALLUCINATION ENFORCED — NO SYNTHETIC RECORDS</span>
                 </span>
-                <span className="px-3.5 py-1.5 rounded-full bg-[#331e00]/90 text-[#ffd54f] border-2 border-[#ffaa00]/70 text-[10px] font-mono font-bold tracking-wider w-fit shadow-[0_0_12px_rgba(255,170,0,0.3)]">
+                <span className="px-3.5 py-1.5 rounded-full bg-[#33002a]/90 text-[#ff9de6] border-2 border-[#ff2bd6]/70 text-[10px] font-mono font-bold tracking-wider w-fit shadow-[0_0_12px_rgba(255,43,214,0.3)]">
                   REFRESH #{refreshCount} • 24/7 AUTO-POPULATE EVERY {REFRESH_MS / 1000}s
                 </span>
                 <span className="px-3 py-1 rounded-full bg-[#061836]/90 text-[#80deea] border border-[#00e5ff]/60 text-[10px] font-mono font-bold tracking-wider w-fit flex items-center gap-1.5">
@@ -203,12 +205,12 @@ export default function StatewideAnomalyDashboard() {
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00e5ff] via-[#69f0ae] to-white">
                   U.S. STATES &amp; TERRITORIES ANOMALY REPORT — {jurisdictionLabel}
                 </span>
-                <span className="text-[#ffd54f] font-mono ml-2">— {feed ? fmt(feed.retrievedAt) : "LOADING"}</span>
+                <span className="text-[#ff9de6] font-mono ml-2">— {feed ? fmt(feed.retrievedAt) : "LOADING"}</span>
               </h2>
             </div>
 
             <p className="text-xs sm:text-[13px] text-[#b2ebf2] font-sans leading-relaxed">
-              Every record below is retrieved live from an authoritative public source (NWS active alerts, USGS M2.5+ seismic feed, CISA Known Exploited Vulnerabilities, FEMA disaster declarations) and carries its source URL and retrieval time. Jurisdictions with no active source events show zero records — nothing is generated or curated.
+              Every record below is retrieved live from an authoritative public source (NWS active alerts, USGS M2.5+ seismic feed, CISA Known Exploited Vulnerabilities, FEMA disaster declarations, USGS Volcano Hazards, NHC tropical cyclones) and carries its source URL and retrieval time. Jurisdictions with no active source events show zero records — nothing is generated or curated.
             </p>
             {fetchError && (
               <p className="text-xs text-[#ff80ab] font-mono flex items-center gap-2"><AlertTriangle className="w-4 h-4" /> FEED FETCH FAILED: {fetchError} — retrying every {REFRESH_MS / 1000}s</p>
@@ -243,10 +245,10 @@ export default function StatewideAnomalyDashboard() {
         </div>
 
         {/* BATCH SELECTOR */}
-        <div className="p-3.5 rounded-[28px] bg-[#020a16]/95 border-2 border-[#ffaa00]/60 space-y-2.5 font-mono shadow-md">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-[#ffaa00]/30 text-xs">
-            <div className="flex items-center gap-2 text-[#ffd54f] font-extrabold tracking-wider uppercase">
-              <Layers className="w-4 h-4 text-[#ffaa00]" />
+        <div className="p-3.5 rounded-[28px] bg-[#020a16]/95 border-2 border-[#ff2bd6]/60 space-y-2.5 font-mono shadow-md">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-[#ff2bd6]/30 text-xs">
+            <div className="flex items-center gap-2 text-[#ff9de6] font-extrabold tracking-wider uppercase">
+              <Layers className="w-4 h-4 text-[#ff2bd6]" />
               <span>SELECT BATCH OF {BATCH_SIZE} ANOMALIES ({totalLabel} LIVE IN {jurisdictionLabel}):</span>
             </div>
             <div className="text-[11px] text-[#69f0ae] font-bold">
@@ -254,22 +256,22 @@ export default function StatewideAnomalyDashboard() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-xs">
-            <button onClick={() => goToBatch(selectedBatch - 1)} disabled={selectedBatch <= 1} className="px-2.5 py-1.5 rounded-xl border border-[#ffaa00]/50 text-[#ffd54f] font-bold disabled:opacity-30 hover:border-[#ffaa00] flex items-center gap-1" aria-label="Previous batch">
+            <button onClick={() => goToBatch(selectedBatch - 1)} disabled={selectedBatch <= 1} className="px-2.5 py-1.5 rounded-xl border border-[#ff2bd6]/50 text-[#ff9de6] font-bold disabled:opacity-30 hover:border-[#ff2bd6] flex items-center gap-1" aria-label="Previous batch">
               <ChevronLeft className="w-3.5 h-3.5" /> PREV
             </button>
-            <label className="flex items-center gap-1.5 text-[#ffd54f] font-bold">
+            <label className="flex items-center gap-1.5 text-[#ff9de6] font-bold">
               JUMP TO
               <input
                 type="number" min={1} max={totalBatches} value={batchInput}
                 onChange={(e) => setBatchInput(e.target.value)}
                 onBlur={() => goToBatch(Number(batchInput))}
                 onKeyDown={(e) => { if (e.key === "Enter") goToBatch(Number(batchInput)); }}
-                className="w-20 px-2 py-1 rounded-lg bg-[#100801] border border-[#ffaa00]/50 text-[#ffd54f] font-mono text-xs focus:border-[#ffaa00] outline-none"
+                className="w-20 px-2 py-1 rounded-lg bg-[#160011] border border-[#ff2bd6]/50 text-[#ff9de6] font-mono text-xs focus:border-[#ff2bd6] outline-none"
                 aria-label="Batch number"
               />
-              <span className="text-[#ffd54f]/70">/ {totalBatches.toLocaleString("en-US")}</span>
+              <span className="text-[#ff9de6]/70">/ {totalBatches.toLocaleString("en-US")}</span>
             </label>
-            <button onClick={() => goToBatch(selectedBatch + 1)} disabled={selectedBatch >= totalBatches} className="px-2.5 py-1.5 rounded-xl border border-[#ffaa00]/50 text-[#ffd54f] font-bold disabled:opacity-30 hover:border-[#ffaa00] flex items-center gap-1" aria-label="Next batch">
+            <button onClick={() => goToBatch(selectedBatch + 1)} disabled={selectedBatch >= totalBatches} className="px-2.5 py-1.5 rounded-xl border border-[#ff2bd6]/50 text-[#ff9de6] font-bold disabled:opacity-30 hover:border-[#ff2bd6] flex items-center gap-1" aria-label="Next batch">
               NEXT <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -278,7 +280,7 @@ export default function StatewideAnomalyDashboard() {
               const startA = (b - 1) * BATCH_SIZE + 1;
               const endA = Math.min(total, b * BATCH_SIZE);
               return (
-                <button key={b} onClick={() => goToBatch(b)} className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all duration-300 border shrink-0 ${selectedBatch === b ? "bg-gradient-to-r from-[#e65100] to-[#ffaa00] text-[#020b18] border-white shadow-[0_0_16px_rgba(255,170,0,0.8)] font-black" : "bg-[#100801]/90 text-[#ffd54f]/80 border-[#ffaa00]/40 hover:text-white hover:border-[#ffaa00]"}`}>
+                <button key={b} onClick={() => goToBatch(b)} className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all duration-300 border shrink-0 ${selectedBatch === b ? "bg-gradient-to-r from-[#ff007a] to-[#ff2bd6] text-[#020b18] border-white shadow-[0_0_16px_rgba(255,43,214,0.8)] font-black" : "bg-[#160011]/90 text-[#ff9de6]/80 border-[#ff2bd6]/40 hover:text-white hover:border-[#ff2bd6]"}`}>
                   BATCH {b.toLocaleString("en-US")} ({startA.toLocaleString("en-US")}–{endA.toLocaleString("en-US")})
                 </button>
               );
@@ -290,7 +292,7 @@ export default function StatewideAnomalyDashboard() {
         <div className="p-2.5 rounded-[24px] bg-[#020b18]/90 border border-[#00e5ff]/40 flex items-center justify-between text-xs overflow-x-auto gap-3 scrollbar-none font-mono shadow-inner">
           <div className="flex items-center gap-2 shrink-0">
             <span className="text-[11px] text-[#00e5ff] font-bold tracking-wider uppercase px-2 flex items-center gap-1.5">
-              <Zap className="w-3.5 h-3.5 text-[#ffaa00]" /> BATCH {selectedBatch} RECORDS:
+              <Zap className="w-3.5 h-3.5 text-[#ff2bd6]" /> BATCH {selectedBatch} RECORDS:
             </span>
             {batch.map((r, i) => (
               <button key={r.id} onClick={() => selectRecord(r)} className={`px-3 py-1 rounded-full text-xs font-bold transition-all duration-300 border-2 whitespace-nowrap ${current?.id === r.id ? "bg-gradient-to-r from-[#00b0ff] via-[#00e5ff] to-[#00ff88] text-[#020c1b] border-white shadow-[0_0_20px_rgba(0,229,255,0.8)] font-black" : "bg-[#061836]/80 text-[#80deea] border-[#007799]/60 hover:text-white hover:border-[#00e5ff]"}`}>
@@ -310,11 +312,11 @@ export default function StatewideAnomalyDashboard() {
           <button onClick={() => setActiveTab("narrative")} className={`px-3.5 py-3 rounded-2xl font-bold transition-all duration-300 border-2 flex items-center justify-center gap-2 ${activeTab === "narrative" ? "bg-gradient-to-r from-[#003822] to-[#002214] text-[#69f0ae] border-[#00ff88] shadow-[0_0_24px_rgba(0,255,136,0.6)]" : "bg-[#021810]/80 text-[#80cbc4] border-[#004d40]/60 hover:text-white hover:border-[#00ff88]"}`}>
             <FileText className="w-3.5 h-3.5 text-[#00ff88] shrink-0" /><span className="truncate">SOURCE NARRATIVE</span>
           </button>
-          <button onClick={() => setActiveTab("batch_list")} className={`px-3.5 py-3 rounded-2xl font-bold transition-all duration-300 border-2 flex items-center justify-center gap-2 ${activeTab === "batch_list" ? "bg-gradient-to-r from-[#4d2600] to-[#261300] text-[#ffd54f] border-[#ffaa00] shadow-[0_0_24px_rgba(255,170,0,0.6)]" : "bg-[#1c0d00]/80 text-[#ffe082] border-[#e65100]/60 hover:text-white hover:border-[#ffaa00]"}`}>
-            <Layers className="w-3.5 h-3.5 text-[#ffaa00] shrink-0" /><span className="truncate">BATCH 25 LIST</span>
+          <button onClick={() => setActiveTab("batch_list")} className={`px-3.5 py-3 rounded-2xl font-bold transition-all duration-300 border-2 flex items-center justify-center gap-2 ${activeTab === "batch_list" ? "bg-gradient-to-r from-[#4d0040] to-[#2b0024] text-[#ff9de6] border-[#ff2bd6] shadow-[0_0_24px_rgba(255,43,214,0.6)]" : "bg-[#26001e]/80 text-[#ffb8ef] border-[#ff007a]/60 hover:text-white hover:border-[#ff2bd6]"}`}>
+            <Layers className="w-3.5 h-3.5 text-[#ff2bd6] shrink-0" /><span className="truncate">BATCH 25 LIST</span>
           </button>
-          <button onClick={() => setActiveTab("jurisdictions")} className={`px-3.5 py-3 rounded-2xl font-bold transition-all duration-300 border-2 flex items-center justify-center gap-2 ${activeTab === "jurisdictions" ? "bg-gradient-to-r from-[#4d2600] to-[#261300] text-[#ffd54f] border-[#ffaa00] shadow-[0_0_24px_rgba(255,170,0,0.6)]" : "bg-[#1c0d00]/80 text-[#ffe082] border-[#e65100]/60 hover:text-white hover:border-[#ffaa00]"}`}>
-            <Globe2 className="w-3.5 h-3.5 text-[#ffaa00] shrink-0" /><span className="truncate">STATES &amp; TERRITORIES</span>
+          <button onClick={() => setActiveTab("jurisdictions")} className={`px-3.5 py-3 rounded-2xl font-bold transition-all duration-300 border-2 flex items-center justify-center gap-2 ${activeTab === "jurisdictions" ? "bg-gradient-to-r from-[#4d0040] to-[#2b0024] text-[#ff9de6] border-[#ff2bd6] shadow-[0_0_24px_rgba(255,43,214,0.6)]" : "bg-[#26001e]/80 text-[#ffb8ef] border-[#ff007a]/60 hover:text-white hover:border-[#ff2bd6]"}`}>
+            <Globe2 className="w-3.5 h-3.5 text-[#ff2bd6] shrink-0" /><span className="truncate">STATES &amp; TERRITORIES</span>
           </button>
           <button onClick={() => setActiveTab("provenance")} className={`px-3.5 py-3 rounded-2xl font-bold transition-all duration-300 border-2 flex items-center justify-center gap-2 ${activeTab === "provenance" ? "bg-gradient-to-r from-[#00395c] to-[#00253d] text-[#80deea] border-[#00e5ff] shadow-[0_0_24px_rgba(0,229,255,0.6)]" : "bg-[#031526]/80 text-[#4dd0e1] border-[#006064]/60 hover:text-white hover:border-[#00e5ff]"}`}>
             <Radio className="w-3.5 h-3.5 text-[#00e5ff] shrink-0" /><span className="truncate">SOURCE PROVENANCE</span>
@@ -331,7 +333,7 @@ export default function StatewideAnomalyDashboard() {
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b border-[#00e5ff]/30">
                 <div className="flex flex-wrap items-center gap-2.5">
                   <span className="px-3.5 py-1.5 rounded-full bg-[#002b1b]/95 text-[#69f0ae] border border-[#00ff88]/80 text-[10px] font-mono font-bold uppercase tracking-wider shadow-[0_0_14px_rgba(0,255,136,0.4)]">{current.id} [SOURCE-VERIFIED]</span>
-                  <span className="text-xs text-[#ffd54f] font-mono font-bold uppercase bg-[#331e00]/70 px-3 py-1 rounded-full border border-[#ffaa00]/60">{current.jurisdictionCode} • {current.jurisdictionKind}</span>
+                  <span className="text-xs text-[#ff9de6] font-mono font-bold uppercase bg-[#33002a]/70 px-3 py-1 rounded-full border border-[#ff2bd6]/60">{current.jurisdictionCode} • {current.jurisdictionKind}</span>
                   <span className={`text-[10px] font-mono font-bold uppercase px-3 py-1 rounded-full border ${severityClass(current.severity)}`}>{current.severity}</span>
                 </div>
                 <div className="text-[11px] text-[#80deea] font-mono flex items-center gap-2">
@@ -342,7 +344,7 @@ export default function StatewideAnomalyDashboard() {
               <div className="space-y-3">
                 <div className="text-base sm:text-xl font-black text-white tracking-wide font-sans flex flex-wrap items-center gap-2">
                   <span className="text-[#00e5ff] font-mono">EVENT:</span>
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-[#80deea] to-[#ffd54f]">{current.event}</span>
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-[#80deea] to-[#ff9de6]">{current.event}</span>
                 </div>
                 <div className="p-2.5 rounded-xl bg-[#031d36]/90 border border-[#00e5ff]/50 text-xs text-[#80deea] font-mono flex items-center gap-2">
                   <MapPin className="w-4 h-4 text-[#00ff88] shrink-0" />
@@ -354,7 +356,7 @@ export default function StatewideAnomalyDashboard() {
                 </p>
                 <div className="text-xs text-white font-mono bg-[#020a16]/95 p-4 rounded-2xl border border-[#00e5ff]/40 space-y-2.5 mt-2 shadow-inner">
                   <div className="flex flex-wrap items-center gap-2"><span className="text-[#e0aaff] font-bold">ISSUER:</span><span className="text-slate-200">{current.issuer}</span></div>
-                  <div className="flex flex-wrap items-center gap-2"><span className="text-[#ffd54f] font-bold">SOURCE:</span>
+                  <div className="flex flex-wrap items-center gap-2"><span className="text-[#ff9de6] font-bold">SOURCE:</span>
                     <a href={current.recordUrl} target="_blank" rel="noreferrer" className="text-[#69f0ae] font-bold bg-[#002e1c]/90 px-3 py-1 rounded-lg border border-[#00ff88]/70 shadow-[0_0_12px_rgba(0,255,136,0.35)] inline-flex items-center gap-1.5 break-all">{current.sourceName} <ExternalLink className="w-3 h-3" /></a>
                   </div>
                 </div>
@@ -383,18 +385,18 @@ export default function StatewideAnomalyDashboard() {
             </div>
             <div className="flex flex-wrap items-center justify-between gap-2.5 pt-2 border-t border-[#00e5ff]/30 text-[11px] font-mono">
               <span className="text-[#69f0ae] font-bold flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-[#00ff88]" /> VERBATIM FROM {SOURCE_LABEL[current.source]} — NO GENERATED CONTENT</span>
-              <span className="text-[#ffd54f] font-bold">RETRIEVED: {fmt(current.retrievedAt)}</span>
+              <span className="text-[#ff9de6] font-bold">RETRIEVED: {fmt(current.retrievedAt)}</span>
             </div>
           </div>
         )}
 
         {/* TAB: BATCH LIST */}
         {activeTab === "batch_list" && (
-          <div className="p-4 sm:p-6 rounded-[28px] bg-gradient-to-b from-[#140b00]/95 to-[#070400]/98 border-2 border-[#ffaa00]/60 space-y-4 shadow-[0_0_40px_rgba(255,170,0,0.25)] font-mono">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b border-[#ffaa00]/35">
+          <div className="p-4 sm:p-6 rounded-[28px] bg-gradient-to-b from-[#1a0014]/95 to-[#0a0008]/98 border-2 border-[#ff2bd6]/60 space-y-4 shadow-[0_0_40px_rgba(255,43,214,0.25)] font-mono">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b border-[#ff2bd6]/35">
               <div className="flex items-center gap-2.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#ffaa00] animate-pulse shadow-[0_0_14px_#ffaa00]" />
-                <span className="text-xs sm:text-sm font-black text-[#ffd54f] tracking-wider uppercase">BATCH {selectedBatch.toLocaleString("en-US")} OF {totalBatches.toLocaleString("en-US")} — {batch.length} SOURCE-VERIFIED RECORDS (NEWEST FIRST)</span>
+                <span className="w-2.5 h-2.5 rounded-full bg-[#ff2bd6] animate-pulse shadow-[0_0_14px_#ff2bd6]" />
+                <span className="text-xs sm:text-sm font-black text-[#ff9de6] tracking-wider uppercase">BATCH {selectedBatch.toLocaleString("en-US")} OF {totalBatches.toLocaleString("en-US")} — {batch.length} SOURCE-VERIFIED RECORDS (NEWEST FIRST)</span>
               </div>
               <div className="text-[11px] text-[#69f0ae] bg-[#002b1b] px-3 py-1 rounded-full border border-[#00ff88]/60 font-bold">{batch.length} OF {totalLabel} LIVE</div>
             </div>
@@ -409,56 +411,56 @@ export default function StatewideAnomalyDashboard() {
                   <div className="text-[11px] text-[#80deea] flex items-center gap-1.5 pt-1 border-t border-[#00e5ff]/20">
                     <MapPin className="w-3 h-3 text-[#00ff88] shrink-0" /><span className="truncate">{r.area}</span>
                   </div>
-                  <div className="text-[10px] text-[#ffd54f]/80">{fmt(r.eventTime)}</div>
+                  <div className="text-[10px] text-[#ff9de6]/80">{fmt(r.eventTime)}</div>
                 </div>
               ))}
-              {!batch.length && <div className="text-xs text-[#ffe082]">No active source events for {jurisdictionLabel}.</div>}
+              {!batch.length && <div className="text-xs text-[#ffb8ef]">No active source events for {jurisdictionLabel}.</div>}
             </div>
           </div>
         )}
 
         {/* TAB: STATES & TERRITORIES */}
         {activeTab === "jurisdictions" && (
-          <div className="p-4 sm:p-6 rounded-[28px] bg-gradient-to-b from-[#140b00]/95 to-[#070400]/98 border-2 border-[#ffaa00]/60 space-y-4 shadow-[0_0_40px_rgba(255,170,0,0.25)] font-mono">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b border-[#ffaa00]/35">
+          <div className="p-4 sm:p-6 rounded-[28px] bg-gradient-to-b from-[#1a0014]/95 to-[#0a0008]/98 border-2 border-[#ff2bd6]/60 space-y-4 shadow-[0_0_40px_rgba(255,43,214,0.25)] font-mono">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b border-[#ff2bd6]/35">
               <div className="flex items-center gap-2.5">
-                <Globe2 className="w-4 h-4 text-[#ffaa00]" />
-                <span className="text-xs sm:text-sm font-black text-[#ffd54f] tracking-wider uppercase">ALL U.S. STATES &amp; TERRITORIES — {US_JURISDICTIONS.length} JURISDICTIONS</span>
+                <Globe2 className="w-4 h-4 text-[#ff2bd6]" />
+                <span className="text-xs sm:text-sm font-black text-[#ff9de6] tracking-wider uppercase">ALL U.S. STATES &amp; TERRITORIES — {US_JURISDICTIONS.length} JURISDICTIONS</span>
               </div>
-              <div className="text-[11px] text-[#ffd54f] bg-[#331e00]/90 px-3 py-1 rounded-full border border-[#ffaa00]/60 font-bold">{totalLabel} LIVE RECORDS IN {jurisdictionLabel}</div>
+              <div className="text-[11px] text-[#ff9de6] bg-[#33002a]/90 px-3 py-1 rounded-full border border-[#ff2bd6]/60 font-bold">{totalLabel} LIVE RECORDS IN {jurisdictionLabel}</div>
             </div>
-            <div className="flex flex-wrap gap-1.5 text-[11px]">
-              <button onClick={() => selectJurisdiction(ALL)} className={`px-2.5 py-1 rounded-lg font-bold border transition-all duration-200 ${selectedJurisdiction === ALL ? "bg-gradient-to-r from-[#e65100] to-[#ffaa00] text-[#020b18] border-white shadow-[0_0_14px_rgba(255,170,0,0.8)]" : "bg-[#1a0d00]/90 text-[#ffe082] border-[#ffaa00]/70 hover:border-white hover:text-white"}`}>ALL</button>
+            <div className="flex flex-wrap gap-2 sm:gap-2.5 text-[11px] leading-none">
+              <button onClick={() => selectJurisdiction(ALL)} className={`px-3 py-1.5 min-w-[3.25rem] text-center rounded-lg font-bold border transition-all duration-200 ${selectedJurisdiction === ALL ? "bg-gradient-to-r from-[#ff007a] to-[#ff2bd6] text-[#020b18] border-white shadow-[0_0_14px_rgba(255,43,214,0.8)]" : "bg-[#24001c]/90 text-[#ffb8ef] border-[#ff2bd6]/70 hover:border-white hover:text-white"}`}>ALL</button>
               {US_JURISDICTIONS.map((j) => {
                 const n = feed?.perJurisdiction[j.code] ?? 0;
                 const isSel = j.code === selectedJurisdiction;
                 return (
-                  <button key={j.code} onClick={() => selectJurisdiction(j.code)} title={`${j.name} (${j.kind}) — ${n} live`} className={`px-2.5 py-1 rounded-lg font-bold border transition-all duration-200 relative ${isSel ? "bg-gradient-to-r from-[#e65100] to-[#ffaa00] text-[#020b18] border-white shadow-[0_0_14px_rgba(255,170,0,0.8)]" : n > 0 ? (j.kind === "STATE" ? "bg-[#100801]/90 text-[#ffd54f] border-[#ffaa00]/60 hover:border-[#ffaa00] hover:text-white" : "bg-[#1a0d00]/90 text-[#ffe082] border-[#ffaa00]/80 hover:border-white hover:text-white") : "bg-[#0a0500]/80 text-[#ffd54f]/35 border-[#ffaa00]/20 hover:border-[#ffaa00]/50"}`}>
-                    {j.code}<span className="ml-1 text-[9px] opacity-80">{n}</span>
+                  <button key={j.code} onClick={() => selectJurisdiction(j.code)} title={`${j.name} (${j.kind}) — ${n} live`} className={`px-3 py-1.5 min-w-[3.25rem] rounded-lg font-bold border transition-all duration-200 relative inline-flex items-center justify-center gap-1.5 tabular-nums ${isSel ? "bg-gradient-to-r from-[#ff007a] to-[#ff2bd6] text-[#020b18] border-white shadow-[0_0_14px_rgba(255,43,214,0.8)]" : n > 0 ? (j.kind === "STATE" ? "bg-[#160011]/90 text-[#ff9de6] border-[#ff2bd6]/60 hover:border-[#ff2bd6] hover:text-white" : "bg-[#24001c]/90 text-[#ffb8ef] border-[#ff2bd6]/80 hover:border-white hover:text-white") : "bg-[#0d000a]/80 text-[#ff9de6]/35 border-[#ff2bd6]/20 hover:border-[#ff2bd6]/50"}`}>
+                    <span>{j.code}</span><span className="text-[9px] opacity-80">{n}</span>
                   </button>
                 );
               })}
             </div>
-            <div className="text-[11px] text-[#ffe082]/80 flex flex-wrap items-center gap-x-3 gap-y-1">
-              <span><span className="inline-block w-2 h-2 rounded-sm bg-[#100801] border border-[#ffaa00]/60 mr-1" />state</span>
-              <span><span className="inline-block w-2 h-2 rounded-sm bg-[#1a0d00] border border-[#ffaa00]/80 mr-1" />district / territory</span>
-              <span><span className="inline-block w-2 h-2 rounded-sm bg-[#0a0500] border border-[#ffaa00]/20 mr-1" />no active source events right now</span>
-              <span className="text-[#69f0ae]">Counts are live per-jurisdiction totals from NWS + USGS; CISA KEV entries apply nationwide and are included in every jurisdiction view.</span>
+            <div className="text-[11px] text-[#ffb8ef]/80 flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span><span className="inline-block w-2 h-2 rounded-sm bg-[#160011] border border-[#ff2bd6]/60 mr-1" />state</span>
+              <span><span className="inline-block w-2 h-2 rounded-sm bg-[#24001c] border border-[#ff2bd6]/80 mr-1" />district / territory</span>
+              <span><span className="inline-block w-2 h-2 rounded-sm bg-[#0d000a] border border-[#ff2bd6]/20 mr-1" />no active source events right now</span>
+              <span className="text-[#69f0ae]">Counts are live per-jurisdiction totals from NWS + USGS + FEMA + USGS Volcano Hazards; CISA KEV and NHC tropical-cyclone advisories apply nationwide and are included in every jurisdiction view.</span>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[600px] overflow-y-auto pr-1">
               {visible.slice(0, 50).map((r) => (
-                <div key={r.id} onClick={() => selectRecord(r)} className={`p-3.5 rounded-2xl border-2 transition-all duration-300 cursor-pointer space-y-2 ${current?.id === r.id ? "bg-[#4d2600]/70 border-[#ffaa00] shadow-[0_0_18px_rgba(255,170,0,0.5)]" : "bg-[#0f0800]/80 border-[#ffaa00]/30 hover:border-[#ffaa00]/80 hover:bg-[#1c0d00]"}`}>
+                <div key={r.id} onClick={() => selectRecord(r)} className={`p-3.5 rounded-2xl border-2 transition-all duration-300 cursor-pointer space-y-2 ${current?.id === r.id ? "bg-[#4d0040]/70 border-[#ff2bd6] shadow-[0_0_18px_rgba(255,43,214,0.5)]" : "bg-[#150010]/80 border-[#ff2bd6]/30 hover:border-[#ff2bd6]/80 hover:bg-[#26001e]"}`}>
                   <div className="flex items-center justify-between gap-2 text-xs">
-                    <span className="px-2.5 py-0.5 rounded-full bg-[#ffaa00]/20 text-[#ffd54f] border border-[#ffaa00]/50 text-[10px] font-bold">{SOURCE_LABEL[r.source]} • {r.jurisdictionCode}</span>
+                    <span className="px-2.5 py-0.5 rounded-full bg-[#ff2bd6]/20 text-[#ff9de6] border border-[#ff2bd6]/50 text-[10px] font-bold">{SOURCE_LABEL[r.source]} • {r.jurisdictionCode}</span>
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded border text-[#69f0ae] bg-[#00ff88]/10 border-[#00ff88]/40">SOURCE-VERIFIED</span>
                   </div>
                   <div className="text-xs sm:text-sm font-black text-white truncate">{r.event}</div>
-                  <div className="text-[11px] text-[#ffe082]/80 flex items-center gap-1.5 pt-1 border-t border-[#ffaa00]/20">
-                    <MapPin className="w-3 h-3 text-[#ffaa00] shrink-0" /><span className="truncate">{r.jurisdictionName} • {r.sector} • {fmt(r.eventTime)}</span>
+                  <div className="text-[11px] text-[#ffb8ef]/80 flex items-center gap-1.5 pt-1 border-t border-[#ff2bd6]/20">
+                    <MapPin className="w-3 h-3 text-[#ff2bd6] shrink-0" /><span className="truncate">{r.jurisdictionName} • {r.sector} • {fmt(r.eventTime)}</span>
                   </div>
                 </div>
               ))}
-              {!visible.length && <div className="text-xs text-[#ffe082]">No active source events for {jurisdictionLabel} — nothing is fabricated to fill the gap.</div>}
+              {!visible.length && <div className="text-xs text-[#ffb8ef]">No active source events for {jurisdictionLabel} — nothing is fabricated to fill the gap.</div>}
             </div>
           </div>
         )}

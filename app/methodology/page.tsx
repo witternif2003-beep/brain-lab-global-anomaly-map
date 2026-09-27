@@ -93,7 +93,7 @@ export default function MethodologyPage() {
           No non-public surveillance, intercept capability, or unauthorized database penetration is conducted. All figures and model weights are reproducible from published statistical releases.
         </p>
         <p className="text-brand-gold font-mono text-[11px] pt-1">
-          Emblem used for identification purposes only. Not affiliated with any government agency.
+          Emblem used for identification purposes only.
         </p>
       </div>
 

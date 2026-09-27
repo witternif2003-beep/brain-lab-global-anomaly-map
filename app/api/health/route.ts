@@ -22,7 +22,7 @@ export async function GET() {
     honestyProtocol: "AIP-20 ANTI-HALLUCINATION HARDENED",
     anomalyRegistry: {
       mode: "LIVE_VERIFIED_SOURCES_ONLY",
-      sources: ["NWS active alerts", "USGS M2.5+ 7-day feed", "CISA Known Exploited Vulnerabilities", "FEMA disaster declarations (365d)"],
+      sources: ["NWS active alerts", "USGS M2.5+ 7-day feed", "CISA Known Exploited Vulnerabilities", "FEMA disaster declarations (365d)", "USGS Volcano Hazards elevated volcanoes", "NHC active tropical cyclones"],
       jurisdictions: US_JURISDICTIONS.length,
       feedEndpoint: "/api/anomalies/verified",
       auditEndpoint: "/api/audit/anomalies",

@@ -89,7 +89,7 @@ export default function Footer() {
             <div className="text-[#f8fafc] font-semibold text-xs tracking-wider">STATUTORY GOVERNANCE</div>
             <div className="bg-[#131d2c] border border-[#28394e] p-2.5 rounded-lg text-[10px] space-y-1 leading-normal text-[#cbd5e1]">
               <div className="text-[#38bdf8] font-bold">MANDATORY NOTICE:</div>
-              <p>Emblem used for identification purposes only. Not affiliated with any government agency.</p>
+              <p>Emblem used for identification purposes only.</p>
               <p className="text-[#94a3b8]">All data is public-record open-source only. No government endorsement implied.</p>
             </div>
           </div>
