@@ -1,6 +1,17 @@
 "use client";
 import React, { useState, useEffect, useMemo } from "react";
-import { STATEWIDE_ANOMALIES_1000, AnomalyReport } from "../lib/statewide-anomalies";
+import { AnomalyReport } from "../lib/statewide-anomalies";
+import {
+  BATCH_SIZE,
+  TOTAL_ANOMALIES,
+  TOTAL_BATCHES,
+  CURATED_COUNT,
+  US_JURISDICTIONS,
+  getAnomaly,
+  getBatch,
+  anomalyNumbersFor,
+  jurisdictionCount,
+} from "../lib/anomaly-registry";
 import { 
   ShieldAlert, 
   Terminal, 
@@ -19,38 +30,60 @@ import {
   Zap,
   Layers,
   MapPin,
-  ExternalLink
+  ExternalLink,
+  Globe2
 } from "lucide-react";
+
+const TOTAL_LABEL = TOTAL_ANOMALIES.toLocaleString("en-US");
+const PILL_WINDOW = 12;
 
 export default function StatewideAnomalyDashboard() {
   const [activeAnomalyIndex, setActiveAnomalyIndex] = useState<number>(0);
-  const [selectedBatch, setSelectedBatch] = useState<number>(1); // Batch 1 to 40 (25 anomalies each = 1,000)
+  const [selectedBatch, setSelectedBatch] = useState<number>(1); // Batch 1 to TOTAL_BATCHES (BATCH_SIZE each)
+  const [batchInput, setBatchInput] = useState<string>("1");
+  const [selectedJurisdiction, setSelectedJurisdiction] = useState<string>("GA");
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [pulseCount, setPulseCount] = useState<number>(1);
   const [isAutoCycling, setIsAutoCycling] = useState<boolean>(true);
-  const [activeTab, setActiveTab] = useState<"narrative" | "batch_list" | "overview" | "intercept" | "financial" | "forensics" | "charges">("narrative");
+  const [activeTab, setActiveTab] = useState<"narrative" | "batch_list" | "jurisdictions" | "overview" | "intercept" | "financial" | "forensics" | "charges">("narrative");
 
-  // Filter 25 anomalies for the currently selected batch
-  const batchAnomalies = useMemo(() => {
-    const startIndex = (selectedBatch - 1) * 25;
-    return STATEWIDE_ANOMALIES_1000.slice(startIndex, startIndex + 25);
+  const batchAnomalies = useMemo(() => getBatch(selectedBatch), [selectedBatch]);
+
+  const jurisdictionAnomalies = useMemo(
+    () => anomalyNumbersFor(selectedJurisdiction, BATCH_SIZE).map(getAnomaly),
+    [selectedJurisdiction]
+  );
+
+  const pillBatches = useMemo(() => {
+    const half = Math.floor(PILL_WINDOW / 2);
+    let start = Math.max(1, selectedBatch - half);
+    const end = Math.min(TOTAL_BATCHES, start + PILL_WINDOW - 1);
+    start = Math.max(1, end - PILL_WINDOW + 1);
+    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
   }, [selectedBatch]);
 
-  // Continuous auto-population ticker across the 25 anomalies of the batch
+  const goToBatch = (bNum: number) => {
+    const clamped = Math.min(TOTAL_BATCHES, Math.max(1, Math.floor(bNum) || 1));
+    setSelectedBatch(clamped);
+    setBatchInput(String(clamped));
+    setActiveAnomalyIndex((clamped - 1) * BATCH_SIZE);
+    setIsAutoCycling(false);
+  };
+
+  // Continuous auto-population ticker across the anomalies of the batch
   useEffect(() => {
     if (!isAutoCycling) return;
     const interval = setInterval(() => {
       setActiveAnomalyIndex((prev) => {
-        const nextInBatch = (prev + 1) % 25;
-        // If wrapped around, also optionally advance pulse
-        return (selectedBatch - 1) * 25 + nextInBatch;
+        const nextInBatch = (prev + 1) % BATCH_SIZE;
+        return (selectedBatch - 1) * BATCH_SIZE + nextInBatch;
       });
       setPulseCount((p) => p + 1);
     }, 6000);
     return () => clearInterval(interval);
   }, [isAutoCycling, selectedBatch]);
 
-  const currentAnomaly: AnomalyReport = STATEWIDE_ANOMALIES_1000[activeAnomalyIndex] || STATEWIDE_ANOMALIES_1000[0];
+  const currentAnomaly: AnomalyReport = getAnomaly(activeAnomalyIndex + 1);
 
   // Download verified forensic dossier as structured JSON
   const handleDownloadDossier = () => {
@@ -85,7 +118,7 @@ export default function StatewideAnomalyDashboard() {
               {/* Color 1: Cyber Violet Badge */}
               <span className="px-3.5 py-1.5 rounded-full bg-gradient-to-r from-[#2a0845]/90 to-[#1b003a]/90 text-[#e0aaff] border-2 border-[#bd00ff]/80 text-[10px] font-mono font-bold uppercase tracking-wider flex items-center gap-2 shadow-[0_0_16px_rgba(189,0,255,0.4)] w-fit">
                 <Sparkles className="w-3.5 h-3.5 text-[#e0aaff] shrink-0 animate-spin" style={{ animationDuration: '6s' }} />
-                <span>NSA ORACLE-SYNAPSE // 1,000 TOP P1 TIER-1 ANOMALIES</span>
+                <span>NSA ORACLE-SYNAPSE // {TOTAL_LABEL} P1 TIER-1 ANOMALIES</span>
               </span>
               
               <div className="flex flex-wrap items-center gap-2">
@@ -103,7 +136,7 @@ export default function StatewideAnomalyDashboard() {
                 {/* Color 4: Interstate Corridor Active Badge */}
                 <span className="px-3 py-1 rounded-full bg-[#061836]/90 text-[#80deea] border border-[#00e5ff]/60 text-[10px] font-mono font-bold tracking-wider w-fit flex items-center gap-1.5">
                   <MapPin className="w-3 h-3 text-[#00e5ff]" />
-                  <span>INTERSTATE CORRIDORS (NC, SC, TN, FL, VA, AL, TX, DC)</span>
+                  <span>{US_JURISDICTIONS.length} JURISDICTIONS • 50 STATES + DC + 5 TERRITORIES</span>
                 </span>
               </div>
             </div>
@@ -124,7 +157,7 @@ export default function StatewideAnomalyDashboard() {
             </div>
             
             <p className="text-xs sm:text-[13px] text-[#b2ebf2] font-sans leading-relaxed">
-              Top 1,000 P1 Tier-1 anomalies ranked by operational priority • 40 batches of 25 • Real-time autonomous signals telemetry stream
+              {TOTAL_LABEL} P1 Tier-1 anomalies • {TOTAL_BATCHES.toLocaleString("en-US")} batches of {BATCH_SIZE} • Records 1–{CURATED_COUNT.toLocaleString("en-US")} curated Georgia corpus; {(CURATED_COUNT + 1).toLocaleString("en-US")}–{TOTAL_LABEL} synthetic catalog records across all U.S. states &amp; territories (unverified, no attribution)
             </p>
           </div>
 
@@ -169,34 +202,65 @@ export default function StatewideAnomalyDashboard() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-[#ffaa00]/30 text-xs">
             <div className="flex items-center gap-2 text-[#ffd54f] font-extrabold tracking-wider uppercase">
               <Layers className="w-4 h-4 text-[#ffaa00]" />
-              <span>SELECT BATCH OF 25 ANOMALIES (1,000 TOTAL P1 TIER-1 ANOMALIES RECORDED):</span>
+              <span>SELECT BATCH OF {BATCH_SIZE} ANOMALIES ({TOTAL_LABEL} TOTAL P1 TIER-1 ANOMALIES RECORDED):</span>
             </div>
             <div className="text-[11px] text-[#69f0ae] font-bold">
-              CURRENTLY VIEWING BATCH {selectedBatch} OF 40 (ANOMALIES {(selectedBatch-1)*25 + 1}–{selectedBatch*25})
+              CURRENTLY VIEWING BATCH {selectedBatch.toLocaleString("en-US")} OF {TOTAL_BATCHES.toLocaleString("en-US")} (ANOMALIES {((selectedBatch-1)*BATCH_SIZE + 1).toLocaleString("en-US")}–{(selectedBatch*BATCH_SIZE).toLocaleString("en-US")})
             </div>
           </div>
 
-          {/* Quick-select batch pagination pills */}
+          {/* Batch pager: prev / jump-to / next */}
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <button
+              onClick={() => goToBatch(selectedBatch - 1)}
+              disabled={selectedBatch <= 1}
+              className="px-2.5 py-1.5 rounded-xl border border-[#ffaa00]/50 text-[#ffd54f] font-bold disabled:opacity-30 hover:border-[#ffaa00] flex items-center gap-1"
+              aria-label="Previous batch"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" /> PREV
+            </button>
+            <label className="flex items-center gap-1.5 text-[#ffd54f] font-bold">
+              JUMP TO
+              <input
+                type="number"
+                min={1}
+                max={TOTAL_BATCHES}
+                value={batchInput}
+                onChange={(e) => setBatchInput(e.target.value)}
+                onBlur={() => goToBatch(Number(batchInput))}
+                onKeyDown={(e) => { if (e.key === "Enter") goToBatch(Number(batchInput)); }}
+                className="w-20 px-2 py-1 rounded-lg bg-[#100801] border border-[#ffaa00]/50 text-[#ffd54f] font-mono text-xs focus:border-[#ffaa00] outline-none"
+                aria-label="Batch number"
+              />
+              <span className="text-[#ffd54f]/70">/ {TOTAL_BATCHES.toLocaleString("en-US")}</span>
+            </label>
+            <button
+              onClick={() => goToBatch(selectedBatch + 1)}
+              disabled={selectedBatch >= TOTAL_BATCHES}
+              className="px-2.5 py-1.5 rounded-xl border border-[#ffaa00]/50 text-[#ffd54f] font-bold disabled:opacity-30 hover:border-[#ffaa00] flex items-center gap-1"
+              aria-label="Next batch"
+            >
+              NEXT <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {/* Quick-select batch pagination pills (windowed around the selection) */}
           <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs scrollbar-none">
-            {Array.from({ length: 40 }, (_, idx) => idx + 1).map((bNum) => {
-              const startA = (bNum - 1) * 25 + 1;
-              const endA = bNum * 25;
+            {pillBatches.map((bNum) => {
+              const startA = (bNum - 1) * BATCH_SIZE + 1;
+              const endA = bNum * BATCH_SIZE;
               const isSelected = selectedBatch === bNum;
               return (
                 <button
                   key={bNum}
-                  onClick={() => {
-                    setSelectedBatch(bNum);
-                    setActiveAnomalyIndex((bNum - 1) * 25);
-                    setIsAutoCycling(false);
-                  }}
+                  onClick={() => goToBatch(bNum)}
                   className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all duration-300 border shrink-0 ${
                     isSelected
                       ? 'bg-gradient-to-r from-[#e65100] to-[#ffaa00] text-[#020b18] border-white shadow-[0_0_16px_rgba(255,170,0,0.8)] font-black'
                       : 'bg-[#100801]/90 text-[#ffd54f]/80 border-[#ffaa00]/40 hover:text-white hover:border-[#ffaa00]'
                   }`}
                 >
-                  BATCH {bNum} ({startA}–{endA})
+                  BATCH {bNum.toLocaleString("en-US")} ({startA.toLocaleString("en-US")}–{endA.toLocaleString("en-US")})
                 </button>
               );
             })}
@@ -238,7 +302,7 @@ export default function StatewideAnomalyDashboard() {
         </div>
 
         {/* 4-COLOR DYNAMIC TABS NAVIGATION: Cyan, Emerald, Violet, Amber */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2.5 text-xs font-mono">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5 text-xs font-mono">
           {/* Tab 1: Emerald Neon */}
           <button
             onClick={() => setActiveTab("narrative")}
@@ -263,6 +327,19 @@ export default function StatewideAnomalyDashboard() {
           >
             <Layers className="w-3.5 h-3.5 text-[#ffaa00] shrink-0" />
             <span className="truncate">BATCH 25 LIST</span>
+          </button>
+
+          {/* Tab: Amber States & Territories (same palette as batch tab) */}
+          <button
+            onClick={() => setActiveTab("jurisdictions")}
+            className={`px-3.5 py-3 rounded-2xl font-bold transition-all duration-300 border-2 flex items-center justify-center gap-2 ${
+              activeTab === "jurisdictions"
+                ? "bg-gradient-to-r from-[#4d2600] to-[#261300] text-[#ffd54f] border-[#ffaa00] shadow-[0_0_24px_rgba(255,170,0,0.6)]"
+                : "bg-[#1c0d00]/80 text-[#ffe082] border-[#e65100]/60 hover:text-white hover:border-[#ffaa00]"
+            }`}
+          >
+            <Globe2 className="w-3.5 h-3.5 text-[#ffaa00] shrink-0" />
+            <span className="truncate">STATES &amp; TERRITORIES</span>
           </button>
 
           {/* Tab 2: Cyan Neon */}
@@ -396,7 +473,7 @@ export default function StatewideAnomalyDashboard() {
                     TOP SECRET // AIP-20 ENFORCED
                   </span>
                   <span className="text-[10px] text-[#80deea] font-mono bg-[#031d38] px-2.5 py-0.5 rounded-full border border-[#00e5ff]/50">
-                    RECORD # {currentAnomaly.anomalyNumber} OF 1,000
+                    RECORD # {currentAnomaly.anomalyNumber.toLocaleString("en-US")} OF {TOTAL_LABEL}
                   </span>
                 </div>
               </div>
@@ -427,11 +504,11 @@ export default function StatewideAnomalyDashboard() {
                 <div className="flex items-center gap-2.5">
                   <span className="w-2.5 h-2.5 rounded-full bg-[#ffaa00] animate-pulse shadow-[0_0_14px_#ffaa00]" />
                   <span className="text-xs sm:text-sm font-black text-[#ffd54f] tracking-wider uppercase">
-                    BATCH {selectedBatch} OF 40 — COMPLETE 25 ANOMALY ROSTER (PRIORITY RANKED)
+                    BATCH {selectedBatch.toLocaleString("en-US")} OF {TOTAL_BATCHES.toLocaleString("en-US")} — COMPLETE {BATCH_SIZE} ANOMALY ROSTER (PRIORITY RANKED)
                   </span>
                 </div>
                 <div className="text-[11px] text-[#69f0ae] bg-[#002b1b] px-3 py-1 rounded-full border border-[#00ff88]/60 font-bold">
-                  25 OF 1,000 P1 TIER-1 ANOMALIES ACTIVE
+                  {BATCH_SIZE} OF {TOTAL_LABEL} P1 TIER-1 ANOMALIES ACTIVE
                 </div>
               </div>
 
@@ -470,6 +547,95 @@ export default function StatewideAnomalyDashboard() {
                           <span className="truncate">Interstate: <strong className="text-[#69f0ae]">{anom.interstateImplications}</strong></span>
                         </div>
                       )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB: STATES & TERRITORIES — per-jurisdiction roster across all 56 U.S. jurisdictions */}
+        {activeTab === "jurisdictions" && (
+          <div className="space-y-4 font-mono">
+            <div className="p-4 sm:p-6 rounded-[28px] bg-gradient-to-b from-[#140b00]/95 to-[#070400]/98 border-2 border-[#ffaa00]/60 space-y-4 shadow-[0_0_40px_rgba(255,170,0,0.25)]">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b border-[#ffaa00]/35">
+                <div className="flex items-center gap-2.5">
+                  <Globe2 className="w-4 h-4 text-[#ffaa00]" />
+                  <span className="text-xs sm:text-sm font-black text-[#ffd54f] tracking-wider uppercase">
+                    ALL U.S. STATES &amp; TERRITORIES — {US_JURISDICTIONS.length} JURISDICTIONS
+                  </span>
+                </div>
+                <div className="text-[11px] text-[#ffd54f] bg-[#331e00]/90 px-3 py-1 rounded-full border border-[#ffaa00]/60 font-bold">
+                  {jurisdictionCount(selectedJurisdiction).toLocaleString("en-US")} RECORDS IN {selectedJurisdiction}
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-1.5 text-[11px]">
+                {US_JURISDICTIONS.map((j) => {
+                  const isSel = j.code === selectedJurisdiction;
+                  return (
+                    <button
+                      key={j.code}
+                      onClick={() => setSelectedJurisdiction(j.code)}
+                      title={`${j.name} (${j.kind})`}
+                      className={`px-2.5 py-1 rounded-lg font-bold border transition-all duration-200 ${
+                        isSel
+                          ? "bg-gradient-to-r from-[#e65100] to-[#ffaa00] text-[#020b18] border-white shadow-[0_0_14px_rgba(255,170,0,0.8)]"
+                          : j.kind === "STATE"
+                            ? "bg-[#100801]/90 text-[#ffd54f]/85 border-[#ffaa00]/40 hover:border-[#ffaa00] hover:text-white"
+                            : "bg-[#1a0d00]/90 text-[#ffe082] border-[#ffaa00]/70 hover:border-white hover:text-white"
+                      }`}
+                    >
+                      {j.code}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="text-[11px] text-[#ffe082]/80 flex flex-wrap items-center gap-x-3 gap-y-1">
+                <span><span className="inline-block w-2 h-2 rounded-sm bg-[#100801] border border-[#ffaa00]/40 mr-1" />state</span>
+                <span><span className="inline-block w-2 h-2 rounded-sm bg-[#1a0d00] border border-[#ffaa00]/70 mr-1" />district / territory</span>
+                <span className="text-[#69f0ae]">GA carries the curated 1–{CURATED_COUNT.toLocaleString("en-US")} corpus; all other jurisdictions are synthetic catalog records (unverified).</span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[600px] overflow-y-auto pr-1">
+                {jurisdictionAnomalies.map((anom) => {
+                  const isCurrent = currentAnomaly.id === anom.id;
+                  return (
+                    <div
+                      key={anom.id}
+                      onClick={() => {
+                        setActiveAnomalyIndex(anom.anomalyNumber - 1);
+                        setSelectedBatch(anom.batchNumber);
+                        setBatchInput(String(anom.batchNumber));
+                        setIsAutoCycling(false);
+                      }}
+                      className={`p-3.5 rounded-2xl border-2 transition-all duration-300 cursor-pointer space-y-2 ${
+                        isCurrent
+                          ? 'bg-[#4d2600]/70 border-[#ffaa00] shadow-[0_0_18px_rgba(255,170,0,0.5)]'
+                          : 'bg-[#0f0800]/80 border-[#ffaa00]/30 hover:border-[#ffaa00]/80 hover:bg-[#1c0d00]'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2 text-xs">
+                        <span className="px-2.5 py-0.5 rounded-full bg-[#ffaa00]/20 text-[#ffd54f] border border-[#ffaa00]/50 text-[10px] font-bold">
+                          {anom.id} [P1 #{anom.anomalyNumber.toLocaleString("en-US")}]
+                        </span>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                          anom.synthetic
+                            ? 'text-[#ffe082] bg-[#ffaa00]/10 border-[#ffaa00]/40'
+                            : 'text-[#69f0ae] bg-[#00ff88]/10 border-[#00ff88]/40'
+                        }`}>
+                          {anom.synthetic ? 'SYNTHETIC' : 'CURATED'}
+                        </span>
+                      </div>
+                      <div className="text-xs sm:text-sm font-black text-white hover:text-[#ffd54f] transition-colors truncate">
+                        {anom.term}
+                      </div>
+                      <div className="text-[11px] text-[#ffe082]/80 flex items-center gap-1.5 pt-1 border-t border-[#ffaa00]/20">
+                        <MapPin className="w-3 h-3 text-[#ffaa00] shrink-0" />
+                        <span className="truncate">{anom.jurisdictionName} • {anom.sector ?? 'Interstate corridor'} • batch {anom.batchNumber.toLocaleString("en-US")}</span>
+                      </div>
                     </div>
                   );
                 })}

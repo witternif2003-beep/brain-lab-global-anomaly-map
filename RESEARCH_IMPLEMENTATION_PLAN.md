@@ -23,6 +23,8 @@ To prevent circular reporting cascades in aggregated federal, state, and media o
    
 $$\text{Weight}(e_{ij}) = e^{-\gamma \cdot \text{HopCount}(\mathcal{C})}$$
 
+**Implementation:** `lib/echo-chamber-dag.ts` (`LineageGraph` — Tarjan SCC + Johnson circuit enumeration, $\gamma = 0.35$ default). Exposed at `GET/POST /api/provenance/cycles`; the resulting `cycleEntropy` feeds the `ProvenanceTensor` weighted-L2 norm in `/api/benchmarks/siforest`.
+
 ---
 
 ## Pillar 2: High-Performance Edge Streaming & Acceleration

@@ -4,6 +4,13 @@ export interface AnomalyReport {
   batchNumber: number;
   anomalyNumber: number;
   verified: boolean;
+  synthetic?: boolean;
+  jurisdictionCode?: string;
+  jurisdictionName?: string;
+  jurisdictionKind?: "STATE" | "DISTRICT" | "TERRITORY";
+  sector?: string;
+  severity?: string;
+  zScore?: number;
   term: string;
   interstateImplications?: string;
   verbatimNarrative?: string;

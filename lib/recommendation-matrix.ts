@@ -46,7 +46,8 @@ export const MISSION_VECTORS = [
   "ANOMALY_CLUSTERING",
   "MAP_INTERACTION",
   "GEOJSON_SIMPLIFICATION",
-  "SPARK_LLM_ON_DEVICE"
+  "SPARK_LLM_ON_DEVICE",
+  "WHITE_HOUSE_DIGITAL_TWIN"
 ] as const;
 
 export type MissionVectorType = typeof MISSION_VECTORS[number];
@@ -744,6 +745,35 @@ const VECTOR_TEMPLATES: Record<MissionVectorType, {
       "Bind Spark X2.5-4B agent harness to local ECC/Orca parallel execution worktrees"
     ],
     targets: ["Edge Telemetry Hubs", "On-Device Mobile Copilot", "Air-Gapped Regional Outposts", "Sub-Second Ingestion Nodes"]
+  },
+  WHITE_HOUSE_DIGITAL_TWIN: {
+    titles: [
+      "HABS DC-37 Measured-Drawing Ingestion into Provenance-Tagged Room Volumes",
+      "Per-Volume Tolerance Gating (±1.27 cm published / ±2.0 cm HABS / ±100 cm footprint)",
+      "Parametric Heritage BIM Reconciliation Against WHHA 360° Panorama Anchors",
+      "Anomaly-to-Room Spatial Binding with Point-in-Volume Containment Checks",
+      "Three.js WebGL2 Room-Level Fly-To Navigation with Orbit and Raycast Selection",
+      "Public-Source Coverage Audit: Surveyed Volumes vs. Non-Public Interiors"
+    ],
+    telemetry: [
+      ["habs-sheet-dimension-cm", "volume-tolerance-cm", "provenance-class"],
+      ["whha-panorama-anchor-id", "room-centroid-xyz", "gate-coverage-pct"],
+      ["anomaly-containment-flag", "nearest-volume-id", "centroid-offset-cm"],
+      ["webgl-frame-ms", "raycast-hit-id", "camera-fly-to-latency-ms"]
+    ],
+    basis: [
+      "Library of Congress HABS DC-37 measured drawings and photograph set (hhh.dc0402)",
+      "WHHA published State Floor room dimensions (East Room 79'x36'10\", Blue Room 29'9\"x39'9\")",
+      "IEEE 10820352 Parametric Digital Twins for Historic Buildings",
+      "WHHA 360° virtual tour panoramas as visual reconciliation anchors"
+    ],
+    actions: [
+      "Render PUBLISHED_INCH and HABS_ENVELOPE volumes solid; FOOTPRINT_EST volumes dashed wireframe",
+      "Reject any ±2.0 cm claim for volumes lacking a public measured source",
+      "Bind each WH-ANOM node to its containing catalog volume and surface the volume's tolerance",
+      "Expose provenanceSummary() coverage on /api/health for audit"
+    ],
+    targets: ["Executive Residence State Floor", "North/South Porticos", "West & East Colonnades", "Grounds (Rose Garden)"]
   },
   GEOJSON_SIMPLIFICATION: {
     titles: [
