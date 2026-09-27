@@ -746,6 +746,7 @@ function FedRecordCards({ code, name }: { code: string; name: string }) {
 }
 
 function FedCard({ source, r }: { source: string; r: Record<string, any> }) {
+  const [open, setOpen] = useState(false);
   let title = "";
   let sub = "";
   let link: string | null = null;
@@ -767,8 +768,23 @@ function FedCard({ source, r }: { source: string; r: Record<string, any> }) {
   }
   return (
     <div className="rounded-xl border border-white/10 bg-black/30 px-2.5 py-1.5 space-y-0.5">
-      <div className="text-slate-100 font-bold text-[11px] sm:text-xs leading-snug break-words">{title}</div>
-      <div className="text-[10px] sm:text-[11px] text-[#f5a623]/90 font-bold break-words">{sub}</div>
+      <button onClick={() => setOpen(!open)} className="w-full text-left space-y-0.5">
+        <div className="text-slate-100 font-bold text-[11px] sm:text-xs leading-snug break-words">{title}</div>
+        <div className="text-[10px] sm:text-[11px] text-[#f5a623]/90 font-bold break-words">{sub}</div>
+      </button>
+      {open && (
+        <div className="pt-1 mt-1 border-t border-white/10 space-y-0.5">
+          {Object.entries(r).slice(0, 24).map(([k, v]) => (
+            <div key={k} className="text-[10px] text-slate-300 font-bold break-words">
+              <span className="text-[#f5a623]">{String(k).toUpperCase()}: </span>
+              {v === null || v === undefined || v === ""
+                ? "—"
+                : String(typeof v === "object" ? JSON.stringify(v) : v).slice(0, 160)}
+            </div>
+          ))}
+          <div className="text-[9px] text-slate-500 font-bold">TAP CARD TO COLLAPSE • FULL PAYLOAD IN VIEW FULL JSON</div>
+        </div>
+      )}
       {link && (
         <a href={link} target="_blank" rel="noreferrer" className="text-[10px] sm:text-[11px] text-[#f5a623] underline underline-offset-2 font-bold">
           FILING INDEX ↗
@@ -866,7 +882,7 @@ function StateRecordCards({ code, name }: { code: string; name: string }) {
 }
 
 function renderCardTemplate(t: string, r: Record<string, any>): string {
-  return t.replace(/\{([a-zA-Z0-9_]+)(?::(money|date))?\}/g, (_m: string, f: string, mod: string) => {
+  return t.replace(/\{([A-Za-z0-9_ ]+?)(?::(money|date))?\}/g, (_m: string, f: string, mod: string) => {
     const v: unknown = r[f];
     if (v === null || v === undefined || v === "") return "?";
     if (mod === "money") {
@@ -881,6 +897,7 @@ function renderCardTemplate(t: string, r: Record<string, any>): string {
 }
 
 function StateCard({ r, cfg }: { r: Record<string, any>; cfg: StateDatasetConfig }) {
+  const [open, setOpen] = useState(false);
   const title = renderCardTemplate(cfg.card.title, r);
   const sub = renderCardTemplate(cfg.card.sub, r);
   let link: string | null = null;
@@ -892,8 +909,23 @@ function StateCard({ r, cfg }: { r: Record<string, any>; cfg: StateDatasetConfig
   }
   return (
     <div className="rounded-xl border border-white/10 bg-black/30 px-2.5 py-1.5 space-y-0.5">
-      <div className="text-slate-100 font-bold text-[11px] sm:text-xs leading-snug break-words">{title}</div>
-      <div className="text-[10px] sm:text-[11px] text-[#f5a623]/90 font-bold break-words">{sub}</div>
+      <button onClick={() => setOpen(!open)} className="w-full text-left space-y-0.5">
+        <div className="text-slate-100 font-bold text-[11px] sm:text-xs leading-snug break-words">{title}</div>
+        <div className="text-[10px] sm:text-[11px] text-[#f5a623]/90 font-bold break-words">{sub}</div>
+      </button>
+      {open && (
+        <div className="pt-1 mt-1 border-t border-white/10 space-y-0.5">
+          {Object.entries(r).slice(0, 24).map(([k, v]) => (
+            <div key={k} className="text-[10px] text-slate-300 font-bold break-words">
+              <span className="text-[#f5a623]">{String(k).toUpperCase()}: </span>
+              {v === null || v === undefined || v === ""
+                ? "—"
+                : String(typeof v === "object" ? JSON.stringify(v) : v).slice(0, 160)}
+            </div>
+          ))}
+          <div className="text-[9px] text-slate-500 font-bold">TAP CARD TO COLLAPSE • FULL PAYLOAD IN VIEW FULL JSON</div>
+        </div>
+      )}
       {link && (
         <a href={link} target="_blank" rel="noreferrer" className="text-[10px] sm:text-[11px] text-[#f5a623] underline underline-offset-2 font-bold">
           {cfg.card.link_label ?? "RECORD ↗"}

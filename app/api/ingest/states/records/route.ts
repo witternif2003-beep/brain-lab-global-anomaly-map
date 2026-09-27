@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { JURISDICTION_ADAPTERS } from "../../../../../lib/adapters/jurisdictions";
 import { STATE_DATASETS } from "../../../../../lib/adapters/state-datasets";
 import { fetchSocrataDataset } from "../../../../../lib/connectors/socrata";
+import { fetchCkanDataset } from "../../../../../lib/connectors/ckan";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -27,6 +28,26 @@ export async function GET(req: Request) {
   }
 
   try {
+    if (cfg.platform === "ckan") {
+      if (!cfg.resource_id)
+        return NextResponse.json({ error: "ckan dataset missing resource_id" }, { status: 400 });
+      const r = await fetchCkanDataset({
+        portal,
+        resourceId: cfg.resource_id,
+        sourceId: cfg.source_id,
+        jurisdiction: code,
+        fields: cfg.select,
+        rows
+      });
+      return NextResponse.json({
+        code,
+        source: cfg.source_id,
+        label: cfg.label,
+        dataset_id: cfg.dataset_id,
+        resource_id: cfg.resource_id,
+        ...r
+      });
+    }
     const r = await fetchSocrataDataset({
       portal,
       datasetId: cfg.dataset_id,

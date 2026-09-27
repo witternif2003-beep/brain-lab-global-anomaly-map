@@ -32,6 +32,10 @@ export interface StateDatasetConfig {
   select: string[];
   /** Max record cards rendered per dataset tab visit. */
   cap: number;
+  /** Platform adapter: socrata (default) or ckan datastore. */
+  platform?: "socrata" | "ckan";
+  /** CKAN datastore resource id (required when platform is ckan). */
+  resource_id?: string;
   /** Generic card template (see StateCard renderer). */
   card: StateDatasetCard;
 }
@@ -202,5 +206,52 @@ export const STATE_DATASETS: Record<string, StateDatasetConfig[]> = {
         sub: "CASE {case} • {status} • {final_order_issue_date:date}"
       }
     }
+  ],
+  VA: [
+    {
+      source_id: "VA-VB-CODE",
+      label: "VIRGINIA BEACH CODE ENFORCEMENT CASES (CITY-SOURCED)",
+      dataset_id: "code-enforcement-cases1",
+      platform: "ckan",
+      resource_id: "a25516d2-eb93-4c0d-8586-a374abba2cc8",
+      order_by: "",
+      select: ["Address", "CITY", "Case_Type", "Violation", "Open_Date", "Closing_Date"],
+      cap: 10,
+      card: {
+        title: "CODE CASE — {Case_Type}",
+        sub: "{Address}, {CITY} • {Violation} • OPENED {Open_Date:date}"
+      }
+    }
+  ],
+  CA: [
+    {
+      source_id: "CA-WATER-EA",
+      label: "CA WATER RIGHTS ENFORCEMENT ACTIONS",
+      dataset_id: "california-water-rights-enforcement-actions",
+      platform: "ckan",
+      resource_id: "78f7c606-d672-4c09-aa03-596bbc5782cf",
+      order_by: "",
+      select: ["EA_CASE_NUMBER", "ENFORCEMENT_ACTION_TYPE", "INVESTIGATION_TYPE", "COUNTY_PRIMARY_POI", "INVESTIGATION_START_DATE"],
+      cap: 10,
+      card: {
+        title: "ENFORCEMENT {EA_CASE_NUMBER} — {ENFORCEMENT_ACTION_TYPE}",
+        sub: "{INVESTIGATION_TYPE} • {COUNTY_PRIMARY_POI} CO. • STARTED {INVESTIGATION_START_DATE:date}"
+      }
+    },
+    {
+      source_id: "CA-MHC-COMPLAINTS",
+      label: "CA MANAGED CARE QUARTERLY PROVIDER COMPLAINTS",
+      dataset_id: "quarterly-provider-complaints",
+      platform: "ckan",
+      resource_id: "3f9c6701-ed67-475b-b70f-e9cdf43945b4",
+      order_by: "",
+      select: [],
+      cap: 10,
+      card: {
+        title: "Q{Qtr} {Year} — {Plan Name}",
+        sub: "{Provider Type} • {Nature of Complaint} • {Number of Claims Received} CLAIMS"
+      }
+    }
   ]
+
 };
