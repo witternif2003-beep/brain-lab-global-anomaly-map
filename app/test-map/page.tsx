@@ -64,10 +64,10 @@ export default function TestMap() {
         zoom: 5,
       });
 
-      console.log("[test-map] constructed");
+      (process.env.NODE_ENV === "production" ? () => {} : console.log)("[test-map] constructed");
       setTimeout(() => {
         const canvasRect = document.querySelector(".maplibregl-canvas")?.getBoundingClientRect();
-        console.log("[test-map] 3s check", {
+        (process.env.NODE_ENV === "production" ? () => {} : console.log)("[test-map] 3s check", {
           loaded: map.loaded(),
           canvas: canvasRect ? { w: canvasRect.width, h: canvasRect.height } : null,
         });

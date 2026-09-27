@@ -11,12 +11,13 @@ export async function GET() {
     classification: 'TOP SECRET//SI//NOFORN//ORCON//HCS-PII//LIMDIS//OMEGA BLACK//ABSOLUTE//INFINITE',
     calibrationResolution: '±2.0cm_STRICT_PHYSICAL_GROUNDING',
     zeroYellowPolicy: 'VERIFIED_100%_ELECTRIC_CYAN_EMERALD_VIOLET',
-    standardRevision: 'NSA-ADMIN-MODE-REV2-FREEZE-SWEEP',
+    standardRevision: 'NSA-ADMIN-MODE-REV3-SYSCHECK-HARDEN',
     hardeningPatches: [
       'AIP20-WORKER-SCHEDULER: OffscreenCanvas worker rAF ReferenceError eliminated via worker-safe setTimeout fallback scheduler with 500ms idle polling',
       'AIP20-THREATGLOBE-REF: threat globe render loop decoupled from React state via ref-mirror architecture with single-owner 30FPS throttled loop and visibility gating',
       'AIP20-PALETTE-SWEEP: FBI section legacy warm-tone UI hexes migrated to electric cyan palette; warm-tone-free policy re-verified across all non-excluded components',
-      'AIP20-AMBIENT-HARDEN: global background resize debounced 120ms with battery listener cleanup and disposed-guard worker messaging'
+      'AIP20-AMBIENT-HARDEN: global background resize debounced 120ms with battery listener cleanup and disposed-guard worker messaging',
+      'AIP20-PRODLOG-HARDEN: production console-noise silenced via NODE_ENV-gated diagnostic logger in telemetry/test-map/godseye layers; statewide pipeline excluded untouched'
     ],
     excludedBoundary: 'GEORGIA_INTERSTATE_STATEWIDE_PIPELINE_PRESERVED_UNTOUCHED',
     recommendationsPipeline: {

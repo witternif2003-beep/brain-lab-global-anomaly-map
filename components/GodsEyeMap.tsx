@@ -45,7 +45,7 @@ function injectStarfieldLayer(map: any) {
     const layers = map.getStyle()?.layers;
     const firstLayerId = layers && layers.length > 0 ? layers[0].id : undefined;
     map.addLayer(starfield, firstLayerId);
-    console.log('[Starfield] Successfully mounted 4000-star 3D skybox layer below:', firstLayerId);
+    (process.env.NODE_ENV === "production" ? () => {} : console.log)('[Starfield] Successfully mounted 4000-star 3D skybox layer below:', firstLayerId);
   } catch (err) {
     console.warn('[Starfield] 3D starfield layer deferred/unsupported:', err);
   }
@@ -1263,10 +1263,10 @@ export default function GodsEyeMap({
         if (typeof window !== 'undefined') {
           (window as any).__map = map;
         }
-        console.log('[Map] worker URL set to: /maplibre-gl-worker.mjs');
-        console.log('[Map] tiles loaded:', map.areTilesLoaded());
-        console.log('[Map] style loaded:', map.isStyleLoaded());
-        console.log('[GodsEyeMap] MapLibre loaded style successfully, adding layers...');
+        (process.env.NODE_ENV === "production" ? () => {} : console.log)('[Map] worker URL set to: /maplibre-gl-worker.mjs');
+        (process.env.NODE_ENV === "production" ? () => {} : console.log)('[Map] tiles loaded:', map.areTilesLoaded());
+        (process.env.NODE_ENV === "production" ? () => {} : console.log)('[Map] style loaded:', map.isStyleLoaded());
+        (process.env.NODE_ENV === "production" ? () => {} : console.log)('[GodsEyeMap] MapLibre loaded style successfully, adding layers...');
         await addMapLayers(map);
         setReady(true);
       } catch (err) {

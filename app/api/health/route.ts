@@ -10,14 +10,14 @@ export async function GET() {
     commit,
     deployment: "Vercel Production Edge",
     timestamp: new Date().toISOString(),
-    engine: "MapLibre-v6-WebGPU-Ready",
+    engine: "MapLibre-v5-WebGL2-Verified",
     clearanceLevel: "NSA_ADMIN_MODE_SENIOR_MANAGER_SPECIFIC",
     directivesAvailable: 3800000,
     recommendationsScale: "+10,000% P1 Tier-1 Scaled Directives",
     telemetryUpdatePlan: "+7,000 P1 Tier-1 State-of-the-Art Telemetry Streams",
     vectorsCovered: 32,
     honestyProtocol: "AIP-20 ANTI-HALLUCINATION HARDENED",
-    standardRevision: "NSA-ADMIN-MODE-REV2-FREEZE-SWEEP",
-    hardeningPatches: 4,
+    standardRevision: "NSA-ADMIN-MODE-REV3-SYSCHECK-HARDEN",
+    hardeningPatches: 5,
   });
 }
