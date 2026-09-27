@@ -21,13 +21,15 @@ export async function fetchSocrataDataset(a: {
   orderBy: string;
   select: string[];
   rows?: number;
+  where?: string;
 }): Promise<SocrataFetch> {
   const rows = Math.max(1, Math.min(100, a.rows ?? 12));
   const base = a.portal.replace(/\/$/, "");
   const sel = a.select.map((f) => encodeURIComponent(f)).join(",");
   const order =
     a.orderBy.length > 0 ? `&$order=${encodeURIComponent(a.orderBy)}%20DESC` : "";
-  const rowsUrl = `${base}/resource/${a.datasetId}.json?$select=${sel}${order}&$limit=${rows}`;
+  const where = a.where && a.where.length > 0 ? `&$where=${encodeURIComponent(a.where)}` : "";
+  const rowsUrl = `${base}/resource/${a.datasetId}.json?$select=${sel}${order}${where}&$limit=${rows}`;
   const countUrl = `${base}/resource/${a.datasetId}.json?$select=count(*)`;
 
   const get = async (url: string) => {

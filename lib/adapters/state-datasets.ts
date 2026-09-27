@@ -36,6 +36,8 @@ export interface StateDatasetConfig {
   platform?: "socrata" | "ckan";
   /** CKAN datastore resource id (required when platform is ckan). */
   resource_id?: string;
+  /** Optional SoQL $where guard (e.g. drop junk null-key rows that sort first). */
+  where?: string;
   /** Generic card template (see StateCard renderer). */
   card: StateDatasetCard;
 }
@@ -299,6 +301,7 @@ export const STATE_DATASETS: Record<string, StateDatasetConfig[]> = {
       label: "URBANA POLICE ARRESTS (CITY-SOURCED)",
       dataset_id: "s2ps-ct5e",
       order_by: "date_of_arrest",
+      where: "incident_number IS NOT NULL",
       select: ["incident_number", "crime_code_description", "arrest_type_description", "date_of_arrest", "statute"],
       cap: 10,
       card: {

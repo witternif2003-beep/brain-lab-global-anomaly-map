@@ -55,7 +55,8 @@ export async function GET(req: Request) {
       jurisdiction: code,
       orderBy: cfg.order_by,
       select: cfg.select,
-      rows
+      rows,
+      where: cfg.where
     });
     return NextResponse.json({
       code,
