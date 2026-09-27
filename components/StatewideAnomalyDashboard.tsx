@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { US_JURISDICTIONS } from "../lib/us-jurisdictions";
 import type { VerifiedAnomaly, VerifiedFeed } from "../lib/verified-anomalies";
+import TiffanySparkleLayer from "./TiffanySparkleLayer";
 import {
   Terminal,
   Download,
@@ -171,6 +172,7 @@ export default function StatewideAnomalyDashboard() {
         <div className="absolute top-1/3 left-10 w-96 h-96 bg-[#00ff88]/12 rounded-full blur-[130px] pointer-events-none -z-10" />
         <div className="absolute bottom-10 right-10 w-96 h-96 bg-[#bd00ff]/15 rounded-full blur-[130px] pointer-events-none -z-10" />
         <div className="absolute bottom-0 left-1/3 w-80 h-80 bg-[#ff2bd6]/12 rounded-full blur-[110px] pointer-events-none -z-10" />
+        <TiffanySparkleLayer />
 
         {/* HEADER */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between pb-5 border-b border-[#00e5ff]/35 gap-4">
