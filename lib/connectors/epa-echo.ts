@@ -64,7 +64,7 @@ export async function fetchEpaEcho(a: { territory: string; rows?: number }) {
     return {
       records: [],
       provenance: prov,
-      note: `ECHO query failed: ${String(R.Message ?? "no response")}`
+      note: `ECHO query failed (HTTP ${res.status}): ${String(R.Message ?? R.Error?.ErrorMessage ?? "no response")}`
     };
   }
   const facilities = num(R.QueryRows);
