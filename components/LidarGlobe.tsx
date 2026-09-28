@@ -183,6 +183,13 @@ export default function LidarGlobe() {
             attribution:
               '<a href="https://registry.opendata.aws/terrain-tiles/" target="_blank" rel="noopener">Terrain Tiles</a> — Mapzen/AWS, USGS 3DEP'
           },
+          "hillshade-dem": {
+            type: "raster-dem",
+            tiles: [AWS_TERRARIUM_TILES],
+            encoding: "terrarium",
+            tileSize: 256,
+            maxzoom: 15
+          },
           ...Object.fromEntries(
             DC_LIDAR_PRODUCTS.map((p) => [
               `dc-lidar-${p.id}`,
@@ -220,10 +227,10 @@ export default function LidarGlobe() {
           {
             id: "hillshade",
             type: "hillshade",
-            source: "terrain",
+            source: "hillshade-dem",
             paint: {
-              "hillshade-exaggeration": 0.35,
-              "hillshade-shadow-color": "rgba(0, 8, 20, 0.55)",
+              "hillshade-exaggeration": 0.6,
+              "hillshade-shadow-color": "rgba(0, 8, 20, 0.75)",
               "hillshade-highlight-color": "rgba(255, 255, 255, 0.12)",
               "hillshade-accent-color": "rgba(0, 229, 255, 0.08)"
             }

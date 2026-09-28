@@ -360,8 +360,28 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .dock {
+    bottom: 12px;
+  }
+
   .pinCard {
-    bottom: 128px;
+    bottom: 220px;
+  }
+
+  .stage :global(.maplibregl-ctrl-bottom-left),
+  .stage :global(.maplibregl-ctrl-bottom-right) {
+    bottom: 112px;
+  }
+}
+
+@media (max-width: 360px) {
+  .pinCard {
+    bottom: 250px;
+  }
+
+  .stage :global(.maplibregl-ctrl-bottom-left),
+  .stage :global(.maplibregl-ctrl-bottom-right) {
+    bottom: 144px;
   }
 }
 
