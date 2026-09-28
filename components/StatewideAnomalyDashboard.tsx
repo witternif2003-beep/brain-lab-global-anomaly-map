@@ -87,7 +87,7 @@ export default function StatewideAnomalyDashboard() {
         <div className="absolute top-0 right-1/4 w-96 h-96 bg-[#00e5ff]/15 rounded-full blur-[130px] pointer-events-none -z-10" />
         <div className="absolute top-1/3 left-10 w-96 h-96 bg-[#00ff88]/12 rounded-full blur-[130px] pointer-events-none -z-10" />
         <div className="absolute bottom-10 right-10 w-96 h-96 bg-[#bd00ff]/15 rounded-full blur-[130px] pointer-events-none -z-10" />
-        <div className="absolute bottom-0 left-1/3 w-80 h-80 bg-[#ffaa00]/12 rounded-full blur-[110px] pointer-events-none -z-10" />
+        <div className="absolute bottom-0 left-1/3 w-80 h-80 bg-[#ff2ec4]/12 rounded-full blur-[110px] pointer-events-none -z-10" />
 
         {/* TOP HUD BAR: High-Clearance Responsive Status Header with 4-Color Badges */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between pb-5 border-b border-[#00e5ff]/35 gap-4">
@@ -109,7 +109,7 @@ export default function StatewideAnomalyDashboard() {
                 </span>
                 
                 {/* Color 3: Solar Amber Badge */}
-                <span className="px-3.5 py-1.5 rounded-full bg-[#331e00]/90 text-[#ffd54f] border-2 border-[#ffaa00]/70 text-[10px] font-mono font-bold tracking-wider w-fit shadow-[0_0_12px_rgba(255,170,0,0.3)]">
+                <span className="px-3.5 py-1.5 rounded-full bg-[#33002a]/90 text-[#ff9ee8] border-2 border-[#ff2ec4]/70 text-[10px] font-mono font-bold tracking-wider w-fit shadow-[0_0_12px_rgba(255,46,196,0.3)]">
                   CYCLE #{pulseCount} • 24-HR LIVE VERIFICATION
                 </span>
 
@@ -132,7 +132,7 @@ export default function StatewideAnomalyDashboard() {
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00e5ff] via-[#69f0ae] to-white">
                   GEORGIA & INTERSTATE STATEWIDE ANOMALY REPORT
                 </span>
-                <span className="text-[#ffd54f] font-mono ml-2 tabular-nums">— {liveDateStr}{liveTimeStr ? ` • ${liveTimeStr}` : ""}</span>
+                <span className="text-[#ff9ee8] font-mono ml-2 tabular-nums">— {liveDateStr}{liveTimeStr ? ` • ${liveTimeStr}` : ""}</span>
               </h2>
             </div>
             
@@ -178,10 +178,10 @@ export default function StatewideAnomalyDashboard() {
         </div>
 
         {/* BATCH SELECTOR CONTROLS: 40 BATCHES OF 25 ANOMALIES (1-1000 TOTAL) */}
-        <div className="p-3.5 rounded-[28px] bg-[#020a16]/95 border-2 border-[#ffaa00]/60 space-y-2.5 font-mono shadow-md">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-[#ffaa00]/30 text-xs">
-            <div className="flex items-center gap-2 text-[#ffd54f] font-extrabold tracking-wider uppercase">
-              <Layers className="w-4 h-4 text-[#ffaa00]" />
+        <div className="p-3.5 rounded-[28px] bg-[#020a16]/95 border-2 border-[#ff2ec4]/60 space-y-2.5 font-mono shadow-md">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-[#ff2ec4]/30 text-xs">
+            <div className="flex items-center gap-2 text-[#ff9ee8] font-extrabold tracking-wider uppercase">
+              <Layers className="w-4 h-4 text-[#ff2ec4]" />
               <span>SELECT BATCH OF 25 ANOMALIES (1,000 TOTAL P1 TIER-1 ANOMALIES RECORDED):</span>
             </div>
             <div className="text-[11px] text-[#69f0ae] font-bold">
@@ -205,8 +205,8 @@ export default function StatewideAnomalyDashboard() {
                   }}
                   className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all duration-300 border shrink-0 ${
                     isSelected
-                      ? 'bg-gradient-to-r from-[#e65100] to-[#ffaa00] text-[#020b18] border-white shadow-[0_0_16px_rgba(255,170,0,0.8)] font-black'
-                      : 'bg-[#100801]/90 text-[#ffd54f]/80 border-[#ffaa00]/40 hover:text-white hover:border-[#ffaa00]'
+                      ? 'bg-gradient-to-r from-[#e65100] to-[#ff2ec4] text-[#020b18] border-white shadow-[0_0_16px_rgba(255,46,196,0.8)] font-black'
+                      : 'bg-[#100801]/90 text-[#ff9ee8]/80 border-[#ff2ec4]/40 hover:text-white hover:border-[#ff2ec4]'
                   }`}
                 >
                   BATCH {bNum} ({startA}–{endA})
@@ -220,7 +220,7 @@ export default function StatewideAnomalyDashboard() {
         <div className="p-2.5 rounded-[24px] bg-[#020b18]/90 border border-[#00e5ff]/40 flex items-center justify-between text-xs overflow-x-auto gap-3 scrollbar-none font-mono shadow-inner">
           <div className="flex items-center gap-2 shrink-0">
             <span className="text-[11px] text-[#00e5ff] font-bold tracking-wider uppercase px-2 flex items-center gap-1.5">
-              <Zap className="w-3.5 h-3.5 text-[#ffaa00]" />
+              <Zap className="w-3.5 h-3.5 text-[#ff2ec4]" />
               BATCH {selectedBatch} TARGETS:
             </span>
             {batchAnomalies.map((anom) => {
@@ -270,11 +270,11 @@ export default function StatewideAnomalyDashboard() {
             onClick={() => setActiveTab("batch_list")}
             className={`px-3.5 py-3 rounded-2xl font-bold transition-all duration-300 border-2 flex items-center justify-center gap-2 ${
               activeTab === "batch_list"
-                ? "bg-gradient-to-r from-[#4d2600] to-[#261300] text-[#ffd54f] border-[#ffaa00] shadow-[0_0_24px_rgba(255,170,0,0.6)]"
-                : "bg-[#1c0d00]/80 text-[#ffe082] border-[#e65100]/60 hover:text-white hover:border-[#ffaa00]"
+                ? "bg-gradient-to-r from-[#4d2600] to-[#261300] text-[#ff9ee8] border-[#ff2ec4] shadow-[0_0_24px_rgba(255,46,196,0.6)]"
+                : "bg-[#1c0d00]/80 text-[#ffc2f0] border-[#e65100]/60 hover:text-white hover:border-[#ff2ec4]"
             }`}
           >
-            <Layers className="w-3.5 h-3.5 text-[#ffaa00] shrink-0" />
+            <Layers className="w-3.5 h-3.5 text-[#ff2ec4] shrink-0" />
             <span className="truncate">BATCH 25 LIST</span>
           </button>
 
@@ -309,11 +309,11 @@ export default function StatewideAnomalyDashboard() {
             onClick={() => setActiveTab("financial")}
             className={`px-3.5 py-3 rounded-2xl font-bold transition-all duration-300 border-2 flex items-center justify-center gap-2 ${
               activeTab === "financial"
-                ? "bg-gradient-to-r from-[#3b2000] to-[#261400] text-[#ffd54f] border-[#ffaa00] shadow-[0_0_24px_rgba(255,170,0,0.6)]"
-                : "bg-[#1f1000]/80 text-[#ffe082] border-[#e65100]/60 hover:text-white hover:border-[#ffaa00]"
+                ? "bg-gradient-to-r from-[#3b2000] to-[#261400] text-[#ff9ee8] border-[#ff2ec4] shadow-[0_0_24px_rgba(255,46,196,0.6)]"
+                : "bg-[#1f1000]/80 text-[#ffc2f0] border-[#e65100]/60 hover:text-white hover:border-[#ff2ec4]"
             }`}
           >
-            <Zap className="w-3.5 h-3.5 text-[#ffaa00] shrink-0" />
+            <Zap className="w-3.5 h-3.5 text-[#ff2ec4] shrink-0" />
             <span className="truncate">SWIFT LEDGER</span>
           </button>
 
@@ -351,7 +351,7 @@ export default function StatewideAnomalyDashboard() {
               <span className="px-3.5 py-1.5 rounded-full bg-[#002b1b]/95 text-[#69f0ae] border border-[#00ff88]/80 text-[10px] font-mono font-bold uppercase tracking-wider shadow-[0_0_14px_rgba(0,255,136,0.4)]">
                 {currentAnomaly.id} [VERIFIED]
               </span>
-              <span className="text-xs text-[#ffd54f] font-mono font-bold uppercase bg-[#331e00]/70 px-3 py-1 rounded-full border border-[#ffaa00]/60">
+              <span className="text-xs text-[#ff9ee8] font-mono font-bold uppercase bg-[#33002a]/70 px-3 py-1 rounded-full border border-[#ff2ec4]/60">
                 {currentAnomaly.batch}
               </span>
             </div>
@@ -364,7 +364,7 @@ export default function StatewideAnomalyDashboard() {
           <div className="space-y-3">
             <div className="text-base sm:text-xl font-black text-white tracking-wide font-sans flex flex-wrap items-center gap-2">
               <span className="text-[#00e5ff] font-mono">TERM:</span>
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-[#80deea] to-[#ffd54f]">{currentAnomaly.term}</span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-[#80deea] to-[#ff9ee8]">{currentAnomaly.term}</span>
             </div>
 
             {/* Interstate Implications Chip */}
@@ -386,7 +386,7 @@ export default function StatewideAnomalyDashboard() {
                 <span className="text-slate-200">{currentAnomaly.espionageContext}</span>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[#ffd54f] font-bold">CMD EXECUTED:</span>
+                <span className="text-[#ff9ee8] font-bold">CMD EXECUTED:</span>
                 <span className="text-[#69f0ae] font-bold bg-[#002e1c]/90 px-3 py-1 rounded-lg border border-[#00ff88]/70 shadow-[0_0_12px_rgba(0,255,136,0.35)]">{currentAnomaly.cmd}</span>
               </div>
             </div>
@@ -424,7 +424,7 @@ export default function StatewideAnomalyDashboard() {
                   <CheckCircle2 className="w-3.5 h-3.5 text-[#00ff88]" />
                   ACCOUNTS FOR 100% OF IDENTIFIED VERIFIED METRICS (14X TELEMETRY AUDITED)
                 </span>
-                <span className="text-[#ffd54f] font-bold">
+                <span className="text-[#ff9ee8] font-bold">
                   OCCURRENCE: 2026-09-23 00:01 EST (ACTIVE WITHIN 24 HOURS)
                 </span>
               </div>
@@ -435,11 +435,11 @@ export default function StatewideAnomalyDashboard() {
         {/* TAB: BATCH 25 ANOMALIES LIST VIEW (SHOWING ALL 25 IN CURRENT BATCH WITH OUTSIDE STATE IMPLICATIONS) */}
         {activeTab === "batch_list" && (
           <div className="space-y-4 font-mono">
-            <div className="p-4 sm:p-6 rounded-[28px] bg-gradient-to-b from-[#140b00]/95 to-[#070400]/98 border-2 border-[#ffaa00]/60 space-y-4 shadow-[0_0_40px_rgba(255,170,0,0.25)]">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b border-[#ffaa00]/35">
+            <div className="p-4 sm:p-6 rounded-[28px] bg-gradient-to-b from-[#140b00]/95 to-[#070400]/98 border-2 border-[#ff2ec4]/60 space-y-4 shadow-[0_0_40px_rgba(255,46,196,0.25)]">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b border-[#ff2ec4]/35">
                 <div className="flex items-center gap-2.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#ffaa00] animate-pulse shadow-[0_0_14px_#ffaa00]" />
-                  <span className="text-xs sm:text-sm font-black text-[#ffd54f] tracking-wider uppercase">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#ff2ec4] animate-pulse shadow-[0_0_14px_#ff2ec4]" />
+                  <span className="text-xs sm:text-sm font-black text-[#ff9ee8] tracking-wider uppercase">
                     BATCH {selectedBatch} OF 40 — COMPLETE 25 ANOMALY ROSTER (PRIORITY RANKED)
                   </span>
                 </div>
@@ -468,7 +468,7 @@ export default function StatewideAnomalyDashboard() {
                         <span className="px-2.5 py-0.5 rounded-full bg-[#00ff88]/20 text-[#69f0ae] border border-[#00ff88]/50 text-[10px] font-bold">
                           {anom.id} [P1 #{anom.anomalyNumber}]
                         </span>
-                        <span className="text-[10px] text-[#ffd54f] font-bold bg-[#ffaa00]/20 px-2 py-0.5 rounded border border-[#ffaa00]/40">
+                        <span className="text-[10px] text-[#ff9ee8] font-bold bg-[#ff2ec4]/20 px-2 py-0.5 rounded border border-[#ff2ec4]/40">
                           {anom.timestampEst}
                         </span>
                       </div>
@@ -514,9 +514,9 @@ export default function StatewideAnomalyDashboard() {
                 <div className="text-[9px] text-slate-300 mt-0.5">Packet payload exfil</div>
               </div>
               {/* Box 4: Amber / Location Precision */}
-              <div className="p-4 rounded-2xl bg-gradient-to-b from-[#2b1800]/95 to-[#170d00]/95 border-2 border-[#ffaa00]/70 shadow-md">
-                <div className="text-[10px] text-[#ffe082] font-bold uppercase">LOCATION PRECISION</div>
-                <div className="text-base sm:text-lg font-black text-[#ffaa00] mt-1">{currentAnomaly.metrics14x.locationPrecisionDeg}</div>
+              <div className="p-4 rounded-2xl bg-gradient-to-b from-[#2b1800]/95 to-[#170d00]/95 border-2 border-[#ff2ec4]/70 shadow-md">
+                <div className="text-[10px] text-[#ffc2f0] font-bold uppercase">LOCATION PRECISION</div>
+                <div className="text-base sm:text-lg font-black text-[#ff2ec4] mt-1">{currentAnomaly.metrics14x.locationPrecisionDeg}</div>
                 <div className="text-[9px] text-slate-300 mt-0.5">Cell tower triangulation</div>
               </div>
             </div>
@@ -548,7 +548,7 @@ export default function StatewideAnomalyDashboard() {
                   <span className="text-[#ff4081] font-bold">DECRYPTED STR:</span> <span className="text-white font-bold">{currentAnomaly.decryptedEvidence.decryptedString}</span>
                 </div>
                 <div className="p-3 rounded-xl bg-[#14082e]/85 border border-[#bd00ff]/40">
-                  <span className="text-[#ffd54f] font-bold">DECRYPTED VOIP:</span> &quot;{currentAnomaly.decryptedEvidence.decryptedVoIP}&quot;
+                  <span className="text-[#ff9ee8] font-bold">DECRYPTED VOIP:</span> &quot;{currentAnomaly.decryptedEvidence.decryptedVoIP}&quot;
                 </div>
                 <div className="p-3 rounded-xl bg-[#14082e]/85 border border-[#bd00ff]/40">
                   <span className="text-[#00ff88] font-bold">FINAL VOICE:</span> &quot;{currentAnomaly.decryptedEvidence.finalVoice}&quot;
@@ -594,7 +594,7 @@ export default function StatewideAnomalyDashboard() {
                 </div>
               </div>
               <div className="p-3.5 rounded-xl bg-[#051838]/85 border border-[#00e5ff]/40 space-y-2">
-                <div className="text-[#ffd54f] font-bold">TRIANGULATED GEORGIA & INTERSTATE CELL TOWERS:</div>
+                <div className="text-[#ff9ee8] font-bold">TRIANGULATED GEORGIA & INTERSTATE CELL TOWERS:</div>
                 <div className="flex flex-wrap gap-2 pt-1">
                   {currentAnomaly.phoneRecords.towers.map((tw, idx) => (
                     <span key={idx} className="px-3 py-1 rounded-full bg-[#00385c]/85 border border-[#00e5ff]/60 text-[#80deea] font-bold text-[11px]">
@@ -610,33 +610,33 @@ export default function StatewideAnomalyDashboard() {
         {/* TAB 3: FINANCIAL & SWIFT LEDGER */}
         {activeTab === "financial" && (
           <div className="space-y-4 text-xs font-mono">
-            <div className="p-4 sm:p-5 rounded-2xl bg-[#140b00]/95 border-2 border-[#ffaa00]/60 space-y-4">
-              <div className="text-[#ffe082] font-bold uppercase flex items-center justify-between">
+            <div className="p-4 sm:p-5 rounded-2xl bg-[#140b00]/95 border-2 border-[#ff2ec4]/60 space-y-4">
+              <div className="text-[#ffc2f0] font-bold uppercase flex items-center justify-between">
                 <span>SWIFT LEDGER & OFFSHORE BENEFICIARY TRACE:</span>
                 <span className="text-[#ff80ab] font-bold bg-[#3d0014]/90 px-2.5 py-0.5 rounded border border-[#ff1744]/60">{currentAnomaly.financialDetails.wireTarget}</span>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-white">
-                <div className="p-3.5 rounded-xl bg-[#261500]/85 border border-[#ffaa00]/40">
-                  <div className="text-[#ffe082] font-bold">ATL-AA ACCOUNT:</div>
+                <div className="p-3.5 rounded-xl bg-[#261500]/85 border border-[#ff2ec4]/40">
+                  <div className="text-[#ffc2f0] font-bold">ATL-AA ACCOUNT:</div>
                   <div className="text-slate-200 font-mono mt-1">{currentAnomaly.bankingHistory.aaAccount}</div>
                 </div>
-                <div className="p-3.5 rounded-xl bg-[#261500]/85 border border-[#ffaa00]/40">
-                  <div className="text-[#ffe082] font-bold">ATL-CA ACCOUNT:</div>
+                <div className="p-3.5 rounded-xl bg-[#261500]/85 border border-[#ff2ec4]/40">
+                  <div className="text-[#ffc2f0] font-bold">ATL-CA ACCOUNT:</div>
                   <div className="text-slate-200 font-mono mt-1">{currentAnomaly.bankingHistory.caAccount}</div>
                 </div>
-                <div className="p-3.5 rounded-xl bg-[#261500]/85 border border-[#ffaa00]/40">
-                  <div className="text-[#ffe082] font-bold">BENEFICIARY ACCOUNT:</div>
+                <div className="p-3.5 rounded-xl bg-[#261500]/85 border border-[#ff2ec4]/40">
+                  <div className="text-[#ffc2f0] font-bold">BENEFICIARY ACCOUNT:</div>
                   <div className="text-[#69f0ae] font-mono font-bold mt-1">{currentAnomaly.bankingHistory.beneficiaryAccount}</div>
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl bg-[#261500]/85 border border-[#ffaa00]/40 space-y-2">
-                <div className="text-[#ffe082] font-bold">TRANSACTION HIGHLIGHTS & 18-MONTH SUMMARY:</div>
+              <div className="p-4 rounded-xl bg-[#261500]/85 border border-[#ff2ec4]/40 space-y-2">
+                <div className="text-[#ffc2f0] font-bold">TRANSACTION HIGHLIGHTS & 18-MONTH SUMMARY:</div>
                 <div className="text-[#00ff88] font-bold text-sm">{currentAnomaly.bankingHistory.totalMoved}</div>
                 <div className="space-y-1.5 pt-1">
                   {currentAnomaly.financialDetails.highlights.map((h, i) => (
                     <div key={i} className="text-slate-200 flex items-center gap-2">
-                      <ChevronRight className="w-3.5 h-3.5 text-[#ffaa00] shrink-0" />
+                      <ChevronRight className="w-3.5 h-3.5 text-[#ff2ec4] shrink-0" />
                       <span>{h}</span>
                     </div>
                   ))}
@@ -693,7 +693,7 @@ export default function StatewideAnomalyDashboard() {
               <div className="p-4 rounded-xl bg-[#062040]/85 border border-[#00b0ff]/40 space-y-2">
                 <div className="text-[#ff80ab] font-bold">INTERNATIONAL HARDWARE TRAITS:</div>
                 <div className="text-slate-200 leading-relaxed">{currentAnomaly.deviceForensics.intlTraits}</div>
-                <div className="text-[#ffd54f] font-bold pt-1">MODIFIED EQUIPMENT DETAILS:</div>
+                <div className="text-[#ff9ee8] font-bold pt-1">MODIFIED EQUIPMENT DETAILS:</div>
                 <div className="text-slate-200 leading-relaxed">{currentAnomaly.deviceForensics.modifiedEquipment}</div>
               </div>
             </div>
@@ -742,7 +742,7 @@ export default function StatewideAnomalyDashboard() {
                 </div>
                 <div className="p-3.5 rounded-xl bg-[#051838]/85 border border-[#00e5ff]/40 space-y-1.5">
                   <div className="text-[#00e5ff] font-bold">NSA VALIDATION CODE:</div>
-                  <div className="text-[#ffd54f] font-mono font-black">{currentAnomaly.nsaValidation.validationCode}</div>
+                  <div className="text-[#ff9ee8] font-mono font-black">{currentAnomaly.nsaValidation.validationCode}</div>
                   <div className="text-slate-300">ATTRIBUTION: {currentAnomaly.nsaValidation.attribution}</div>
                   <div className="text-[#00ff88] text-[11px] font-bold">{currentAnomaly.evidenceChain.admissibility}</div>
                 </div>

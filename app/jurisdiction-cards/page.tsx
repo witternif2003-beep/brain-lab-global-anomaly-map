@@ -16,7 +16,7 @@ export default function JurisdictionCardsPage() {
           <span className="px-3.5 py-1.5 rounded-full bg-[#002b1b]/90 text-[#69f0ae] border-2 border-[#00ff88]/80 text-[10px] font-bold uppercase tracking-wider flex items-center gap-2 shadow-[0_0_16px_rgba(0,255,136,0.4)] w-fit">
             <span className="w-2 h-2 rounded-full bg-[#00ff88] animate-ping shrink-0" /> Live public APIs only
           </span>
-          <span className="px-3.5 py-1.5 rounded-full bg-[#331e00]/90 text-[#ffd54f] border-2 border-[#ffaa00]/70 text-[10px] font-bold uppercase tracking-wider w-fit shadow-[0_0_12px_rgba(255,170,0,0.3)]">
+          <span className="px-3.5 py-1.5 rounded-full bg-[#33002a]/90 text-[#ff9ee8] border-2 border-[#ff2ec4]/70 text-[10px] font-bold uppercase tracking-wider w-fit shadow-[0_0_12px_rgba(255,46,196,0.3)]">
             SHA-256 provenance on every value
           </span>
         </div>

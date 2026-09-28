@@ -6,7 +6,7 @@ import type { ReliabilityBand } from "../../lib/elections/source-reliability";
 
 const BAND_STYLE: Record<ReliabilityBand, string> = {
   healthy: "text-[#69f0ae] border-[#00ff88]/70 bg-[#002b1b]/80 shadow-[0_0_10px_rgba(0,255,136,0.35)]",
-  degraded: "text-[#ffd54f] border-[#ffaa00]/60 bg-[#331e00]/70 shadow-[0_0_10px_rgba(255,170,0,0.25)]",
+  degraded: "text-[#ff9ee8] border-[#ff2ec4]/60 bg-[#33002a]/70 shadow-[0_0_10px_rgba(255,46,196,0.25)]",
   failing: "text-[#ff80ab] border-[#ff1744]/70 bg-[#3d0014]/80 shadow-[0_0_10px_rgba(255,23,68,0.35)]",
   unknown: "text-[#80deea] border-[#00e5ff]/40 bg-[#061836]/70"
 };
@@ -31,14 +31,14 @@ const fmt = (n: number | null) => (n === null ? "—" : n.toLocaleString("en-US"
 
 const REG_STYLE: Record<OfficeRow["registration"]["status"], string> = {
   sourced: "text-[#69f0ae] border-[#00ff88]/70 bg-[#002b1b]/80",
-  partial: "text-[#ffd54f] border-[#ffaa00]/60 bg-[#331e00]/70",
+  partial: "text-[#ff9ee8] border-[#ff2ec4]/60 bg-[#33002a]/70",
   "not-published": "text-[#80deea] border-[#00e5ff]/40 bg-[#061836]/70"
 };
 
 const STAGE_STYLE: Record<OfficeRow["noncitizenVotingReleases"][number]["stage"], string> = {
   sentenced: "text-[#ff80ab] border-[#ff1744]/60 bg-[#3d0014]/70",
   convicted: "text-[#ff80ab] border-[#ff1744]/60 bg-[#3d0014]/70",
-  "pleaded guilty": "text-[#ffd54f] border-[#ffaa00]/60 bg-[#331e00]/70",
+  "pleaded guilty": "text-[#ff9ee8] border-[#ff2ec4]/60 bg-[#33002a]/70",
   charged: "text-[#e0aaff] border-[#bd00ff]/60 bg-[#1b0833]/70",
   "see release": "text-[#80deea] border-[#00e5ff]/40 bg-[#061836]/70"
 };
@@ -56,7 +56,7 @@ function Registration({ r }: { r: OfficeRow }) {
         <span>Active <b className="block text-white text-sm">{fmt(g.active)}</b></span>
         <span>Inactive <b className="block text-white text-sm">{fmt(g.inactive)}</b></span>
       </div>
-      <div className="text-[10px] text-[#80deea]/70">
+      <div className="text-[10px] text-[#80deea]/85">
         As of {g.source.asOf} · {g.note}{" "}
         <a href={g.source.landingUrl} target="_blank" rel="noreferrer" className="underline text-[#69f0ae]">EAC dataset</a>
       </div>
@@ -67,13 +67,13 @@ function Registration({ r }: { r: OfficeRow }) {
 function DojCases({ r }: { r: OfficeRow }) {
   const list = r.noncitizenVotingReleases;
   return (
-    <div className="rounded-2xl bg-[#331e00]/25 border border-[#ffaa00]/35 px-3 py-2 text-[11px] space-y-1.5 backdrop-blur-md">
+    <div className="rounded-2xl bg-[#33002a]/25 border border-[#ff2ec4]/35 px-3 py-2 text-[11px] space-y-1.5 backdrop-blur-md">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="font-bold uppercase tracking-wider text-[#ffd54f]">DOJ noncitizen-voting case releases</span>
-        <Pill className="text-[#ffd54f] border-[#ffaa00]/60 bg-[#331e00]/70">{list.length}</Pill>
+        <span className="font-bold uppercase tracking-wider text-[#ff9ee8]">DOJ noncitizen-voting case releases</span>
+        <Pill className="text-[#ff9ee8] border-[#ff2ec4]/60 bg-[#33002a]/70">{list.length}</Pill>
       </div>
       {list.length === 0 ? (
-        <div className="text-[10px] text-[#ffe0b2]/70">
+        <div className="text-[10px] text-[#ffd1f5]/85">
           {r.code === "AS" ? "American Samoa has no U.S. Attorney's Office, so no release is attributed here." : "No matching justice.gov release from this jurisdiction's U.S. Attorney's Office."}
         </div>
       ) : (
@@ -81,14 +81,14 @@ function DojCases({ r }: { r: OfficeRow }) {
           {list.map((c) => (
             <li key={c.uuid} className="flex items-start gap-2">
               <Pill className={`shrink-0 ${STAGE_STYLE[c.stage]}`}>{c.stage}</Pill>
-              <a href={c.url} target="_blank" rel="noreferrer" className="text-[#ffe0b2] hover:underline break-words">
-                {c.date} · {c.title} <span className="text-[#ffd54f]/60">({c.offices.join(", ").replace(/USAO - /g, "USAO ")})</span>
+              <a href={c.url} target="_blank" rel="noreferrer" className="text-[#ffd1f5] hover:underline break-words">
+                {c.date} · {c.title} <span className="text-[#ff9ee8]/85">({c.offices.join(", ").replace(/USAO - /g, "USAO ")})</span>
               </a>
             </li>
           ))}
         </ul>
       )}
-      <div className="text-[10px] text-[#ffe0b2]/50">A charge is an allegation; stage is read from each release title.</div>
+      <div className="text-[10px] text-[#ffd1f5]/85">A charge is an allegation; stage is read from each release title.</div>
     </div>
   );
 }
@@ -123,7 +123,7 @@ function Row({ r }: { r: OfficeRow }) {
       <Registration r={r} />
       <DojCases r={r} />
       {p?.error && <div className="text-[11px] text-[#ff80ab] break-all">{p.error}</div>}
-      {p?.finalUrl && p.finalUrl !== r.url && <div className="text-[11px] text-[#ffd54f] break-all">Redirected to {p.finalUrl}</div>}
+      {p?.finalUrl && p.finalUrl !== r.url && <div className="text-[11px] text-[#ff9ee8] break-all">Redirected to {p.finalUrl}</div>}
       {r.verification.matchContext && <div className="text-[11px] text-[#80deea] italic break-words">“…{r.verification.matchContext}…”</div>}
       <div className="flex flex-wrap items-center gap-2">
         <a
@@ -240,8 +240,8 @@ export default function ElectionSourcesPanel() {
             </div>
             <div className="text-[#80deea]/80">History store: {report.store} (per server instance; the daily CI run keeps a persistent history).</div>
           </div>
-          <div className="rounded-[28px] border-2 border-[#ffaa00]/50 bg-[#140d02]/70 backdrop-blur-2xl p-4 space-y-1 text-[#ffe0b2] shadow-[0_8px_40px_rgba(255,170,0,0.12),inset_0_1px_3px_rgba(255,170,0,0.25)]">
-            <div className="font-bold uppercase tracking-wider text-[#ffaa00]">Roster drift vs USA.gov directory</div>
+          <div className="rounded-[28px] border-2 border-[#ff2ec4]/50 bg-[#1a0016]/70 backdrop-blur-2xl p-4 space-y-1 text-[#ffd1f5] shadow-[0_8px_40px_rgba(255,46,196,0.12),inset_0_1px_3px_rgba(255,46,196,0.25)]">
+            <div className="font-bold uppercase tracking-wider text-[#ff2ec4]">Roster drift vs USA.gov directory</div>
             <a href={report.directory.url} target="_blank" rel="noreferrer" className="underline break-all">{report.directory.url}</a>
             <div>Pinned {report.directory.pinnedAt} from {report.directory.publisher}</div>
             {report.drift ? (
@@ -262,8 +262,8 @@ export default function ElectionSourcesPanel() {
               <div>Not checked yet.</div>
             )}
           </div>
-          <div className="md:col-span-2 rounded-[28px] border-2 border-[#ffaa00]/40 bg-[#140d02]/60 backdrop-blur-2xl p-4 space-y-1 text-[#ffe0b2] shadow-[0_8px_40px_rgba(255,170,0,0.1),inset_0_1px_3px_rgba(255,170,0,0.2)]">
-            <div className="font-bold uppercase tracking-wider text-[#ffaa00]">Sources on each card</div>
+          <div className="md:col-span-2 rounded-[28px] border-2 border-[#ff2ec4]/40 bg-[#1a0016]/60 backdrop-blur-2xl p-4 space-y-1 text-[#ffd1f5] shadow-[0_8px_40px_rgba(255,46,196,0.1),inset_0_1px_3px_rgba(255,46,196,0.2)]">
+            <div className="font-bold uppercase tracking-wider text-[#ff2ec4]">Sources on each card</div>
             <div>
               Registered voters: EAC 2024 Election Administration and Voting Survey, summed from local-jurisdiction A1a/A1b/A1c. It is the latest official count covering all 56;
               states publish their own figures on their own schedules, and none publishes a real-time count.
@@ -274,7 +274,7 @@ export default function ElectionSourcesPanel() {
               retrieved {report.noncitizenVoting.retrievedAt} · sha256 {report.noncitizenVoting.sha256.slice(0, 12)}
               {report.noncitizenVoting.error ? ` · error: ${report.noncitizenVoting.error}` : ""}
             </div>
-            <div className="text-[#ffe0b2]/70">No voter file or person-level registration data is used; no individual is identified as a registrant.</div>
+            <div className="text-[#ffd1f5]/85">No voter file or person-level registration data is used; no individual is identified as a registrant.</div>
           </div>
         </div>
       )}

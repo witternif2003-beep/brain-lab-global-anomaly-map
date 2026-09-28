@@ -96,7 +96,7 @@ function telemetryGeoJSON(
           l1: `${a.severity} • ${a.sector} • ${a.location}`,
           l2: `Deviation ${a.deviation} • z ${a.zScore}`,
           l3: new Date(a.timestamp).toISOString(),
-          color: a.severity === "CRITICAL" ? "#ff3d71" : a.severity === "HIGH" ? "#ffb300" : "#bd00ff"
+          color: a.severity === "CRITICAL" ? "#ff3d71" : a.severity === "HIGH" ? "#ff2ec4" : "#bd00ff"
         }
       }))
     ]

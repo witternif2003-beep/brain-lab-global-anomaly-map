@@ -6,7 +6,7 @@ import type { CardBuildResult, CardFieldStatus, JurisdictionCard } from "../../l
 
 const STATUS_STYLE: Record<CardFieldStatus, string> = {
   sourced: "text-[#69f0ae] border-[#00ff88]/70 bg-[#002b1b]/80 shadow-[0_0_10px_rgba(0,255,136,0.35)]",
-  "awaiting-source": "text-[#ffd54f] border-[#ffaa00]/60 bg-[#331e00]/70 shadow-[0_0_10px_rgba(255,170,0,0.25)]",
+  "awaiting-source": "text-[#ff9ee8] border-[#ff2ec4]/60 bg-[#33002a]/70 shadow-[0_0_10px_rgba(255,46,196,0.25)]",
   "not-published": "text-[#80deea] border-[#00e5ff]/40 bg-[#061836]/70",
   error: "text-[#ff80ab] border-[#ff1744]/70 bg-[#3d0014]/80 shadow-[0_0_10px_rgba(255,23,68,0.35)]"
 };
@@ -49,16 +49,16 @@ function Card({ card }: { card: JurisdictionCard }) {
                 {f.status}
               </span>
             </div>
-            <div className="flex items-center justify-between gap-2 text-[#80deea]/70">
+            <div className="flex items-center justify-between gap-2 text-[#80deea]/85">
               <span className="text-white font-bold">{f.value ?? "—"}</span>
               <span className="text-[10px]">
                 {f.source_id}
                 {f.as_of ? ` • ${f.as_of}` : ""}
               </span>
             </div>
-            {f.status !== "sourced" && <div className="text-[10px] text-[#80deea]/50">{f.note}</div>}
+            {f.status !== "sourced" && <div className="text-[10px] text-[#80deea]/85">{f.note}</div>}
             {f.provenance && (
-              <div className="text-[9px] text-[#00e5ff]/40 truncate" title={f.provenance.sha256}>
+              <div className="text-[9px] text-[#00e5ff]/85 truncate" title={f.provenance.sha256}>
                 sha256 {f.provenance.sha256.slice(0, 16)}… • {f.provenance.retrieved_at}
               </div>
             )}
@@ -76,7 +76,7 @@ function Card({ card }: { card: JurisdictionCard }) {
               <span>
                 {o.label}: {o.value} ({o.direction})
               </span>
-              <span className="text-[#e0aaff]/60 shrink-0">
+              <span className="text-[#e0aaff]/85 shrink-0">
                 z={o.modified_z} • median {o.median.toLocaleString("en-US")} • n={o.n}
               </span>
             </div>
@@ -85,10 +85,10 @@ function Card({ card }: { card: JurisdictionCard }) {
       )}
       {card.natsec_releases.length > 0 && (
         <details
-          className="text-[10px] rounded-2xl bg-[#140b00]/50 border border-[#ffaa00]/50 px-3 py-2 backdrop-blur-md"
+          className="text-[10px] rounded-2xl bg-[#140b00]/50 border border-[#ff2ec4]/50 px-3 py-2 backdrop-blur-md"
           data-testid={`natsec-${card.code}`}
         >
-          <summary className="cursor-pointer font-bold text-[#ffd54f]">
+          <summary className="cursor-pointer font-bold text-[#ff9ee8]">
             DOJ national-security releases ({card.natsec_releases.length}) — charges are allegations
           </summary>
           <ul className="mt-1 space-y-1">
@@ -97,7 +97,7 @@ function Card({ card }: { card: JurisdictionCard }) {
                 <a href={r.url} target="_blank" rel="noreferrer" className="text-[#00e5ff] hover:underline">
                   {r.title}
                 </a>
-                <span className="text-[#ffd54f]/60">
+                <span className="text-[#ff9ee8]/85">
                   {" "}
                   • {r.date} • {r.offices.join(", ")}
                 </span>
@@ -159,7 +159,7 @@ export default function JurisdictionCardGrid() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Filter by code or name"
-            className="bg-transparent outline-none text-xs text-[#e0f7fa] placeholder:text-[#80deea]/50 w-full"
+            className="bg-transparent outline-none text-xs text-[#e0f7fa] placeholder:text-[#80deea]/85 w-full"
           />
         </div>
         <div className="flex flex-wrap items-center gap-3 text-[11px]">

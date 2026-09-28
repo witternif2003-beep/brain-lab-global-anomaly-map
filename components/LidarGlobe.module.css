@@ -72,9 +72,9 @@
   border-radius: 999px;
   font-size: 9px;
   font-weight: 700;
-  border: 1px solid rgba(255, 179, 0, 0.5);
-  background: rgba(255, 179, 0, 0.1);
-  color: #ffb300;
+  border: 1px solid rgba(255, 46, 196, 0.5);
+  background: rgba(255, 46, 196, 0.1);
+  color: #ff2ec4;
 }
 
 .badgeOk {
@@ -109,7 +109,7 @@
 }
 
 .warn {
-  color: #ffb300 !important;
+  color: #ff2ec4 !important;
 }
 
 .cyan {
@@ -155,7 +155,7 @@
 
 .note {
   font-size: 9px;
-  color: #ffb300;
+  color: #ff2ec4;
 }
 
 .dock {

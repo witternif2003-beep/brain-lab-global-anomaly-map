@@ -8,7 +8,7 @@ const PAGE_SIZE = 25;
 
 const SOURCE_STYLE: Record<string, string> = {
   OPENFEMA: "text-[#80deea] border-[#00e5ff]/60 bg-[#061836]/80",
-  "DOJ-PRESS": "text-[#ffd54f] border-[#ffaa00]/70 bg-[#331e00]/80"
+  "DOJ-PRESS": "text-[#ff9ee8] border-[#ff2ec4]/70 bg-[#33002a]/80"
 };
 
 export default function JurisdictionRecordList() {
@@ -65,7 +65,7 @@ export default function JurisdictionRecordList() {
         )}
       </div>
 
-      <div className="rounded-[28px] border-2 border-[#ffaa00]/50 bg-[#140d02]/80 backdrop-blur-2xl overflow-hidden">
+      <div className="rounded-[28px] border-2 border-[#ff2ec4]/50 bg-[#1a0016]/80 backdrop-blur-2xl overflow-hidden">
         <div className="px-4 pt-3 text-[11px] font-bold uppercase tracking-wider text-[#69f0ae]">
           Batch {page} of {pages} · Records {records.length ? (page - 1) * PAGE_SIZE + 1 : 0}–
           {Math.min(page * PAGE_SIZE, records.length)} of {records.length.toLocaleString("en-US")} · {name}
@@ -73,7 +73,7 @@ export default function JurisdictionRecordList() {
         <div className="flex items-center gap-1 px-2 py-2 overflow-x-auto">
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
-            className="p-2 text-[#ffaa00] disabled:opacity-30"
+            className="p-2 text-[#ff2ec4] disabled:opacity-30"
             disabled={page === 1}
             aria-label="Previous batch"
           >
@@ -84,7 +84,7 @@ export default function JurisdictionRecordList() {
               key={n}
               onClick={() => setPage(n)}
               className={`min-w-[40px] px-2 py-1.5 rounded-md text-sm font-bold ${
-                n === page ? "bg-[#ffaa00] text-black" : "text-[#ffd54f]/80 hover:text-[#ffd54f]"
+                n === page ? "bg-[#ff2ec4] text-black" : "text-[#ff9ee8]/80 hover:text-[#ff9ee8]"
               }`}
             >
               {n}
@@ -92,7 +92,7 @@ export default function JurisdictionRecordList() {
           ))}
           <button
             onClick={() => setPage((p) => Math.min(pages, p + 1))}
-            className="p-2 text-[#ffaa00] disabled:opacity-30"
+            className="p-2 text-[#ff2ec4] disabled:opacity-30"
             disabled={page === pages}
             aria-label="Next batch"
           >
@@ -100,17 +100,17 @@ export default function JurisdictionRecordList() {
           </button>
         </div>
 
-        {loading && <div className="px-4 py-6 text-xs text-[#ffd54f]">Loading public records for {name}…</div>}
+        {loading && <div className="px-4 py-6 text-xs text-[#ff9ee8]">Loading public records for {name}…</div>}
         {error && <div className="px-4 py-6 text-xs text-[#ff80ab]">Source request failed: {error}</div>}
         {!loading && !error && records.length === 0 && (
           <div className="px-4 py-6 text-xs text-[#80deea]">No public records returned for {name}.</div>
         )}
 
-        <ul className="divide-y divide-[#ffaa00]/30">
+        <ul className="divide-y divide-[#ff2ec4]/30">
           {shown.map((r) => (
             <li key={r.id} className="px-4 py-3 space-y-1.5">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="px-2.5 py-0.5 rounded-full border border-[#ffaa00]/70 text-[#ffaa00] text-[11px] font-bold">{r.id}</span>
+                <span className="px-2.5 py-0.5 rounded-full border border-[#ff2ec4]/70 text-[#ff2ec4] text-[11px] font-bold">{r.id}</span>
                 <div className="flex items-center gap-2">
                   <span className={`px-2 py-0.5 rounded-full border text-[10px] font-bold uppercase ${SOURCE_STYLE[r.source]}`}>
                     {r.source}
@@ -127,8 +127,8 @@ export default function JurisdictionRecordList() {
                 </div>
               </div>
               <div className="text-sm sm:text-base font-bold text-white leading-snug">{r.title}</div>
-              <div className="flex items-center gap-1.5 text-[11px] text-[#ffd54f]">
-                <MapPin className="w-4 h-4 text-[#ffaa00] shrink-0" />
+              <div className="flex items-center gap-1.5 text-[11px] text-[#ff9ee8]">
+                <MapPin className="w-4 h-4 text-[#ff2ec4] shrink-0" />
                 <span>
                   {name} · {r.category} · {r.date}
                 </span>

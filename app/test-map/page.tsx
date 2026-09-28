@@ -117,7 +117,7 @@ export default function TestMap() {
           lineHeight: 1.5,
         }}
       >
-        <div style={{ fontWeight: "bold", color: status.startsWith("LOADED") ? "#34d399" : status.startsWith("TIMEOUT") ? "#fb923c" : "#38bdf8" }}>
+        <div style={{ fontWeight: "bold", color: status.startsWith("LOADED") ? "#34d399" : status.startsWith("TIMEOUT") ? "#ff4fd8" : "#38bdf8" }}>
           STATUS: {status}
         </div>
         {errorMsg && <div style={{ color: "#ef4444", fontWeight: "bold" }}>ERROR: {errorMsg}</div>}
