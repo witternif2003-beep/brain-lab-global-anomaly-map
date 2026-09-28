@@ -58,6 +58,41 @@ function Card({ card }: { card: JurisdictionCard }) {
           </li>
         ))}
       </ul>
+      {card.outliers.length > 0 && (
+        <div className="space-y-1" data-testid={`outliers-${card.code}`}>
+          <div className="text-[10px] tracking-wider text-violet-300">STATISTICAL OUTLIERS (not findings)</div>
+          {card.outliers.map((o) => (
+            <div key={o.field_id} className="text-[10px] text-slate-300 flex justify-between gap-2">
+              <span>
+                {o.label}: {o.value} ({o.direction})
+              </span>
+              <span className="text-slate-500 shrink-0">
+                z={o.modified_z} • median {o.median.toLocaleString("en-US")} • n={o.n}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+      {card.natsec_releases.length > 0 && (
+        <details className="text-[10px]" data-testid={`natsec-${card.code}`}>
+          <summary className="cursor-pointer text-slate-300">
+            DOJ national-security releases ({card.natsec_releases.length}) — charges are allegations
+          </summary>
+          <ul className="mt-1 space-y-1">
+            {card.natsec_releases.slice(0, 10).map((r) => (
+              <li key={r.url}>
+                <a href={r.url} target="_blank" rel="noreferrer" className="text-sky-400 hover:underline">
+                  {r.title}
+                </a>
+                <span className="text-slate-500">
+                  {" "}
+                  • {r.date} • {r.offices.join(", ")}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
       {card.open_data_portal && (
         <a
           href={card.open_data_portal}
@@ -113,9 +148,10 @@ export default function JurisdictionCardGrid() {
         </div>
         <div className="flex items-center gap-3 text-[11px] text-slate-400">
           {data && (
-            <span>
+            <span title={data.outlier_method}>
               {data.count} cards • {data.summary.sourced} sourced • {data.summary["awaiting-source"]} awaiting •{" "}
-              {data.summary["not-published"]} not published • {data.summary.error} errors
+              {data.summary["not-published"]} not published • {data.summary.error} errors •{" "}
+              {data.cards.reduce((a, c) => a + c.outliers.length, 0)} outliers
             </span>
           )}
           <button

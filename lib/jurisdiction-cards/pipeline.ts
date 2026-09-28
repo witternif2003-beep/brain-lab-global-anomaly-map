@@ -8,15 +8,18 @@ import { JURISDICTION_ADAPTERS } from "../adapters/jurisdictions";
 import { fetchBlsLausLatestBatch, BlsLatest } from "../connectors/bls";
 import { fetchEpaEcho } from "../connectors/epa-echo";
 import { fetchWorldBank } from "../connectors/worldbank";
+import { DojFeed, fetchDojNatsecReleases } from "../connectors/doj";
 import { makeProvenance, Provenance } from "../provenance";
-import { BLS_LAUS_UNPUBLISHED, JURISDICTION_REFERENCE, WORLDBANK_ISO3 } from "./reference";
+import { BLS_LAUS_UNPUBLISHED, JURISDICTION_REFERENCE, WORLDBANK_ISO3, usaoToCodes } from "./reference";
+import { OUTLIER_METHOD, computeOutliers } from "./outliers";
 import {
   CARD_FIELD_ORDER,
   CardBuildResult,
   CardField,
   CardFieldId,
   CardFieldStatus,
-  JurisdictionCard
+  JurisdictionCard,
+  NatsecRelease
 } from "./types";
 
 const CENSUS_ACS = "https://api.census.gov/data/2023/acs/acs5";
@@ -32,11 +35,12 @@ const field = (
   status: CardFieldStatus,
   source_id: string,
   note: string,
-  extra: { value?: string | null; as_of?: string | null; provenance?: Provenance | null } = {}
+  extra: { value?: string | null; numeric?: number | null; as_of?: string | null; provenance?: Provenance | null } = {}
 ): CardField => ({
   id,
   label: labelFor(id),
   value: status === "sourced" ? extra.value ?? null : null,
+  numeric: status === "sourced" ? extra.numeric ?? null : null,
   as_of: status === "sourced" ? extra.as_of ?? null : null,
   status,
   source_id,
@@ -119,12 +123,14 @@ async function epaFields(code: string): Promise<[CardField, CardField]> {
     return [
       field("epa_facilities", "sourced", "EPA-ECHO", "Active facilities in ECHO (aggregate count, not findings).", {
         value: rec.active_facilities.toLocaleString("en-US"),
+        numeric: rec.active_facilities,
         as_of: asOf,
         provenance: rec.provenance
       }),
       rec.total_penalties
         ? field("epa_penalties", "sourced", "EPA-ECHO", "Total penalties reported across active facilities.", {
             value: rec.total_penalties,
+            numeric: Number(rec.total_penalties.replace(/[^0-9.]/g, "")),
             as_of: asOf,
             provenance: rec.provenance
           })
@@ -150,6 +156,7 @@ async function worldBankPopulation(code: string): Promise<CardField> {
     }
     return field("population", "sourced", "WORLDBANK", "World Bank SP.POP.TOTL (latest non-null year).", {
       value: Math.round(latest.value).toLocaleString("en-US"),
+      numeric: latest.value,
       as_of: latest.year,
       provenance: r.provenance
     });
@@ -168,6 +175,7 @@ function unemploymentField(code: string, fips: string, bls: Map<string, BlsLates
   }
   return field("unemployment", "sourced", "BLS-LAUS", "Seasonally adjusted LAUS unemployment rate.", {
     value: `${hit.value}%`,
+    numeric: Number(hit.value),
     as_of: `${hit.period_name} ${hit.year}`,
     provenance: hit.provenance
   });
@@ -184,6 +192,7 @@ function populationFromCensus(
   if (!hit) return field("population", "error", "CENSUS-ACS5", census.error ?? "State missing from Census response.");
   return field("population", "sourced", "CENSUS-ACS5", "Census ACS 5-year 2023 total population.", {
     value: Number(hit.value).toLocaleString("en-US"),
+    numeric: Number(hit.value),
     as_of: "ACS 2019–2023",
     provenance: hit.provenance
   });
@@ -196,6 +205,46 @@ const FBI_FIELD = (): CardField =>
     "FBI-CDE",
     "FBI Crime Data Explorer requires an api.data.gov key and a verified response contract; not wired."
   );
+
+const NAME_TO_CODE = new Map(JURISDICTIONS.map((j) => [j.name, j.code]));
+
+function releasesByCode(doj: DojFeed): Map<string, NatsecRelease[]> {
+  const by = new Map<string, NatsecRelease[]>();
+  for (const r of doj.releases) {
+    const codes = new Set(r.offices.flatMap((o) => usaoToCodes(o, NAME_TO_CODE)));
+    for (const code of codes) {
+      const list = by.get(code) ?? [];
+      list.push({ title: r.title, date: r.date, url: r.url, offices: r.offices, matched_term: r.matched_term, provenance: r.provenance });
+      by.set(code, list);
+    }
+  }
+  return by;
+}
+
+function dojField(code: string, doj: DojFeed, releases: NatsecRelease[]): CardField {
+  if (code === "AS") {
+    return field("doj_natsec", "not-published", "DOJ-PRESS", "American Samoa has no U.S. Attorney's Office; no DOJ attribution.");
+  }
+  if (!doj.feed) {
+    return field("doj_natsec", "error", "DOJ-PRESS", `DOJ press API failed: ${doj.errors.slice(0, 2).join("; ") || "no response"}`);
+  }
+  const partial = doj.pages_ok < doj.pages_total ? ` Partial feed: ${doj.pages_ok}/${doj.pages_total} pages.` : "";
+  const shared = code === "GU" || code === "MP" ? " Shared USAO district (Guam & NMI)." : "";
+  return field(
+    "doj_natsec",
+    "sourced",
+    "DOJ-PRESS",
+    "NSD / National Security-tagged DOJ releases issued by this jurisdiction's USAO in the fetched window. Charges are allegations." +
+      shared +
+      partial,
+    {
+      value: releases.length.toLocaleString("en-US"),
+      numeric: releases.length,
+      as_of: doj.feed.retrieved_at.slice(0, 10),
+      provenance: doj.feed
+    }
+  );
+}
 
 export async function buildJurisdictionCards(opts: { fresh?: boolean } = {}): Promise<CardBuildResult> {
   if (!opts.fresh && cache && Date.now() - cache.at < CACHE_TTL_MS) return cache.result;
@@ -219,6 +268,14 @@ export async function buildJurisdictionCards(opts: { fresh?: boolean } = {}): Pr
     census = { byFips: new Map(), error: e instanceof Error ? e.message : "Census fetch error" };
   }
 
+  let doj: DojFeed = { releases: [], errors: [], pages_ok: 0, pages_total: 0, feed: null };
+  try {
+    doj = await fetchDojNatsecReleases();
+  } catch (e) {
+    doj = { ...doj, errors: [e instanceof Error ? e.message : "DOJ fetch error"] };
+  }
+  const natsecByCode = releasesByCode(doj);
+
   const cards = await mapLimit(JURISDICTIONS, EPA_CONCURRENCY, async (j): Promise<JurisdictionCard> => {
     const ref = JURISDICTION_REFERENCE[j.code];
     const [epaFacilities, epaPenalties] = await epaFields(j.code);
@@ -228,6 +285,7 @@ export async function buildJurisdictionCards(opts: { fresh?: boolean } = {}): Pr
       population,
       epa_facilities: epaFacilities,
       epa_penalties: epaPenalties,
+      doj_natsec: dojField(j.code, doj, natsecByCode.get(j.code) ?? []),
       fbi_crime: FBI_FIELD()
     };
     const fields = CARD_FIELD_ORDER.map((f) => byId[f.id]);
@@ -241,14 +299,19 @@ export async function buildJurisdictionCards(opts: { fresh?: boolean } = {}): Pr
       lng: j.lng,
       open_data_portal: JURISDICTION_ADAPTERS[j.code]?.openDataPortal ?? "",
       fields,
-      sourced_count: fields.filter((f) => f.status === "sourced").length
+      sourced_count: fields.filter((f) => f.status === "sourced").length,
+      natsec_releases: natsecByCode.get(j.code) ?? [],
+      outliers: []
     };
   });
+
+  const outliers = computeOutliers(cards);
+  for (const c of cards) c.outliers = outliers.get(c.code) ?? [];
 
   const summary: Record<CardFieldStatus, number> = { sourced: 0, "awaiting-source": 0, "not-published": 0, error: 0 };
   for (const c of cards) for (const f of c.fields) summary[f.status]++;
 
-  const result: CardBuildResult = { generated_at: new Date().toISOString(), count: cards.length, summary, cards };
+  const result: CardBuildResult = { generated_at: new Date().toISOString(), count: cards.length, summary, outlier_method: OUTLIER_METHOD, cards };
   cache = { at: Date.now(), result };
   return result;
 }

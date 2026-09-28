@@ -46,3 +46,16 @@ export const WORLDBANK_ISO3: Record<string, string> = {
   AS: "ASM",
   MP: "MNP"
 };
+
+/**
+ * Map a DOJ "USAO - <District>" component to jurisdiction codes. The Guam
+ * district also covers the Northern Mariana Islands; American Samoa has no
+ * USAO, so it never receives an attribution.
+ */
+export function usaoToCodes(office: string, nameToCode: Map<string, string>): string[] {
+  const district = office.replace(/^USAO - /, "").trim();
+  if (district === "Guam & Northern Mariana Islands") return ["GU", "MP"];
+  if (district === "Virgin Islands") return ["VI"];
+  const code = nameToCode.get(district.split(",")[0].trim());
+  return code ? [code] : [];
+}

@@ -7,7 +7,9 @@
  * I2 every card has FIPS (2 digits) and a capital
  * I3 every card carries the same ordered field ids
  * I4 sourced fields: non-null value + provenance (http 200, source_url, 64-hex sha256)
- * I5 non-sourced fields: value null
+ * I5 non-sourced fields: value null and numeric null
+ * I6 outliers reference a sourced field on the same card with |z| > 3.5
+ * I7 natsec releases: justice.gov url, http-200 provenance, count equals doj_natsec
  */
 const EXPECTED = [
   "AL","AK","AZ","AR","CA","CO","CT","DE","DC","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA",
@@ -42,15 +44,28 @@ for (const card of data.cards) {
       if (f.value == null) fail(`I4 ${card.code}.${f.id} sourced without value`);
       if (!p || p.http_status !== 200 || !p.source_url || !/^[0-9a-f]{64}$/.test(p.sha256))
         fail(`I4 ${card.code}.${f.id} bad provenance`);
-    } else if (f.value != null) {
+    } else if (f.value != null || f.numeric != null) {
       fail(`I5 ${card.code}.${f.id} ${f.status} but has value`);
     }
   }
+  for (const o of card.outliers) {
+    const f = card.fields.find((x) => x.id === o.field_id);
+    if (!f || f.status !== "sourced" || f.value !== o.value) fail(`I6 ${card.code}.${o.field_id} outlier not on sourced value`);
+    if (!(Math.abs(o.modified_z) > 3.5)) fail(`I6 ${card.code}.${o.field_id} |z| <= 3.5`);
+  }
+  const doj = card.fields.find((x) => x.id === "doj_natsec");
+  for (const r of card.natsec_releases) {
+    if (!/^https:\/\/www\.justice\.gov\//.test(r.url)) fail(`I7 ${card.code} non-justice.gov url ${r.url}`);
+    if (r.provenance?.http_status !== 200 || !/^[0-9a-f]{64}$/.test(r.provenance?.sha256 ?? "")) fail(`I7 ${card.code} bad release provenance`);
+  }
+  if (doj?.status === "sourced" && doj.numeric !== card.natsec_releases.length) fail(`I7 ${card.code} doj count mismatch`);
 }
 
 console.log(`cards: ${data.cards.length}  summary: ${JSON.stringify(data.summary)}`);
+console.log(`outlier method: ${data.outlier_method}`);
 for (const card of data.cards) {
   console.log(`${card.code}  ${card.fields.map((f) => `${f.id}=${f.status === "sourced" ? f.value : f.status}`).join("  ")}`);
+  for (const o of card.outliers) console.log(`    outlier ${o.field_id}=${o.value} z=${o.modified_z} (${o.direction}, median ${o.median}, n=${o.n})`);
 }
 if (failures.length) {
   console.error(`\nFAIL (${failures.length}):\n` + failures.join("\n"));
