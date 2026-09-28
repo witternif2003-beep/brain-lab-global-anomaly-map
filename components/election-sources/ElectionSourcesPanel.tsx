@@ -31,11 +31,11 @@ function Row({ r }: { r: OfficeRow }) {
   const [open, setOpen] = useState(false);
   const p = r.probe;
   return (
-    <li className="rounded-[28px] bg-gradient-to-br from-[#06152d]/70 via-[#030e20]/60 to-[#010712]/70 backdrop-blur-2xl border-2 border-[#00e5ff]/40 p-4 space-y-2 shadow-[0_8px_40px_rgba(0,229,255,0.15),inset_0_1px_3px_rgba(0,229,255,0.3)] hover:border-[#00e5ff]/80 hover:shadow-[0_8px_50px_rgba(0,229,255,0.3)] transition-all duration-300">
+    <li className="list-none min-w-0 rounded-[28px] bg-gradient-to-br from-[#06152d]/70 via-[#030e20]/60 to-[#010712]/70 backdrop-blur-2xl border-2 border-[#00e5ff]/40 p-4 space-y-2 shadow-[0_8px_40px_rgba(0,229,255,0.15),inset_0_1px_3px_rgba(0,229,255,0.3)] hover:border-[#00e5ff]/80 hover:shadow-[0_8px_50px_rgba(0,229,255,0.3)] transition-all duration-300">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="px-2.5 py-0.5 rounded-full border border-[#00e5ff]/70 text-[#00e5ff] text-[11px] font-bold">{r.code}</span>
-          <span className="text-sm sm:text-base font-extrabold tracking-wide truncate text-transparent bg-clip-text bg-gradient-to-r from-[#00e5ff] via-[#69f0ae] to-white">{r.name}</span>
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className="shrink-0 min-w-[2.75rem] text-center px-2.5 py-0.5 rounded-full border-2 border-[#00e5ff]/70 bg-[#061836]/70 text-[#00e5ff] text-[11px] font-bold shadow-[0_0_10px_rgba(0,229,255,0.35)]">{r.code}</span>
+          <span className="min-w-0 truncate text-sm sm:text-base font-extrabold tracking-wide text-[#e0f7fa] [text-shadow:0_0_12px_rgba(0,229,255,0.55)]">{r.name}</span>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
           <Pill className={BAND_STYLE[r.reliability.band]} title={r.reliability.reason}>
@@ -202,7 +202,7 @@ export default function ElectionSourcesPanel() {
         {loading && report && <div className="px-4 pt-3 text-xs text-[#80deea]">Re-probing…</div>}
         {error && <div className="px-4 py-6 text-xs text-[#ff80ab]">Ops request failed: {error}</div>}
         {report && rows.length === 0 && <div className="px-4 py-6 text-xs text-[#80deea]">No offices in this filter.</div>}
-        <ul className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <ul className="list-none p-0 m-0 grid grid-cols-1 lg:grid-cols-2 gap-3">
           {rows.map((r) => (
             <Row key={r.code} r={r} />
           ))}
