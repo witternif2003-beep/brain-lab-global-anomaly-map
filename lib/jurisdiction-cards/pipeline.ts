@@ -10,9 +10,13 @@ import { fetchEpaEcho } from "../connectors/epa-echo";
 import { fetchWorldBank } from "../connectors/worldbank";
 import { DojFeed, fetchDojNatsecReleases } from "../connectors/doj";
 import { fetchFbiViolentCrime } from "../connectors/fbi-cde";
+import { fetchFemaFiltered, type FemaFilteredFetch } from "../connectors/fema-filtered";
+import { fetchNwsAlerts, type NwsAlerts } from "../connectors/nws";
+import { fetchStateAgencyAwards, type StateAgencyAwards } from "../connectors/usaspending";
 import { makeProvenance, Provenance } from "../provenance";
 import { BLS_LAUS_UNPUBLISHED, JURISDICTION_REFERENCE, WORLDBANK_ISO3, usaoToCodes } from "./reference";
 import { OUTLIER_METHOD, computeOutliers } from "./outliers";
+import { buildHandbookEntries, type HandbookCtx, type SourceResult } from "./handbook";
 import {
   CARD_FIELD_ORDER,
   CardBuildResult,
@@ -28,6 +32,9 @@ const CENSUS_PEP_CSV = `https://www2.census.gov/programs-surveys/popest/datasets
 const FBI_YEAR = new Date().getUTCFullYear() - 1;
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 const EPA_CONCURRENCY = 8;
+const FEMA_OPEN_V2 = "https://www.fema.gov/api/open/v2/DisasterDeclarationsSummaries";
+const FAST_CONCURRENCY = 24;
+const USASPENDING_CONCURRENCY = 12;
 
 let cache: { at: number; result: CardBuildResult } | null = null;
 
@@ -289,6 +296,30 @@ export async function buildJurisdictionCards(opts: { fresh?: boolean } = {}): Pr
   }
   const natsecByCode = releasesByCode(doj);
 
+  // Handbook source maps (FEMA declarations, NWS alerts, USAspending FY
+  // obligations) — one small request per jurisdiction per source, fetched up
+  // front in parallel so the per-card loop stays a pure assembly step.
+  const settle = async <T>(fn: () => Promise<T>): Promise<SourceResult<T>> => {
+    try {
+      return { ok: true, data: await fn() };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : "fetch error" };
+    }
+  };
+  const codes = JURISDICTIONS.map((j) => j.code);
+  const [femaRes, nwsRes, usaRes] = await Promise.all([
+    mapLimit(codes, FAST_CONCURRENCY, (c) =>
+      settle<FemaFilteredFetch>(() =>
+        fetchFemaFiltered({ baseUrl: FEMA_OPEN_V2, stateCode: c, sourceId: "FEMA-DECL", jurisdiction: c, rows: 1 })
+      )
+    ),
+    mapLimit(codes, FAST_CONCURRENCY, (c) => settle<NwsAlerts>(() => fetchNwsAlerts({ code: c }))),
+    mapLimit(codes, USASPENDING_CONCURRENCY, (c) => settle<StateAgencyAwards>(() => fetchStateAgencyAwards({ stateCode: c })))
+  ]);
+  const femaByCode = new Map(codes.map((c, i) => [c, femaRes[i]]));
+  const nwsByCode = new Map(codes.map((c, i) => [c, nwsRes[i]]));
+  const usaByCode = new Map(codes.map((c, i) => [c, usaRes[i]]));
+
   const cards = await mapLimit(JURISDICTIONS, EPA_CONCURRENCY, async (j): Promise<JurisdictionCard> => {
     const ref = JURISDICTION_REFERENCE[j.code];
     const [epaFacilities, epaPenalties] = await epaFields(j.code);
@@ -304,6 +335,13 @@ export async function buildJurisdictionCards(opts: { fresh?: boolean } = {}): Pr
       fbi_crime: await fbiField(j.code, j.name)
     };
     const fields = CARD_FIELD_ORDER.map((f) => byId[f.id]);
+    const hctx: HandbookCtx = {
+      code: j.code,
+      fields: byId,
+      fema: femaByCode.get(j.code) ?? { ok: false, error: "missing FEMA result" },
+      nws: nwsByCode.get(j.code) ?? { ok: false, error: "missing NWS result" },
+      usa: usaByCode.get(j.code) ?? { ok: false, error: "missing USAspending result" }
+    };
     return {
       code: j.code,
       name: j.name,
@@ -316,7 +354,8 @@ export async function buildJurisdictionCards(opts: { fresh?: boolean } = {}): Pr
       fields,
       sourced_count: fields.filter((f) => f.status === "sourced").length,
       natsec_releases: natsecByCode.get(j.code) ?? [],
-      outliers: []
+      outliers: [],
+      handbook: buildHandbookEntries(hctx)
     };
   });
 

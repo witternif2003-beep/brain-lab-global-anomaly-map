@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { ExternalLink, RefreshCw, Search } from "lucide-react";
 import type { CardBuildResult, CardFieldStatus, JurisdictionCard } from "../../lib/jurisdiction-cards/types";
+import { HANDBOOK_SEED_CAVEAT, HANDBOOK_SOURCE_URL } from "../../lib/jurisdiction-feeds/handbook-seed";
 
 const STATUS_STYLE: Record<CardFieldStatus, string> = {
   sourced: "text-[#69f0ae] border-[#00ff88]/70 bg-[#002b1b]/80 shadow-[0_0_10px_rgba(0,255,136,0.35)]",
@@ -82,6 +83,45 @@ function Card({ card }: { card: JurisdictionCard }) {
             </div>
           ))}
         </div>
+      )}
+      {(card.handbook?.length ?? 0) > 0 && (
+        <details
+          className="text-[10px] rounded-2xl bg-[#001a12]/50 border border-[#00ff88]/40 px-3 py-2 backdrop-blur-md"
+          data-testid={`handbook-${card.code}`}
+        >
+          <summary className="cursor-pointer font-bold text-[#69f0ae]">
+            Federal footprint ({card.handbook.filter((h) => h.status === "sourced").length}/{card.handbook.length} live) —
+            1988 handbook universe
+          </summary>
+          <ul className="mt-1 space-y-1">
+            {card.handbook.map((h) => (
+              <li key={h.id} className="rounded-xl bg-[#020b18]/50 border border-[#00e5ff]/15 px-2 py-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[#e0f7fa] font-semibold truncate" title={`${h.name} • ${h.branch}/${h.category}`}>
+                    {h.name}
+                  </span>
+                  <span className={`${PILL} px-2 py-0.5 text-[8px] shrink-0 ${STATUS_STYLE[h.status]}`}>{h.status}</span>
+                </div>
+                <div className="flex items-center justify-between gap-2 text-[#80deea]/70">
+                  <span className="text-white font-bold">{h.value ?? "—"}</span>
+                  {h.sources.length > 0 && <span className="text-[9px] shrink-0">{h.sources.join(" + ")}</span>}
+                </div>
+                {!!h.note && <div className="text-[9px] text-[#80deea]/50">{h.note}</div>}
+                {h.provenance && (
+                  <div className="text-[9px] text-[#00e5ff]/40 truncate" title={h.provenance.sha256}>
+                    sha256 {h.provenance.sha256.slice(0, 16)}… • {h.provenance.retrieved_at}
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+          <div className="mt-1 text-[9px] text-[#80deea]/50">
+            Directory: {HANDBOOK_SEED_CAVEAT}{" "}
+            <a href={HANDBOOK_SOURCE_URL} target="_blank" rel="noreferrer" className="text-[#00e5ff] hover:underline">
+              archive.org record
+            </a>
+          </div>
+        </details>
       )}
       {card.natsec_releases.length > 0 && (
         <details

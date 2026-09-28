@@ -34,8 +34,10 @@ export default function JurisdictionCardsPage() {
         </div>
         <p className="text-xs sm:text-[13px] text-[#b2ebf2] leading-relaxed">
           One card per jurisdiction with an identical field set. Values come only from live public APIs (BLS LAUS, EPA ECHO,
-          Census PEP, World Bank, justice.gov, FBI CDE) with source URL, retrieval time and SHA-256 attached. Fields without a source
-          stay empty and are labelled awaiting-source, not-published or error.
+          Census PEP, World Bank, justice.gov, FBI CDE, OpenFEMA, NWS, USAspending) with source URL, retrieval time and SHA-256
+          attached. Fields without a source stay empty and are labelled awaiting-source, not-published or error. Each card also
+          carries a Federal Footprint section resolving all 42 entities of the 1988 American Information Handbook universe to live
+          per-jurisdiction metrics where a public feed exists.
         </p>
       </div>
       <JurisdictionCardGrid />

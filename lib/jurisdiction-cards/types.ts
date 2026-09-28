@@ -42,6 +42,24 @@ export interface JurisdictionCard {
   sourced_count: number;
   natsec_releases: NatsecRelease[];
   outliers: OutlierFlag[];
+  /** 1988 American Information Handbook entity universe, resolved live. */
+  handbook: HandbookEntry[];
+}
+
+/**
+ * One handbook entity as resolved for a jurisdiction: live metric text when
+ * at least one wired feed published it, otherwise an honest status + reason.
+ */
+export interface HandbookEntry {
+  id: string;
+  name: string;
+  branch: string;
+  category: string;
+  status: CardFieldStatus;
+  sources: string[];
+  value: string | null;
+  note: string;
+  provenance: Provenance | null;
 }
 
 /** A public DOJ press release attributed to this jurisdiction via its USAO. */
