@@ -18,6 +18,11 @@ export interface FrAgencyCount {
   provenance: Provenance;
 }
 
+export interface FederalRegisterResult {
+  counts: Map<string, FrAgencyCount>;
+  errors: string[];
+}
+
 async function fetchOne(slug: string, gte: string): Promise<FrAgencyCount> {
   const url = `${FR_DOCS}?conditions%5Bagencies%5D%5B%5D=${encodeURIComponent(slug)}&conditions%5Bpublication_date%5D%5Bgte%5D=${gte}&per_page=1`;
   const ctrl = new AbortController();
@@ -58,20 +63,34 @@ async function fetchOne(slug: string, gte: string): Promise<FrAgencyCount> {
   };
 }
 
-export async function fetchFederalRegisterCounts(slugs: string[]): Promise<Map<string, FrAgencyCount>> {
+const FR_BATCH = 6;
+const FR_RETRY_WAIT_MS = 1500;
+
+export async function fetchFederalRegisterCounts(slugs: string[]): Promise<FederalRegisterResult> {
   const gte = new Date(Date.now() - 365 * 86400000).toISOString().slice(0, 10);
-  const out = new Map<string, FrAgencyCount>();
-  const settled = await Promise.all(slugs.map(async (s) => {
-    try {
-      return { ok: true as const, v: await fetchOne(s, gte) };
-    } catch (e) {
-      return { ok: false as const, slug: s, error: e instanceof Error ? e.message : "fetch error" };
+  const counts = new Map<string, FrAgencyCount>();
+  let pending = [...slugs];
+  // Batched fetch + one retry pass: 36-way parallel bursts get throttled.
+  for (let pass = 0; pass < 2 && pending.length > 0; pass++) {
+    if (pass > 0) await new Promise((r) => setTimeout(r, FR_RETRY_WAIT_MS));
+    const failed: string[] = [];
+    for (let i = 0; i < pending.length; i += FR_BATCH) {
+      const batch = pending.slice(i, i + FR_BATCH);
+      const settled = await Promise.all(batch.map(async (s) => {
+        try {
+          return { ok: true as const, v: await fetchOne(s, gte) };
+        } catch {
+          return { ok: false as const, slug: s };
+        }
+      }));
+      for (const r of settled) {
+        if (r.ok) counts.set(r.v.slug, r.v);
+        else failed.push(r.slug);
+      }
     }
-  }));
-  const failures = settled.filter((r) => !r.ok);
-  if (failures.length > 0) {
-    throw new Error(`Federal Register failures: ${failures.map((f) => `${(f as { slug: string }).slug}`).join(", ")}`);
+    pending = failed;
   }
-  for (const r of settled) if (r.ok) out.set(r.v.slug, r.v);
-  return out;
+  const errors = pending.map((s) => `${s}: unavailable after retry`);
+  if (counts.size === 0) throw new Error(`Federal Register total failure: ${errors.slice(0, 3).join("; ")}`);
+  return { counts, errors };
 }

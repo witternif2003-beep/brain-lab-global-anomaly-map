@@ -15,7 +15,7 @@ import { fetchNwsAlerts, type NwsAlerts } from "../connectors/nws";
 import { fetchStateAgencyAwards, type StateAgencyAwards } from "../connectors/usaspending";
 import { fetchFdicCount, type FdicCount } from "../connectors/fdic";
 import { fetchUsgsCount, type UsgsCount } from "../connectors/usgs";
-import { fetchFederalRegisterCounts, type FrAgencyCount } from "../connectors/federal-register";
+import { fetchFederalRegisterCounts, type FederalRegisterResult } from "../connectors/federal-register";
 import { makeProvenance, Provenance } from "../provenance";
 import { BLS_LAUS_UNPUBLISHED, JURISDICTION_REFERENCE, WORLDBANK_ISO3, usaoToCodes } from "./reference";
 import { OUTLIER_METHOD, computeOutliers } from "./outliers";
@@ -322,7 +322,7 @@ export async function buildJurisdictionCards(opts: { fresh?: boolean } = {}): Pr
     mapLimit(JURISDICTIONS, FAST_CONCURRENCY, (j) =>
       settle<UsgsCount>(() => fetchUsgsCount({ code: j.code, lat: j.lat, lng: j.lng }))
     ),
-    settle<Map<string, FrAgencyCount>>(() => fetchFederalRegisterCounts(FR_SLUGS))
+    settle<FederalRegisterResult>(() => fetchFederalRegisterCounts(FR_SLUGS))
   ]);
   const femaByCode = new Map(codes.map((c, i) => [c, femaRes[i]]));
   const nwsByCode = new Map(codes.map((c, i) => [c, nwsRes[i]]));

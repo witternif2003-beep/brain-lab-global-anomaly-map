@@ -25,7 +25,7 @@ import type { NwsAlerts } from "../connectors/nws";
 import { currentFy, type StateAgencyAwards } from "../connectors/usaspending";
 import type { FdicCount } from "../connectors/fdic";
 import { USGS_MIN_MAG, USGS_RADIUS_KM, USGS_WINDOW_DAYS, type UsgsCount } from "../connectors/usgs";
-import type { FrAgencyCount } from "../connectors/federal-register";
+import type { FederalRegisterResult } from "../connectors/federal-register";
 import type { CardField, CardFieldId, CardFieldStatus, HandbookEntry } from "./types";
 
 export type SourceResult<T> = { ok: true; data: T } | { ok: false; error: string };
@@ -39,21 +39,51 @@ export interface HandbookCtx {
   fdic: SourceResult<FdicCount>;
   usgs: SourceResult<UsgsCount>;
   /** National Federal Register counts — same object shared by all 56 cards. */
-  fr: SourceResult<Map<string, FrAgencyCount>>;
+  fr: SourceResult<FederalRegisterResult>;
 }
 
-/** Federal Register slugs for entities with no per-state series (verified live). */
+/**
+ * Federal Register slugs (all verified live 2026-09-28 with real counts).
+ * Departments + big agencies use them as fallback-only (shown only when no
+ * jurisdiction-specific metric exists); feed-less entities use them primary.
+ */
 export const FR_SLUGS = [
+  "state-department",
+  "treasury-department",
+  "defense-department",
+  "justice-department",
+  "interior-department",
+  "agriculture-department",
+  "commerce-department",
+  "labor-department",
+  "health-and-human-services-department",
+  "housing-and-urban-development-department",
+  "transportation-department",
+  "energy-department",
+  "education-department",
+  "veterans-affairs-department",
+  "environmental-protection-agency",
+  "national-aeronautics-and-space-administration",
+  "national-science-foundation",
+  "general-services-administration",
+  "small-business-administration",
+  "federal-emergency-management-agency",
+  "securities-and-exchange-commission",
+  "federal-communications-commission",
+  "social-security-administration",
+  "export-import-bank",
   "federal-trade-commission",
   "federal-election-commission",
   "commodity-futures-trading-commission",
   "nuclear-regulatory-commission",
   "federal-reserve-system",
+  "central-intelligence-agency",
   "national-credit-union-administration",
   "national-transportation-safety-board",
   "national-labor-relations-board",
   "national-archives-and-records-administration",
-  "tennessee-valley-authority"
+  "tennessee-valley-authority",
+  "federal-deposit-insurance-corporation"
 ];
 
 interface Metric {
@@ -70,6 +100,8 @@ interface EntityWire {
   fdic?: boolean;
   usgs?: boolean;
   fr?: string;
+  /** Show the FR national metric only when no jurisdiction metric exists. */
+  frFallbackOnly?: boolean;
   extraNote?: string;
   unpublishable?: string;
 }
@@ -82,47 +114,47 @@ const FR_NOTE =
 const GSE_NOTE = "GSE; outside the USAspending award universe, no public per-state series.";
 
 const WIRE: Record<string, EntityWire> = {
-  "DEPT-STATE": { nws: true, fema: true, awards: "DOS" },
-  "DEPT-TREASURY": { awards: "TREAS" },
-  "DEPT-DEFENSE": { awards: "DOD", usgs: true, extraNote: USGS_METHOD },
-  "DEPT-JUSTICE": { shared: ["fbi_crime", "doj_natsec"], awards: "DOJ" },
-  "DEPT-INTERIOR": { awards: "DOI", usgs: true, extraNote: USGS_METHOD },
-  "DEPT-AGRICULTURE": { awards: "USDA" },
-  "DEPT-COMMERCE": { shared: ["population"], awards: "DOC" },
-  "DEPT-LABOR": { shared: ["unemployment"], awards: "DOL" },
-  "DEPT-HHS": { awards: "HHS" },
-  "DEPT-HUD": { awards: "HUD" },
-  "DEPT-TRANSPORTATION": { awards: "DOT" },
-  "DEPT-ENERGY": { awards: "DOE" },
-  "DEPT-EDUCATION": { awards: "ED" },
-  "DEPT-VA": { awards: "VA" },
-  "AGENCY-EPA": { shared: ["epa_facilities", "epa_penalties"], awards: "EPA" },
-  "AGENCY-NASA": { awards: "NASA" },
-  "AGENCY-NSF": { awards: "NSF" },
-  "AGENCY-GSA": { awards: "GSA" },
-  "AGENCY-SBA": { awards: "SBA" },
-  "AGENCY-FEMA": { fema: true, extraNote: "FEMA award dollars roll up under DHS in USAspending; declarations shown." },
-  "AGENCY-SEC": { awards: "SEC" },
-  "AGENCY-FCC": { awards: "FCC" },
-  "AGENCY-FTC": { awards: "FTC", fr: "federal-trade-commission", extraNote: FR_NOTE },
-  "AGENCY-FEC": { awards: "FEC", fr: "federal-election-commission", extraNote: FR_NOTE },
-  "AGENCY-CFTC": { awards: "CFTC", fr: "commodity-futures-trading-commission", extraNote: FR_NOTE },
-  "AGENCY-FDIC": { awards: "FDIC", fdic: true },
-  "AGENCY-NRC": { awards: "NRC", fr: "nuclear-regulatory-commission", extraNote: FR_NOTE },
-  "AGENCY-FED": { fr: "federal-reserve-system", extraNote: FR_NOTE },
-  "AGENCY-CIA": { unpublishable: "No public per-jurisdiction data (classified budgets)." },
-  "AGENCY-SSA": { awards: "SSA" },
-  "AGENCY-NARA": { awards: "NARA", fr: "national-archives-and-records-administration", extraNote: FR_NOTE },
-  "AGENCY-NCUA": { awards: "NCUA", fr: "national-credit-union-administration", extraNote: FR_NOTE },
-  "AGENCY-NLRB": { awards: "NLRB", fr: "national-labor-relations-board", extraNote: FR_NOTE },
-  "AGENCY-NTSB": { awards: "NTSB", fr: "national-transportation-safety-board", extraNote: FR_NOTE },
+  "DEPT-STATE": { nws: true, fema: true, awards: "DOS", fr: "state-department", frFallbackOnly: true },
+  "DEPT-TREASURY": { awards: "TREAS", fr: "treasury-department", frFallbackOnly: true },
+  "DEPT-DEFENSE": { awards: "DOD", usgs: true, fr: "defense-department", frFallbackOnly: true, extraNote: USGS_METHOD },
+  "DEPT-JUSTICE": { shared: ["fbi_crime", "doj_natsec"], awards: "DOJ", fr: "justice-department", frFallbackOnly: true },
+  "DEPT-INTERIOR": { awards: "DOI", usgs: true, fr: "interior-department", frFallbackOnly: true, extraNote: USGS_METHOD },
+  "DEPT-AGRICULTURE": { awards: "USDA", fr: "agriculture-department", frFallbackOnly: true },
+  "DEPT-COMMERCE": { shared: ["population"], awards: "DOC", fr: "commerce-department", frFallbackOnly: true },
+  "DEPT-LABOR": { shared: ["unemployment"], awards: "DOL", fr: "labor-department", frFallbackOnly: true },
+  "DEPT-HHS": { awards: "HHS", fr: "health-and-human-services-department", frFallbackOnly: true },
+  "DEPT-HUD": { awards: "HUD", fr: "housing-and-urban-development-department", frFallbackOnly: true },
+  "DEPT-TRANSPORTATION": { awards: "DOT", fr: "transportation-department", frFallbackOnly: true },
+  "DEPT-ENERGY": { awards: "DOE", fr: "energy-department", frFallbackOnly: true },
+  "DEPT-EDUCATION": { awards: "ED", fr: "education-department", frFallbackOnly: true },
+  "DEPT-VA": { awards: "VA", fr: "veterans-affairs-department", frFallbackOnly: true },
+  "AGENCY-EPA": { shared: ["epa_facilities", "epa_penalties"], awards: "EPA", fr: "environmental-protection-agency", frFallbackOnly: true },
+  "AGENCY-NASA": { awards: "NASA", fr: "national-aeronautics-and-space-administration", frFallbackOnly: true },
+  "AGENCY-NSF": { awards: "NSF", fr: "national-science-foundation", frFallbackOnly: true },
+  "AGENCY-GSA": { awards: "GSA", fr: "general-services-administration", frFallbackOnly: true },
+  "AGENCY-SBA": { awards: "SBA", fr: "small-business-administration", frFallbackOnly: true },
+  "AGENCY-FEMA": { fema: true, fr: "federal-emergency-management-agency", frFallbackOnly: true, extraNote: "FEMA award dollars roll up under DHS in USAspending; declarations shown." },
+  "AGENCY-SEC": { awards: "SEC", fr: "securities-and-exchange-commission", frFallbackOnly: true },
+  "AGENCY-FCC": { awards: "FCC", fr: "federal-communications-commission", frFallbackOnly: true },
+  "AGENCY-FTC": { awards: "FTC", fr: "federal-trade-commission" },
+  "AGENCY-FEC": { awards: "FEC", fr: "federal-election-commission" },
+  "AGENCY-CFTC": { awards: "CFTC", fr: "commodity-futures-trading-commission" },
+  "AGENCY-FDIC": { awards: "FDIC", fdic: true, fr: "federal-deposit-insurance-corporation", frFallbackOnly: true },
+  "AGENCY-NRC": { awards: "NRC", fr: "nuclear-regulatory-commission" },
+  "AGENCY-FED": { fr: "federal-reserve-system" },
+  "AGENCY-CIA": { fr: "central-intelligence-agency" },
+  "AGENCY-SSA": { awards: "SSA", fr: "social-security-administration", frFallbackOnly: true },
+  "AGENCY-NARA": { awards: "NARA", fr: "national-archives-and-records-administration" },
+  "AGENCY-NCUA": { awards: "NCUA", fr: "national-credit-union-administration" },
+  "AGENCY-NLRB": { awards: "NLRB", fr: "national-labor-relations-board" },
+  "AGENCY-NTSB": { awards: "NTSB", fr: "national-transportation-safety-board" },
   "GSE-FANNIE-MAE": { unpublishable: "In federal conservatorship; " + GSE_NOTE.slice(5) },
   "GSE-FREDDIE-MAC": { unpublishable: "In federal conservatorship; " + GSE_NOTE.slice(5) },
   "GSE-FHLBANK": { unpublishable: GSE_NOTE },
   "GSE-GINNIE-MAE": { unpublishable: GSE_NOTE },
-  "GSE-TVA": { awards: "TVA", fr: "tennessee-valley-authority", extraNote: FR_NOTE },
+  "GSE-TVA": { awards: "TVA", fr: "tennessee-valley-authority" },
   "GSE-AMTRAK": { unpublishable: "Amtrak is a grant recipient, not an awarding agency; no per-state series." },
-  "GSE-EXIM": { awards: "EXIM" },
+  "GSE-EXIM": { awards: "EXIM", fr: "export-import-bank", frFallbackOnly: true },
   "GSE-FARMER-MAC": { unpublishable: GSE_NOTE }
 };
 
@@ -154,6 +186,7 @@ export function buildHandbookEntries(ctx: HandbookCtx): HandbookEntry[] {
     const w: EntityWire = WIRE[e.id] ?? {};
     const metrics: Metric[] = [];
     const errors: string[] = [];
+    const notes: string[] = w.extraNote ? [w.extraNote] : [];
 
     for (const id of w.shared ?? []) {
       const m = sharedMetric(ctx.fields[id]);
@@ -209,16 +242,22 @@ export function buildHandbookEntries(ctx: HandbookCtx): HandbookEntry[] {
       }
     }
     if (w.fr) {
+      const otherwiseEmpty = metrics.length === 0;
       if (ctx.fr.ok) {
-        const hit = ctx.fr.data.get(w.fr);
+        const hit = ctx.fr.data.counts.get(w.fr);
         if (hit) {
-          metrics.push({
-            text: `${hit.count.toLocaleString("en-US")} FR DOCS (NATIONAL, 12 MO)`,
-            sourceId: "FED-REGISTER",
-            provenance: hit.provenance
-          });
+          if (!(w.frFallbackOnly && !otherwiseEmpty)) {
+            metrics.push({
+              text: `${hit.count.toLocaleString("en-US")} FR DOCS (NATIONAL, 12 MO)`,
+              sourceId: "FED-REGISTER",
+              provenance: hit.provenance
+            });
+            notes.push(FR_NOTE);
+          }
+        } else if (otherwiseEmpty) {
+          errors.push(`FED-REGISTER: ${w.fr} unavailable this build`);
         }
-      } else {
+      } else if (otherwiseEmpty) {
         errors.push(`FED-REGISTER: ${ctx.fr.error}`);
       }
     }
@@ -239,7 +278,7 @@ export function buildHandbookEntries(ctx: HandbookCtx): HandbookEntry[] {
     let note: string;
     if (metrics.length > 0) {
       status = "sourced";
-      note = w.extraNote ?? "";
+      note = notes.join(" ");
     } else if (errors.length > 0) {
       status = "error";
       note = errors.slice(0, 2).join("; ");
