@@ -221,7 +221,7 @@ async function fbiField(code: string, name: string): Promise<CardField> {
 
 const NAME_TO_CODE = new Map(JURISDICTIONS.map((j) => [j.name, j.code]));
 
-function releasesByCode(doj: DojFeed): Map<string, NatsecRelease[]> {
+export function releasesByCode(doj: DojFeed): Map<string, NatsecRelease[]> {
   const by = new Map<string, NatsecRelease[]>();
   for (const r of doj.releases) {
     const codes = new Set(r.offices.flatMap((o) => usaoToCodes(o, NAME_TO_CODE)));
