@@ -98,7 +98,13 @@ export async function GET(req: Request) {
     tryFetch(`${base}/api/3/action/package_search?q=anomaly&rows=3`)
   ]);
 
-  if (!soc && !ckn) {
+  // Jurisdictions whose mapped feed lives off-portal (arcgis/csv/fema)
+  // must not be failed early when the dead portal host itself is
+  // unreachable — fall through to the mapped-feed probe below.
+  const hasAltFeed = (STATE_DATASETS[code] ?? []).some(
+    (c) => (c.platform === "arcgis" || c.platform === "csv" || c.platform === "fema") && (c.service_url ?? "").length > 0
+  );
+  if (!soc && !ckn && !hasAltFeed) {
     return NextResponse.json({
       code,
       portal: base,
