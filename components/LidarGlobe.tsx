@@ -151,6 +151,7 @@ export default function LidarGlobe() {
       container: mapElRef.current,
       center: PRESETS[0].center,
       zoom: PRESETS[0].zoom,
+      maxZoom: 19,
       maxPitch: 85,
       pixelRatio: Math.min(window.devicePixelRatio || 1, 3),
       canvasContextAttributes: { antialias: true },

@@ -62,6 +62,13 @@ export const GLOBE_SOURCES: GlobeSource[] = [
     detail: "Extruded by OSM render_height; not a survey-grade model."
   },
   {
+    id: "nasa-svs-deep-star-maps-2020",
+    label: "Deep Star Maps 2020 (4K star field behind the globe)",
+    provider: "NASA Scientific Visualization Studio (SVS 4851) — Hipparcos-2, Tycho-2, Gaia DR2",
+    url: "https://svs.gsfc.nasa.gov/4851",
+    detail: "Rendered from 1.7 billion catalogued stars; 4096×2048 JPEG converted from the published EXR. Not aligned to the map camera."
+  },
+  {
     id: "loc-habs-dc37",
     label: "HABS DC-37 — The White House (measured drawings, photos)",
     provider: "Library of Congress / NPS Heritage Documentation Programs",
