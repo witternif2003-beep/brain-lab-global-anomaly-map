@@ -18,8 +18,8 @@ export default function GodsEyeTelemetryPage() {
     return () => clearInterval(timer);
   }, []);
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6 font-mono">
-      
+    <div className="pt-6 space-y-6 font-mono">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       {/* Branded Header */}
       <PageEmblemHeader
         badgeText="GodsEYE Global Protocol Integration"
@@ -33,9 +33,13 @@ export default function GodsEyeTelemetryPage() {
           </div>
         }
       />
+      </div>
 
-      {/* Main GodsEye Interactive Vector Map */}
-      <GodsEyeMap />
+      <div className="w-full px-2 sm:px-4">
+        <GodsEyeMap />
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
 
       {/* DEDICATED FBI CAPABILITIES & RESTRICTED SYSTEMS PANEL — NSA ADMIN MODE */}
       <div id="fbi-capabilities" className="w-full scroll-mt-24">
@@ -121,6 +125,7 @@ export default function GodsEyeTelemetryPage() {
         </div>
       </div>
 
+      </div>
     </div>
   );
 }

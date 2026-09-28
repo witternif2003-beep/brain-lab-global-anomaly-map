@@ -1595,10 +1595,10 @@ export default function GodsEyeMap({
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 font-mono">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 font-mono min-w-0 [&>*]:min-w-0">
       {/* Map Surface (8 Cols) */}
-      <div className="lg:col-span-8 flex flex-col space-y-3">
-        <div className="relative w-full h-[500px] sm:h-[580px] rounded-2xl overflow-hidden border border-[#28394e] bg-[#0f172a] shadow-2xl">
+      <div className="lg:col-span-12 min-w-0 flex flex-col space-y-3">
+        <div className="relative w-full h-[calc(100dvh-6rem)] min-h-[420px] rounded-2xl overflow-hidden border border-[#28394e] bg-[#0f172a] shadow-2xl">
           {/* Background Astronomical Space Canvas with NASA Constellations and Gaia stars */}
           <canvas
             ref={starsCanvasRef}
@@ -1607,126 +1607,6 @@ export default function GodsEyeMap({
           />
           {/* Map Surface: Mount MapLibre globe container directly with transparent deep space */}
           <div ref={containerRef} className="absolute inset-0 z-10" />
-          {/* Real-time twinkling stars and NSA Admin Star Constellations */}
-          {/* UNIVERSE STAR FINDER 3D SUITE CONTROLS (App Store id1575384854 Conformal NSA Admin Glass HUD) */}
-          <div className="absolute top-3 left-3 z-20 flex flex-wrap items-center gap-1.5 p-1.5 rounded-2xl bg-[#070e1c]/85 backdrop-blur-xl border border-[#38bdf8]/40 shadow-xl text-[10px] font-mono select-none">
-            {/* Search Input */}
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#0b172a] border border-[#1e3a5f]/60">
-              <span className="text-[#38bdf8]">🔍</span>
-              <input
-                type="text"
-                placeholder="Star / Constellation / ISR Request..."
-                value={starFinderSearchQuery}
-                onChange={(e) => {
-                  setStarFinderSearchQuery(e.target.value);
-                  if (e.target.value.trim().length > 1) {
-                    const found = NASA_IAU_CATALOGUE.find((s: any) => s.name.toLowerCase().includes(e.target.value.toLowerCase()) || s.id.toLowerCase().includes(e.target.value.toLowerCase()));
-                    if (found) setSelectedAstroStar(found);
-                  }
-                }}
-                className="bg-transparent text-slate-100 placeholder-slate-500 outline-none w-28 sm:w-44 text-[10px] font-mono"
-              />
-              {starFinderSearchQuery && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setStarFinderSearchQuery('');
-                    setStarFinderNamedStarId(null);
-                  }}
-                  className="text-slate-400 hover:text-white"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-
-            {/* Constellation Toggle */}
-            <button
-              type="button"
-              onClick={() => setStarFinderShowConstellations(!starFinderShowConstellations)}
-              className={`px-2.5 py-1 rounded-xl font-bold transition-all ${
-                starFinderShowConstellations
-                  ? 'bg-[#0c284d] text-[#38bdf8] border border-[#38bdf8]/60 shadow-[0_0_8px_rgba(56,189,248,0.3)]'
-                  : 'bg-transparent text-slate-400 border border-slate-700/50 hover:text-white'
-              }`}
-              title="Toggle Constellation Vector Outlines"
-            >
-              Constellations
-            </button>
-
-            {/* Planets Toggle */}
-            <button
-              type="button"
-              onClick={() => setStarFinderShowPlanets(!starFinderShowPlanets)}
-              className={`px-2.5 py-1 rounded-xl font-bold transition-all ${
-                starFinderShowPlanets
-                  ? 'bg-[#0c284d] text-[#34d399] border border-emerald-500/60 shadow-[0_0_8px_rgba(52,211,153,0.3)]'
-                  : 'bg-transparent text-slate-400 border border-slate-700/50 hover:text-white'
-              }`}
-              title="Toggle Solar System Planets (Jupiter, Mars, Saturn, Venus)"
-            >
-              Planets
-            </button>
-
-            {/* Labels Toggle */}
-            <button
-              type="button"
-              onClick={() => setStarFinderShowLabels(!starFinderShowLabels)}
-              className={`px-2.5 py-1 rounded-xl font-bold transition-all ${
-                starFinderShowLabels
-                  ? 'bg-[#0c284d] text-[#38bdf8] border border-[#38bdf8]/60'
-                  : 'bg-transparent text-slate-400 border border-slate-700/50 hover:text-white'
-              }`}
-              title="Toggle Celestial Labels"
-            >
-              Labels {starFinderShowLabels ? "ON" : "OFF"}
-            </button>
-
-            {/* Red Night Mode (Astro Dark Adaptation) */}
-            <button
-              type="button"
-              onClick={() => setStarFinderNightMode(!starFinderNightMode)}
-              className={`px-2.5 py-1 rounded-xl font-bold transition-all ${
-                starFinderNightMode
-                  ? 'bg-red-950/90 text-red-400 border border-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]'
-                  : 'bg-transparent text-slate-400 border border-slate-700/50 hover:text-white'
-              }`}
-              title="Toggle Astronomical Monochromatic Red Night Mode"
-            >
-              Night Mode {starFinderNightMode ? "ON" : "OFF"}
-            </button>
-
-            {/* Time Shift Control (-12h .. +12h) */}
-            <div className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded-xl bg-[#0b172a] border border-[#1e3a5f]/60 text-[9px]">
-              <span className="text-slate-400">Time:</span>
-              <button
-                type="button"
-                onClick={() => setStarFinderTimeShiftHours((h) => Math.max(-12, h - 1))}
-                className="text-[#38bdf8] font-bold px-1 hover:bg-white/10 rounded"
-              >
-                -1h
-              </button>
-              <span className="text-white font-extrabold">{starFinderTimeShiftHours >= 0 ? `+${starFinderTimeShiftHours}h` : `${starFinderTimeShiftHours}h`}</span>
-              <button
-                type="button"
-                onClick={() => setStarFinderTimeShiftHours((h) => Math.min(12, h + 1))}
-                className="text-[#38bdf8] font-bold px-1 hover:bg-white/10 rounded"
-              >
-                +1h
-              </button>
-              {starFinderTimeShiftHours !== 0 && (
-                <button
-                  type="button"
-                  onClick={() => setStarFinderTimeShiftHours(0)}
-                  className="text-slate-400 hover:text-white ml-0.5"
-                  title="Reset to Current Real-time"
-                >
-                  ↺
-                </button>
-              )}
-            </div>
-          </div>
-
           {/* NASA ASTROMETRIC STAR TELEMETRY HUD (50 VERIFIED STELLAR METRICS) */}
           {selectedAstroStar && (
             <div className="absolute top-16 left-4 z-20 max-w-sm rounded-2xl bg-[#070e1c]/90 backdrop-blur-xl border border-[#38bdf8]/50 p-4 shadow-[0_12px_36px_rgba(0,0,0,0.85)] text-xs font-mono space-y-2.5 animate-fadeIn">
@@ -2136,7 +2016,7 @@ export default function GodsEyeMap({
       </div>
 
       {/* Side Inspector (4 Cols) */}
-      <div className="lg:col-span-4 space-y-4">
+      <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
         {/* Active God's Eye Intelligence Layer Controller */}
         <div className="bg-[#0b1320] border border-[#1e3a5f] rounded-2xl p-4 shadow-xl space-y-3 font-mono">
           <div className="flex items-center justify-between border-b border-[#1e3a5f]/80 pb-2">

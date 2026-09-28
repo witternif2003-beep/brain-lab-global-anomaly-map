@@ -48,6 +48,11 @@
   from { opacity: 0; }
 }
 
+@layer reset {
+  *, ::before, ::after { box-sizing: border-box; }
+  body { margin: 0; }
+}
+
 /* Reset link styling globally to avoid default browser blue / purple visited colors */
 a {
   color: inherit;
