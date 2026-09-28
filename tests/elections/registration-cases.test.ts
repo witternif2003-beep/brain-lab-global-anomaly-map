@@ -4,6 +4,7 @@ import { EAVS_2024_REGISTRATION } from "../../lib/elections/eavs-2024-registrati
 import { ELECTION_OFFICES } from "../../lib/elections/election-offices";
 import { classifyStage, fetchNoncitizenVotingReleases, isNoncitizenVotingTitle, toRelease } from "../../lib/elections/noncitizen-voting-cases";
 import { registrationFor } from "../../lib/elections/registration";
+import { REGISTRATION_2026 } from "../../lib/elections/registration-2026";
 
 test("EAVS registration covers exactly the 56 roster codes", () => {
   assert.deepEqual(Object.keys(EAVS_2024_REGISTRATION).sort(), ELECTION_OFFICES.map((o) => o.code).sort());
@@ -20,6 +21,35 @@ test("registrationFor reports sourced, partial and not-published honestly", () =
   const me = registrationFor("ME");
   assert.equal(me.status, "partial");
   assert.ok(me.reportingJurisdictions < me.jurisdictions);
+});
+
+test("2026 registration entries are roster codes with an official 2026 as-of date and a stated metric", () => {
+  const roster = new Set(ELECTION_OFFICES.map((o) => o.code));
+  for (const [code, r] of Object.entries(REGISTRATION_2026)) {
+    assert.ok(roster.has(code), `${code} is not a roster code`);
+    assert.match(r.asOf, /^2026-(0[1-9]|1[0-2])(-(0[1-9]|[12]\d|3[01]))?$/, `${code} asOf`);
+    assert.match(r.url, /^https:\/\//, `${code} url`);
+    assert.ok(r.total !== null || r.active !== null, `${code} has no count`);
+    if (r.total !== null && r.active !== null) assert.ok(r.total >= r.active, `${code} total below active`);
+  }
+  assert.ok(!("ND" in REGISTRATION_2026));
+});
+
+test("registrationFor pairs the 2026 state report with the EAVS 2024 baseline", () => {
+  const va = registrationFor("VA");
+  assert.equal(va.current?.total, 6450247);
+  assert.equal(va.current?.asOf, "2026-09-01");
+  assert.equal(va.source.asOf, "2024 general election (November 5, 2024)");
+  const wi = registrationFor("WI");
+  assert.equal(wi.current?.active, 3618602);
+  assert.equal(wi.current?.total, null);
+  const nd = registrationFor("ND");
+  assert.equal(nd.current, null);
+  assert.match(nd.currentNote, /does not register voters/);
+  const ny = registrationFor("NY");
+  assert.equal(ny.current, null);
+  assert.match(ny.currentNote, /EAVS 2024 baseline/);
+  assert.ok(ny.total !== null);
 });
 
 test("noncitizen-voting title filter needs both a voting act and noncitizen status", () => {

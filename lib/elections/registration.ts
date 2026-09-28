@@ -1,4 +1,5 @@
 import { EAVS_2024_REGISTRATION, EAVS_2024_SOURCE } from "./eavs-2024-registration";
+import { REGISTRATION_2026, type Registration2026 } from "./registration-2026";
 
 export interface EavsRegistrationRow {
   jurisdictions: number;
@@ -17,6 +18,9 @@ export interface RegistrationFigure {
   jurisdictions: number;
   note: string;
   source: typeof EAVS_2024_SOURCE;
+  /** Latest 2026 count from the jurisdiction's own election office, or null when none was found. */
+  current: Registration2026 | null;
+  currentNote: string;
 }
 
 /** North Dakota has no voter registration, so EAVS carries no A1a value there. */
@@ -26,7 +30,19 @@ const NO_REGISTRATION: Record<string, string> = {
 
 export function registrationFor(code: string): RegistrationFigure {
   const row = EAVS_2024_REGISTRATION[code];
-  const base = { source: EAVS_2024_SOURCE, jurisdictions: row?.jurisdictions ?? 0, reportingJurisdictions: row?.reported ?? 0 };
+  const current = REGISTRATION_2026[code] ?? null;
+  const currentNote = current
+    ? `${current.publisher} report as of ${current.asOf}${current.measure ? ` (${current.measure})` : ""}.`
+    : code in NO_REGISTRATION
+      ? NO_REGISTRATION[code]
+      : "No 2026 statewide count could be read from the official election office; showing the EAVS 2024 baseline only.";
+  const base = {
+    source: EAVS_2024_SOURCE,
+    jurisdictions: row?.jurisdictions ?? 0,
+    reportingJurisdictions: row?.reported ?? 0,
+    current,
+    currentNote
+  };
   if (!row || row.reported === 0) {
     return {
       ...base,

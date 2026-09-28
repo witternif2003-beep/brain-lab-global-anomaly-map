@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ExternalLink, RefreshCw, ShieldCheck } from "lucide-react";
 import type { OfficeRow, OpsReport } from "../../lib/elections/ops";
 import type { ReliabilityBand } from "../../lib/elections/source-reliability";
+import { REGISTRATION_2026, REGISTRATION_2026_RETRIEVED } from "../../lib/elections/registration-2026";
 
 const BAND_STYLE: Record<ReliabilityBand, string> = {
   healthy: "text-[#69f0ae] border-[#00ff88]/70 bg-[#002b1b]/80 shadow-[0_0_10px_rgba(0,255,136,0.35)]",
@@ -45,20 +46,42 @@ const STAGE_STYLE: Record<OfficeRow["noncitizenVotingReleases"][number]["stage"]
 
 function Registration({ r }: { r: OfficeRow }) {
   const g = r.registration;
+  const c = g.current;
   return (
-    <div className="rounded-2xl bg-[#002b1b]/25 border border-[#00ff88]/30 px-3 py-2 text-[11px] space-y-1 backdrop-blur-md">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="font-bold uppercase tracking-wider text-[#69f0ae]">Registered voters · EAC EAVS 2024</span>
-        <Pill className={REG_STYLE[g.status]}>{g.status}</Pill>
+    <div className="rounded-2xl bg-[#002b1b]/25 border border-[#00ff88]/30 px-3 py-2 text-[11px] space-y-2 backdrop-blur-md">
+      <div className="space-y-1">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="font-bold uppercase tracking-wider text-[#69f0ae]">Registered voters · 2026 state report</span>
+          <Pill className={c ? REG_STYLE.sourced : REG_STYLE["not-published"]}>{c ? `as of ${c.asOf}` : "not found"}</Pill>
+        </div>
+        {c && (
+          <div className="grid grid-cols-3 gap-2 text-[#80deea]">
+            <span>Total <b className="block text-white text-sm">{fmt(c.total)}</b></span>
+            <span>Active <b className="block text-white text-sm">{fmt(c.active)}</b></span>
+            <span>Inactive <b className="block text-white text-sm">{fmt(c.inactive)}</b></span>
+          </div>
+        )}
+        <div className="text-[10px] text-[#80deea]/85">
+          {g.currentNote}{" "}
+          {c && (
+            <a href={c.url} target="_blank" rel="noreferrer" className="underline text-[#69f0ae]">Official report</a>
+          )}
+        </div>
       </div>
-      <div className="grid grid-cols-3 gap-2 text-[#80deea]">
-        <span>Total <b className="block text-white text-sm">{fmt(g.total)}</b></span>
-        <span>Active <b className="block text-white text-sm">{fmt(g.active)}</b></span>
-        <span>Inactive <b className="block text-white text-sm">{fmt(g.inactive)}</b></span>
-      </div>
-      <div className="text-[10px] text-[#80deea]/85">
-        As of {g.source.asOf} · {g.note}{" "}
-        <a href={g.source.landingUrl} target="_blank" rel="noreferrer" className="underline text-[#69f0ae]">EAC dataset</a>
+      <div className="space-y-1 border-t border-[#00ff88]/20 pt-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="font-bold uppercase tracking-wider text-[#69f0ae]/85">Baseline · EAC EAVS 2024</span>
+          <Pill className={REG_STYLE[g.status]}>{g.status}</Pill>
+        </div>
+        <div className="grid grid-cols-3 gap-2 text-[#80deea]">
+          <span>Total <b className="block text-white text-sm">{fmt(g.total)}</b></span>
+          <span>Active <b className="block text-white text-sm">{fmt(g.active)}</b></span>
+          <span>Inactive <b className="block text-white text-sm">{fmt(g.inactive)}</b></span>
+        </div>
+        <div className="text-[10px] text-[#80deea]/85">
+          As of {g.source.asOf} · {g.note}{" "}
+          <a href={g.source.landingUrl} target="_blank" rel="noreferrer" className="underline text-[#69f0ae]">EAC dataset</a>
+        </div>
       </div>
     </div>
   );
@@ -265,8 +288,9 @@ export default function ElectionSourcesPanel() {
           <div className="md:col-span-2 rounded-[28px] border-2 border-[#ff2ec4]/40 bg-[#1a0016]/60 backdrop-blur-2xl p-4 space-y-1 text-[#ffd1f5] shadow-[0_8px_40px_rgba(255,46,196,0.1),inset_0_1px_3px_rgba(255,46,196,0.2)]">
             <div className="font-bold uppercase tracking-wider text-[#ff2ec4]">Sources on each card</div>
             <div>
-              Registered voters: EAC 2024 Election Administration and Voting Survey, summed from local-jurisdiction A1a/A1b/A1c. It is the latest official count covering all 56;
-              states publish their own figures on their own schedules, and none publishes a real-time count.
+              Registered voters: the latest 2026 statewide count each election office publishes, for {Object.keys(REGISTRATION_2026).length} of 56 jurisdictions, read from the linked
+              official report on {REGISTRATION_2026_RETRIEVED}. Only the metric the report states (total, active or inactive) is shown. The EAC 2024 Election Administration and
+              Voting Survey, summed from local-jurisdiction A1a/A1b/A1c, stays as the baseline covering all 56. Offices publish on their own schedules; none publishes a real-time count.
             </div>
             <div>
               DOJ releases: {report.noncitizenVoting.releaseCount} justice.gov press releases whose titles name voting or registration by a noncitizen
