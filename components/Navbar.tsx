@@ -22,6 +22,7 @@ import {
   Radar,
   Award,
   Menu,
+  Server,
   X
 } from "lucide-react";
 
@@ -34,6 +35,7 @@ export default function Navbar() {
     { href: "/recommendations-hub", label: "P1 Recs Hub", icon: Award },
     { href: "/forensic-telemetry", label: "7k Telemetry", icon: Radar },
     { href: "/three-pillars", label: "3 Pillars", icon: Target },
+    { href: "/gov-telemetry", label: "Gov Telemetry", icon: Server },
     { href: "/godseye-telemetry", label: "GodsEYE Map", icon: Eye },
     { href: "/godseye-telemetry#fbi-capabilities", label: "FBI Feeds", icon: Shield },
     { href: "/threat-globe", label: "3D Globe", icon: Globe },
