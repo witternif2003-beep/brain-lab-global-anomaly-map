@@ -16,7 +16,8 @@ import {
   Building2,
   Eye,
   ExternalLink,
-  Activity
+  Activity,
+  ChevronDown
 } from "lucide-react";
 import { useTelemetryStore } from "../lib/telemetry-store";
 import styles from "./LidarGlobe.module.css";
@@ -123,6 +124,7 @@ export default function LidarGlobe() {
   const [showHillshade, setShowHillshade] = useState(true);
   const [showBuildings, setShowBuildings] = useState(true);
   const [showTelemetry, setShowTelemetry] = useState(true);
+  const [hudOpen, setHudOpen] = useState(false);
   const [selectedPin, setSelectedPin] = useState<SelectedPin | null>(null);
   const [mapError, setMapError] = useState<string | null>(null);
   const [hud, setHud] = useState<HudState>({
@@ -448,34 +450,47 @@ export default function LidarGlobe() {
         <div ref={mapElRef} className={styles.map} />
 
         <div className={`${styles.glass} ${styles.hud}`} style={glassStyle}>
-          <div className={styles.row}>
-            <div className={styles.title}>
+          <button
+            type="button"
+            className={`${styles.row} ${styles.hudToggle}`}
+            onClick={() => setHudOpen((o) => !o)}
+            aria-expanded={hudOpen}
+            aria-controls="lidar-globe-hud"
+          >
+            <span className={styles.title}>
               <Globe className={styles.icon} />
               <span>LIDAR / HD IMAGERY GLOBE</span>
+            </span>
+            <span className={styles.hudToggleEnd}>
+              <span className={connectionStatus === "streaming" ? `${styles.badge} ${styles.badgeOk}` : styles.badge}>
+                <Radio className={styles.iconSm} />
+                {connectionStatus.toUpperCase()}
+              </span>
+              <ChevronDown className={`${styles.iconSm} ${styles.chevron} ${hudOpen ? styles.chevronOpen : ""}`} />
+            </span>
+          </button>
+          {hudOpen && (
+            <div id="lidar-globe-hud" className={styles.hudBody}>
+              <div className={styles.hudGrid}>
+                <span>LAT <b>{hud.lat.toFixed(4)}</b></span>
+                <span>LNG <b>{hud.lng.toFixed(4)}</b></span>
+                <span>ZOOM <b>{hud.zoom.toFixed(2)}</b></span>
+                <span>PITCH <b>{hud.pitch.toFixed(0)}°</b></span>
+                <span>BRG <b>{hud.bearing.toFixed(0)}°</b></span>
+                <span>FPS <b className={styles.ok}>{hud.fps}</b></span>
+                <span className={styles.span2}>
+                  ELEV <b>{hud.elevation === null ? "—" : `${hud.elevation.toFixed(0)} m`}</b>
+                </span>
+                <span>
+                  TILES <b className={hud.tilesLoaded ? styles.ok : styles.warn}>{hud.tilesLoaded ? "OK" : "LOAD"}</b>
+                </span>
+              </div>
+              <div className={styles.meta}>
+                PINS <b className={styles.cyan}>{vessels.length}</b> vessels • <b className={styles.red}>{anomalies.length}</b>{" "}
+                anomalies • DC LIDAR <b className={insideDc ? styles.ok : styles.dim}>{insideDc ? "IN VIEW" : "OUT OF VIEW"}</b>
+              </div>
             </div>
-            <span className={connectionStatus === "streaming" ? `${styles.badge} ${styles.badgeOk}` : styles.badge}>
-              <Radio className={styles.iconSm} />
-              {connectionStatus.toUpperCase()}
-            </span>
-          </div>
-          <div className={styles.hudGrid}>
-            <span>LAT <b>{hud.lat.toFixed(4)}</b></span>
-            <span>LNG <b>{hud.lng.toFixed(4)}</b></span>
-            <span>ZOOM <b>{hud.zoom.toFixed(2)}</b></span>
-            <span>PITCH <b>{hud.pitch.toFixed(0)}°</b></span>
-            <span>BRG <b>{hud.bearing.toFixed(0)}°</b></span>
-            <span>FPS <b className={styles.ok}>{hud.fps}</b></span>
-            <span className={styles.span2}>
-              ELEV <b>{hud.elevation === null ? "—" : `${hud.elevation.toFixed(0)} m`}</b>
-            </span>
-            <span>
-              TILES <b className={hud.tilesLoaded ? styles.ok : styles.warn}>{hud.tilesLoaded ? "OK" : "LOAD"}</b>
-            </span>
-          </div>
-          <div className={styles.meta}>
-            PINS <b className={styles.cyan}>{vessels.length}</b> vessels • <b className={styles.red}>{anomalies.length}</b>{" "}
-            anomalies • DC LIDAR <b className={insideDc ? styles.ok : styles.dim}>{insideDc ? "IN VIEW" : "OUT OF VIEW"}</b>
-          </div>
+          )}
         </div>
 
         {selectedPin && (
