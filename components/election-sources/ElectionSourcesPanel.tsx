@@ -27,6 +27,72 @@ function Pill({ className, children, title }: { className: string; children: Rea
   );
 }
 
+const fmt = (n: number | null) => (n === null ? "—" : n.toLocaleString("en-US"));
+
+const REG_STYLE: Record<OfficeRow["registration"]["status"], string> = {
+  sourced: "text-[#69f0ae] border-[#00ff88]/70 bg-[#002b1b]/80",
+  partial: "text-[#ffd54f] border-[#ffaa00]/60 bg-[#331e00]/70",
+  "not-published": "text-[#80deea] border-[#00e5ff]/40 bg-[#061836]/70"
+};
+
+const STAGE_STYLE: Record<OfficeRow["noncitizenVotingReleases"][number]["stage"], string> = {
+  sentenced: "text-[#ff80ab] border-[#ff1744]/60 bg-[#3d0014]/70",
+  convicted: "text-[#ff80ab] border-[#ff1744]/60 bg-[#3d0014]/70",
+  "pleaded guilty": "text-[#ffd54f] border-[#ffaa00]/60 bg-[#331e00]/70",
+  charged: "text-[#e0aaff] border-[#bd00ff]/60 bg-[#1b0833]/70",
+  "see release": "text-[#80deea] border-[#00e5ff]/40 bg-[#061836]/70"
+};
+
+function Registration({ r }: { r: OfficeRow }) {
+  const g = r.registration;
+  return (
+    <div className="rounded-2xl bg-[#002b1b]/25 border border-[#00ff88]/30 px-3 py-2 text-[11px] space-y-1 backdrop-blur-md">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="font-bold uppercase tracking-wider text-[#69f0ae]">Registered voters · EAC EAVS 2024</span>
+        <Pill className={REG_STYLE[g.status]}>{g.status}</Pill>
+      </div>
+      <div className="grid grid-cols-3 gap-2 text-[#80deea]">
+        <span>Total <b className="block text-white text-sm">{fmt(g.total)}</b></span>
+        <span>Active <b className="block text-white text-sm">{fmt(g.active)}</b></span>
+        <span>Inactive <b className="block text-white text-sm">{fmt(g.inactive)}</b></span>
+      </div>
+      <div className="text-[10px] text-[#80deea]/70">
+        As of {g.source.asOf} · {g.note}{" "}
+        <a href={g.source.landingUrl} target="_blank" rel="noreferrer" className="underline text-[#69f0ae]">EAC dataset</a>
+      </div>
+    </div>
+  );
+}
+
+function DojCases({ r }: { r: OfficeRow }) {
+  const list = r.noncitizenVotingReleases;
+  return (
+    <div className="rounded-2xl bg-[#331e00]/25 border border-[#ffaa00]/35 px-3 py-2 text-[11px] space-y-1.5 backdrop-blur-md">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="font-bold uppercase tracking-wider text-[#ffd54f]">DOJ noncitizen-voting case releases</span>
+        <Pill className="text-[#ffd54f] border-[#ffaa00]/60 bg-[#331e00]/70">{list.length}</Pill>
+      </div>
+      {list.length === 0 ? (
+        <div className="text-[10px] text-[#ffe0b2]/70">
+          {r.code === "AS" ? "American Samoa has no U.S. Attorney's Office, so no release is attributed here." : "No matching justice.gov release from this jurisdiction's U.S. Attorney's Office."}
+        </div>
+      ) : (
+        <ul className="list-none p-0 m-0 space-y-1 max-h-48 overflow-auto">
+          {list.map((c) => (
+            <li key={c.uuid} className="flex items-start gap-2">
+              <Pill className={`shrink-0 ${STAGE_STYLE[c.stage]}`}>{c.stage}</Pill>
+              <a href={c.url} target="_blank" rel="noreferrer" className="text-[#ffe0b2] hover:underline break-words">
+                {c.date} · {c.title} <span className="text-[#ffd54f]/60">({c.offices.join(", ").replace(/USAO - /g, "USAO ")})</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="text-[10px] text-[#ffe0b2]/50">A charge is an allegation; stage is read from each release title.</div>
+    </div>
+  );
+}
+
 function Row({ r }: { r: OfficeRow }) {
   const [open, setOpen] = useState(false);
   const p = r.probe;
@@ -54,6 +120,8 @@ function Row({ r }: { r: OfficeRow }) {
         <span>Uptime: <b className="text-white">{r.reliability.uptime === null ? "—" : `${Math.round(r.reliability.uptime * 100)}% of ${r.reliability.samples}`}</b></span>
         <span title={p?.fingerprint}>SHA-256: <b className="text-white">{p?.fingerprint ? p.fingerprint.slice(0, 12) : "—"}</b></span>
       </div>
+      <Registration r={r} />
+      <DojCases r={r} />
       {p?.error && <div className="text-[11px] text-[#ff80ab] break-all">{p.error}</div>}
       {p?.finalUrl && p.finalUrl !== r.url && <div className="text-[11px] text-[#ffd54f] break-all">Redirected to {p.finalUrl}</div>}
       {r.verification.matchContext && <div className="text-[11px] text-[#80deea] italic break-words">“…{r.verification.matchContext}…”</div>}
@@ -193,6 +261,20 @@ export default function ElectionSourcesPanel() {
             ) : (
               <div>Not checked yet.</div>
             )}
+          </div>
+          <div className="md:col-span-2 rounded-[28px] border-2 border-[#ffaa00]/40 bg-[#140d02]/60 backdrop-blur-2xl p-4 space-y-1 text-[#ffe0b2] shadow-[0_8px_40px_rgba(255,170,0,0.1),inset_0_1px_3px_rgba(255,170,0,0.2)]">
+            <div className="font-bold uppercase tracking-wider text-[#ffaa00]">Sources on each card</div>
+            <div>
+              Registered voters: EAC 2024 Election Administration and Voting Survey, summed from local-jurisdiction A1a/A1b/A1c. It is the latest official count covering all 56;
+              states publish their own figures on their own schedules, and none publishes a real-time count.
+            </div>
+            <div>
+              DOJ releases: {report.noncitizenVoting.releaseCount} justice.gov press releases whose titles name voting or registration by a noncitizen
+              ({report.noncitizenVoting.unattributed} without a U.S. Attorney's Office are not shown on a card) · {report.noncitizenVoting.pagesOk}/{report.noncitizenVoting.pagesTotal} queries ok ·
+              retrieved {report.noncitizenVoting.retrievedAt} · sha256 {report.noncitizenVoting.sha256.slice(0, 12)}
+              {report.noncitizenVoting.error ? ` · error: ${report.noncitizenVoting.error}` : ""}
+            </div>
+            <div className="text-[#ffe0b2]/70">No voter file or person-level registration data is used; no individual is identified as a registrant.</div>
           </div>
         </div>
       )}

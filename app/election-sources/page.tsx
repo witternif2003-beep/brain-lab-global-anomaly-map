@@ -36,7 +36,9 @@ export default function ElectionSourcesPage() {
           the USA.gov state election office directory. Each site is fetched live: HTTP status, latency, a SHA-256 of the
           visible page text, a check that the page names its own jurisdiction, a reliability band from the probes actually
           observed, and a line diff (Myers) whenever the page text changes. The pinned roster is compared against the live
-          directory on every run. This monitors the public websites only; it holds no voter or person-level data.
+          directory on every run. Each card also shows the official registered-voter total from the EAC 2024 Election
+          Administration and Voting Survey and the justice.gov press releases on noncitizen-voting cases issued by that
+          jurisdiction's U.S. Attorney's Office. No voter file or person-level registration data is used.
         </p>
       </div>
       <ElectionSourcesPanel />
