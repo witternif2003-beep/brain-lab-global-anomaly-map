@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { provenanceSummary, TOLERANCE } from "../../../lib/whitehouse-architecture";
 import { US_JURISDICTIONS } from "../../../lib/us-jurisdictions";
 import { MISSION_VECTORS } from "../../../lib/recommendation-matrix";
+import { FEDERAL_SOURCE_COUNT } from "../../../lib/gov/federal-sources";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
@@ -27,6 +28,11 @@ export async function GET() {
       feedEndpoint: "/api/anomalies/verified",
       auditEndpoint: "/api/audit/anomalies",
       note: "No synthetic or hand-curated anomaly records are served; counts vary with live source activity.",
+    },
+    federalTelemetryGrid: {
+      endpoints: FEDERAL_SOURCE_COUNT,
+      probeEndpoint: "/api/gov/telemetry",
+      note: "Live HTTP probes of documented federal public endpoints; status/latency only, no payload fabrication.",
     },
     whiteHouseDigitalTwin: {
       renderer: "three.js WebGL2",

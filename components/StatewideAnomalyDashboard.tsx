@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { US_JURISDICTIONS } from "../lib/us-jurisdictions";
 import type { VerifiedAnomaly, VerifiedFeed } from "../lib/verified-anomalies";
 import TiffanySparkleLayer from "./TiffanySparkleLayer";
+import AnomalyAnalyticsPanel from "./AnomalyAnalyticsPanel";
 import {
   Terminal,
   Download,
@@ -22,6 +23,8 @@ import {
   Globe2,
   Activity,
   AlertTriangle,
+  BarChart3,
+  Table2,
 } from "lucide-react";
 
 const BATCH_SIZE = 25;
@@ -79,7 +82,7 @@ export default function StatewideAnomalyDashboard() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isAutoCycling, setIsAutoCycling] = useState(true);
-  const [activeTab, setActiveTab] = useState<"narrative" | "batch_list" | "jurisdictions" | "provenance" | "feeds">("narrative");
+  const [activeTab, setActiveTab] = useState<"narrative" | "batch_list" | "jurisdictions" | "provenance" | "feeds" | "analytics">("narrative");
   const [now, setNow] = useState<Date | null>(null);
 
   useEffect(() => {
@@ -184,6 +187,20 @@ export default function StatewideAnomalyDashboard() {
     a.remove();
   };
 
+  const handleExportScope = () => {
+    if (!visible.length) return;
+    const cols: (keyof VerifiedAnomaly)[] = ["id", "source", "sourceName", "jurisdictionCode", "jurisdictionName", "sector", "event", "severity", "eventTime", "retrievedAt", "area", "headline", "issuer", "recordUrl", "sourceUrl"];
+    const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const csv = [cols.join(","), ...visible.map((r) => cols.map((c) => esc(r[c])).join(","))].join("\r\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    a.download = `verified_anomalies_${selectedJurisdiction}_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    URL.revokeObjectURL(a.href);
+    a.remove();
+  };
+
   const totalLabel = total.toLocaleString("en-US");
   const jurisdictionLabel = selectedJurisdiction === ALL ? "ALL JURISDICTIONS" : selectedJurisdiction;
   const populated = feed ? US_JURISDICTIONS.filter((j) => (feed.perJurisdiction[j.code] ?? 0) > 0).length : 0;
@@ -266,6 +283,15 @@ export default function StatewideAnomalyDashboard() {
               <span>EXPORT RECORD</span>
             </button>
             <button
+              onClick={handleExportScope}
+              disabled={!visible.length}
+              className="px-4 py-2 rounded-full bg-gradient-to-r from-[#003b2a]/90 to-[#002218]/90 text-[#69f0ae] hover:text-white border-2 border-[#00ff88] text-xs font-extrabold flex items-center gap-2 transition-all duration-300 shadow-[0_0_20px_rgba(0,255,136,0.4)] disabled:opacity-40"
+              title="Download all records in current scope as CSV"
+            >
+              <Table2 className="w-3.5 h-3.5 text-[#69f0ae]" />
+              <span>EXPORT SCOPE CSV</span>
+            </button>
+            <button
               onClick={() => setIsFullscreen(!isFullscreen)}
               className="p-2.5 rounded-full bg-[#1b0833] text-[#e0aaff] hover:text-white border-2 border-[#bd00ff] transition-all duration-300 shadow-[0_0_16px_rgba(189,0,255,0.4)]"
               title={isFullscreen ? "Exit Fullscreen" : "Dedicated Fullscreen Workstation"}
@@ -339,7 +365,7 @@ export default function StatewideAnomalyDashboard() {
         </div>
 
         {/* TABS */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 text-xs font-mono">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 text-xs font-mono">
           <button onClick={() => setActiveTab("narrative")} className={`px-3.5 py-3 rounded-2xl font-bold transition-all duration-300 border-2 flex items-center justify-center gap-2 ${activeTab === "narrative" ? "bg-gradient-to-r from-[#003822] to-[#002214] text-[#69f0ae] border-[#00ff88] shadow-[0_0_24px_rgba(0,255,136,0.6)]" : "bg-[#021810]/80 text-[#80cbc4] border-[#004d40]/60 hover:text-white hover:border-[#00ff88]"}`}>
             <FileText className="w-3.5 h-3.5 text-[#00ff88] shrink-0" /><span className="truncate">SOURCE NARRATIVE</span>
           </button>
@@ -354,6 +380,9 @@ export default function StatewideAnomalyDashboard() {
           </button>
           <button onClick={() => setActiveTab("feeds")} className={`px-3.5 py-3 rounded-2xl font-bold transition-all duration-300 border-2 flex items-center justify-center gap-2 ${activeTab === "feeds" ? "bg-gradient-to-r from-[#29004d] to-[#1a0033] text-[#e0aaff] border-[#bd00ff] shadow-[0_0_24px_rgba(189,0,255,0.6)]" : "bg-[#140026]/80 text-[#ce93d8] border-[#4a148c]/60 hover:text-white hover:border-[#bd00ff]"}`}>
             <Activity className="w-3.5 h-3.5 text-[#bd00ff] shrink-0" /><span className="truncate">FEED TELEMETRY</span>
+          </button>
+          <button onClick={() => setActiveTab("analytics")} className={`px-3.5 py-3 rounded-2xl font-bold transition-all duration-300 border-2 flex items-center justify-center gap-2 ${activeTab === "analytics" ? "bg-gradient-to-r from-[#3d2a00] to-[#241800] text-[#ffd180] border-[#ffb300] shadow-[0_0_24px_rgba(255,179,0,0.6)]" : "bg-[#1a1200]/80 text-[#ffcc80] border-[#7a5200]/60 hover:text-white hover:border-[#ffb300]"}`}>
+            <BarChart3 className="w-3.5 h-3.5 text-[#ffb300] shrink-0" /><span className="truncate">ANALYTICS & FEDERAL GRID</span>
           </button>
         </div>
 
@@ -519,6 +548,11 @@ export default function StatewideAnomalyDashboard() {
               </div>
             ))}
           </div>
+        )}
+
+        {/* TAB: ANALYTICS */}
+        {activeTab === "analytics" && (
+          <AnomalyAnalyticsPanel feed={feed} records={visible} scopeLabel={jurisdictionLabel} />
         )}
 
         {/* TAB: FEEDS */}
