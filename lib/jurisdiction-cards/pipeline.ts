@@ -9,6 +9,7 @@ import { fetchBlsLausLatestBatch, BlsLatest } from "../connectors/bls";
 import { fetchEpaEcho } from "../connectors/epa-echo";
 import { fetchWorldBank } from "../connectors/worldbank";
 import { DojFeed, fetchDojNatsecReleases } from "../connectors/doj";
+import { fetchFbiViolentCrime } from "../connectors/fbi-cde";
 import { makeProvenance, Provenance } from "../provenance";
 import { BLS_LAUS_UNPUBLISHED, JURISDICTION_REFERENCE, WORLDBANK_ISO3, usaoToCodes } from "./reference";
 import { OUTLIER_METHOD, computeOutliers } from "./outliers";
@@ -22,7 +23,9 @@ import {
   NatsecRelease
 } from "./types";
 
-const CENSUS_ACS = "https://api.census.gov/data/2023/acs/acs5";
+const CENSUS_PEP_VINTAGE = 2025;
+const CENSUS_PEP_CSV = `https://www2.census.gov/programs-surveys/popest/datasets/2020-${CENSUS_PEP_VINTAGE}/state/totals/NST-EST${CENSUS_PEP_VINTAGE}-ALLDATA.csv`;
+const FBI_YEAR = new Date().getUTCFullYear() - 1;
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 const EPA_CONCURRENCY = 8;
 
@@ -54,36 +57,25 @@ interface CensusPopulation {
 }
 
 async function fetchCensusPopulation(): Promise<{ byFips: Map<string, CensusPopulation>; error: string | null }> {
-  const key = process.env.CENSUS_API_KEY;
   const byFips = new Map<string, CensusPopulation>();
-  if (!key) return { byFips, error: null };
-  const publicUrl = `${CENSUS_ACS}?get=NAME,B01003_001E&for=state:*`;
-  const res = await fetch(`${publicUrl}&key=${encodeURIComponent(key)}`, {
-    headers: { Accept: "application/json", "User-Agent": "brain-lab-ingest/1.0" },
-    cache: "no-store"
-  });
+  const res = await fetch(CENSUS_PEP_CSV, { headers: { "User-Agent": "brain-lab-ingest/1.0" }, cache: "no-store" });
   const raw = await res.text();
-  let rows: unknown = null;
-  try {
-    rows = JSON.parse(raw);
-  } catch {
-    /* non-JSON body -> error below */
-  }
-  if (!res.ok || !Array.isArray(rows)) return { byFips, error: `Census ACS HTTP ${res.status}` };
+  const lines = raw.split(/\r?\n/).filter(Boolean);
+  const header = lines[0]?.split(",") ?? [];
+  const iState = header.indexOf("STATE");
+  const iPop = header.indexOf(`POPESTIMATE${CENSUS_PEP_VINTAGE}`);
+  if (!res.ok || iState < 0 || iPop < 0) return { byFips, error: `Census PEP CSV HTTP ${res.status}` };
+  const rows = lines.slice(1).map((l) => l.split(",")).filter((r) => r[0] === "040");
   const prov = makeProvenance({
-    source_id: "CENSUS-ACS5",
+    source_id: "CENSUS-PEP",
     jurisdiction: "ALL",
-    source_url: publicUrl,
+    source_url: CENSUS_PEP_CSV,
     body: raw,
     http_status: res.status,
-    record_count: rows.length - 1,
-    access_note: "Census ACS 5-year 2023, B01003_001E total population. Key omitted from source_url."
+    record_count: rows.length,
+    access_note: `Census Population Estimates Program vintage ${CENSUS_PEP_VINTAGE} state totals (public CSV, no key).`
   });
-  for (const row of rows.slice(1)) {
-    if (!Array.isArray(row)) continue;
-    const [, pop, fips] = row as string[];
-    if (pop && fips) byFips.set(fips, { value: pop, provenance: prov });
-  }
+  for (const r of rows) if (r[iState] && r[iPop]) byFips.set(r[iState], { value: r[iPop], provenance: prov });
   return { byFips, error: null };
 }
 
@@ -107,12 +99,23 @@ async function epaFields(code: string): Promise<[CardField, CardField]> {
     let r = await fetchEpaEcho({ territory: code, rows: 1 });
     for (
       let attempt = 1;
-      !r.records.length && r.provenance.http_status !== 429 && attempt < EPA_ATTEMPTS;
+      !r.records.length && r.capped_rows === undefined && r.provenance.http_status !== 429 && attempt < EPA_ATTEMPTS;
       attempt++
     ) {
       r = await fetchEpaEcho({ territory: code, rows: 1 });
     }
     const rec = r.records[0];
+    if (!rec && r.capped_rows !== undefined) {
+      return [
+        field("epa_facilities", "sourced", "EPA-ECHO", "Active facilities count taken from ECHO's queryset-limit response.", {
+          value: r.capped_rows.toLocaleString("en-US"),
+          numeric: r.capped_rows,
+          as_of: r.provenance.retrieved_at.slice(0, 10),
+          provenance: r.provenance
+        }),
+        field("epa_penalties", "not-published", "EPA-ECHO", r.note, { provenance: r.provenance })
+      ];
+    }
     if (!rec) {
       return [
         field("epa_facilities", "error", "EPA-ECHO", r.note, { provenance: r.provenance }),
@@ -185,26 +188,36 @@ function populationFromCensus(
   fips: string,
   census: { byFips: Map<string, CensusPopulation>; error: string | null }
 ): CardField {
-  if (!process.env.CENSUS_API_KEY) {
-    return field("population", "awaiting-source", "CENSUS-ACS5", "Set CENSUS_API_KEY to enable Census ACS population.");
-  }
   const hit = census.byFips.get(fips);
-  if (!hit) return field("population", "error", "CENSUS-ACS5", census.error ?? "State missing from Census response.");
-  return field("population", "sourced", "CENSUS-ACS5", "Census ACS 5-year 2023 total population.", {
+  if (!hit) return field("population", "error", "CENSUS-PEP", census.error ?? "State missing from Census PEP file.");
+  return field("population", "sourced", "CENSUS-PEP", `Census PEP July 1, ${CENSUS_PEP_VINTAGE} resident population estimate.`, {
     value: Number(hit.value).toLocaleString("en-US"),
     numeric: Number(hit.value),
-    as_of: "ACS 2019–2023",
+    as_of: `July ${CENSUS_PEP_VINTAGE}`,
     provenance: hit.provenance
   });
 }
 
-const FBI_FIELD = (): CardField =>
-  field(
-    "fbi_crime",
-    "awaiting-source",
-    "FBI-CDE",
-    "FBI Crime Data Explorer requires an api.data.gov key and a verified response contract; not wired."
-  );
+async function fbiField(code: string, name: string): Promise<CardField> {
+  try {
+    const r = await fetchFbiViolentCrime({ code, name, year: FBI_YEAR });
+    if (r.kind === "error") return field("fbi_crime", "error", "FBI-CDE", r.message, { provenance: r.provenance });
+    if (r.kind === "not-reported") {
+      return field("fbi_crime", "not-published", "FBI-CDE", `FBI CDE has no ${r.year} reporting coverage for this jurisdiction.`, {
+        provenance: r.provenance
+      });
+    }
+    return field(
+      "fbi_crime",
+      "sourced",
+      "FBI-CDE",
+      `Violent offenses reported to UCR in ${r.year} (${r.months} months, ${r.coverage_pct}% population coverage). Reported offenses, not convictions.`,
+      { value: r.offenses.toLocaleString("en-US"), numeric: r.offenses, as_of: String(r.year), provenance: r.provenance }
+    );
+  } catch (e) {
+    return field("fbi_crime", "error", "FBI-CDE", e instanceof Error ? e.message : "fetch error");
+  }
+}
 
 const NAME_TO_CODE = new Map(JURISDICTIONS.map((j) => [j.name, j.code]));
 
@@ -279,14 +292,16 @@ export async function buildJurisdictionCards(opts: { fresh?: boolean } = {}): Pr
   const cards = await mapLimit(JURISDICTIONS, EPA_CONCURRENCY, async (j): Promise<JurisdictionCard> => {
     const ref = JURISDICTION_REFERENCE[j.code];
     const [epaFacilities, epaPenalties] = await epaFields(j.code);
-    const population = WORLDBANK_ISO3[j.code] ? await worldBankPopulation(j.code) : populationFromCensus(ref.fips, census);
+    const population = census.byFips.has(ref.fips) || !WORLDBANK_ISO3[j.code]
+      ? populationFromCensus(ref.fips, census)
+      : await worldBankPopulation(j.code);
     const byId: Record<CardFieldId, CardField> = {
       unemployment: unemploymentField(j.code, ref.fips, bls, blsError),
       population,
       epa_facilities: epaFacilities,
       epa_penalties: epaPenalties,
       doj_natsec: dojField(j.code, doj, natsecByCode.get(j.code) ?? []),
-      fbi_crime: FBI_FIELD()
+      fbi_crime: await fbiField(j.code, j.name)
     };
     const fields = CARD_FIELD_ORDER.map((f) => byId[f.id]);
     return {

@@ -83,5 +83,5 @@ export const CARD_FIELD_ORDER: Array<{ id: CardFieldId; label: string }> = [
   { id: "epa_facilities", label: "EPA-regulated active facilities" },
   { id: "epa_penalties", label: "EPA total penalties (ECHO)" },
   { id: "doj_natsec", label: "DOJ national-security releases" },
-  { id: "fbi_crime", label: "FBI reported offenses (CDE)" }
+  { id: "fbi_crime", label: "FBI reported violent offenses (CDE)" }
 ];
