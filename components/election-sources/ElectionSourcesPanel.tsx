@@ -5,16 +5,16 @@ import type { OfficeRow, OpsReport } from "../../lib/elections/ops";
 import type { ReliabilityBand } from "../../lib/elections/source-reliability";
 
 const BAND_STYLE: Record<ReliabilityBand, string> = {
-  healthy: "text-[#69f0ae] border-[#00ff88]/70 bg-[#002b1b]/80",
-  degraded: "text-[#ffd54f] border-[#ffaa00]/70 bg-[#331e00]/80",
-  failing: "text-[#ff80ab] border-[#ff4081]/70 bg-[#33001a]/80",
-  unknown: "text-[#b0bec5] border-white/30 bg-white/5"
+  healthy: "text-[#69f0ae] border-[#00ff88]/70 bg-[#002b1b]/80 shadow-[0_0_10px_rgba(0,255,136,0.35)]",
+  degraded: "text-[#ffd54f] border-[#ffaa00]/60 bg-[#331e00]/70 shadow-[0_0_10px_rgba(255,170,0,0.25)]",
+  failing: "text-[#ff80ab] border-[#ff1744]/70 bg-[#3d0014]/80 shadow-[0_0_10px_rgba(255,23,68,0.35)]",
+  unknown: "text-[#80deea] border-[#00e5ff]/40 bg-[#061836]/70"
 };
 
 const VERDICT_STYLE: Record<OfficeRow["verification"]["verdict"], string> = {
-  verified: "text-[#69f0ae] border-[#00ff88]/60",
-  "not-found": "text-[#ff80ab] border-[#ff4081]/60",
-  unverifiable: "text-[#b0bec5] border-white/30"
+  verified: "text-[#69f0ae] border-[#00ff88]/60 bg-[#002b1b]/60",
+  "not-found": "text-[#ff80ab] border-[#ff1744]/60 bg-[#3d0014]/60",
+  unverifiable: "text-[#80deea] border-[#00e5ff]/40 bg-[#061836]/60"
 };
 
 type Filter = "all" | ReliabilityBand | "changed";
@@ -31,11 +31,11 @@ function Row({ r }: { r: OfficeRow }) {
   const [open, setOpen] = useState(false);
   const p = r.probe;
   return (
-    <li className="px-4 py-3 space-y-2">
+    <li className="rounded-[28px] bg-gradient-to-br from-[#06152d]/70 via-[#030e20]/60 to-[#010712]/70 backdrop-blur-2xl border-2 border-[#00e5ff]/40 p-4 space-y-2 shadow-[0_8px_40px_rgba(0,229,255,0.15),inset_0_1px_3px_rgba(0,229,255,0.3)] hover:border-[#00e5ff]/80 hover:shadow-[0_8px_50px_rgba(0,229,255,0.3)] transition-all duration-300">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <span className="px-2.5 py-0.5 rounded-full border border-[#00e5ff]/70 text-[#00e5ff] text-[11px] font-bold">{r.code}</span>
-          <span className="text-sm sm:text-base font-bold text-white truncate">{r.name}</span>
+          <span className="text-sm sm:text-base font-extrabold tracking-wide truncate text-transparent bg-clip-text bg-gradient-to-r from-[#00e5ff] via-[#69f0ae] to-white">{r.name}</span>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
           <Pill className={BAND_STYLE[r.reliability.band]} title={r.reliability.reason}>
@@ -44,10 +44,10 @@ function Row({ r }: { r: OfficeRow }) {
           <Pill className={VERDICT_STYLE[r.verification.verdict]} title={r.verification.reason ?? r.verification.matchContext}>
             {r.verification.verdict === "verified" ? "names jurisdiction" : r.verification.verdict}
           </Pill>
-          {r.changeCount > 0 && <Pill className="text-[#ce93d8] border-[#ba68c8]/70 bg-[#1c0726]/80">changed ×{r.changeCount}</Pill>}
+          {r.changeCount > 0 && <Pill className="text-[#e0aaff] border-[#bd00ff]/70 bg-[#1b0833]/70 shadow-[0_0_12px_rgba(189,0,255,0.35)]">changed ×{r.changeCount}</Pill>}
         </div>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-x-4 gap-y-1 text-[11px] text-[#b2ebf2]">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-x-4 gap-y-1 text-[11px] text-[#80deea] rounded-2xl bg-[#020b18]/50 border border-[#00e5ff]/20 px-3 py-2 backdrop-blur-md">
         <span>Status: <b className="text-white">{p ? p.status : "—"}</b></span>
         <span>HTTP: <b className="text-white">{p?.httpStatus ?? "—"}</b></span>
         <span>Latency: <b className="text-white">{p ? `${p.latencyMs} ms` : "—"}</b></span>
@@ -62,19 +62,19 @@ function Row({ r }: { r: OfficeRow }) {
           href={r.url}
           target="_blank"
           rel="noreferrer"
-          className="flex items-center gap-1 px-2 py-0.5 rounded-md border border-[#00ff88]/70 bg-[#002b1b]/80 text-[#69f0ae] text-[10px] font-bold uppercase break-all"
+          className="flex items-center gap-1 px-3 py-0.5 rounded-full border border-[#00ff88]/70 bg-[#002b1b]/80 text-[#69f0ae] text-[10px] font-bold uppercase break-all shadow-[0_0_10px_rgba(0,255,136,0.3)]"
         >
           <ShieldCheck className="w-3.5 h-3.5 shrink-0" /> {r.url.replace(/^https?:\/\//, "")} <ExternalLink className="w-3 h-3 shrink-0" />
         </a>
         {r.lastChange && (
-          <button onClick={() => setOpen((o) => !o)} className="px-2 py-0.5 rounded-md border border-[#ba68c8]/70 text-[#ce93d8] text-[10px] font-bold uppercase">
+          <button onClick={() => setOpen((o) => !o)} className="px-3 py-0.5 rounded-full border border-[#bd00ff]/70 bg-[#1b0833]/70 text-[#e0aaff] text-[10px] font-bold uppercase">
             {open ? "Hide" : "Show"} last change ({r.lastChange.diff.addedCount}+ / {r.lastChange.diff.removedCount}−)
           </button>
         )}
       </div>
       {open && r.lastChange && (
-        <div className="rounded-2xl border border-[#ba68c8]/50 bg-[#0d0414]/80 p-3 text-[11px] space-y-1 max-h-72 overflow-auto">
-          <div className="text-[#ce93d8]">
+        <div className="rounded-2xl border border-[#bd00ff]/50 bg-[#1b0833]/50 backdrop-blur-md p-3 text-[11px] space-y-1 max-h-72 overflow-auto shadow-[0_0_14px_rgba(189,0,255,0.2)]">
+          <div className="text-[#e0aaff]">
             {r.lastChange.capturedAt} · {r.lastChange.fromFingerprint.slice(0, 10)} → {r.lastChange.toFingerprint.slice(0, 10)} · {r.lastChange.diff.algorithm} diff
             {r.lastChange.diff.truncated ? " (truncated)" : ""}
           </div>
@@ -138,7 +138,7 @@ export default function ElectionSourcesPanel() {
             key={f}
             onClick={() => setFilter(f)}
             className={`px-4 py-1.5 rounded-full border-2 text-[11px] font-bold uppercase tracking-wider backdrop-blur-md ${
-              filter === f ? "border-[#00e5ff] bg-[#00e5ff]/20 text-white" : "border-[#00e5ff]/40 bg-[#030c1c]/70 text-[#80deea]"
+              filter === f ? "border-[#00e5ff] bg-[#00e5ff]/20 text-white shadow-[0_0_16px_rgba(0,229,255,0.45)]" : "border-[#00e5ff]/40 bg-[#030c1c]/70 text-[#80deea] hover:border-[#00e5ff]/80"
             }`}
           >
             {label} {n ?? "…"}
@@ -147,7 +147,7 @@ export default function ElectionSourcesPanel() {
         <button
           onClick={() => load(true)}
           disabled={loading}
-          className="ml-auto flex items-center gap-1.5 px-4 py-1.5 rounded-full border-2 border-[#69f0ae]/70 bg-[#002b1b]/70 text-[#69f0ae] text-[11px] font-bold uppercase tracking-wider disabled:opacity-40"
+          className="ml-auto flex items-center gap-1.5 px-4 py-1.5 rounded-full border-2 border-[#69f0ae]/70 bg-[#002b1b]/70 text-[#69f0ae] text-[11px] font-bold uppercase tracking-wider shadow-[0_0_16px_rgba(0,255,136,0.35)] disabled:opacity-40"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} /> Re-probe
         </button>
@@ -155,7 +155,7 @@ export default function ElectionSourcesPanel() {
 
       {report && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px]">
-          <div className="rounded-[28px] border-2 border-[#00e5ff]/40 bg-[#030c1c]/70 backdrop-blur-2xl p-4 space-y-1 text-[#b2ebf2]">
+          <div className="rounded-[28px] bg-gradient-to-br from-[#06152d]/70 via-[#030e20]/60 to-[#010712]/70 border-2 border-[#00e5ff]/40 backdrop-blur-2xl p-4 space-y-1 text-[#b2ebf2] shadow-[0_8px_40px_rgba(0,229,255,0.15),inset_0_1px_3px_rgba(0,229,255,0.3)]">
             <div className="font-bold uppercase tracking-wider text-[#00e5ff]">Last probe run</div>
             {report.lastRun ? (
               <>
@@ -172,7 +172,7 @@ export default function ElectionSourcesPanel() {
             </div>
             <div className="text-[#80deea]/80">History store: {report.store} (per server instance; the daily CI run keeps a persistent history).</div>
           </div>
-          <div className="rounded-[28px] border-2 border-[#ffaa00]/40 bg-[#140d02]/70 backdrop-blur-2xl p-4 space-y-1 text-[#ffe0b2]">
+          <div className="rounded-[28px] border-2 border-[#ffaa00]/50 bg-[#140d02]/70 backdrop-blur-2xl p-4 space-y-1 text-[#ffe0b2] shadow-[0_8px_40px_rgba(255,170,0,0.12),inset_0_1px_3px_rgba(255,170,0,0.25)]">
             <div className="font-bold uppercase tracking-wider text-[#ffaa00]">Roster drift vs USA.gov directory</div>
             <a href={report.directory.url} target="_blank" rel="noreferrer" className="underline break-all">{report.directory.url}</a>
             <div>Pinned {report.directory.pinnedAt} from {report.directory.publisher}</div>
@@ -197,12 +197,12 @@ export default function ElectionSourcesPanel() {
         </div>
       )}
 
-      <div className="rounded-[28px] border-2 border-[#00e5ff]/40 bg-[#030c1c]/70 backdrop-blur-2xl overflow-hidden">
+      <div className="space-y-3">
         {loading && !report && <div className="px-4 py-6 text-xs text-[#80deea]">Probing 56 official election-office sites…</div>}
         {loading && report && <div className="px-4 pt-3 text-xs text-[#80deea]">Re-probing…</div>}
         {error && <div className="px-4 py-6 text-xs text-[#ff80ab]">Ops request failed: {error}</div>}
         {report && rows.length === 0 && <div className="px-4 py-6 text-xs text-[#80deea]">No offices in this filter.</div>}
-        <ul className="divide-y divide-[#00e5ff]/20">
+        <ul className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           {rows.map((r) => (
             <Row key={r.code} r={r} />
           ))}
