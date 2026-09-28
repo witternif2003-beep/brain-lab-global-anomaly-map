@@ -17,6 +17,7 @@
     "@maplibre/vt-pbf": "^4.3.2",
     "autoprefixer": "^10.6.1",
     "clsx": "^2.1.1",
+    "fflate": "^0.8.3",
     "geojson-vt": "^5.0.2",
     "lucide-react": "^1.48.0",
     "maplibre-gl": "^6.11.2",
