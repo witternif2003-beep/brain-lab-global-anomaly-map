@@ -33,7 +33,7 @@ export interface StateDatasetConfig {
   /** Max record cards rendered per dataset tab visit. */
   cap: number;
   /** Platform adapter: socrata (default), ckan datastore, arcgis layer, or direct csv. */
-  platform?: "socrata" | "ckan" | "arcgis" | "csv";
+  platform?: "socrata" | "ckan" | "arcgis" | "csv" | "fema";
   /** CKAN datastore resource id (required when platform is ckan). */
   resource_id?: string;
   /** Optional SoQL $where guard (e.g. drop junk null-key rows that sort first). */
@@ -417,6 +417,172 @@ export const STATE_DATASETS: Record<string, StateDatasetConfig[]> = {
         sub: "{DESCRIPTION} • AGE {AGE} • {SEX} • {DEFENDANT_DISTRICT} • {DATE_:epoch}"
       }
     }
+  ],
+  HI: [
+    {
+      source_id: "HI-EXPENDITURES",
+      label: "HI STATE EXPENDITURE PAYMENTS (2014\u20132018 DATA)",
+      dataset_id: "expenditures",
+      platform: "ckan",
+      resource_id: "a9fdc5ac-fd30-4964-8919-7eb20cd73ae2",
+      order_by: "Payment_Issue_date desc nulls last",
+      select: ["Fiscal_Year", "Department", "Program", "Vendor_Name", "Payment_Issue_date", "Payment_Status", "Amount"],
+      cap: 10,
+      card: {
+        title: "{Vendor_Name} — {Amount:money}",
+        sub: "{Department} • {Program} • {Payment_Issue_date:date} • {Payment_Status}"
+      }
+    },
+    {
+      source_id: "HI-LOBBYIST-EXP",
+      label: "HI LOBBYIST EXPENDITURE STATEMENTS (2013\u20132019 DATA)",
+      dataset_id: "hawaii-state-ethics-commission-s-lobbyists-expenditure-statements",
+      platform: "ckan",
+      resource_id: "af128f67-1350-44cf-a59c-76d247f659f3",
+      order_by: "\"Date Filed\" desc nulls last",
+      select: ["Lobbyist Name", "Total Expense", "Lobby Period", "Year", "Date Filed"],
+      cap: 10,
+      card: {
+        title: "{Lobbyist Name} — {Total Expense:money}",
+        sub: "{Lobby Period} {Year} • FILED {Date Filed:date}"
+      }
+    }
+  ],
+  OK: [
+    {
+      source_id: "OK-REVOLVING-FUNDS",
+      label: "OK REVOLVING FUND BALANCES (DEC 2025)",
+      dataset_id: "state-of-oklahoma-revolving-funds-2025",
+      platform: "ckan",
+      resource_id: "5e13b256-27c0-4ca4-ba68-1f25870b2854",
+      order_by: "",
+      select: ["Agency Name", "Class-Fund Description", "Calendar Year", "Calendar Month", "Balance"],
+      cap: 10,
+      card: {
+        title: "{Agency Name} — {Balance:money}",
+        sub: "{Class-Fund Description} • {Calendar Month}/{Calendar Year}"
+      }
+    }
+  ],
+  DE: [
+    {
+      source_id: "DE-FOOD-VIOLATIONS",
+      label: "DE FOOD ESTABLISHMENT INSPECTION VIOLATIONS",
+      dataset_id: "384s-wygj",
+      order_by: "insp_date",
+      select: ["restname", "restaddress", "restcity", "insp_date", "insp_type", "violation", "vio_desc"],
+      cap: 10,
+      card: {
+        title: "{restname} — {violation}",
+        sub: "{restcity} • {insp_type} {insp_date:date} • {vio_desc}"
+      }
+    },
+    {
+      source_id: "DE-LICENSE-DISCIPLINE",
+      label: "DE PROFESSIONAL LICENSE DISCIPLINARY ACTIONS",
+      dataset_id: "dz6p-akeq",
+      order_by: "disp_start",
+      where: "disp_start IS NOT NULL",
+      select: ["combined_name", "license_type", "profession_id", "item_text", "disp_start"],
+      cap: 10,
+      card: {
+        title: "{combined_name} — {item_text}",
+        sub: "{license_type} • {profession_id} • {disp_start:date}"
+      }
+    },
+    {
+      source_id: "DE-CHECKBOOK",
+      label: "DE STATE CHECKBOOK SPENDING",
+      dataset_id: "5s6n-7hpx",
+      order_by: "check_date",
+      select: ["department", "division", "category", "fund_type", "check_date", "amount"],
+      cap: 10,
+      card: {
+        title: "{department} — {amount:money}",
+        sub: "{category} • {fund_type} • {check_date:date}"
+      }
+    }
+  ],
+  PR: [
+    {
+      source_id: "PR-FEMA-DECL",
+      label: "PR FEMA DISASTER DECLARATIONS",
+      dataset_id: "PR",
+      platform: "fema",
+      service_url: "https://www.fema.gov/api/open/v2/DisasterDeclarationsSummaries",
+      order_by: "",
+      select: ["femaDeclarationString", "disasterNumber", "state", "declarationType", "declarationTitle", "incidentType", "incidentBeginDate", "declarationDate"],
+      cap: 10,
+      card: {
+        title: "{declarationTitle}",
+        sub: "{state} {femaDeclarationString} • {incidentType} • BEGAN {incidentBeginDate:date}"
+      }
+    }
+  ],
+  VI: [
+    {
+      source_id: "VI-FEMA-DECL",
+      label: "VI FEMA DISASTER DECLARATIONS",
+      dataset_id: "VI",
+      platform: "fema",
+      service_url: "https://www.fema.gov/api/open/v2/DisasterDeclarationsSummaries",
+      order_by: "",
+      select: ["femaDeclarationString", "disasterNumber", "state", "declarationType", "declarationTitle", "incidentType", "incidentBeginDate", "declarationDate"],
+      cap: 10,
+      card: {
+        title: "{declarationTitle}",
+        sub: "{state} {femaDeclarationString} • {incidentType} • BEGAN {incidentBeginDate:date}"
+      }
+    }
+  ],
+  GU: [
+    {
+      source_id: "GU-FEMA-DECL",
+      label: "GU FEMA DISASTER DECLARATIONS",
+      dataset_id: "GU",
+      platform: "fema",
+      service_url: "https://www.fema.gov/api/open/v2/DisasterDeclarationsSummaries",
+      order_by: "",
+      select: ["femaDeclarationString", "disasterNumber", "state", "declarationType", "declarationTitle", "incidentType", "incidentBeginDate", "declarationDate"],
+      cap: 10,
+      card: {
+        title: "{declarationTitle}",
+        sub: "{state} {femaDeclarationString} • {incidentType} • BEGAN {incidentBeginDate:date}"
+      }
+    }
+  ],
+  AS: [
+    {
+      source_id: "AS-FEMA-DECL",
+      label: "AS FEMA DISASTER DECLARATIONS",
+      dataset_id: "AS",
+      platform: "fema",
+      service_url: "https://www.fema.gov/api/open/v2/DisasterDeclarationsSummaries",
+      order_by: "",
+      select: ["femaDeclarationString", "disasterNumber", "state", "declarationType", "declarationTitle", "incidentType", "incidentBeginDate", "declarationDate"],
+      cap: 10,
+      card: {
+        title: "{declarationTitle}",
+        sub: "{state} {femaDeclarationString} • {incidentType} • BEGAN {incidentBeginDate:date}"
+      }
+    }
+  ],
+  MP: [
+    {
+      source_id: "MP-FEMA-DECL",
+      label: "MP FEMA DISASTER DECLARATIONS",
+      dataset_id: "MP",
+      platform: "fema",
+      service_url: "https://www.fema.gov/api/open/v2/DisasterDeclarationsSummaries",
+      order_by: "",
+      select: ["femaDeclarationString", "disasterNumber", "state", "declarationType", "declarationTitle", "incidentType", "incidentBeginDate", "declarationDate"],
+      cap: 10,
+      card: {
+        title: "{declarationTitle}",
+        sub: "{state} {femaDeclarationString} • {incidentType} • BEGAN {incidentBeginDate:date}"
+      }
+    }
   ]
+
 
 };

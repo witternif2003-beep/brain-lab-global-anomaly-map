@@ -3,6 +3,7 @@ import { JURISDICTION_ADAPTERS } from "../../../../../lib/adapters/jurisdictions
 import { STATE_DATASETS } from "../../../../../lib/adapters/state-datasets";
 import { fetchSocrataDataset } from "../../../../../lib/connectors/socrata";
 import { fetchCkanDataset } from "../../../../../lib/connectors/ckan";
+import { fetchFemaFiltered } from "../../../../../lib/connectors/fema-filtered";
 import { fetchArcgisLayer } from "../../../../../lib/connectors/arcgis";
 import { fetchCsvDataset } from "../../../../../lib/connectors/csv";
 
@@ -69,6 +70,25 @@ export async function GET(req: Request) {
         ...r
       });
     }
+    if (cfg.platform === "fema") {
+      if (!cfg.service_url)
+        return NextResponse.json({ error: "fema dataset missing service_url" }, { status: 400 });
+      const r = await fetchFemaFiltered({
+        baseUrl: cfg.service_url,
+        stateCode: cfg.dataset_id,
+        sourceId: cfg.source_id,
+        jurisdiction: code,
+        rows,
+        fields: cfg.select
+      });
+      return NextResponse.json({
+        code,
+        source: cfg.source_id,
+        label: cfg.label,
+        dataset_id: cfg.dataset_id,
+        ...r
+      });
+    }
     if (cfg.platform === "ckan") {
       if (!cfg.resource_id)
         return NextResponse.json({ error: "ckan dataset missing resource_id" }, { status: 400 });
@@ -78,6 +98,7 @@ export async function GET(req: Request) {
         sourceId: cfg.source_id,
         jurisdiction: code,
         fields: cfg.select,
+        sort: cfg.order_by,
         rows
       });
       return NextResponse.json({

@@ -146,7 +146,7 @@ export async function GET(req: Request) {
   // ArcGIS/CSV-mapped jurisdictions expose no Socrata/CKAN search API by
   // design — probe the mapped feed itself so the badge stays honest.
   const alt = (STATE_DATASETS[code] ?? []).find(
-    (c) => (c.platform === "arcgis" || c.platform === "csv") && (c.service_url ?? "").length > 0
+    (c) => (c.platform === "arcgis" || c.platform === "csv" || c.platform === "fema") && (c.service_url ?? "").length > 0
   );
   if (alt?.service_url) {
     const svc = alt.service_url;
@@ -165,9 +165,11 @@ export async function GET(req: Request) {
       }
     } else {
       const probeUrl =
-        alt.platform === "arcgis"
-          ? `${svc}?f=json`
-          : `${base}/api/3/action/package_show?id=${encodeURIComponent(svc.slice("ckan-package:".length))}`;
+        alt.platform === "fema"
+          ? `${svc}?$filter=${encodeURIComponent(`state eq '${alt.dataset_id}'`)}&$top=1`
+          : alt.platform === "arcgis"
+            ? `${svc}?f=json`
+            : `${base}/api/3/action/package_show?id=${encodeURIComponent(svc.slice("ckan-package:".length))}`;
       ok = (await tryFetch(probeUrl))?.ok ?? false;
     }
     if (ok) {
@@ -182,6 +184,32 @@ export async function GET(req: Request) {
         records: 0,
         checkedAt,
         note: `Mapped ${alt.platform} feed responds (${alt.source_id}); live records via /api/ingest/states/records.`
+      });
+    }
+  }
+
+  // Socrata portals with a broken search API (DE 500s views.json) can still
+  // serve verified datasets directly — confirm via count(*) on the first
+  // mapped socrata dataset so the badge stays honest.
+  const socEntry = (STATE_DATASETS[code] ?? []).find(
+    (c) => (c.platform ?? "socrata") === "socrata" && (c.dataset_id ?? "").length > 0
+  );
+  if (socEntry) {
+    const direct = await tryFetch(
+      `${base}/resource/${socEntry.dataset_id}.json?%24select=count(*)&%24limit=1`
+    );
+    if (direct?.ok) {
+      return NextResponse.json({
+        code,
+        portal: base,
+        platform: "socrata-direct",
+        status: "PORTAL-REACHABLE-FEED-MAPPED",
+        reachable: true,
+        datasetsIndexed: null,
+        datasetsMapped: mappedCount,
+        records: 0,
+        checkedAt,
+        note: `Search API down; direct dataset access verified (${socEntry.dataset_id}); live records via /api/ingest/states/records.`
       });
     }
   }
