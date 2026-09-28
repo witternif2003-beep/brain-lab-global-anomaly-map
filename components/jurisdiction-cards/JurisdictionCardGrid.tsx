@@ -104,7 +104,12 @@ function Card({ card }: { card: JurisdictionCard }) {
                 </div>
                 <div className="flex items-center justify-between gap-2 text-[#80deea]/70">
                   <span className="text-white font-bold">{h.value ?? "—"}</span>
-                  {h.sources.length > 0 && <span className="text-[9px] shrink-0">{h.sources.join(" + ")}</span>}
+                  <span className="text-[9px] shrink-0">
+                    {h.sources.length > 0 && <>{h.sources.join(" + ")} • </>}
+                    <a href={`/federal-registry#${h.id}`} className="text-[#e0aaff] hover:underline">
+                      Registry ↗
+                    </a>
+                  </span>
                 </div>
                 {!!h.note && <div className="text-[9px] text-[#80deea]/50">{h.note}</div>}
                 {h.provenance && (

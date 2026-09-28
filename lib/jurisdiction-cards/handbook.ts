@@ -158,10 +158,14 @@ const WIRE: Record<string, EntityWire> = {
   "GSE-FARMER-MAC": { unpublishable: GSE_NOTE }
 };
 
+/** Shared wiring (awards codes, FR slugs, unpublishable reasons) for reuse. */
+export const HANDBOOK_WIRE: Record<string, EntityWire> = WIRE;
+
 export function fmtMoney(n: number): string {
   const neg = n < 0;
   const a = Math.abs(n);
   const s =
+    a >= 1e12 ? `$${(a / 1e12).toFixed(1)}T` :
     a >= 1e9 ? `$${(a / 1e9).toFixed(1)}B` :
     a >= 1e6 ? `$${(a / 1e6).toFixed(1)}M` :
     a >= 1e3 ? `$${(a / 1e3).toFixed(1)}K` :

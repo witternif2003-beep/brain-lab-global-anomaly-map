@@ -26,6 +26,13 @@ export interface StateAgencyAwards {
   note: string;
 }
 
+export interface NationalAgencyAwards {
+  fyLabel: string;
+  byCode: Map<string, AgencyObligation>;
+  provenance: Provenance;
+  note: string;
+}
+
 export function currentFy(): { fy: number; label: string; start: string; end: string } {
   const now = new Date();
   const fy = now.getUTCMonth() >= 9 ? now.getUTCFullYear() + 1 : now.getUTCFullYear();
@@ -87,5 +94,64 @@ export async function fetchStateAgencyAwards(a: { stateCode: string }): Promise<
     byCode,
     provenance: prov,
     note: `${byCode.size} awarding agencies with ${label} obligations performed in ${a.stateCode}.`
+  };
+}
+
+/**
+ * NATIONAL obligations by awarding agency (no location filter) — one call
+ * powers the Federal Registry directory.
+ * LIVE-VERIFIED 2026-09-28: 78 agencies FY26 (HHS $2.09T, SSA $1.58T…).
+ */
+export async function fetchNationalAwardsByAgency(): Promise<NationalAgencyAwards> {
+  const { label, start, end } = currentFy();
+  const body = JSON.stringify({
+    filters: { time_period: [{ start_date: start, end_date: end }] },
+    category: "awarding_agency",
+    limit: 100
+  });
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 30000);
+  let res: Response;
+  let text: string;
+  try {
+    res = await fetch(USASPENDING_URL, {
+      method: "POST",
+      signal: ctrl.signal,
+      headers: { "Content-Type": "application/json", "User-Agent": "brain-lab-ingest/1.0" },
+      body,
+      cache: "no-store"
+    });
+    text = await res.text();
+  } finally {
+    clearTimeout(timer);
+  }
+  if (!res.ok) throw new Error(`USAspending national HTTP ${res.status}`);
+  const byCode = new Map<string, AgencyObligation>();
+  try {
+    const payload = JSON.parse(text) as {
+      results?: Array<{ code?: unknown; name?: unknown; amount?: unknown }>;
+    };
+    for (const r of payload.results ?? []) {
+      if (typeof r.code === "string" && typeof r.name === "string" && typeof r.amount === "number") {
+        byCode.set(r.code.toUpperCase(), { code: r.code.toUpperCase(), name: r.name, amount: r.amount });
+      }
+    }
+  } catch {
+    throw new Error("USAspending national unparseable");
+  }
+  const prov = makeProvenance({
+    source_id: "USASPENDING",
+    jurisdiction: "ALL",
+    source_url: `${USASPENDING_URL} (category=awarding_agency, national, ${label})`,
+    body: text,
+    http_status: res.status,
+    record_count: byCode.size,
+    access_note: `USAspending.gov public API, no key. NATIONAL ${label} obligations by awarding agency. Live per build.`
+  });
+  return {
+    fyLabel: label,
+    byCode,
+    provenance: prov,
+    note: `${byCode.size} awarding agencies with ${label} national obligations.`
   };
 }

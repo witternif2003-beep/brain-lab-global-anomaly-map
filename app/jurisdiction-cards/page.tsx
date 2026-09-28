@@ -19,6 +19,12 @@ export default function JurisdictionCardsPage() {
           <span className="px-3.5 py-1.5 rounded-full bg-[#331e00]/90 text-[#ffd54f] border-2 border-[#ffaa00]/70 text-[10px] font-bold uppercase tracking-wider w-fit shadow-[0_0_12px_rgba(255,170,0,0.3)]">
             SHA-256 provenance on every value
           </span>
+          <a
+            href="/federal-registry"
+            className="px-3.5 py-1.5 rounded-full bg-gradient-to-r from-[#2a0845]/90 to-[#1b003a]/90 text-[#e0aaff] border-2 border-[#bd00ff]/80 text-[10px] font-bold uppercase tracking-wider w-fit shadow-[0_0_12px_rgba(189,0,255,0.3)] hover:text-white transition-all"
+          >
+            Federal Registry ↗
+          </a>
         </div>
         <div className="flex items-start sm:items-center gap-3.5">
           <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#00e5ff] via-[#00ff88] to-[#bd00ff] p-0.5 flex items-center justify-center shadow-[0_0_22px_rgba(0,229,255,0.6)] shrink-0">
