@@ -13,10 +13,13 @@ import { fetchFbiViolentCrime } from "../connectors/fbi-cde";
 import { fetchFemaFiltered, type FemaFilteredFetch } from "../connectors/fema-filtered";
 import { fetchNwsAlerts, type NwsAlerts } from "../connectors/nws";
 import { fetchStateAgencyAwards, type StateAgencyAwards } from "../connectors/usaspending";
+import { fetchFdicCount, type FdicCount } from "../connectors/fdic";
+import { fetchUsgsCount, type UsgsCount } from "../connectors/usgs";
+import { fetchFederalRegisterCounts, type FrAgencyCount } from "../connectors/federal-register";
 import { makeProvenance, Provenance } from "../provenance";
 import { BLS_LAUS_UNPUBLISHED, JURISDICTION_REFERENCE, WORLDBANK_ISO3, usaoToCodes } from "./reference";
 import { OUTLIER_METHOD, computeOutliers } from "./outliers";
-import { buildHandbookEntries, type HandbookCtx, type SourceResult } from "./handbook";
+import { buildHandbookEntries, FR_SLUGS, type HandbookCtx, type SourceResult } from "./handbook";
 import {
   CARD_FIELD_ORDER,
   CardBuildResult,
@@ -307,18 +310,25 @@ export async function buildJurisdictionCards(opts: { fresh?: boolean } = {}): Pr
     }
   };
   const codes = JURISDICTIONS.map((j) => j.code);
-  const [femaRes, nwsRes, usaRes] = await Promise.all([
+  const [femaRes, nwsRes, usaRes, fdicRes, usgsRes, frRes] = await Promise.all([
     mapLimit(codes, FAST_CONCURRENCY, (c) =>
       settle<FemaFilteredFetch>(() =>
         fetchFemaFiltered({ baseUrl: FEMA_OPEN_V2, stateCode: c, sourceId: "FEMA-DECL", jurisdiction: c, rows: 1 })
       )
     ),
     mapLimit(codes, FAST_CONCURRENCY, (c) => settle<NwsAlerts>(() => fetchNwsAlerts({ code: c }))),
-    mapLimit(codes, USASPENDING_CONCURRENCY, (c) => settle<StateAgencyAwards>(() => fetchStateAgencyAwards({ stateCode: c })))
+    mapLimit(codes, USASPENDING_CONCURRENCY, (c) => settle<StateAgencyAwards>(() => fetchStateAgencyAwards({ stateCode: c }))),
+    mapLimit(codes, FAST_CONCURRENCY, (c) => settle<FdicCount>(() => fetchFdicCount({ code: c }))),
+    mapLimit(JURISDICTIONS, FAST_CONCURRENCY, (j) =>
+      settle<UsgsCount>(() => fetchUsgsCount({ code: j.code, lat: j.lat, lng: j.lng }))
+    ),
+    settle<Map<string, FrAgencyCount>>(() => fetchFederalRegisterCounts(FR_SLUGS))
   ]);
   const femaByCode = new Map(codes.map((c, i) => [c, femaRes[i]]));
   const nwsByCode = new Map(codes.map((c, i) => [c, nwsRes[i]]));
   const usaByCode = new Map(codes.map((c, i) => [c, usaRes[i]]));
+  const fdicByCode = new Map(codes.map((c, i) => [c, fdicRes[i]]));
+  const usgsByCode = new Map(codes.map((c, i) => [c, usgsRes[i]]));
 
   const cards = await mapLimit(JURISDICTIONS, EPA_CONCURRENCY, async (j): Promise<JurisdictionCard> => {
     const ref = JURISDICTION_REFERENCE[j.code];
@@ -340,7 +350,10 @@ export async function buildJurisdictionCards(opts: { fresh?: boolean } = {}): Pr
       fields: byId,
       fema: femaByCode.get(j.code) ?? { ok: false, error: "missing FEMA result" },
       nws: nwsByCode.get(j.code) ?? { ok: false, error: "missing NWS result" },
-      usa: usaByCode.get(j.code) ?? { ok: false, error: "missing USAspending result" }
+      usa: usaByCode.get(j.code) ?? { ok: false, error: "missing USAspending result" },
+      fdic: fdicByCode.get(j.code) ?? { ok: false, error: "missing FDIC result" },
+      usgs: usgsByCode.get(j.code) ?? { ok: false, error: "missing USGS result" },
+      fr: frRes
     };
     return {
       code: j.code,

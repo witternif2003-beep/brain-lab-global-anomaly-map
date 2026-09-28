@@ -10,15 +10,22 @@
  *     several independent agencies, states and territories alike.
  *  3. NWS active-alert count (State) and OpenFEMA declaration count
  *     (State, FEMA).
+ *  4. FDIC insured-institution count by charter state (FDIC) and USGS
+ *     disclosed-radius quake count (Defense, Interior).
+ *  5. NATIONAL Federal Register trailing-12-month document counts — only for
+ *     entities with no per-state series at all, always labeled NATIONAL.
  *
- * Entities with no public per-jurisdiction feed resolve to `not-published`
- * with the reason — never an invented value. Entities whose feeds all failed
- * resolve to `error`.
+ * Entities with no public feed of any kind (CIA, most GSEs) resolve to
+ * `not-published` with the reason — never an invented value. Entities whose
+ * feeds all failed resolve to `error`.
  */
 import { HANDBOOK_ENTITIES } from "../jurisdiction-feeds/handbook-seed";
 import type { FemaFilteredFetch } from "../connectors/fema-filtered";
 import type { NwsAlerts } from "../connectors/nws";
 import { currentFy, type StateAgencyAwards } from "../connectors/usaspending";
+import type { FdicCount } from "../connectors/fdic";
+import { USGS_MIN_MAG, USGS_RADIUS_KM, USGS_WINDOW_DAYS, type UsgsCount } from "../connectors/usgs";
+import type { FrAgencyCount } from "../connectors/federal-register";
 import type { CardField, CardFieldId, CardFieldStatus, HandbookEntry } from "./types";
 
 export type SourceResult<T> = { ok: true; data: T } | { ok: false; error: string };
@@ -29,7 +36,25 @@ export interface HandbookCtx {
   fema: SourceResult<FemaFilteredFetch>;
   nws: SourceResult<NwsAlerts>;
   usa: SourceResult<StateAgencyAwards>;
+  fdic: SourceResult<FdicCount>;
+  usgs: SourceResult<UsgsCount>;
+  /** National Federal Register counts — same object shared by all 56 cards. */
+  fr: SourceResult<Map<string, FrAgencyCount>>;
 }
+
+/** Federal Register slugs for entities with no per-state series (verified live). */
+export const FR_SLUGS = [
+  "federal-trade-commission",
+  "federal-election-commission",
+  "commodity-futures-trading-commission",
+  "nuclear-regulatory-commission",
+  "federal-reserve-system",
+  "national-credit-union-administration",
+  "national-transportation-safety-board",
+  "national-labor-relations-board",
+  "national-archives-and-records-administration",
+  "tennessee-valley-authority"
+];
 
 interface Metric {
   text: string;
@@ -42,19 +67,26 @@ interface EntityWire {
   awards?: string;
   fema?: boolean;
   nws?: boolean;
+  fdic?: boolean;
+  usgs?: boolean;
+  fr?: string;
   extraNote?: string;
   unpublishable?: string;
 }
 
-const USGS_NOTE = "USGS event API publishes no state-level aggregate; not wired.";
+const USGS_METHOD =
+  `USGS: M${USGS_MIN_MAG}+ quakes within ${USGS_RADIUS_KM} km of the card centroid, trailing ${USGS_WINDOW_DAYS} d ` +
+  "(disclosed radial method; not a state-boundary query).";
+const FR_NOTE =
+  "Federal Register count is a NATIONAL trailing-12-month aggregate; the agency publishes no per-state series.";
 const GSE_NOTE = "GSE; outside the USAspending award universe, no public per-state series.";
 
 const WIRE: Record<string, EntityWire> = {
   "DEPT-STATE": { nws: true, fema: true, awards: "DOS" },
   "DEPT-TREASURY": { awards: "TREAS" },
-  "DEPT-DEFENSE": { awards: "DOD", extraNote: USGS_NOTE },
+  "DEPT-DEFENSE": { awards: "DOD", usgs: true, extraNote: USGS_METHOD },
   "DEPT-JUSTICE": { shared: ["fbi_crime", "doj_natsec"], awards: "DOJ" },
-  "DEPT-INTERIOR": { awards: "DOI", extraNote: USGS_NOTE },
+  "DEPT-INTERIOR": { awards: "DOI", usgs: true, extraNote: USGS_METHOD },
   "DEPT-AGRICULTURE": { awards: "USDA" },
   "DEPT-COMMERCE": { shared: ["population"], awards: "DOC" },
   "DEPT-LABOR": { shared: ["unemployment"], awards: "DOL" },
@@ -72,23 +104,23 @@ const WIRE: Record<string, EntityWire> = {
   "AGENCY-FEMA": { fema: true, extraNote: "FEMA award dollars roll up under DHS in USAspending; declarations shown." },
   "AGENCY-SEC": { awards: "SEC" },
   "AGENCY-FCC": { awards: "FCC" },
-  "AGENCY-FTC": { awards: "FTC" },
-  "AGENCY-FEC": { awards: "FEC" },
-  "AGENCY-CFTC": { awards: "CFTC" },
-  "AGENCY-FDIC": { awards: "FDIC", unpublishable: "FDIC is self-funded (deposit-insurance premiums); no state award series." },
-  "AGENCY-NRC": { awards: "NRC" },
-  "AGENCY-FED": { unpublishable: "Federal Reserve is self-funded; no federal award obligations." },
+  "AGENCY-FTC": { awards: "FTC", fr: "federal-trade-commission", extraNote: FR_NOTE },
+  "AGENCY-FEC": { awards: "FEC", fr: "federal-election-commission", extraNote: FR_NOTE },
+  "AGENCY-CFTC": { awards: "CFTC", fr: "commodity-futures-trading-commission", extraNote: FR_NOTE },
+  "AGENCY-FDIC": { awards: "FDIC", fdic: true },
+  "AGENCY-NRC": { awards: "NRC", fr: "nuclear-regulatory-commission", extraNote: FR_NOTE },
+  "AGENCY-FED": { fr: "federal-reserve-system", extraNote: FR_NOTE },
   "AGENCY-CIA": { unpublishable: "No public per-jurisdiction data (classified budgets)." },
   "AGENCY-SSA": { awards: "SSA" },
-  "AGENCY-NARA": { awards: "NARA" },
-  "AGENCY-NCUA": { awards: "NCUA", unpublishable: "NCUA is self-funded (credit-union premiums); no state award series." },
-  "AGENCY-NLRB": { awards: "NLRB" },
-  "AGENCY-NTSB": { awards: "NTSB" },
+  "AGENCY-NARA": { awards: "NARA", fr: "national-archives-and-records-administration", extraNote: FR_NOTE },
+  "AGENCY-NCUA": { awards: "NCUA", fr: "national-credit-union-administration", extraNote: FR_NOTE },
+  "AGENCY-NLRB": { awards: "NLRB", fr: "national-labor-relations-board", extraNote: FR_NOTE },
+  "AGENCY-NTSB": { awards: "NTSB", fr: "national-transportation-safety-board", extraNote: FR_NOTE },
   "GSE-FANNIE-MAE": { unpublishable: "In federal conservatorship; " + GSE_NOTE.slice(5) },
   "GSE-FREDDIE-MAC": { unpublishable: "In federal conservatorship; " + GSE_NOTE.slice(5) },
   "GSE-FHLBANK": { unpublishable: GSE_NOTE },
   "GSE-GINNIE-MAE": { unpublishable: GSE_NOTE },
-  "GSE-TVA": { awards: "TVA", unpublishable: "No TVA state award series in this build's USAspending response." },
+  "GSE-TVA": { awards: "TVA", fr: "tennessee-valley-authority", extraNote: FR_NOTE },
   "GSE-AMTRAK": { unpublishable: "Amtrak is a grant recipient, not an awarding agency; no per-state series." },
   "GSE-EXIM": { awards: "EXIM" },
   "GSE-FARMER-MAC": { unpublishable: GSE_NOTE }
@@ -151,6 +183,43 @@ export function buildHandbookEntries(ctx: HandbookCtx): HandbookEntry[] {
         });
       } else {
         errors.push(ctx.fema.ok ? "FEMA-DECL: no declaration count returned" : `FEMA-DECL: ${ctx.fema.error}`);
+      }
+    }
+    if (w.fdic) {
+      if (ctx.fdic.ok) {
+        const n = ctx.fdic.data.total;
+        metrics.push({
+          text: `${n.toLocaleString("en-US")} FDIC-INSURED INSTITUTION${n === 1 ? "" : "S"}`,
+          sourceId: "FDIC",
+          provenance: ctx.fdic.data.provenance
+        });
+      } else {
+        errors.push(`FDIC: ${ctx.fdic.error}`);
+      }
+    }
+    if (w.usgs) {
+      if (ctx.usgs.ok) {
+        metrics.push({
+          text: `${ctx.usgs.data.count} QUAKES M${USGS_MIN_MAG}+ (${USGS_RADIUS_KM}KM/${USGS_WINDOW_DAYS}D)`,
+          sourceId: "USGS",
+          provenance: ctx.usgs.data.provenance
+        });
+      } else {
+        errors.push(`USGS: ${ctx.usgs.error}`);
+      }
+    }
+    if (w.fr) {
+      if (ctx.fr.ok) {
+        const hit = ctx.fr.data.get(w.fr);
+        if (hit) {
+          metrics.push({
+            text: `${hit.count.toLocaleString("en-US")} FR DOCS (NATIONAL, 12 MO)`,
+            sourceId: "FED-REGISTER",
+            provenance: hit.provenance
+          });
+        }
+      } else {
+        errors.push(`FED-REGISTER: ${ctx.fr.error}`);
       }
     }
     if (w.nws) {
