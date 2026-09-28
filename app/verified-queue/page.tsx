@@ -1,0 +1,42 @@
+"use client";
+import React from "react";
+import { ListChecks, ShieldCheck } from "lucide-react";
+import VerifiedQueueGrid from "../../components/verified-queue/VerifiedQueueGrid";
+
+export default function VerifiedQueuePage() {
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6 font-mono">
+      <div className="relative rounded-[32px] sm:rounded-[48px] bg-gradient-to-b from-[#051124]/80 via-[#030c1c]/75 to-[#010610]/80 backdrop-blur-3xl border-2 border-[#00e5ff]/60 p-5 sm:p-8 space-y-4 overflow-hidden shadow-[0_16px_70px_rgba(0,229,255,0.25),inset_0_1px_4px_rgba(0,229,255,0.4)]">
+        <div className="absolute top-0 right-1/4 w-96 h-96 bg-[#00e5ff]/15 rounded-full blur-[130px] pointer-events-none -z-10" />
+        <div className="absolute bottom-0 left-10 w-96 h-96 bg-[#00ff88]/15 rounded-full blur-[130px] pointer-events-none -z-10" />
+        <div className="flex flex-wrap items-center gap-2.5">
+          <span className="px-3.5 py-1.5 rounded-full bg-[#002b1b]/90 text-[#69f0ae] border-2 border-[#00ff88]/80 text-[10px] font-bold uppercase tracking-wider flex items-center gap-2 shadow-[0_0_16px_rgba(0,255,136,0.4)] w-fit">
+            <ListChecks className="w-3.5 h-3.5" /> Verified feeds only
+          </span>
+          <span className="px-3.5 py-1.5 rounded-full bg-[#331e00]/90 text-[#ffd54f] border-2 border-[#ffaa00]/70 text-[10px] font-bold uppercase tracking-wider w-fit shadow-[0_0_12px_rgba(255,170,0,0.3)]">
+            SHA-256 provenance on every item
+          </span>
+        </div>
+        <div className="flex items-start sm:items-center gap-3.5">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#00ff88] via-[#00e5ff] to-[#bd00ff] p-0.5 flex items-center justify-center shadow-[0_0_22px_rgba(0,255,136,0.6)] shrink-0">
+            <div className="w-full h-full bg-[#020b18] rounded-[14px] flex items-center justify-center">
+              <ShieldCheck className="w-5 h-5 text-[#69f0ae]" />
+            </div>
+          </div>
+          <h1 className="text-base sm:text-2xl font-black tracking-wide uppercase leading-tight">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#69f0ae] via-[#00e5ff] to-white">
+              Verified Queue — Live Anomalies by Jurisdiction
+            </span>
+          </h1>
+        </div>
+        <p className="text-xs sm:text-[13px] text-[#b2ebf2] leading-relaxed">
+          Pick any of the 56 jurisdictions. Every item below is a live value from a public API in this build —
+          FEMA disaster declarations, NWS active alerts, FBI reported violent offenses, EPA facilities and penalties,
+          DOJ national-security releases, top federal awarding agencies. Titles are upstream values, not generated
+          narrative. Feeds that fail are listed as unavailable, never substituted.
+        </p>
+      </div>
+      <VerifiedQueueGrid initialCode="CT" />
+    </div>
+  );
+}
