@@ -271,16 +271,7 @@ export default function GodsEyeMap({
   const [activePersonEvent, setActivePersonEvent] = useState<VerifiedPersonLeavingGA | null>(null);
   const [activeIntelLayer, setActiveIntelLayer] = useState<string>('all');
   const [selectedEntity, setSelectedEntity] = useState<LiveTelemetryEntity | null>(null);
-      const [selectedAstroStar, setSelectedAstroStar] = useState<any | null>(null);
   // UNIVERSE STAR FINDER 3D SUITE STATE (All app features from Universe Star Finder / id1575384854)
-  const [starFinderNightMode, setStarFinderNightMode] = useState(false); // Special Monochromatic Red Night Mode
-  const [starFinderShowLabels, setStarFinderShowLabels] = useState(true); // Constellation & Star Labels Toggle
-  const [starFinderShowConstellations, setStarFinderShowConstellations] = useState(true); // Constellation Vectors Toggle
-  const [starFinderShowPlanets, setStarFinderShowPlanets] = useState(true); // Solar System Planets Simulation Toggle
-  const [starFinderSearchQuery, setStarFinderSearchQuery] = useState(''); // Live Universal Search by name, catalog or ISR registration ID
-  const [starFinderNamedStarId, setStarFinderNamedStarId] = useState<string | null>(null); // "Own Star" registration lookup
-  const [starFinderMilkyWayBrightness, setStarFinderMilkyWayBrightness] = useState(0.88); // Milky Way & Light Pollution adjustment slider
-  const [starFinderTimeShiftHours, setStarFinderTimeShiftHours] = useState(0); // Time machine simulation (-12h .. +12h)
 
   const [outboundCounts, setOutboundCounts] = useState<Record<string, number>>({
     NC: 3412,
@@ -323,12 +314,6 @@ export default function GodsEyeMap({
     window.addEventListener('resize', onResize);
 
     // Major recognizable astronomical constellations (Ursa Major, Orion, Cassiopeia, Cygnus, Taurus, Pleiades)
-            if (typeof window !== 'undefined') {
-      (window as any).__inspectAstroStar = (starId: string) => {
-        const found = NASA_IAU_CATALOGUE.find((s) => s.id === starId);
-        if (found) setSelectedAstroStar(found);
-      };
-    }
 // NASA Scientific Visualization Studio (SVS-3895) / IAU J2000 Astronomical Star Catalogue
     // Rigorous astronomical coordinates: Right Ascension (RA in hours 0..24) and Declination (Dec in degrees -90..+90)
     // Twinkling & physical radius calculated from verified Apparent Visual Magnitude (Vmag)
@@ -430,7 +415,7 @@ export default function GodsEyeMap({
       const safeCelestialHeight = isGlobeView ? height : Math.max(25, topLimbY - 20);
 
       // Celestial Projection Math:
-      const timeAngleOffset = (starFinderTimeShiftHours / 24);
+      const timeAngleOffset = 0; // time-shift control removed
       const raShift = (((currentBearing / 360) + ((currentCenter.lng + 83.4) / 360) * 0.5 + timeAngleOffset) % 1 + 1) % 1;
 
       // ─── STEP 1: RENDER FULL COSMIC BACKGROUND (Milky Way & Starry Deep Space) ───
@@ -447,12 +432,8 @@ export default function GodsEyeMap({
         const normShift = ((raShift % 1) + 1) % 1;
         const sx = -normShift * bgWidth;
 
-        ctx.globalAlpha = Math.max(0.15, Math.min(1.0, starFinderMilkyWayBrightness));
-        if (starFinderNightMode) {
-          ctx.filter = 'sepia(100%) hue-rotate(-50deg) saturate(300%)';
-        } else {
-          ctx.filter = 'none';
-        }
+        ctx.globalAlpha = 0.88;
+        ctx.filter = 'none'; // night-mode control removed
         ctx.drawImage(nasaMilkyWayImg, sx, 0, bgWidth, bgHeight);
         ctx.drawImage(nasaMilkyWayImg, sx + bgWidth, 0, bgWidth, bgHeight);
         if (sx + bgWidth < width) {
@@ -507,9 +488,9 @@ export default function GodsEyeMap({
       }
 
       // 1. Draw NASA SVS Constellation Vectors (Universe Star Finder Toggle)
-      if (starFinderShowConstellations) {
+      if (true) { // toggle removed — constellations always on
         ctx.lineWidth = 0.85;
-        ctx.strokeStyle = starFinderNightMode ? 'rgba(239, 68, 68, 0.55)' : 'rgba(56, 189, 248, 0.35)';
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
         NASA_CONSTELLATION_VECTORS.forEach(([s1Id, s2Id]) => {
           const p1 = starScreenPos[s1Id];
           const p2 = starScreenPos[s2Id];
@@ -548,11 +529,11 @@ export default function GodsEyeMap({
       });
 
       // 3. Render Solar System Planets (Universe Star Finder Planetary Detail View)
-      if (starFinderShowPlanets) {
+      if (true) { // toggle removed — planets always on
         NASA_SOLAR_SYSTEM_BODIES.forEach((planet) => {
           const pos = projectCelestial(planet.ra, planet.dec);
           if (pos && pos.visible) {
-            const planetColor = starFinderNightMode ? '#ef4444' : planet.color;
+            const planetColor = planet.color;
             ctx.beginPath();
             ctx.arc(pos.x, pos.y, planet.radius, 0, Math.PI * 2);
             ctx.fillStyle = planetColor;
@@ -562,7 +543,7 @@ export default function GodsEyeMap({
             ctx.fill();
             ctx.shadowBlur = 0;
 
-            if (planet.id === 'Saturn' && !starFinderNightMode) {
+            if (planet.id === 'Saturn') {
               ctx.beginPath();
               ctx.ellipse(pos.x, pos.y, planet.radius * 2.2, planet.radius * 0.7, 0.35, 0, Math.PI * 2);
               ctx.strokeStyle = 'rgba(56, 189, 248, 0.75)';
@@ -570,9 +551,9 @@ export default function GodsEyeMap({
               ctx.stroke();
             }
 
-            if (starFinderShowLabels && width > 420) {
+            if (width > 420) { // toggle removed — labels always on
               ctx.font = 'bold 9px monospace';
-              ctx.fillStyle = starFinderNightMode ? '#ef4444' : '#f8fafc';
+              ctx.fillStyle = '#f8fafc';
               ctx.fillText(planet.name, pos.x + 6, pos.y + 3);
             }
           }
@@ -595,28 +576,12 @@ export default function GodsEyeMap({
           ctx.shadowBlur = 6;
           ctx.fill();
 
-          const isSearched = starFinderSearchQuery && star.name.toLowerCase().includes(starFinderSearchQuery.toLowerCase());
-          const isNamed = starFinderNamedStarId && (star.id === starFinderNamedStarId || star.name.toLowerCase().includes(starFinderNamedStarId.toLowerCase()));
-          const showLabel = isSearched || isNamed || (starFinderShowLabels && ['Polaris', 'Betelgeuse', 'Sirius', 'Vega', 'Deneb', 'Rigel', 'Arcturus', 'Capella', 'Aldebaran', 'Antares', 'Spica'].includes(star.id) && width > 480);
-
-          if (isSearched || isNamed) {
-            ctx.beginPath();
-            ctx.arc(pos.x, pos.y, radius * 3.0, 0, Math.PI * 2);
-            ctx.strokeStyle = '#38bdf8';
-            ctx.lineWidth = 1.5;
-            ctx.stroke();
-
-            ctx.beginPath();
-            ctx.arc(pos.x, pos.y, radius * 4.5, 0, Math.PI * 2);
-            ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
-            ctx.lineWidth = 1.0;
-            ctx.stroke();
-          }
+          const showLabel = (['Polaris', 'Betelgeuse', 'Sirius', 'Vega', 'Deneb', 'Rigel', 'Arcturus', 'Capella', 'Aldebaran', 'Antares', 'Spica'].includes(star.id) && width > 480); // search removed
 
           if (showLabel) {
             ctx.shadowBlur = 0;
-            ctx.font = isSearched || isNamed ? 'bold 10px monospace' : '8px monospace';
-            ctx.fillStyle = isSearched || isNamed ? '#38bdf8' : (starFinderNightMode ? '#ef4444' : 'rgba(56, 189, 248, 0.75)');
+            ctx.font = '8px monospace';
+            ctx.fillStyle = 'rgba(56, 189, 248, 0.75)';
             ctx.fillText(star.name.split(' ')[0], pos.x + 5, pos.y - 3);
           }
         }
@@ -657,14 +622,51 @@ export default function GodsEyeMap({
     // Optionally trigger inspection or reactive telemetry
   });
 
+  // Re-apply custom layers only once the style is actually ready. The old
+  // pattern (map.once('styledata', ...)) is racy — styledata fires before
+  // the style is usable, so every custom layer was silently wiped after
+  // any setStyle. This waiter polls isStyleLoaded instead.
+  function reapplyLayersWhenReady(m: maplibregl.Map) {
+    let tries = 0;
+    const tick = () => {
+      tries += 1;
+      try {
+        if (m.isStyleLoaded()) {
+          addMapLayers(m);
+          return;
+        }
+      } catch { /* retry below */ }
+      if (tries < 60) {
+        setTimeout(tick, 100);
+      } else {
+        try { addMapLayers(m); } catch (e) { console.warn('[Layers] reapply failed:', e); }
+      }
+    };
+    tick();
+  }
+
   // Layer stack constructor
   const addMapLayers = useCallback((map: maplibregl.Map) => {
     // ═══ VERIFIED 3D SKYBOX STARFIELD (GeoLibre PR #440 / @geoql/maplibre-gl-starfield) ═══
     injectStarfieldLayer(map);
 
+    // Safe wrappers: one bad layer must never abort the rest of the stack.
+    const safeAddSource = (id: string, spec: any) => {
+      try { if (!map.getSource(id)) map.addSource(id, spec); }
+      catch (e) { console.warn('[Layers] source skipped:', id, e); }
+    };
+    const safeAddLayer = (spec: any) => {
+      try { if (!map.getLayer(spec.id)) map.addLayer(spec); }
+      catch (e) { console.warn('[Layers] layer skipped:', spec.id, e); }
+    };
+    const safeAddImage = (id: string, data: any, opts?: any) => {
+      try { if (!map.hasImage(id)) map.addImage(id, data, opts); }
+      catch (e) { console.warn('[Layers] image skipped:', id, e); }
+    };
+
     // ═══ SINGLE SOURCE for all 8 state boundaries (US Census 500k cartographic geometry) ═══
     if (!map.getSource('all-states')) {
-      map.addSource('all-states', {
+      safeAddSource('all-states', {
         type: 'geojson',
         data: '/geo/all-states.geojson',
       });
@@ -672,7 +674,7 @@ export default function GodsEyeMap({
 
     // ─── GEORGIA: permanent red target ─────────────────────────
     if (!map.getLayer('ga-fill')) {
-      map.addLayer({
+      safeAddLayer({
         id: 'ga-fill',
         type: 'fill',
         source: 'all-states',
@@ -685,7 +687,7 @@ export default function GodsEyeMap({
     }
 
     if (!map.getLayer('ga-glow')) {
-      map.addLayer({
+      safeAddLayer({
         id: 'ga-glow',
         type: 'line',
         source: 'all-states',
@@ -694,7 +696,7 @@ export default function GodsEyeMap({
           'line-color': '#dc2626',
           'line-width': 4,
           'line-blur': 6,
-          'line-opacity': 0.75,
+          'line-opacity': 0.9,
         },
       });
     }
@@ -799,19 +801,32 @@ export default function GodsEyeMap({
         barbStar(64, 64);
         barbStar(128, 64);
 
-        map.addImage('barb-wire-hd', { width: S, height: S, data: g.getImageData(0, 0, S, S).data }, { pixelRatio: 2 });
+        safeAddImage('barb-wire-hd', { width: S, height: S, data: g.getImageData(0, 0, S, S).data }, { pixelRatio: 2 });
       }
     }
 
+    if (!map.getLayer('ga-wall-edge')) {
+      safeAddLayer({
+        id: 'ga-wall-edge',
+        type: 'line',
+        source: 'all-states',
+        filter: ['==', ['get', 'STUSPS'], 'GA'],
+        paint: {
+          'line-color': '#0b0f16',
+          'line-width': ['interpolate', ['linear'], ['zoom'], 3, 7, 6, 11, 9, 20],
+        },
+      });
+    }
+
     if (!map.getLayer('ga-wall-shadow')) {
-      map.addLayer({
+      safeAddLayer({
         id: 'ga-wall-shadow',
         type: 'line',
         source: 'all-states',
         filter: ['==', ['get', 'STUSPS'], 'GA'],
         paint: {
           'line-color': '#000000',
-          'line-width': ['interpolate', ['linear'], ['zoom'], 3, 6, 6, 12, 9, 22],
+          'line-width': ['interpolate', ['linear'], ['zoom'], 3, 7, 6, 13, 9, 24],
           'line-blur': 4,
           'line-opacity': 0.85,
         },
@@ -819,60 +834,60 @@ export default function GodsEyeMap({
     }
 
     if (!map.getLayer('ga-wall-casing')) {
-      map.addLayer({
+      safeAddLayer({
         id: 'ga-wall-casing',
         type: 'line',
         source: 'all-states',
         filter: ['==', ['get', 'STUSPS'], 'GA'],
         paint: {
           'line-color': '#3f4753',
-          'line-width': ['interpolate', ['linear'], ['zoom'], 3, 4, 6, 8, 9, 16],
+          'line-width': ['interpolate', ['linear'], ['zoom'], 3, 5, 6, 9, 9, 17],
         },
       });
     }
 
     if (!map.getLayer('ga-wall-steel')) {
-      map.addLayer({
+      safeAddLayer({
         id: 'ga-wall-steel',
         type: 'line',
         source: 'all-states',
         filter: ['==', ['get', 'STUSPS'], 'GA'],
         paint: {
           'line-color': '#9aa3b2',
-          'line-width': ['interpolate', ['linear'], ['zoom'], 3, 3, 6, 6, 9, 12],
+          'line-width': ['interpolate', ['linear'], ['zoom'], 3, 3.5, 6, 7, 9, 13],
         },
       });
     }
 
     if (!map.getLayer('ga-wall-core')) {
-      map.addLayer({
+      safeAddLayer({
         id: 'ga-wall-core',
         type: 'line',
         source: 'all-states',
         filter: ['==', ['get', 'STUSPS'], 'GA'],
         paint: {
           'line-color': '#e8edf3',
-          'line-width': ['interpolate', ['linear'], ['zoom'], 3, 1, 6, 1.6, 9, 2.4],
+          'line-width': ['interpolate', ['linear'], ['zoom'], 3, 1.2, 6, 1.8, 9, 2.6],
         },
       });
     }
 
     if (map.hasImage('barb-wire-hd') && !map.getLayer('ga-wall-barb')) {
-      map.addLayer({
+      safeAddLayer({
         id: 'ga-wall-barb',
         type: 'line',
         source: 'all-states',
         filter: ['==', ['get', 'STUSPS'], 'GA'],
         paint: {
           'line-pattern': 'barb-wire-hd',
-          'line-width': ['interpolate', ['linear'], ['zoom'], 3, 5, 6, 9, 9, 15],
+          'line-width': ['interpolate', ['linear'], ['zoom'], 3, 6, 6, 10, 9, 16],
         },
       });
     }
 
     // ─── ALLY STATES (GA border states): light-neon-blue outline ──
     if (!map.getLayer('ally-fill')) {
-      map.addLayer({
+      safeAddLayer({
         id: 'ally-fill',
         type: 'fill',
         source: 'all-states',
@@ -889,7 +904,7 @@ export default function GodsEyeMap({
     }
 
     if (!map.getLayer('ally-glow')) {
-      map.addLayer({
+      safeAddLayer({
         id: 'ally-glow',
         type: 'line',
         source: 'all-states',
@@ -898,20 +913,20 @@ export default function GodsEyeMap({
           'line-color': '#0ea5e9',
           'line-width': 4,
           'line-blur': 6,
-          'line-opacity': 0.75,
+          'line-opacity': 0.85,
         },
       });
     }
 
     if (!map.getLayer('ally-outline')) {
-      map.addLayer({
+      safeAddLayer({
         id: 'ally-outline',
         type: 'line',
         source: 'all-states',
         filter: ['in', ['get', 'STUSPS'], ['literal', ['FL', 'AL', 'TN', 'NC', 'SC']]],
         paint: {
           'line-color': '#38bdf8',
-          'line-width': 2.5,
+          'line-width': 3,
         },
       });
     }
@@ -1437,7 +1452,7 @@ export default function GodsEyeMap({
         console.warn('[Map] Style timeout — falling back to keyless demotiles');
         try {
           map.setStyle('https://demotiles.maplibre.org/style.json');
-          map.once('styledata', () => addMapLayers(map));
+          reapplyLayersWhenReady(map);
         } catch {}
       }
     }, 5000);
@@ -1445,6 +1460,31 @@ export default function GodsEyeMap({
     map.on('styledata', () => clearTimeout(fallbackTimer));
 
     mapRef.current = map;
+
+    // Self-heal: if a style swap ever drops the wall layers, re-apply them
+    // once the map is idle (bounded retries, no-op when healthy).
+    let healTries = 0;
+    map.on('idle', () => {
+      if (healTries >= 3) return;
+      try {
+        if (map.isStyleLoaded() && !map.getLayer('ga-wall-casing')) {
+          healTries += 1;
+          addMapLayers(map);
+        }
+      } catch {}
+    });
+    if (typeof window !== 'undefined') {
+      (window as any).__wallDiag = () => {
+        try {
+          return {
+            styleLoaded: map.isStyleLoaded(),
+            source: !!map.getSource('all-states'),
+            image: map.hasImage('barb-wire-hd'),
+            layers: ['ga-fill', 'ga-glow', 'ga-wall-edge', 'ga-wall-shadow', 'ga-wall-casing', 'ga-wall-steel', 'ga-wall-core', 'ga-wall-barb', 'ally-fill', 'ally-glow', 'ally-outline'].map((id) => `${id}:${!!map.getLayer(id)}`),
+          };
+        } catch (e) { return { error: String(e) }; }
+      };
+    }
 
     // NSA Admin Mode: Enforce MapLibre canvas background transparency so starsCanvasRef at z-0 shines through on all sides of the globe
     const enforceCanvasTransparency = () => {
@@ -1642,25 +1682,25 @@ export default function GodsEyeMap({
 
     if (next === 'terrain') {
       map.setStyle(BASEMAPS.terrain as any);
-      map.once('styledata', () => {
+      map.once('style.load', () => {
         try {
           (map as any).setTerrain?.({ source: 'terrain-dem', exaggeration: 1.5 });
         } catch {}
-        addMapLayers(map);
       });
+      reapplyLayersWhenReady(map);
       map.easeTo({ pitch: 60, bearing: -12, duration: 800 });
     } else if (next === 'satellite') {
       try {
         (map as any).setTerrain?.(null);
       } catch {}
       map.setStyle(BASEMAPS.satellite as any);
-      map.once('styledata', () => addMapLayers(map));
+      reapplyLayersWhenReady(map);
     } else {
       try {
         (map as any).setTerrain?.(null);
       } catch {}
       map.setStyle(BASEMAPS[next] as string);
-      map.once('styledata', () => addMapLayers(map));
+      reapplyLayersWhenReady(map);
     }
   }, [addMapLayers]);
 
@@ -1770,187 +1810,7 @@ export default function GodsEyeMap({
           {/* Map Surface: Mount MapLibre globe container directly with transparent deep space */}
           <div ref={containerRef} className="absolute inset-0 z-10" />
           {/* Real-time twinkling stars and NSA Admin Star Constellations */}
-          {/* UNIVERSE STAR FINDER 3D SUITE CONTROLS (App Store id1575384854 Conformal NSA Admin Glass HUD) */}
-          <div className="absolute top-3 left-3 z-20 flex flex-wrap items-center gap-1.5 p-1.5 rounded-2xl bg-[#070e1c]/85 backdrop-blur-xl border border-[#38bdf8]/40 shadow-xl text-[10px] font-mono select-none">
-            {/* Search Input */}
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#0b172a] border border-[#1e3a5f]/60">
-              <span className="text-[#38bdf8]">🔍</span>
-              <input
-                type="text"
-                placeholder="Star / Constellation / ISR Request..."
-                value={starFinderSearchQuery}
-                onChange={(e) => {
-                  setStarFinderSearchQuery(e.target.value);
-                  if (e.target.value.trim().length > 1) {
-                    const found = NASA_IAU_CATALOGUE.find((s: any) => s.name.toLowerCase().includes(e.target.value.toLowerCase()) || s.id.toLowerCase().includes(e.target.value.toLowerCase()));
-                    if (found) setSelectedAstroStar(found);
-                  }
-                }}
-                className="bg-transparent text-slate-100 placeholder-slate-500 outline-none w-28 sm:w-44 text-[10px] font-mono"
-              />
-              {starFinderSearchQuery && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setStarFinderSearchQuery('');
-                    setStarFinderNamedStarId(null);
-                  }}
-                  className="text-slate-400 hover:text-white"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
 
-            {/* Constellation Toggle */}
-            <button
-              type="button"
-              onClick={() => setStarFinderShowConstellations(!starFinderShowConstellations)}
-              className={`px-2.5 py-1 rounded-xl font-bold transition-all ${
-                starFinderShowConstellations
-                  ? 'bg-[#0c284d] text-[#38bdf8] border border-[#38bdf8]/60 shadow-[0_0_8px_rgba(56,189,248,0.3)]'
-                  : 'bg-transparent text-slate-400 border border-slate-700/50 hover:text-white'
-              }`}
-              title="Toggle Constellation Vector Outlines"
-            >
-              Constellations
-            </button>
-
-            {/* Planets Toggle */}
-            <button
-              type="button"
-              onClick={() => setStarFinderShowPlanets(!starFinderShowPlanets)}
-              className={`px-2.5 py-1 rounded-xl font-bold transition-all ${
-                starFinderShowPlanets
-                  ? 'bg-[#0c284d] text-[#34d399] border border-emerald-500/60 shadow-[0_0_8px_rgba(52,211,153,0.3)]'
-                  : 'bg-transparent text-slate-400 border border-slate-700/50 hover:text-white'
-              }`}
-              title="Toggle Solar System Planets (Jupiter, Mars, Saturn, Venus)"
-            >
-              Planets
-            </button>
-
-            {/* Labels Toggle */}
-            <button
-              type="button"
-              onClick={() => setStarFinderShowLabels(!starFinderShowLabels)}
-              className={`px-2.5 py-1 rounded-xl font-bold transition-all ${
-                starFinderShowLabels
-                  ? 'bg-[#0c284d] text-[#38bdf8] border border-[#38bdf8]/60'
-                  : 'bg-transparent text-slate-400 border border-slate-700/50 hover:text-white'
-              }`}
-              title="Toggle Celestial Labels"
-            >
-              Labels {starFinderShowLabels ? "ON" : "OFF"}
-            </button>
-
-            {/* Red Night Mode (Astro Dark Adaptation) */}
-            <button
-              type="button"
-              onClick={() => setStarFinderNightMode(!starFinderNightMode)}
-              className={`px-2.5 py-1 rounded-xl font-bold transition-all ${
-                starFinderNightMode
-                  ? 'bg-red-950/90 text-red-400 border border-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]'
-                  : 'bg-transparent text-slate-400 border border-slate-700/50 hover:text-white'
-              }`}
-              title="Toggle Astronomical Monochromatic Red Night Mode"
-            >
-              Night Mode {starFinderNightMode ? "ON" : "OFF"}
-            </button>
-
-            {/* Time Shift Control (-12h .. +12h) */}
-            <div className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded-xl bg-[#0b172a] border border-[#1e3a5f]/60 text-[9px]">
-              <span className="text-slate-400">Time:</span>
-              <button
-                type="button"
-                onClick={() => setStarFinderTimeShiftHours((h) => Math.max(-12, h - 1))}
-                className="text-[#38bdf8] font-bold px-1 hover:bg-white/10 rounded"
-              >
-                -1h
-              </button>
-              <span className="text-white font-extrabold">{starFinderTimeShiftHours >= 0 ? `+${starFinderTimeShiftHours}h` : `${starFinderTimeShiftHours}h`}</span>
-              <button
-                type="button"
-                onClick={() => setStarFinderTimeShiftHours((h) => Math.min(12, h + 1))}
-                className="text-[#38bdf8] font-bold px-1 hover:bg-white/10 rounded"
-              >
-                +1h
-              </button>
-              {starFinderTimeShiftHours !== 0 && (
-                <button
-                  type="button"
-                  onClick={() => setStarFinderTimeShiftHours(0)}
-                  className="text-slate-400 hover:text-white ml-0.5"
-                  title="Reset to Current Real-time"
-                >
-                  ↺
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* NASA ASTROMETRIC STAR TELEMETRY HUD (50 VERIFIED STELLAR METRICS) */}
-          {selectedAstroStar && (
-            <div className="absolute top-16 left-4 z-20 max-w-sm rounded-2xl bg-[#070e1c]/90 backdrop-blur-xl border border-[#38bdf8]/50 p-4 shadow-[0_12px_36px_rgba(0,0,0,0.85)] text-xs font-mono space-y-2.5 animate-fadeIn">
-              <div className="flex items-center justify-between border-b border-[#1e3a5f]/60 pb-2">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: selectedAstroStar.color, boxShadow: `0 0 8px ${selectedAstroStar.color}` }} />
-                  <span className="font-bold text-[#f8fafc] text-xs tracking-wide">{selectedAstroStar.name}</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setSelectedAstroStar(null)}
-                  className="text-slate-400 hover:text-white text-xs px-1.5 py-0.5 rounded bg-white/5"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <div className="text-[10px] text-[#38bdf8] font-bold uppercase tracking-wider">
-                Constellation: {selectedAstroStar.constellation}
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 text-[11px]">
-                <div className="p-2 rounded-lg bg-[#0c1a30] border border-[#1e3a5f]/50">
-                  <div className="text-[9px] text-slate-400">RIGHT ASCENSION (RA)</div>
-                  <div className="font-extrabold text-[#38bdf8]">{selectedAstroStar.ra.toFixed(2)}h J2000</div>
-                </div>
-                <div className="p-2 rounded-lg bg-[#0c1a30] border border-[#1e3a5f]/50">
-                  <div className="text-[9px] text-slate-400">DECLINATION (DEC)</div>
-                  <div className="font-extrabold text-[#38bdf8]">{selectedAstroStar.dec > 0 ? '+' : ''}{selectedAstroStar.dec.toFixed(2)}°</div>
-                </div>
-                <div className="p-2 rounded-lg bg-[#0c1a30] border border-[#1e3a5f]/50">
-                  <div className="text-[9px] text-slate-400">DISTANCE TO EARTH</div>
-                  <div className="font-extrabold text-[#34d399]">{selectedAstroStar.dist_ly.toLocaleString()} ly</div>
-                </div>
-                <div className="p-2 rounded-lg bg-[#0c1a30] border border-[#1e3a5f]/50">
-                  <div className="text-[9px] text-slate-400">VISUAL MAGNITUDE (V)</div>
-                  <div className="font-extrabold text-[#fb923c]">{selectedAstroStar.vmag.toFixed(2)} mag</div>
-                </div>
-                <div className="p-2 rounded-lg bg-[#0c1a30] border border-[#1e3a5f]/50">
-                  <div className="text-[9px] text-slate-400">SPECTRAL TYPE</div>
-                  <div className="font-extrabold text-[#a7f3d0]">{selectedAstroStar.spec}</div>
-                </div>
-                <div className="p-2 rounded-lg bg-[#0c1a30] border border-[#1e3a5f]/50">
-                  <div className="text-[9px] text-slate-400">EFFECTIVE TEMP</div>
-                  <div className="font-extrabold text-[#fed7aa]">{selectedAstroStar.teff.toLocaleString()} K</div>
-                </div>
-                <div className="p-2 rounded-lg bg-[#0c1a30] border border-[#1e3a5f]/50">
-                  <div className="text-[9px] text-slate-400">STELLAR RADIUS</div>
-                  <div className="font-extrabold text-[#38bdf8]">{selectedAstroStar.radius} R☉</div>
-                </div>
-                <div className="p-2 rounded-lg bg-[#0c1a30] border border-[#1e3a5f]/50">
-                  <div className="text-[9px] text-slate-400">LUMINOSITY</div>
-                  <div className="font-extrabold text-[#38bdf8]">{selectedAstroStar.lum.toLocaleString()} L☉</div>
-                </div>
-              </div>
-
-              <div className="pt-1 text-[9px] text-slate-400 border-t border-[#1e3a5f]/40 flex items-center justify-between">
-                <span>NASA SVS / NStED Archival Metrics</span>
-                <span className="text-[#38bdf8]">IAU J2000 Conformal</span>
-              </div>
-            </div>
-          )}
 
 
           {/* MapMenuOverlay removed - Diagnostics integrated into bottom control matrix */}
