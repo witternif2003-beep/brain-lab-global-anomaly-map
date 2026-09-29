@@ -699,37 +699,107 @@ export default function GodsEyeMap({
       });
     }
 
-    // ─── GEORGIA PERIMETER WALL: layered steel casing + barb-wire ──
-    // Barb tile is generated procedurally at runtime (no asset file): a 32px
-    // steel crosshatch with barb nodes, stamped along the GA boundary via
-    // line-pattern over the steel stack. Symbolic cartography — line widths
-    // are pixels, not feet.
-    if (typeof document !== 'undefined' && !map.hasImage('barb-wire')) {
+    // ─── GEORGIA PERIMETER WALL (HD): beveled steel + barb-wire ──
+    // 128px procedural tile generated at runtime (no asset file): rounded
+    // steel rails with shaded rivets top and bottom, twisted wire strands
+    // with metallic 4-point barbs between. Stamped along the real Census
+    // GA boundary via line-pattern. Symbolic cartography — widths are px.
+    if (typeof document !== 'undefined' && !map.hasImage('barb-wire-hd')) {
+      const S = 128;
       const barb = document.createElement('canvas');
-      barb.width = 32;
-      barb.height = 32;
+      barb.width = S;
+      barb.height = S;
       const g = barb.getContext('2d');
       if (g) {
-        g.clearRect(0, 0, 32, 32);
-        g.strokeStyle = '#232a35';
-        g.lineWidth = 3.5;
+        g.clearRect(0, 0, S, S);
         g.lineCap = 'round';
-        g.beginPath();
-        g.moveTo(3, 3); g.lineTo(29, 29);
-        g.moveTo(29, 3); g.lineTo(3, 29);
-        g.stroke();
-        g.strokeStyle = '#8b95a5';
-        g.lineWidth = 1.2;
-        g.beginPath();
-        g.moveTo(3, 3); g.lineTo(29, 29);
-        g.stroke();
-        g.fillStyle = '#e8edf3';
-        for (const [bx, by] of [[16, 16], [3, 3], [29, 29], [29, 3], [3, 29]]) {
+        g.lineJoin = 'round';
+
+        // — steel rail: rounded-bar gradient + shaded rivets —
+        const rail = (top: number, h: number, rivetXs: number[]) => {
+          const grad = g.createLinearGradient(0, top, 0, top + h);
+          grad.addColorStop(0, '#10151d');
+          grad.addColorStop(0.28, '#5b6472');
+          grad.addColorStop(0.5, '#d3dbe5');
+          grad.addColorStop(0.72, '#5b6472');
+          grad.addColorStop(1, '#10151d');
+          g.fillStyle = grad;
+          g.fillRect(0, top, S, h);
+          g.fillStyle = 'rgba(255,255,255,0.28)';
+          g.fillRect(0, top + h * 0.42, S, 1.5);
+          const cy = top + h / 2;
+          for (const rx of rivetXs) {
+            const rg = g.createRadialGradient(rx - 1.5, cy - 1.5, 0.5, rx, cy, 5.5);
+            rg.addColorStop(0, '#f4f7fb');
+            rg.addColorStop(0.55, '#8b95a5');
+            rg.addColorStop(1, '#232a35');
+            g.fillStyle = rg;
+            g.beginPath();
+            g.arc(rx, cy, 5.5, 0, Math.PI * 2);
+            g.fill();
+            g.fillStyle = 'rgba(255,255,255,0.9)';
+            g.beginPath();
+            g.arc(rx - 1.6, cy - 1.6, 1.2, 0, Math.PI * 2);
+            g.fill();
+          }
+        };
+        rail(14, 24, [16, 48, 80, 112]);
+        rail(90, 24, [0, 32, 64, 96, 128]);
+
+        // — twisted strands (period-128 zigzag tiles seamlessly) —
+        const strand = (pts: Array<[number, number]>, color: string, w: number) => {
+          g.strokeStyle = color;
+          g.lineWidth = w;
           g.beginPath();
-          g.arc(bx, by, 2.4, 0, Math.PI * 2);
+          pts.forEach(([x, y], k) => (k === 0 ? g.moveTo(x, y) : g.lineTo(x, y)));
+          g.stroke();
+        };
+        const strandA: Array<[number, number]> = [[0, 52], [32, 64], [64, 76], [96, 64], [128, 52]];
+        const strandB: Array<[number, number]> = [[0, 76], [32, 64], [64, 52], [96, 64], [128, 76]];
+        const hiA: Array<[number, number]> = strandA.map(([x, y]) => [x - 1.5, y - 1.5]);
+        const hiB: Array<[number, number]> = strandB.map(([x, y]) => [x - 1.5, y - 1.5]);
+        strand(strandA, '#141a23', 7);
+        strand(strandB, '#141a23', 7);
+        strand(strandA, '#6b7482', 4.5);
+        strand(strandB, '#6b7482', 4.5);
+        strand(hiA, '#c9d2dd', 1.6);
+        strand(hiB, '#c9d2dd', 1.6);
+
+        // — 4-point barb stars (edge pair completes across the tile seam) —
+        const barbStar = (cx: number, cy: number) => {
+          const spikes: Array<[number, number, number, number]> = [
+            [cx - 11, cy - 11, cx + 11, cy + 11],
+            [cx + 11, cy - 11, cx - 11, cy + 11],
+          ];
+          const passes = [
+            { c: '#141a23', w: 6, dx: 0, dy: 0 },
+            { c: '#9aa3b2', w: 3.4, dx: -1, dy: -1 },
+            { c: '#eef2f7', w: 1.3, dx: -1.6, dy: -1.6 },
+          ];
+          for (const pass of passes) {
+            g.strokeStyle = pass.c;
+            g.lineWidth = pass.w;
+            g.beginPath();
+            for (const [x1, y1, x2, y2] of spikes) {
+              g.moveTo(x1 + pass.dx, y1 + pass.dy);
+              g.lineTo(x2 + pass.dx, y2 + pass.dy);
+            }
+            g.stroke();
+          }
+          const ng = g.createRadialGradient(cx - 1.5, cy - 1.5, 0.5, cx, cy, 5);
+          ng.addColorStop(0, '#ffffff');
+          ng.addColorStop(0.6, '#aeb7c4');
+          ng.addColorStop(1, '#2b333f');
+          g.fillStyle = ng;
+          g.beginPath();
+          g.arc(cx, cy, 5, 0, Math.PI * 2);
           g.fill();
-        }
-        map.addImage('barb-wire', { width: 32, height: 32, data: g.getImageData(0, 0, 32, 32).data }, { pixelRatio: 2 });
+        };
+        barbStar(0, 64);
+        barbStar(64, 64);
+        barbStar(128, 64);
+
+        map.addImage('barb-wire-hd', { width: S, height: S, data: g.getImageData(0, 0, S, S).data }, { pixelRatio: 2 });
       }
     }
 
@@ -741,7 +811,7 @@ export default function GodsEyeMap({
         filter: ['==', ['get', 'STUSPS'], 'GA'],
         paint: {
           'line-color': '#000000',
-          'line-width': 10,
+          'line-width': ['interpolate', ['linear'], ['zoom'], 3, 6, 6, 12, 9, 22],
           'line-blur': 4,
           'line-opacity': 0.85,
         },
@@ -756,7 +826,7 @@ export default function GodsEyeMap({
         filter: ['==', ['get', 'STUSPS'], 'GA'],
         paint: {
           'line-color': '#3f4753',
-          'line-width': 6.5,
+          'line-width': ['interpolate', ['linear'], ['zoom'], 3, 4, 6, 8, 9, 16],
         },
       });
     }
@@ -769,7 +839,7 @@ export default function GodsEyeMap({
         filter: ['==', ['get', 'STUSPS'], 'GA'],
         paint: {
           'line-color': '#9aa3b2',
-          'line-width': 4,
+          'line-width': ['interpolate', ['linear'], ['zoom'], 3, 3, 6, 6, 9, 12],
         },
       });
     }
@@ -782,20 +852,20 @@ export default function GodsEyeMap({
         filter: ['==', ['get', 'STUSPS'], 'GA'],
         paint: {
           'line-color': '#e8edf3',
-          'line-width': 1.6,
+          'line-width': ['interpolate', ['linear'], ['zoom'], 3, 1, 6, 1.6, 9, 2.4],
         },
       });
     }
 
-    if (map.hasImage('barb-wire') && !map.getLayer('ga-wall-barb')) {
+    if (map.hasImage('barb-wire-hd') && !map.getLayer('ga-wall-barb')) {
       map.addLayer({
         id: 'ga-wall-barb',
         type: 'line',
         source: 'all-states',
         filter: ['==', ['get', 'STUSPS'], 'GA'],
         paint: {
-          'line-pattern': 'barb-wire',
-          'line-width': 7,
+          'line-pattern': 'barb-wire-hd',
+          'line-width': ['interpolate', ['linear'], ['zoom'], 3, 5, 6, 9, 9, 15],
         },
       });
     }
