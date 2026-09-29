@@ -662,7 +662,7 @@ export default function GodsEyeMap({
     // ═══ VERIFIED 3D SKYBOX STARFIELD (GeoLibre PR #440 / @geoql/maplibre-gl-starfield) ═══
     injectStarfieldLayer(map);
 
-    // ═══ SINGLE SOURCE for all 8 state boundaries ═══
+    // ═══ SINGLE SOURCE for all 8 state boundaries (US Census 500k cartographic geometry) ═══
     if (!map.getSource('all-states')) {
       map.addSource('all-states', {
         type: 'geojson',
@@ -699,27 +699,114 @@ export default function GodsEyeMap({
       });
     }
 
-    if (!map.getLayer('ga-outline')) {
+    // ─── GEORGIA PERIMETER WALL: layered steel casing + barb-wire ──
+    // Barb tile is generated procedurally at runtime (no asset file): a 32px
+    // steel crosshatch with barb nodes, stamped along the GA boundary via
+    // line-pattern over the steel stack. Symbolic cartography — line widths
+    // are pixels, not feet.
+    if (typeof document !== 'undefined' && !map.hasImage('barb-wire')) {
+      const barb = document.createElement('canvas');
+      barb.width = 32;
+      barb.height = 32;
+      const g = barb.getContext('2d');
+      if (g) {
+        g.clearRect(0, 0, 32, 32);
+        g.strokeStyle = '#232a35';
+        g.lineWidth = 3.5;
+        g.lineCap = 'round';
+        g.beginPath();
+        g.moveTo(3, 3); g.lineTo(29, 29);
+        g.moveTo(29, 3); g.lineTo(3, 29);
+        g.stroke();
+        g.strokeStyle = '#8b95a5';
+        g.lineWidth = 1.2;
+        g.beginPath();
+        g.moveTo(3, 3); g.lineTo(29, 29);
+        g.stroke();
+        g.fillStyle = '#e8edf3';
+        for (const [bx, by] of [[16, 16], [3, 3], [29, 29], [29, 3], [3, 29]]) {
+          g.beginPath();
+          g.arc(bx, by, 2.4, 0, Math.PI * 2);
+          g.fill();
+        }
+        map.addImage('barb-wire', { width: 32, height: 32, data: g.getImageData(0, 0, 32, 32).data }, { pixelRatio: 2 });
+      }
+    }
+
+    if (!map.getLayer('ga-wall-shadow')) {
       map.addLayer({
-        id: 'ga-outline',
+        id: 'ga-wall-shadow',
         type: 'line',
         source: 'all-states',
         filter: ['==', ['get', 'STUSPS'], 'GA'],
         paint: {
-          'line-color': '#ff3b3b',
-          'line-width': 2.5,
-          'line-dasharray': [3, 2],
+          'line-color': '#000000',
+          'line-width': 10,
+          'line-blur': 4,
+          'line-opacity': 0.85,
         },
       });
     }
 
-    // ─── SELECTED ALLY: blue/teal neon highlight ────────────────
+    if (!map.getLayer('ga-wall-casing')) {
+      map.addLayer({
+        id: 'ga-wall-casing',
+        type: 'line',
+        source: 'all-states',
+        filter: ['==', ['get', 'STUSPS'], 'GA'],
+        paint: {
+          'line-color': '#3f4753',
+          'line-width': 6.5,
+        },
+      });
+    }
+
+    if (!map.getLayer('ga-wall-steel')) {
+      map.addLayer({
+        id: 'ga-wall-steel',
+        type: 'line',
+        source: 'all-states',
+        filter: ['==', ['get', 'STUSPS'], 'GA'],
+        paint: {
+          'line-color': '#9aa3b2',
+          'line-width': 4,
+        },
+      });
+    }
+
+    if (!map.getLayer('ga-wall-core')) {
+      map.addLayer({
+        id: 'ga-wall-core',
+        type: 'line',
+        source: 'all-states',
+        filter: ['==', ['get', 'STUSPS'], 'GA'],
+        paint: {
+          'line-color': '#e8edf3',
+          'line-width': 1.6,
+        },
+      });
+    }
+
+    if (map.hasImage('barb-wire') && !map.getLayer('ga-wall-barb')) {
+      map.addLayer({
+        id: 'ga-wall-barb',
+        type: 'line',
+        source: 'all-states',
+        filter: ['==', ['get', 'STUSPS'], 'GA'],
+        paint: {
+          'line-pattern': 'barb-wire',
+          'line-width': 7,
+        },
+      });
+    }
+
+    // ─── ALLY STATES (GA border states): light-neon-blue outline ──
     if (!map.getLayer('ally-fill')) {
       map.addLayer({
         id: 'ally-fill',
         type: 'fill',
         source: 'all-states',
-        filter: ['==', ['get', 'STUSPS'], '__none__'],
+        filter: ['in', ['get', 'STUSPS'], ['literal', ['FL', 'AL', 'TN', 'NC', 'SC']]],
         paint: {
           'fill-color': '#0ea5e9',
           'fill-opacity': [
@@ -736,7 +823,7 @@ export default function GodsEyeMap({
         id: 'ally-glow',
         type: 'line',
         source: 'all-states',
-        filter: ['==', ['get', 'STUSPS'], '__none__'],
+        filter: ['in', ['get', 'STUSPS'], ['literal', ['FL', 'AL', 'TN', 'NC', 'SC']]],
         paint: {
           'line-color': '#0ea5e9',
           'line-width': 4,
@@ -751,7 +838,7 @@ export default function GodsEyeMap({
         id: 'ally-outline',
         type: 'line',
         source: 'all-states',
-        filter: ['==', ['get', 'STUSPS'], '__none__'],
+        filter: ['in', ['get', 'STUSPS'], ['literal', ['FL', 'AL', 'TN', 'NC', 'SC']]],
         paint: {
           'line-color': '#38bdf8',
           'line-width': 2.5,
@@ -1546,13 +1633,18 @@ export default function GodsEyeMap({
     const map = mapRef.current;
     if (!map || !ready) return;
 
-    // When GA or ALL is selected, no ally highlight is shown
-    const allyCode = (activeFocus === 'GA' || activeFocus === 'ALL') ? '__none__' : activeFocus;
+    // GA / ALL focus shows all five border states as allies (light neon
+    // blue); focusing a specific state narrows the highlight to that state.
+    const ALLY_BORDER_STATES = ['FL', 'AL', 'TN', 'NC', 'SC'];
+    const allyFilter: any =
+      activeFocus === 'GA' || activeFocus === 'ALL'
+        ? ['in', ['get', 'STUSPS'], ['literal', ALLY_BORDER_STATES]]
+        : ['==', ['get', 'STUSPS'], activeFocus];
 
     // Update filter on all three ally layers
     ['ally-fill', 'ally-glow', 'ally-outline'].forEach((layerId) => {
       if (map.getLayer(layerId)) {
-        map.setFilter(layerId, ['==', ['get', 'STUSPS'], allyCode]);
+        map.setFilter(layerId, allyFilter);
       }
     });
   }, [activeFocus, ready]);
