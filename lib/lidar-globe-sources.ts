@@ -7,7 +7,7 @@ export interface GlobeSource {
 }
 
 export const ESRI_WORLD_IMAGERY_TILES =
-  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}?blankTile=false";
 
 export const AWS_TERRARIUM_TILES =
   "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png";
@@ -37,7 +37,8 @@ export const GLOBE_SOURCES: GlobeSource[] = [
     label: "World Imagery (satellite / aerial)",
     provider: "Esri, Maxar, Earthstar Geographics, USDA FSA, USGS, GIS User Community",
     url: "https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9",
-    detail: "Sub-meter photographic basemap in the U.S.; resolution varies by location."
+    detail:
+      "Sub-meter photographic basemap in the U.S.; zoom 20–21 (~15–7.5 cm) in covered metro areas, zoom 19 (~30 cm) elsewhere. Missing high-zoom tiles fall back to the sharpest available level."
   },
   {
     id: "aws-terrain-tiles",
@@ -63,10 +64,10 @@ export const GLOBE_SOURCES: GlobeSource[] = [
   },
   {
     id: "nasa-svs-deep-star-maps-2020",
-    label: "Deep Star Maps 2020 (4K star field behind the globe)",
+    label: "Deep Star Maps 2020 (4K / 8K star field behind the globe)",
     provider: "NASA Scientific Visualization Studio (SVS 4851) — Hipparcos-2, Tycho-2, Gaia DR2",
     url: "https://svs.gsfc.nasa.gov/4851",
-    detail: "Rendered from 1.7 billion catalogued stars; 4096×2048 JPEG converted from the published EXR. Not aligned to the map camera."
+    detail: "Rendered from 1.7 billion catalogued stars; 4096×2048 JPEG (8192×4096 in fullscreen on large displays) converted from the published EXR. Not aligned to the map camera."
   },
   {
     id: "loc-habs-dc37",

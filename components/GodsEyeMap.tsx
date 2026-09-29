@@ -64,9 +64,9 @@ const BASEMAPS = {
     sources: {
       sat: {
         type: 'raster',
-        tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+        tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}?blankTile=false'],
         tileSize: 256,
-        maxzoom: 19,
+        maxzoom: 21,
         attribution: '© Esri, Maxar, Earthstar Geographics',
       },
     },
@@ -79,9 +79,9 @@ const BASEMAPS = {
     sources: {
       sat: {
         type: 'raster',
-        tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+        tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}?blankTile=false'],
         tileSize: 256,
-        maxzoom: 19,
+        maxzoom: 21,
         attribution: '© Esri, Maxar, Earthstar Geographics',
       },
       'terrain-dem': {
@@ -1207,7 +1207,7 @@ export default function GodsEyeMap({
       fitBoundsOptions: { padding: 40 },
       pitch: 60,
       bearing: 0,
-      maxZoom: 19,
+      maxZoom: 21,
       minZoom: 1,
       attributionControl: false,
       dragRotate: true,

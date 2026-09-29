@@ -151,7 +151,7 @@ export default function LidarGlobe() {
       container: mapElRef.current,
       center: PRESETS[0].center,
       zoom: PRESETS[0].zoom,
-      maxZoom: 19,
+      maxZoom: 21,
       maxPitch: 85,
       pixelRatio: Math.min(window.devicePixelRatio || 1, 3),
       canvasContextAttributes: { antialias: true },
@@ -173,7 +173,7 @@ export default function LidarGlobe() {
             type: "raster",
             tiles: [ESRI_WORLD_IMAGERY_TILES],
             tileSize: 256,
-            maxzoom: 19,
+            maxzoom: 21,
             attribution:
               '<a href="https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9" target="_blank" rel="noopener">Esri World Imagery</a> — Esri, Maxar, Earthstar Geographics, USDA FSA, USGS'
           },
