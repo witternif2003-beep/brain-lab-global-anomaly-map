@@ -1,18 +1,6 @@
 'use client';
 import { OUTBOUND_GA_PERSON_TEMPLATES, getInterpolatedArcPoint, VerifiedPersonLeavingGA } from '../lib/telemetry-arcs';
 
-// Safe module initialization
-if (typeof window !== 'undefined') {
-  try {
-    const ml = require('maplibre-gl');
-    if (ml && typeof ml.setWorkerUrl === 'function') {
-      ml.setWorkerUrl('/maplibre-gl-worker.mjs');
-    }
-  } catch (e) {
-    console.warn('[MapLibre] Worker URL initialization deferred:', e);
-  }
-}
-
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -22,6 +10,75 @@ import { GEORGIA_ANOMALIES } from '../lib/data';
 import { GODSEYE_INTEL_LAYERS, SAMPLE_LIVE_ENTITIES, LiveTelemetryEntity, IntelLayerConfig } from '../lib/godseye-layers';
 import MapDebugOverlay from './MapDebugOverlay';
 import MapMenuOverlay from './MapMenuOverlay';
+
+const ALLY_STATE_CODES = ['AL', 'FL', 'NC', 'SC', 'TN', 'TX', 'VA'];
+
+function makeSteelPanelImage(size = 128): ImageData | null {
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  const rib = size / 8;
+  for (let x = 0; x < size; x++) {
+    const phase = (x % rib) / rib;
+    const shade = 150 + Math.round(70 * Math.cos(phase * Math.PI * 2));
+    ctx.fillStyle = `rgb(${shade - 12}, ${shade - 4}, ${shade + 6})`;
+    ctx.fillRect(x, 0, 1, size);
+  }
+  const img = ctx.getImageData(0, 0, size, size);
+  let seed = 7;
+  for (let i = 0; i < img.data.length; i += 4) {
+    seed = (seed * 16807) % 2147483647;
+    const n = (seed % 25) - 12;
+    img.data[i] = Math.max(0, Math.min(255, img.data[i] + n));
+    img.data[i + 1] = Math.max(0, Math.min(255, img.data[i + 1] + n));
+    img.data[i + 2] = Math.max(0, Math.min(255, img.data[i + 2] + n));
+  }
+  ctx.putImageData(img, 0, 0);
+  ctx.fillStyle = 'rgba(40, 46, 56, 0.9)';
+  ctx.fillRect(0, 0, size, 2);
+  ctx.fillRect(0, size / 2, size, 1);
+  ctx.fillStyle = 'rgba(210, 220, 232, 0.9)';
+  for (let x = rib / 2; x < size; x += rib) {
+    ctx.fillRect(x, 6, 2, 2);
+    ctx.fillRect(x, size / 2 + 6, 2, 2);
+  }
+  return ctx.getImageData(0, 0, size, size);
+}
+
+function makeConcertinaImage(size = 64): ImageData | null {
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  ctx.fillStyle = 'rgb(18, 22, 28)';
+  ctx.fillRect(0, 0, size, size);
+  const loops = 4;
+  const r = size / 2.2;
+  for (let i = -1; i <= loops; i++) {
+    const cx = (i + 0.5) * (size / loops);
+    ctx.strokeStyle = 'rgba(225, 232, 240, 0.95)';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.ellipse(cx, size / 2, r * 0.55, r, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(120, 132, 146, 0.9)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.ellipse(cx + 3, size / 2 + 1, r * 0.55, r, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(245, 248, 252, 1)';
+    for (let k = 0; k < 6; k++) {
+      const a = (k / 6) * Math.PI * 2;
+      const bx = cx + Math.cos(a) * r * 0.55;
+      const by = size / 2 + Math.sin(a) * r;
+      ctx.fillRect(bx - 2, by - 0.5, 4, 1.5);
+    }
+  }
+  return ctx.getImageData(0, 0, size, size);
+}
 
 // Helper function to safely inject verified 3D Custom Layer Starfield
 function injectStarfieldLayer(map: any) {
@@ -761,6 +818,94 @@ export default function GodsEyeMap({
       });
     }
 
+    // ─── ALLY STATES: always-on light neon-blue border glow ─────
+    const allyFilter = ['in', ['get', 'STUSPS'], ['literal', ALLY_STATE_CODES]];
+    if (!map.getLayer('ally-neon-halo')) {
+      map.addLayer({
+        id: 'ally-neon-halo',
+        type: 'line',
+        source: 'all-states',
+        filter: allyFilter as any,
+        layout: { 'line-join': 'round', 'line-cap': 'round' },
+        paint: {
+          'line-color': '#7dd3fc',
+          'line-width': ['interpolate', ['linear'], ['zoom'], 3, 8, 8, 18, 14, 28],
+          'line-blur': ['interpolate', ['linear'], ['zoom'], 3, 6, 8, 14, 14, 22],
+          'line-opacity': 0.45,
+        },
+      });
+    }
+    if (!map.getLayer('ally-neon-core')) {
+      map.addLayer({
+        id: 'ally-neon-core',
+        type: 'line',
+        source: 'all-states',
+        filter: allyFilter as any,
+        layout: { 'line-join': 'round', 'line-cap': 'round' },
+        paint: {
+          'line-color': '#e0f7ff',
+          'line-width': ['interpolate', ['linear'], ['zoom'], 3, 1.2, 8, 2.2, 14, 3.5],
+          'line-blur': 0.6,
+          'line-opacity': 0.95,
+        },
+      });
+    }
+
+    // ─── GEORGIA WALL (design visualization): 10 ft steel wall + concertina ───
+    if (!map.hasImage('steel-panel')) {
+      const steel = makeSteelPanelImage();
+      if (steel) map.addImage('steel-panel', steel);
+    }
+    if (!map.hasImage('concertina-wire')) {
+      const wire = makeConcertinaImage();
+      if (wire) map.addImage('concertina-wire', wire);
+    }
+    if (!map.getSource('ga-wall')) {
+      map.addSource('ga-wall', {
+        type: 'geojson',
+        data: '/geo/ga-wall.geojson',
+        maxzoom: 20,
+        tolerance: 0,
+      });
+    }
+    if (!map.getLayer('ga-wall-path')) {
+      map.addLayer({
+        id: 'ga-wall-path',
+        type: 'line',
+        source: 'ga-wall',
+        filter: ['==', ['get', 'part'], 'path'],
+        layout: { 'line-join': 'round' },
+        paint: {
+          'line-color': '#cbd5e1',
+          'line-width': ['interpolate', ['linear'], ['zoom'], 4, 1.5, 12, 3, 15, 4],
+          'line-opacity': ['interpolate', ['linear'], ['zoom'], 14, 0.9, 16, 0],
+        },
+      });
+    }
+    const wallParts: Array<[string, string, string]> = [
+      ['ga-wall-steel', 'wall', 'steel-panel'],
+      ['ga-wall-wire-top', 'wire-top', 'concertina-wire'],
+      ['ga-wall-wire-base', 'wire-base', 'concertina-wire'],
+    ];
+    for (const [layerId, part, pattern] of wallParts) {
+      if (!map.getLayer(layerId)) {
+        map.addLayer({
+          id: layerId,
+          type: 'fill-extrusion',
+          source: 'ga-wall',
+          minzoom: 14,
+          filter: ['==', ['get', 'part'], part],
+          paint: {
+            'fill-extrusion-pattern': pattern,
+            'fill-extrusion-base': ['get', 'base'],
+            'fill-extrusion-height': ['get', 'height'],
+            'fill-extrusion-opacity': part === 'wall' ? 1 : 0.92,
+            'fill-extrusion-vertical-gradient': true,
+          },
+        });
+      }
+    }
+
     // 2. Competitor state boundaries
     if (!map.getSource('competitors')) {
       map.addSource('competitors', {
@@ -1199,6 +1344,8 @@ export default function GodsEyeMap({
 
     const webgpuAvailable = typeof navigator !== 'undefined' && 'gpu' in navigator;
 
+    maplibregl.setWorkerUrl('/maplibre-gl-worker.mjs');
+
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: BASEMAPS.satellite as any,
@@ -1609,6 +1756,19 @@ export default function GodsEyeMap({
           />
           {/* Map Surface: Mount MapLibre globe container directly with transparent deep space */}
           <div ref={containerRef} className="absolute inset-0 z-10" />
+          <div className="absolute top-3 right-3 z-20 pointer-events-none rounded-2xl bg-[#070e1c]/85 backdrop-blur-xl border border-[#7dd3fc]/50 px-3 py-2 text-[11px] font-mono space-y-1 shadow-[0_0_18px_rgba(125,211,252,0.25)] max-w-[260px]">
+            <div className="flex items-center gap-2 text-slate-100 font-bold tracking-wider">
+              <span className="inline-block w-4 h-1.5 rounded-full bg-gradient-to-r from-slate-400 via-slate-200 to-slate-400" />
+              GA PERIMETER WALL · 10 FT STEEL + CONCERTINA
+            </div>
+            <div className="flex items-center gap-2 text-[#7dd3fc] font-bold tracking-wider">
+              <span className="inline-block w-4 h-1.5 rounded-full bg-[#7dd3fc] shadow-[0_0_8px_#7dd3fc]" />
+              ALLY STATE BORDERS
+            </div>
+            <div className="text-slate-400 leading-snug">
+              Design visualization only — no such wall exists. Path: Census 2024 1:500k boundary. 3D wall renders at zoom 14+.
+            </div>
+          </div>
           {/* NASA ASTROMETRIC STAR TELEMETRY HUD (50 VERIFIED STELLAR METRICS) */}
           {selectedAstroStar && (
             <div className="absolute top-16 left-4 z-20 max-w-sm rounded-2xl bg-[#070e1c]/90 backdrop-blur-xl border border-[#38bdf8]/50 p-4 shadow-[0_12px_36px_rgba(0,0,0,0.85)] text-xs font-mono space-y-2.5 animate-fadeIn">

@@ -1,18 +1,6 @@
 'use client';
 import { OUTBOUND_GA_PERSON_TEMPLATES, getInterpolatedArcPoint, VerifiedPersonLeavingGA } from '../lib/telemetry-arcs';
 
-// Safe module initialization
-if (typeof window !== 'undefined') {
-  try {
-    const ml = require('maplibre-gl');
-    if (ml && typeof ml.setWorkerUrl === 'function') {
-      ml.setWorkerUrl('/maplibre-gl-worker.mjs');
-    }
-  } catch (e) {
-    console.warn('[MapLibre] Worker URL initialization deferred:', e);
-  }
-}
-
 // FIPS to state abbreviation lookup table
 const FIPS_TO_ABBR: Record<string, string> = {
   '01': 'AL', '12': 'FL', '13': 'GA', '37': 'NC',
@@ -581,6 +569,7 @@ export default function StateMap({
     const webgpuAvailable = typeof navigator !== 'undefined' && 'gpu' in navigator;
 
     // Initialize MapLibre Map with dark satellite style by default
+    maplibregl.setWorkerUrl('/maplibre-gl-worker.mjs');
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: BASEMAPS.satellite as any,
