@@ -750,10 +750,10 @@ export default function GodsEyeMap({
         source: 'all-states',
         filter: ['==', ['get', 'STUSPS'], 'GA'],
         paint: {
-          'line-color': '#dc2626',
+          'line-color': '#7f1d1d',
           'line-width': 4,
-          'line-blur': 6,
-          'line-opacity': 0.75,
+          'line-blur': 0,
+          'line-opacity': 1,
         },
       });
     }
@@ -765,7 +765,7 @@ export default function GodsEyeMap({
         source: 'all-states',
         filter: ['==', ['get', 'STUSPS'], 'GA'],
         paint: {
-          'line-color': '#ff3b3b',
+          'line-color': '#7f1d1d',
           'line-width': 2.5,
           'line-dasharray': [3, 2],
         },
