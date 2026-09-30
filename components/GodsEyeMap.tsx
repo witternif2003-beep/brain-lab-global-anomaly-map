@@ -19,7 +19,7 @@ function makeSteelPanelImage(size = 128): ImageData | null {
   canvas.height = size;
   const ctx = canvas.getContext('2d');
   if (!ctx) return null;
-  const rib = size / 8;
+  const rib = size / 32; // 32 ribs per repeat → 0.25 m corrugation at z20 (was 8 → 1 m blobs)
   for (let x = 0; x < size; x++) {
     const phase = (x % rib) / rib;
     const shade = 150 + Math.round(70 * Math.cos(phase * Math.PI * 2));
@@ -55,26 +55,27 @@ function makeConcertinaImage(size = 64): ImageData | null {
   if (!ctx) return null;
   ctx.fillStyle = 'rgb(18, 22, 28)';
   ctx.fillRect(0, 0, size, size);
-  const loops = 4;
-  const r = size / 2.2;
+  const loops = 8; // 8 coils per repeat → 0.5 m coils at z20 (was 4 → 1 m+ blobs)
+  const rx = size / loops; // coil width tracks pitch (patterns are world-locked)
+  const ry = size / 2.2; // coil height spans the band at every zoom
   for (let i = -1; i <= loops; i++) {
     const cx = (i + 0.5) * (size / loops);
     ctx.strokeStyle = 'rgba(225, 232, 240, 0.95)';
     ctx.lineWidth = 1.6;
     ctx.beginPath();
-    ctx.ellipse(cx, size / 2, r * 0.55, r, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx, size / 2, rx, ry, 0, 0, Math.PI * 2);
     ctx.stroke();
     ctx.strokeStyle = 'rgba(120, 132, 146, 0.9)';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.ellipse(cx + 3, size / 2 + 1, r * 0.55, r, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx + 1.5, size / 2 + 0.5, rx, ry, 0, 0, Math.PI * 2);
     ctx.stroke();
     ctx.fillStyle = 'rgba(245, 248, 252, 1)';
     for (let k = 0; k < 6; k++) {
       const a = (k / 6) * Math.PI * 2;
-      const bx = cx + Math.cos(a) * r * 0.55;
-      const by = size / 2 + Math.sin(a) * r;
-      ctx.fillRect(bx - 2, by - 0.5, 4, 1.5);
+      const bx = cx + Math.cos(a) * rx;
+      const by = size / 2 + Math.sin(a) * ry;
+      ctx.fillRect(bx - 1, by - 0.5, 2, 1);
     }
   }
   return ctx.getImageData(0, 0, size, size);
