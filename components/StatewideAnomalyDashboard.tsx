@@ -49,19 +49,19 @@ export default function StatewideAnomalyDashboard() {
     return STATEWIDE_ANOMALIES_1000.slice(startIndex, startIndex + 25);
   }, [selectedBatch]);
 
-  // Continuous auto-population ticker across the 25 anomalies of the batch
+  // Continuous auto-population ticker across all records, advancing batches automatically
   useEffect(() => {
     if (!isAutoCycling) return;
     const interval = setInterval(() => {
-      setActiveAnomalyIndex((prev) => {
-        const nextInBatch = (prev + 1) % 25;
-        // If wrapped around, also optionally advance pulse
-        return (selectedBatch - 1) * 25 + nextInBatch;
-      });
+      setActiveAnomalyIndex((prev) => (prev + 1) % STATEWIDE_ANOMALIES_1000.length);
       setPulseCount((p) => p + 1);
     }, 6000);
     return () => clearInterval(interval);
-  }, [isAutoCycling, selectedBatch]);
+  }, [isAutoCycling]);
+
+  useEffect(() => {
+    setSelectedBatch(Math.floor(activeAnomalyIndex / 25) + 1);
+  }, [activeAnomalyIndex]);
 
   const currentAnomaly: AnomalyReport = STATEWIDE_ANOMALIES_1000[activeAnomalyIndex] || STATEWIDE_ANOMALIES_1000[0];
 
