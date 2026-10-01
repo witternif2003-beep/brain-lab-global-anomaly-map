@@ -11,6 +11,7 @@ import { GODSEYE_INTEL_LAYERS, SAMPLE_LIVE_ENTITIES, LiveTelemetryEntity, IntelL
 import MapDebugOverlay from './MapDebugOverlay';
 import MapMenuOverlay from './MapMenuOverlay';
 import { GaWall3DLayer, GA_WALL_3D_MIN_ZOOM } from '../lib/ga-wall-3d';
+import { addGaPatrolLayers } from '../lib/ga-patrol-3d';
 
 const ALLY_STATE_CODES = ['AL', 'FL', 'NC', 'SC', 'TN', 'TX', 'VA'];
 
@@ -913,6 +914,7 @@ export default function GodsEyeMap({
     if (!map.getLayer('ga-wall-3d')) {
       map.addLayer(new GaWall3DLayer());
     }
+    addGaPatrolLayers(map);
 
     // 2. Competitor state boundaries
     if (!map.getSource('competitors')) {

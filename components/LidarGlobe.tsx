@@ -22,6 +22,7 @@ import {
 import { useTelemetryStore } from "../lib/telemetry-store";
 import styles from "./LidarGlobe.module.css";
 import { GaWall3DLayer } from "../lib/ga-wall-3d";
+import { addGaPatrolLayers } from "../lib/ga-patrol-3d";
 import {
   AWS_TERRARIUM_TILES,
   DC_LIDAR_BOUNDS,
@@ -345,6 +346,7 @@ export default function LidarGlobe() {
         }
       });
       map.addLayer(new GaWall3DLayer());
+      addGaPatrolLayers(map);
       setIsReady(true);
     });
     map.on("error", (e) => {
