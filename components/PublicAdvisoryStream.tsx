@@ -180,7 +180,8 @@ export default function PublicAdvisoryStream() {
       </div>
       <div className="text-[10px] text-slate-400 flex items-start gap-1.5">
         <Radio className="w-3 h-3 mt-0.5 shrink-0 text-[#00e5ff]" />
-        Published vulnerability advisories for infrastructure, OT/ICS and network products. Advisories are not incident reports and are not attributed to any person or location.
+        {index?.scope ??
+          "Published vulnerability advisories. Advisories are not incident reports and are not attributed to any person or location."}
       </div>
     </div>
   );

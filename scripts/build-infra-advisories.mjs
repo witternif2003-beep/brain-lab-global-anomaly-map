@@ -9,6 +9,19 @@ const PAGE = 2000;
 const OUT_DIR = path.join(process.cwd(), "public", "data", "infra-advisories");
 const SHARD = 1000;
 const API = "https://services.nvd.nist.gov/rest/json/cves/2.0";
+const YEAR = 2026;
+
+// NVD allows at most 120 days between pubStartDate and pubEndDate.
+function windows() {
+  const out = [];
+  const end = Math.min(Date.now(), Date.UTC(YEAR + 1, 0, 1) - 1);
+  for (let t = Date.UTC(YEAR, 0, 1); t <= end; t += 120 * 86_400_000) {
+    const to = Math.min(t + 120 * 86_400_000 - 1, end);
+    out.push(`pubStartDate=${new Date(t).toISOString()}&pubEndDate=${new Date(to).toISOString()}`);
+  }
+  return out;
+}
+const WINDOWS = windows();
 
 // Advisory coordinators / PSIRTs that publish critical-infrastructure advisories.
 const SOURCES = [
@@ -141,17 +154,29 @@ async function harvest(label, baseParams) {
 }
 
 for (const s of SOURCES) {
-  if (byId.size >= TARGET) break;
-  console.log(`source ${s}`);
-  await harvest(s, `sourceIdentifier=${encodeURIComponent(s)}`);
+  for (const w of WINDOWS) {
+    if (byId.size >= TARGET) break;
+    console.log(`source ${s} ${w}`);
+    await harvest(s, `sourceIdentifier=${encodeURIComponent(s)}&${w}`);
+  }
 }
 for (const k of KEYWORDS) {
+  for (const w of WINDOWS) {
+    if (byId.size >= TARGET) break;
+    console.log(`keyword ${k} ${w}`);
+    await harvest(k, `keywordSearch=${encodeURIComponent(k)}&${w}`);
+  }
+}
+const prioritized = byId.size;
+// Fill the remainder with other vendors' advisories published the same year.
+for (const w of WINDOWS) {
   if (byId.size >= TARGET) break;
-  console.log(`keyword ${k}`);
-  await harvest(k, `keywordSearch=${encodeURIComponent(k)}`);
+  console.log(`all vendors ${w}`);
+  await harvest("all vendors", w);
 }
 
 const all = [...byId.values()]
+  .filter((r) => String(r.published).startsWith(String(YEAR)))
   .sort((a, b) => (b.cvssScore ?? -1) - (a.cvssScore ?? -1) || String(b.published).localeCompare(String(a.published)))
   .slice(0, TARGET)
   .map((r, i) => ({ recordNumber: i + 1, ...r }));
@@ -174,8 +199,9 @@ fs.writeFileSync(
       generatedAt: new Date().toISOString(),
       provider: "NIST National Vulnerability Database (NVD) CVE API 2.0",
       providerUrl: "https://nvd.nist.gov/developers/vulnerabilities",
-      scope:
-        "Published public vulnerability advisories affecting critical-infrastructure, OT/ICS and network vendors and products. These are advisories, not incident reports, and are not attributed to any person or location.",
+      scope: `Public vulnerability advisories published in ${YEAR}. ${prioritized.toLocaleString("en-US")} come from critical-infrastructure, OT/ICS and network vendors; the rest are other vendors' ${YEAR} advisories. These are advisories, not incident reports, and are not attributed to any person or location.`,
+      publishedYear: YEAR,
+      prioritizedRecords: prioritized,
       totalRecords: all.length,
       shardSize: SHARD,
       shards,
