@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useTelemetryStore } from "../lib/telemetry-store";
 import styles from "./LidarGlobe.module.css";
+import { GaWall3DLayer } from "../lib/ga-wall-3d";
 import {
   AWS_TERRARIUM_TILES,
   DC_LIDAR_BOUNDS,
@@ -327,7 +328,25 @@ export default function LidarGlobe() {
       map.getCanvas().style.cursor = "";
     });
 
-    map.on("load", () => setIsReady(true));
+    map.on("load", () => {
+      map.addSource("ga-wall", {
+        type: "geojson",
+        data: "/geo/ga-wall.geojson",
+        attribution: "GA wall: design visualization (not a real structure) · path: U.S. Census Bureau 2024 1:500k boundary · steel: ambientCG CorrugatedSteel005 (CC0)"
+      });
+      map.addLayer({
+        id: "ga-outline",
+        type: "line",
+        source: "ga-wall",
+        filter: ["==", ["get", "part"], "path"],
+        paint: {
+          "line-color": "#7f1d1d",
+          "line-width": ["interpolate", ["linear"], ["zoom"], 4, 1.5, 12, 3, 18, 5]
+        }
+      });
+      map.addLayer(new GaWall3DLayer());
+      setIsReady(true);
+    });
     map.on("error", (e) => {
       const message = e.error instanceof Error ? e.error.message : "tile request failed";
       setMapError(message);

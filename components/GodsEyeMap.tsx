@@ -10,6 +10,7 @@ import { GEORGIA_ANOMALIES } from '../lib/data';
 import { GODSEYE_INTEL_LAYERS, SAMPLE_LIVE_ENTITIES, LiveTelemetryEntity, IntelLayerConfig } from '../lib/godseye-layers';
 import MapDebugOverlay from './MapDebugOverlay';
 import MapMenuOverlay from './MapMenuOverlay';
+import { GaWall3DLayer, GA_WALL_3D_MIN_ZOOM } from '../lib/ga-wall-3d';
 
 const ALLY_STATE_CODES = ['AL', 'FL', 'NC', 'SC', 'TN', 'TX', 'VA'];
 
@@ -867,7 +868,7 @@ export default function GodsEyeMap({
         data: '/geo/ga-wall.geojson',
         maxzoom: 20,
         tolerance: 0,
-        attribution: 'GA wall: design visualization (not a real structure) · path: U.S. Census Bureau 2024 1:500k boundary',
+        attribution: 'GA wall: design visualization (not a real structure) · path: U.S. Census Bureau 2024 1:500k boundary · steel: ambientCG CorrugatedSteel005 (CC0)',
       });
     }
     if (!map.getLayer('ga-wall-path')) {
@@ -896,6 +897,7 @@ export default function GodsEyeMap({
           type: 'fill-extrusion',
           source: 'ga-wall',
           minzoom: 14,
+          maxzoom: GA_WALL_3D_MIN_ZOOM,
           filter: ['==', ['get', 'part'], part],
           paint: {
             'fill-extrusion-pattern': pattern,
@@ -906,6 +908,10 @@ export default function GodsEyeMap({
           },
         });
       }
+    }
+
+    if (!map.getLayer('ga-wall-3d')) {
+      map.addLayer(new GaWall3DLayer());
     }
 
     // 2. Competitor state boundaries
@@ -1359,6 +1365,7 @@ export default function GodsEyeMap({
       maxZoom: 21,
       minZoom: 1,
       attributionControl: { compact: true },
+      canvasContextAttributes: { antialias: true },
       dragRotate: true,
       pitchWithRotate: true,
       touchZoomRotate: true,
