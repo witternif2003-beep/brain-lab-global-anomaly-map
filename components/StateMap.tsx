@@ -164,7 +164,7 @@ export default function StateMap({
         source: 'all-states',
         filter: ['==', ['get', 'STUSPS'], 'GA'],
         paint: {
-          'line-color': '#dc2626',
+          'line-color': '#7f1d1d',
           'line-width': [
             'interpolate', ['exponential', 1.5], ['zoom'],
             3, 4,
@@ -172,8 +172,8 @@ export default function StateMap({
             18, 22,
             24, 30,
           ],
-          'line-blur': 6,
-          'line-opacity': 0.75,
+          'line-blur': 0,
+          'line-opacity': 1,
         },
       });
     }
@@ -185,7 +185,7 @@ export default function StateMap({
         source: 'all-states',
         filter: ['==', ['get', 'STUSPS'], 'GA'],
         paint: {
-          'line-color': '#ef4444',
+          'line-color': '#7f1d1d',
           'line-width': [
             'interpolate', ['exponential', 1.5], ['zoom'],
             3, 1.2,
