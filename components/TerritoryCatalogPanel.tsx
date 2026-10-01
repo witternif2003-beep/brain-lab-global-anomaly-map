@@ -12,6 +12,7 @@ import {
 } from "../lib/territory-catalog";
 import { JURISDICTION_ADAPTERS } from "../lib/adapters/jurisdictions";
 import { STATE_DATASETS, type StateDatasetConfig } from "../lib/adapters/state-datasets";
+import PublicLivePanel from "./PublicLivePanel";
 
 type StatusFilter = "ALL" | "CURATED";
 
@@ -194,8 +195,8 @@ export default function TerritoryCatalogPanel() {
       {/* Totals pill */}
       <div className="rounded-2xl sm:rounded-full border border-[#c2189b] px-4 py-2 text-center text-[10px] sm:text-xs font-black tracking-widest text-[#ff2ec4] uppercase leading-relaxed">
         {totals.total.toLocaleString()} records • GA {totals.ga.toLocaleString()} curated +{" "}
-        {totals.sourced.toLocaleString()} sourced • {totals.awaiting} awaiting ingestion • batches
-        of {BATCH_SIZE}
+        {totals.sourced.toLocaleString()} sourced • {totals.awaiting} awaiting state-portal mapping •
+        public live feeds in all {totals.jurisdictions} • batches of {BATCH_SIZE}
       </div>
 
       <FedTotalsLine />
@@ -268,7 +269,7 @@ export default function TerritoryCatalogPanel() {
       {!isGA && adapter && (
         <div className="rounded-xl border border-[#00e5ff]/40 bg-[#002b4d]/30 px-3 py-2 space-y-1 text-[10px] sm:text-[11px] font-bold">
           <div className="text-[#00e5ff] tracking-widest">
-            SOURCE STATUS — {meta.name.toUpperCase()}: {stateFeeds ? "STATE FEEDS MAPPED — LIVE RECORDS BELOW" : "AWAITING REAL-TIME INGESTION"}
+            SOURCE STATUS — {meta.name.toUpperCase()}: {stateFeeds ? "STATE FEEDS MAPPED — LIVE RECORDS BELOW" : "STATE PORTAL NOT MAPPED — PUBLIC LIVE FEEDS ABOVE"}
           </div>
           <div className="text-slate-300 break-all">PORTAL: {adapter.openDataPortal}</div>
           <div className="text-slate-300">
@@ -311,6 +312,8 @@ export default function TerritoryCatalogPanel() {
           </div>
         </div>
       )}
+
+      <PublicLivePanel code={jurisdiction} name={meta.name} />
 
       {!isGA && meta.type === "territory" && <FedFeedPanel code={jurisdiction} name={meta.name} />}
       {!isGA && meta.type === "territory" && <FedRecordCards code={jurisdiction} name={meta.name} />}
@@ -415,12 +418,12 @@ export default function TerritoryCatalogPanel() {
         {!isGA && meta.type !== "territory" && !stateFeeds && (
           <div className="rounded-2xl border border-dashed border-[#00e5ff]/50 bg-[#002b4d]/20 p-4 text-center space-y-1.5">
             <div className="text-[11px] sm:text-xs font-black tracking-[0.2em] text-[#00e5ff]">
-              AWAITING REAL-TIME INGESTION
+              STATE PORTAL FEED NOT MAPPED
             </div>
             <p className="text-[11px] text-slate-300 font-bold leading-relaxed">
-              No verified feed is mapped for {meta.name}, so this tab serves 0 records. Send a
-              dataset URL or API endpoint to map this jurisdiction — records appear with
-              provenance links, never as synthetic filler.
+              No state open-data portal feed is mapped for {meta.name} yet, so the catalog serves 0
+              records here. The public live feeds above (NWS, USGS, AirNow, FEMA, BLS) still
+              update for this jurisdiction.
             </p>
           </div>
         )}

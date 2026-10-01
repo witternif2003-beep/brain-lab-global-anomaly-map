@@ -1,0 +1,3231 @@
+{
+ "source": "U.S. Bureau of Labor Statistics, Local Area Unemployment Statistics (seasonally adjusted)",
+ "sourceUrl": "https://download.bls.gov/pub/time.series/la/la.data.3.AllStatesS",
+ "retrievedAt": "2026-10-01T22:43:37.430Z",
+ "series": {
+  "AL": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 3.4,
+    "unemployed": 80567,
+    "laborForce": 2362622
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 2.8
+    },
+    {
+     "period": "2025-08",
+     "rate": 2.8
+    },
+    {
+     "period": "2025-09",
+     "rate": 2.8
+    },
+    {
+     "period": "2025-11",
+     "rate": 2.7
+    },
+    {
+     "period": "2025-12",
+     "rate": 2.7
+    },
+    {
+     "period": "2026-01",
+     "rate": 2.7
+    },
+    {
+     "period": "2026-02",
+     "rate": 2.7
+    },
+    {
+     "period": "2026-03",
+     "rate": 2.7
+    },
+    {
+     "period": "2026-04",
+     "rate": 2.8
+    },
+    {
+     "period": "2026-05",
+     "rate": 3
+    },
+    {
+     "period": "2026-06",
+     "rate": 3.2
+    },
+    {
+     "period": "2026-07",
+     "rate": 3.4
+    },
+    {
+     "period": "2026-08",
+     "rate": 3.4
+    }
+   ]
+  },
+  "AK": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 4.3,
+    "unemployed": 15695,
+    "laborForce": 366259
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 4.6
+    },
+    {
+     "period": "2025-08",
+     "rate": 4.6
+    },
+    {
+     "period": "2025-09",
+     "rate": 4.7
+    },
+    {
+     "period": "2025-11",
+     "rate": 4.8
+    },
+    {
+     "period": "2025-12",
+     "rate": 4.8
+    },
+    {
+     "period": "2026-01",
+     "rate": 4.8
+    },
+    {
+     "period": "2026-02",
+     "rate": 4.7
+    },
+    {
+     "period": "2026-03",
+     "rate": 4.7
+    },
+    {
+     "period": "2026-04",
+     "rate": 4.6
+    },
+    {
+     "period": "2026-05",
+     "rate": 4.6
+    },
+    {
+     "period": "2026-06",
+     "rate": 4.4
+    },
+    {
+     "period": "2026-07",
+     "rate": 4.3
+    },
+    {
+     "period": "2026-08",
+     "rate": 4.3
+    }
+   ]
+  },
+  "AZ": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 4.9,
+    "unemployed": 182254,
+    "laborForce": 3701822
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 4.3
+    },
+    {
+     "period": "2025-08",
+     "rate": 4.4
+    },
+    {
+     "period": "2025-09",
+     "rate": 4.4
+    },
+    {
+     "period": "2025-11",
+     "rate": 4.4
+    },
+    {
+     "period": "2025-12",
+     "rate": 4.4
+    },
+    {
+     "period": "2026-01",
+     "rate": 4.5
+    },
+    {
+     "period": "2026-02",
+     "rate": 4.6
+    },
+    {
+     "period": "2026-03",
+     "rate": 4.7
+    },
+    {
+     "period": "2026-04",
+     "rate": 4.7
+    },
+    {
+     "period": "2026-05",
+     "rate": 4.8
+    },
+    {
+     "period": "2026-06",
+     "rate": 4.9
+    },
+    {
+     "period": "2026-07",
+     "rate": 4.9
+    },
+    {
+     "period": "2026-08",
+     "rate": 4.9
+    }
+   ]
+  },
+  "AR": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 3.9,
+    "unemployed": 56924,
+    "laborForce": 1458078
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 4.1
+    },
+    {
+     "period": "2025-08",
+     "rate": 4.2
+    },
+    {
+     "period": "2025-09",
+     "rate": 4.2
+    },
+    {
+     "period": "2025-11",
+     "rate": 4.3
+    },
+    {
+     "period": "2025-12",
+     "rate": 4.3
+    },
+    {
+     "period": "2026-01",
+     "rate": 4.4
+    },
+    {
+     "period": "2026-02",
+     "rate": 4.4
+    },
+    {
+     "period": "2026-03",
+     "rate": 4.3
+    },
+    {
+     "period": "2026-04",
+     "rate": 4.3
+    },
+    {
+     "period": "2026-05",
+     "rate": 4.2
+    },
+    {
+     "period": "2026-06",
+     "rate": 4.1
+    },
+    {
+     "period": "2026-07",
+     "rate": 4
+    },
+    {
+     "period": "2026-08",
+     "rate": 3.9
+    }
+   ]
+  },
+  "CA": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 5.1,
+    "unemployed": 992773,
+    "laborForce": 19499116
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 5.5
+    },
+    {
+     "period": "2025-08",
+     "rate": 5.5
+    },
+    {
+     "period": "2025-09",
+     "rate": 5.5
+    },
+    {
+     "period": "2025-11",
+     "rate": 5.5
+    },
+    {
+     "period": "2025-12",
+     "rate": 5.5
+    },
+    {
+     "period": "2026-01",
+     "rate": 5.4
+    },
+    {
+     "period": "2026-02",
+     "rate": 5.4
+    },
+    {
+     "period": "2026-03",
+     "rate": 5.3
+    },
+    {
+     "period": "2026-04",
+     "rate": 5.3
+    },
+    {
+     "period": "2026-05",
+     "rate": 5.3
+    },
+    {
+     "period": "2026-06",
+     "rate": 5.2
+    },
+    {
+     "period": "2026-07",
+     "rate": 5.1
+    },
+    {
+     "period": "2026-08",
+     "rate": 5.1
+    }
+   ]
+  },
+  "CO": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 4,
+    "unemployed": 128175,
+    "laborForce": 3182350
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 3.9
+    },
+    {
+     "period": "2025-08",
+     "rate": 3.9
+    },
+    {
+     "period": "2025-09",
+     "rate": 3.8
+    },
+    {
+     "period": "2025-11",
+     "rate": 3.8
+    },
+    {
+     "period": "2025-12",
+     "rate": 3.8
+    },
+    {
+     "period": "2026-01",
+     "rate": 3.9
+    },
+    {
+     "period": "2026-02",
+     "rate": 3.9
+    },
+    {
+     "period": "2026-03",
+     "rate": 3.9
+    },
+    {
+     "period": "2026-04",
+     "rate": 3.9
+    },
+    {
+     "period": "2026-05",
+     "rate": 3.9
+    },
+    {
+     "period": "2026-06",
+     "rate": 3.9
+    },
+    {
+     "period": "2026-07",
+     "rate": 3.9
+    },
+    {
+     "period": "2026-08",
+     "rate": 4
+    }
+   ]
+  },
+  "CT": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 5.1,
+    "unemployed": 96369,
+    "laborForce": 1878825
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 3.9
+    },
+    {
+     "period": "2025-08",
+     "rate": 4.1
+    },
+    {
+     "period": "2025-09",
+     "rate": 4.2
+    },
+    {
+     "period": "2025-11",
+     "rate": 4.3
+    },
+    {
+     "period": "2025-12",
+     "rate": 4.3
+    },
+    {
+     "period": "2026-01",
+     "rate": 4.5
+    },
+    {
+     "period": "2026-02",
+     "rate": 4.7
+    },
+    {
+     "period": "2026-03",
+     "rate": 4.8
+    },
+    {
+     "period": "2026-04",
+     "rate": 5
+    },
+    {
+     "period": "2026-05",
+     "rate": 5.1
+    },
+    {
+     "period": "2026-06",
+     "rate": 5.2
+    },
+    {
+     "period": "2026-07",
+     "rate": 5.2
+    },
+    {
+     "period": "2026-08",
+     "rate": 5.1
+    }
+   ]
+  },
+  "DE": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 4.7,
+    "unemployed": 23593,
+    "laborForce": 505307
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 4.8
+    },
+    {
+     "period": "2025-08",
+     "rate": 5
+    },
+    {
+     "period": "2025-09",
+     "rate": 5.2
+    },
+    {
+     "period": "2025-11",
+     "rate": 5.3
+    },
+    {
+     "period": "2025-12",
+     "rate": 5.3
+    },
+    {
+     "period": "2026-01",
+     "rate": 5.4
+    },
+    {
+     "period": "2026-02",
+     "rate": 5.4
+    },
+    {
+     "period": "2026-03",
+     "rate": 5.4
+    },
+    {
+     "period": "2026-04",
+     "rate": 5.3
+    },
+    {
+     "period": "2026-05",
+     "rate": 5.1
+    },
+    {
+     "period": "2026-06",
+     "rate": 4.9
+    },
+    {
+     "period": "2026-07",
+     "rate": 4.8
+    },
+    {
+     "period": "2026-08",
+     "rate": 4.7
+    }
+   ]
+  },
+  "DC": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 5.7,
+    "unemployed": 23109,
+    "laborForce": 402398
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 6.3
+    },
+    {
+     "period": "2025-08",
+     "rate": 6.5
+    },
+    {
+     "period": "2025-09",
+     "rate": 6.6
+    },
+    {
+     "period": "2025-11",
+     "rate": 6.7
+    },
+    {
+     "period": "2025-12",
+     "rate": 6.7
+    },
+    {
+     "period": "2026-01",
+     "rate": 6.7
+    },
+    {
+     "period": "2026-02",
+     "rate": 6.5
+    },
+    {
+     "period": "2026-03",
+     "rate": 6.3
+    },
+    {
+     "period": "2026-04",
+     "rate": 6.2
+    },
+    {
+     "period": "2026-05",
+     "rate": 6.1
+    },
+    {
+     "period": "2026-06",
+     "rate": 6
+    },
+    {
+     "period": "2026-07",
+     "rate": 5.9
+    },
+    {
+     "period": "2026-08",
+     "rate": 5.7
+    }
+   ]
+  },
+  "FL": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 4.5,
+    "unemployed": 502411,
+    "laborForce": 11115030
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 3.9
+    },
+    {
+     "period": "2025-08",
+     "rate": 4
+    },
+    {
+     "period": "2025-09",
+     "rate": 4.2
+    },
+    {
+     "period": "2025-11",
+     "rate": 4.3
+    },
+    {
+     "period": "2025-12",
+     "rate": 4.3
+    },
+    {
+     "period": "2026-01",
+     "rate": 4.5
+    },
+    {
+     "period": "2026-02",
+     "rate": 4.6
+    },
+    {
+     "period": "2026-03",
+     "rate": 4.7
+    },
+    {
+     "period": "2026-04",
+     "rate": 4.8
+    },
+    {
+     "period": "2026-05",
+     "rate": 4.8
+    },
+    {
+     "period": "2026-06",
+     "rate": 4.7
+    },
+    {
+     "period": "2026-07",
+     "rate": 4.6
+    },
+    {
+     "period": "2026-08",
+     "rate": 4.5
+    }
+   ]
+  },
+  "GA": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 3.2,
+    "unemployed": 175497,
+    "laborForce": 5490319
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 3.3
+    },
+    {
+     "period": "2025-08",
+     "rate": 3.4
+    },
+    {
+     "period": "2025-09",
+     "rate": 3.4
+    },
+    {
+     "period": "2025-11",
+     "rate": 3.5
+    },
+    {
+     "period": "2025-12",
+     "rate": 3.5
+    },
+    {
+     "period": "2026-01",
+     "rate": 3.5
+    },
+    {
+     "period": "2026-02",
+     "rate": 3.6
+    },
+    {
+     "period": "2026-03",
+     "rate": 3.5
+    },
+    {
+     "period": "2026-04",
+     "rate": 3.5
+    },
+    {
+     "period": "2026-05",
+     "rate": 3.4
+    },
+    {
+     "period": "2026-06",
+     "rate": 3.4
+    },
+    {
+     "period": "2026-07",
+     "rate": 3.3
+    },
+    {
+     "period": "2026-08",
+     "rate": 3.2
+    }
+   ]
+  },
+  "HI": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 2.7,
+    "unemployed": 18799,
+    "laborForce": 692738
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 2.2
+    },
+    {
+     "period": "2025-08",
+     "rate": 2.1
+    },
+    {
+     "period": "2025-09",
+     "rate": 2.1
+    },
+    {
+     "period": "2025-11",
+     "rate": 2.2
+    },
+    {
+     "period": "2025-12",
+     "rate": 2.2
+    },
+    {
+     "period": "2026-01",
+     "rate": 2.2
+    },
+    {
+     "period": "2026-02",
+     "rate": 2.3
+    },
+    {
+     "period": "2026-03",
+     "rate": 2.4
+    },
+    {
+     "period": "2026-04",
+     "rate": 2.4
+    },
+    {
+     "period": "2026-05",
+     "rate": 2.5
+    },
+    {
+     "period": "2026-06",
+     "rate": 2.6
+    },
+    {
+     "period": "2026-07",
+     "rate": 2.7
+    },
+    {
+     "period": "2026-08",
+     "rate": 2.7
+    }
+   ]
+  },
+  "ID": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 3.6,
+    "unemployed": 36164,
+    "laborForce": 998378
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 3.6
+    },
+    {
+     "period": "2025-08",
+     "rate": 3.6
+    },
+    {
+     "period": "2025-09",
+     "rate": 3.6
+    },
+    {
+     "period": "2025-11",
+     "rate": 3.6
+    },
+    {
+     "period": "2025-12",
+     "rate": 3.6
+    },
+    {
+     "period": "2026-01",
+     "rate": 3.7
+    },
+    {
+     "period": "2026-02",
+     "rate": 3.7
+    },
+    {
+     "period": "2026-03",
+     "rate": 3.6
+    },
+    {
+     "period": "2026-04",
+     "rate": 3.6
+    },
+    {
+     "period": "2026-05",
+     "rate": 3.7
+    },
+    {
+     "period": "2026-06",
+     "rate": 3.7
+    },
+    {
+     "period": "2026-07",
+     "rate": 3.6
+    },
+    {
+     "period": "2026-08",
+     "rate": 3.6
+    }
+   ]
+  },
+  "IL": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 4.7,
+    "unemployed": 306781,
+    "laborForce": 6477009
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 4.3
+    },
+    {
+     "period": "2025-08",
+     "rate": 4.3
+    },
+    {
+     "period": "2025-09",
+     "rate": 4.5
+    },
+    {
+     "period": "2025-11",
+     "rate": 4.7
+    },
+    {
+     "period": "2025-12",
+     "rate": 4.7
+    },
+    {
+     "period": "2026-01",
+     "rate": 4.9
+    },
+    {
+     "period": "2026-02",
+     "rate": 5
+    },
+    {
+     "period": "2026-03",
+     "rate": 5.1
+    },
+    {
+     "period": "2026-04",
+     "rate": 5.1
+    },
+    {
+     "period": "2026-05",
+     "rate": 5.1
+    },
+    {
+     "period": "2026-06",
+     "rate": 5.1
+    },
+    {
+     "period": "2026-07",
+     "rate": 4.9
+    },
+    {
+     "period": "2026-08",
+     "rate": 4.7
+    }
+   ]
+  },
+  "IN": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 3.3,
+    "unemployed": 114475,
+    "laborForce": 3488019
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 3.7
+    },
+    {
+     "period": "2025-08",
+     "rate": 3.7
+    },
+    {
+     "period": "2025-09",
+     "rate": 3.7
+    },
+    {
+     "period": "2025-11",
+     "rate": 3.5
+    },
+    {
+     "period": "2025-12",
+     "rate": 3.5
+    },
+    {
+     "period": "2026-01",
+     "rate": 3.4
+    },
+    {
+     "period": "2026-02",
+     "rate": 3.3
+    },
+    {
+     "period": "2026-03",
+     "rate": 3.3
+    },
+    {
+     "period": "2026-04",
+     "rate": 3.3
+    },
+    {
+     "period": "2026-05",
+     "rate": 3.3
+    },
+    {
+     "period": "2026-06",
+     "rate": 3.3
+    },
+    {
+     "period": "2026-07",
+     "rate": 3.3
+    },
+    {
+     "period": "2026-08",
+     "rate": 3.3
+    }
+   ]
+  },
+  "IA": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 3.2,
+    "unemployed": 54663,
+    "laborForce": 1724263
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 3.5
+    },
+    {
+     "period": "2025-08",
+     "rate": 3.5
+    },
+    {
+     "period": "2025-09",
+     "rate": 3.4
+    },
+    {
+     "period": "2025-11",
+     "rate": 3.4
+    },
+    {
+     "period": "2025-12",
+     "rate": 3.4
+    },
+    {
+     "period": "2026-01",
+     "rate": 3.4
+    },
+    {
+     "period": "2026-02",
+     "rate": 3.4
+    },
+    {
+     "period": "2026-03",
+     "rate": 3.3
+    },
+    {
+     "period": "2026-04",
+     "rate": 3.3
+    },
+    {
+     "period": "2026-05",
+     "rate": 3.2
+    },
+    {
+     "period": "2026-06",
+     "rate": 3.2
+    },
+    {
+     "period": "2026-07",
+     "rate": 3.2
+    },
+    {
+     "period": "2026-08",
+     "rate": 3.2
+    }
+   ]
+  },
+  "KS": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 3.8,
+    "unemployed": 58912,
+    "laborForce": 1553281
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 3.7
+    },
+    {
+     "period": "2025-08",
+     "rate": 3.7
+    },
+    {
+     "period": "2025-09",
+     "rate": 3.8
+    },
+    {
+     "period": "2025-11",
+     "rate": 3.8
+    },
+    {
+     "period": "2025-12",
+     "rate": 3.8
+    },
+    {
+     "period": "2026-01",
+     "rate": 3.9
+    },
+    {
+     "period": "2026-02",
+     "rate": 3.9
+    },
+    {
+     "period": "2026-03",
+     "rate": 3.9
+    },
+    {
+     "period": "2026-04",
+     "rate": 3.9
+    },
+    {
+     "period": "2026-05",
+     "rate": 3.8
+    },
+    {
+     "period": "2026-06",
+     "rate": 3.8
+    },
+    {
+     "period": "2026-07",
+     "rate": 3.8
+    },
+    {
+     "period": "2026-08",
+     "rate": 3.8
+    }
+   ]
+  },
+  "KY": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 4.7,
+    "unemployed": 99255,
+    "laborForce": 2109516
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 4.6
+    },
+    {
+     "period": "2025-08",
+     "rate": 4.5
+    },
+    {
+     "period": "2025-09",
+     "rate": 4.5
+    },
+    {
+     "period": "2025-11",
+     "rate": 4.4
+    },
+    {
+     "period": "2025-12",
+     "rate": 4.4
+    },
+    {
+     "period": "2026-01",
+     "rate": 4.3
+    },
+    {
+     "period": "2026-02",
+     "rate": 4.2
+    },
+    {
+     "period": "2026-03",
+     "rate": 4.2
+    },
+    {
+     "period": "2026-04",
+     "rate": 4.3
+    },
+    {
+     "period": "2026-05",
+     "rate": 4.5
+    },
+    {
+     "period": "2026-06",
+     "rate": 4.7
+    },
+    {
+     "period": "2026-07",
+     "rate": 4.7
+    },
+    {
+     "period": "2026-08",
+     "rate": 4.7
+    }
+   ]
+  },
+  "LA": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 4.2,
+    "unemployed": 88198,
+    "laborForce": 2107450
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 4.3
+    },
+    {
+     "period": "2025-08",
+     "rate": 4.2
+    },
+    {
+     "period": "2025-09",
+     "rate": 4.2
+    },
+    {
+     "period": "2025-11",
+     "rate": 4.2
+    },
+    {
+     "period": "2025-12",
+     "rate": 4.2
+    },
+    {
+     "period": "2026-01",
+     "rate": 4.3
+    },
+    {
+     "period": "2026-02",
+     "rate": 4.3
+    },
+    {
+     "period": "2026-03",
+     "rate": 4.4
+    },
+    {
+     "period": "2026-04",
+     "rate": 4.4
+    },
+    {
+     "period": "2026-05",
+     "rate": 4.5
+    },
+    {
+     "period": "2026-06",
+     "rate": 4.4
+    },
+    {
+     "period": "2026-07",
+     "rate": 4.4
+    },
+    {
+     "period": "2026-08",
+     "rate": 4.2
+    }
+   ]
+  },
+  "ME": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 3.2,
+    "unemployed": 22440,
+    "laborForce": 697441
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 3.3
+    },
+    {
+     "period": "2025-08",
+     "rate": 3.3
+    },
+    {
+     "period": "2025-09",
+     "rate": 3.3
+    },
+    {
+     "period": "2025-11",
+     "rate": 3.3
+    },
+    {
+     "period": "2025-12",
+     "rate": 3.3
+    },
+    {
+     "period": "2026-01",
+     "rate": 3.3
+    },
+    {
+     "period": "2026-02",
+     "rate": 3.2
+    },
+    {
+     "period": "2026-03",
+     "rate": 3.2
+    },
+    {
+     "period": "2026-04",
+     "rate": 3.1
+    },
+    {
+     "period": "2026-05",
+     "rate": 3.1
+    },
+    {
+     "period": "2026-06",
+     "rate": 3.1
+    },
+    {
+     "period": "2026-07",
+     "rate": 3.1
+    },
+    {
+     "period": "2026-08",
+     "rate": 3.2
+    }
+   ]
+  },
+  "MD": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 4.1,
+    "unemployed": 129852,
+    "laborForce": 3199779
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 4.2
+    },
+    {
+     "period": "2025-08",
+     "rate": 4.3
+    },
+    {
+     "period": "2025-09",
+     "rate": 4.3
+    },
+    {
+     "period": "2025-11",
+     "rate": 4.3
+    },
+    {
+     "period": "2025-12",
+     "rate": 4.2
+    },
+    {
+     "period": "2026-01",
+     "rate": 4.3
+    },
+    {
+     "period": "2026-02",
+     "rate": 4.3
+    },
+    {
+     "period": "2026-03",
+     "rate": 4.3
+    },
+    {
+     "period": "2026-04",
+     "rate": 4.4
+    },
+    {
+     "period": "2026-05",
+     "rate": 4.4
+    },
+    {
+     "period": "2026-06",
+     "rate": 4.3
+    },
+    {
+     "period": "2026-07",
+     "rate": 4.2
+    },
+    {
+     "period": "2026-08",
+     "rate": 4.1
+    }
+   ]
+  },
+  "MA": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 4.3,
+    "unemployed": 166328,
+    "laborForce": 3871860
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 4.5
+    },
+    {
+     "period": "2025-08",
+     "rate": 4.5
+    },
+    {
+     "period": "2025-09",
+     "rate": 4.6
+    },
+    {
+     "period": "2025-11",
+     "rate": 4.7
+    },
+    {
+     "period": "2025-12",
+     "rate": 4.7
+    },
+    {
+     "period": "2026-01",
+     "rate": 4.7
+    },
+    {
+     "period": "2026-02",
+     "rate": 4.8
+    },
+    {
+     "period": "2026-03",
+     "rate": 4.7
+    },
+    {
+     "period": "2026-04",
+     "rate": 4.7
+    },
+    {
+     "period": "2026-05",
+     "rate": 4.5
+    },
+    {
+     "period": "2026-06",
+     "rate": 4.4
+    },
+    {
+     "period": "2026-07",
+     "rate": 4.4
+    },
+    {
+     "period": "2026-08",
+     "rate": 4.3
+    }
+   ]
+  },
+  "MI": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 5,
+    "unemployed": 240500,
+    "laborForce": 4852504
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 4.9
+    },
+    {
+     "period": "2025-08",
+     "rate": 4.9
+    },
+    {
+     "period": "2025-09",
+     "rate": 4.9
+    },
+    {
+     "period": "2025-11",
+     "rate": 5
+    },
+    {
+     "period": "2025-12",
+     "rate": 5
+    },
+    {
+     "period": "2026-01",
+     "rate": 5
+    },
+    {
+     "period": "2026-02",
+     "rate": 5
+    },
+    {
+     "period": "2026-03",
+     "rate": 5
+    },
+    {
+     "period": "2026-04",
+     "rate": 5
+    },
+    {
+     "period": "2026-05",
+     "rate": 5.1
+    },
+    {
+     "period": "2026-06",
+     "rate": 5
+    },
+    {
+     "period": "2026-07",
+     "rate": 4.9
+    },
+    {
+     "period": "2026-08",
+     "rate": 5
+    }
+   ]
+  },
+  "MN": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 4.4,
+    "unemployed": 137026,
+    "laborForce": 3124525
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 3.8
+    },
+    {
+     "period": "2025-08",
+     "rate": 3.9
+    },
+    {
+     "period": "2025-09",
+     "rate": 4.1
+    },
+    {
+     "period": "2025-11",
+     "rate": 4.2
+    },
+    {
+     "period": "2025-12",
+     "rate": 4.2
+    },
+    {
+     "period": "2026-01",
+     "rate": 4.4
+    },
+    {
+     "period": "2026-02",
+     "rate": 4.5
+    },
+    {
+     "period": "2026-03",
+     "rate": 4.5
+    },
+    {
+     "period": "2026-04",
+     "rate": 4.5
+    },
+    {
+     "period": "2026-05",
+     "rate": 4.4
+    },
+    {
+     "period": "2026-06",
+     "rate": 4.4
+    },
+    {
+     "period": "2026-07",
+     "rate": 4.3
+    },
+    {
+     "period": "2026-08",
+     "rate": 4.4
+    }
+   ]
+  },
+  "MS": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 3.4,
+    "unemployed": 43695,
+    "laborForce": 1274635
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 3.8
+    },
+    {
+     "period": "2025-08",
+     "rate": 3.7
+    },
+    {
+     "period": "2025-09",
+     "rate": 3.7
+    },
+    {
+     "period": "2025-11",
+     "rate": 3.7
+    },
+    {
+     "period": "2025-12",
+     "rate": 3.7
+    },
+    {
+     "period": "2026-01",
+     "rate": 3.6
+    },
+    {
+     "period": "2026-02",
+     "rate": 3.7
+    },
+    {
+     "period": "2026-03",
+     "rate": 3.8
+    },
+    {
+     "period": "2026-04",
+     "rate": 3.8
+    },
+    {
+     "period": "2026-05",
+     "rate": 3.8
+    },
+    {
+     "period": "2026-06",
+     "rate": 3.8
+    },
+    {
+     "period": "2026-07",
+     "rate": 3.6
+    },
+    {
+     "period": "2026-08",
+     "rate": 3.4
+    }
+   ]
+  },
+  "MO": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 3.5,
+    "unemployed": 112415,
+    "laborForce": 3169856
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 4
+    },
+    {
+     "period": "2025-08",
+     "rate": 4
+    },
+    {
+     "period": "2025-09",
+     "rate": 3.9
+    },
+    {
+     "period": "2025-11",
+     "rate": 3.9
+    },
+    {
+     "period": "2025-12",
+     "rate": 3.9
+    },
+    {
+     "period": "2026-01",
+     "rate": 3.9
+    },
+    {
+     "period": "2026-02",
+     "rate": 3.9
+    },
+    {
+     "period": "2026-03",
+     "rate": 3.9
+    },
+    {
+     "period": "2026-04",
+     "rate": 3.8
+    },
+    {
+     "period": "2026-05",
+     "rate": 3.8
+    },
+    {
+     "period": "2026-06",
+     "rate": 3.7
+    },
+    {
+     "period": "2026-07",
+     "rate": 3.6
+    },
+    {
+     "period": "2026-08",
+     "rate": 3.5
+    }
+   ]
+  },
+  "MT": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 3.2,
+    "unemployed": 18267,
+    "laborForce": 574642
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 3.3
+    },
+    {
+     "period": "2025-08",
+     "rate": 3.4
+    },
+    {
+     "period": "2025-09",
+     "rate": 3.5
+    },
+    {
+     "period": "2025-11",
+     "rate": 3.6
+    },
+    {
+     "period": "2025-12",
+     "rate": 3.6
+    },
+    {
+     "period": "2026-01",
+     "rate": 3.6
+    },
+    {
+     "period": "2026-02",
+     "rate": 3.6
+    },
+    {
+     "period": "2026-03",
+     "rate": 3.6
+    },
+    {
+     "period": "2026-04",
+     "rate": 3.5
+    },
+    {
+     "period": "2026-05",
+     "rate": 3.4
+    },
+    {
+     "period": "2026-06",
+     "rate": 3.3
+    },
+    {
+     "period": "2026-07",
+     "rate": 3.2
+    },
+    {
+     "period": "2026-08",
+     "rate": 3.2
+    }
+   ]
+  },
+  "NE": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 2.9,
+    "unemployed": 31640,
+    "laborForce": 1095992
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 2.9
+    },
+    {
+     "period": "2025-08",
+     "rate": 2.9
+    },
+    {
+     "period": "2025-09",
+     "rate": 2.9
+    },
+    {
+     "period": "2025-11",
+     "rate": 3
+    },
+    {
+     "period": "2025-12",
+     "rate": 3
+    },
+    {
+     "period": "2026-01",
+     "rate": 3
+    },
+    {
+     "period": "2026-02",
+     "rate": 3.1
+    },
+    {
+     "period": "2026-03",
+     "rate": 3.1
+    },
+    {
+     "period": "2026-04",
+     "rate": 3
+    },
+    {
+     "period": "2026-05",
+     "rate": 3
+    },
+    {
+     "period": "2026-06",
+     "rate": 2.9
+    },
+    {
+     "period": "2026-07",
+     "rate": 2.9
+    },
+    {
+     "period": "2026-08",
+     "rate": 2.9
+    }
+   ]
+  },
+  "NV": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 4.8,
+    "unemployed": 81130,
+    "laborForce": 1675646
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 5.2
+    },
+    {
+     "period": "2025-08",
+     "rate": 5.2
+    },
+    {
+     "period": "2025-09",
+     "rate": 5.2
+    },
+    {
+     "period": "2025-11",
+     "rate": 5.2
+    },
+    {
+     "period": "2025-12",
+     "rate": 5.2
+    },
+    {
+     "period": "2026-01",
+     "rate": 5.3
+    },
+    {
+     "period": "2026-02",
+     "rate": 5.3
+    },
+    {
+     "period": "2026-03",
+     "rate": 5.3
+    },
+    {
+     "period": "2026-04",
+     "rate": 5.3
+    },
+    {
+     "period": "2026-05",
+     "rate": 5.2
+    },
+    {
+     "period": "2026-06",
+     "rate": 5.1
+    },
+    {
+     "period": "2026-07",
+     "rate": 5
+    },
+    {
+     "period": "2026-08",
+     "rate": 4.8
+    }
+   ]
+  },
+  "NH": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 2.8,
+    "unemployed": 21377,
+    "laborForce": 774326
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 3.1
+    },
+    {
+     "period": "2025-08",
+     "rate": 3.1
+    },
+    {
+     "period": "2025-09",
+     "rate": 3.2
+    },
+    {
+     "period": "2025-11",
+     "rate": 3.2
+    },
+    {
+     "period": "2025-12",
+     "rate": 3.2
+    },
+    {
+     "period": "2026-01",
+     "rate": 3.2
+    },
+    {
+     "period": "2026-02",
+     "rate": 3.2
+    },
+    {
+     "period": "2026-03",
+     "rate": 3.1
+    },
+    {
+     "period": "2026-04",
+     "rate": 3.1
+    },
+    {
+     "period": "2026-05",
+     "rate": 3
+    },
+    {
+     "period": "2026-06",
+     "rate": 2.9
+    },
+    {
+     "period": "2026-07",
+     "rate": 2.8
+    },
+    {
+     "period": "2026-08",
+     "rate": 2.8
+    }
+   ]
+  },
+  "NJ": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 4.3,
+    "unemployed": 212716,
+    "laborForce": 4918162
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 5.5
+    },
+    {
+     "period": "2025-08",
+     "rate": 5.5
+    },
+    {
+     "period": "2025-09",
+     "rate": 5.5
+    },
+    {
+     "period": "2025-11",
+     "rate": 5.4
+    },
+    {
+     "period": "2025-12",
+     "rate": 5.4
+    },
+    {
+     "period": "2026-01",
+     "rate": 5.2
+    },
+    {
+     "period": "2026-02",
+     "rate": 5.1
+    },
+    {
+     "period": "2026-03",
+     "rate": 4.9
+    },
+    {
+     "period": "2026-04",
+     "rate": 4.8
+    },
+    {
+     "period": "2026-05",
+     "rate": 4.7
+    },
+    {
+     "period": "2026-06",
+     "rate": 4.5
+    },
+    {
+     "period": "2026-07",
+     "rate": 4.4
+    },
+    {
+     "period": "2026-08",
+     "rate": 4.3
+    }
+   ]
+  },
+  "NM": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 4.7,
+    "unemployed": 45722,
+    "laborForce": 969788
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 4
+    },
+    {
+     "period": "2025-08",
+     "rate": 4.1
+    },
+    {
+     "period": "2025-09",
+     "rate": 4.2
+    },
+    {
+     "period": "2025-11",
+     "rate": 4.3
+    },
+    {
+     "period": "2025-12",
+     "rate": 4.3
+    },
+    {
+     "period": "2026-01",
+     "rate": 4.5
+    },
+    {
+     "period": "2026-02",
+     "rate": 4.7
+    },
+    {
+     "period": "2026-03",
+     "rate": 4.8
+    },
+    {
+     "period": "2026-04",
+     "rate": 4.9
+    },
+    {
+     "period": "2026-05",
+     "rate": 4.9
+    },
+    {
+     "period": "2026-06",
+     "rate": 4.8
+    },
+    {
+     "period": "2026-07",
+     "rate": 4.8
+    },
+    {
+     "period": "2026-08",
+     "rate": 4.7
+    }
+   ]
+  },
+  "NY": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 4.3,
+    "unemployed": 432957,
+    "laborForce": 10029913
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 4.4
+    },
+    {
+     "period": "2025-08",
+     "rate": 4.5
+    },
+    {
+     "period": "2025-09",
+     "rate": 4.6
+    },
+    {
+     "period": "2025-11",
+     "rate": 4.6
+    },
+    {
+     "period": "2025-12",
+     "rate": 4.6
+    },
+    {
+     "period": "2026-01",
+     "rate": 4.6
+    },
+    {
+     "period": "2026-02",
+     "rate": 4.6
+    },
+    {
+     "period": "2026-03",
+     "rate": 4.6
+    },
+    {
+     "period": "2026-04",
+     "rate": 4.6
+    },
+    {
+     "period": "2026-05",
+     "rate": 4.6
+    },
+    {
+     "period": "2026-06",
+     "rate": 4.6
+    },
+    {
+     "period": "2026-07",
+     "rate": 4.4
+    },
+    {
+     "period": "2026-08",
+     "rate": 4.3
+    }
+   ]
+  },
+  "NC": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 3.5,
+    "unemployed": 182042,
+    "laborForce": 5231098
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 3.9
+    },
+    {
+     "period": "2025-08",
+     "rate": 3.9
+    },
+    {
+     "period": "2025-09",
+     "rate": 3.9
+    },
+    {
+     "period": "2025-11",
+     "rate": 3.8
+    },
+    {
+     "period": "2025-12",
+     "rate": 3.8
+    },
+    {
+     "period": "2026-01",
+     "rate": 3.8
+    },
+    {
+     "period": "2026-02",
+     "rate": 3.8
+    },
+    {
+     "period": "2026-03",
+     "rate": 3.7
+    },
+    {
+     "period": "2026-04",
+     "rate": 3.7
+    },
+    {
+     "period": "2026-05",
+     "rate": 3.7
+    },
+    {
+     "period": "2026-06",
+     "rate": 3.6
+    },
+    {
+     "period": "2026-07",
+     "rate": 3.6
+    },
+    {
+     "period": "2026-08",
+     "rate": 3.5
+    }
+   ]
+  },
+  "ND": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 2.2,
+    "unemployed": 9502,
+    "laborForce": 430514
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 2.6
+    },
+    {
+     "period": "2025-08",
+     "rate": 2.6
+    },
+    {
+     "period": "2025-09",
+     "rate": 2.6
+    },
+    {
+     "period": "2025-11",
+     "rate": 2.6
+    },
+    {
+     "period": "2025-12",
+     "rate": 2.6
+    },
+    {
+     "period": "2026-01",
+     "rate": 2.6
+    },
+    {
+     "period": "2026-02",
+     "rate": 2.6
+    },
+    {
+     "period": "2026-03",
+     "rate": 2.5
+    },
+    {
+     "period": "2026-04",
+     "rate": 2.4
+    },
+    {
+     "period": "2026-05",
+     "rate": 2.4
+    },
+    {
+     "period": "2026-06",
+     "rate": 2.3
+    },
+    {
+     "period": "2026-07",
+     "rate": 2.2
+    },
+    {
+     "period": "2026-08",
+     "rate": 2.2
+    }
+   ]
+  },
+  "OH": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 3.3,
+    "unemployed": 195290,
+    "laborForce": 5857405
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 4.5
+    },
+    {
+     "period": "2025-08",
+     "rate": 4.4
+    },
+    {
+     "period": "2025-09",
+     "rate": 4.3
+    },
+    {
+     "period": "2025-11",
+     "rate": 4.3
+    },
+    {
+     "period": "2025-12",
+     "rate": 4.4
+    },
+    {
+     "period": "2026-01",
+     "rate": 4.3
+    },
+    {
+     "period": "2026-02",
+     "rate": 4.2
+    },
+    {
+     "period": "2026-03",
+     "rate": 4.1
+    },
+    {
+     "period": "2026-04",
+     "rate": 3.9
+    },
+    {
+     "period": "2026-05",
+     "rate": 3.7
+    },
+    {
+     "period": "2026-06",
+     "rate": 3.6
+    },
+    {
+     "period": "2026-07",
+     "rate": 3.4
+    },
+    {
+     "period": "2026-08",
+     "rate": 3.3
+    }
+   ]
+  },
+  "OK": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 4.3,
+    "unemployed": 85170,
+    "laborForce": 1998019
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 3.3
+    },
+    {
+     "period": "2025-08",
+     "rate": 3.4
+    },
+    {
+     "period": "2025-09",
+     "rate": 3.6
+    },
+    {
+     "period": "2025-11",
+     "rate": 3.7
+    },
+    {
+     "period": "2025-12",
+     "rate": 3.7
+    },
+    {
+     "period": "2026-01",
+     "rate": 3.9
+    },
+    {
+     "period": "2026-02",
+     "rate": 3.9
+    },
+    {
+     "period": "2026-03",
+     "rate": 3.9
+    },
+    {
+     "period": "2026-04",
+     "rate": 4
+    },
+    {
+     "period": "2026-05",
+     "rate": 4.1
+    },
+    {
+     "period": "2026-06",
+     "rate": 4.2
+    },
+    {
+     "period": "2026-07",
+     "rate": 4.3
+    },
+    {
+     "period": "2026-08",
+     "rate": 4.3
+    }
+   ]
+  },
+  "OR": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 5.1,
+    "unemployed": 112968,
+    "laborForce": 2208273
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 5.3
+    },
+    {
+     "period": "2025-08",
+     "rate": 5.3
+    },
+    {
+     "period": "2025-09",
+     "rate": 5.3
+    },
+    {
+     "period": "2025-11",
+     "rate": 5.3
+    },
+    {
+     "period": "2025-12",
+     "rate": 5.3
+    },
+    {
+     "period": "2026-01",
+     "rate": 5.2
+    },
+    {
+     "period": "2026-02",
+     "rate": 5.2
+    },
+    {
+     "period": "2026-03",
+     "rate": 5.2
+    },
+    {
+     "period": "2026-04",
+     "rate": 5.2
+    },
+    {
+     "period": "2026-05",
+     "rate": 5.2
+    },
+    {
+     "period": "2026-06",
+     "rate": 5.2
+    },
+    {
+     "period": "2026-07",
+     "rate": 5.2
+    },
+    {
+     "period": "2026-08",
+     "rate": 5.1
+    }
+   ]
+  },
+  "PA": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 3.7,
+    "unemployed": 249694,
+    "laborForce": 6659135
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 4.4
+    },
+    {
+     "period": "2025-08",
+     "rate": 4.4
+    },
+    {
+     "period": "2025-09",
+     "rate": 4.4
+    },
+    {
+     "period": "2025-11",
+     "rate": 4.4
+    },
+    {
+     "period": "2025-12",
+     "rate": 4.4
+    },
+    {
+     "period": "2026-01",
+     "rate": 4.3
+    },
+    {
+     "period": "2026-02",
+     "rate": 4.2
+    },
+    {
+     "period": "2026-03",
+     "rate": 4.2
+    },
+    {
+     "period": "2026-04",
+     "rate": 4.2
+    },
+    {
+     "period": "2026-05",
+     "rate": 4.2
+    },
+    {
+     "period": "2026-06",
+     "rate": 4.1
+    },
+    {
+     "period": "2026-07",
+     "rate": 3.9
+    },
+    {
+     "period": "2026-08",
+     "rate": 3.7
+    }
+   ]
+  },
+  "RI": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 3.7,
+    "unemployed": 21350,
+    "laborForce": 577129
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 4.2
+    },
+    {
+     "period": "2025-08",
+     "rate": 4.3
+    },
+    {
+     "period": "2025-09",
+     "rate": 4.3
+    },
+    {
+     "period": "2025-11",
+     "rate": 4.4
+    },
+    {
+     "period": "2025-12",
+     "rate": 4.4
+    },
+    {
+     "period": "2026-01",
+     "rate": 4.5
+    },
+    {
+     "period": "2026-02",
+     "rate": 4.6
+    },
+    {
+     "period": "2026-03",
+     "rate": 4.7
+    },
+    {
+     "period": "2026-04",
+     "rate": 4.5
+    },
+    {
+     "period": "2026-05",
+     "rate": 4.3
+    },
+    {
+     "period": "2026-06",
+     "rate": 4.1
+    },
+    {
+     "period": "2026-07",
+     "rate": 3.9
+    },
+    {
+     "period": "2026-08",
+     "rate": 3.7
+    }
+   ]
+  },
+  "SC": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 4.1,
+    "unemployed": 109048,
+    "laborForce": 2675730
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 4.4
+    },
+    {
+     "period": "2025-08",
+     "rate": 4.6
+    },
+    {
+     "period": "2025-09",
+     "rate": 4.7
+    },
+    {
+     "period": "2025-11",
+     "rate": 4.8
+    },
+    {
+     "period": "2025-12",
+     "rate": 4.8
+    },
+    {
+     "period": "2026-01",
+     "rate": 4.9
+    },
+    {
+     "period": "2026-02",
+     "rate": 5
+    },
+    {
+     "period": "2026-03",
+     "rate": 4.9
+    },
+    {
+     "period": "2026-04",
+     "rate": 4.8
+    },
+    {
+     "period": "2026-05",
+     "rate": 4.6
+    },
+    {
+     "period": "2026-06",
+     "rate": 4.4
+    },
+    {
+     "period": "2026-07",
+     "rate": 4.2
+    },
+    {
+     "period": "2026-08",
+     "rate": 4.1
+    }
+   ]
+  },
+  "SD": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 2,
+    "unemployed": 9628,
+    "laborForce": 485944
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 2
+    },
+    {
+     "period": "2025-08",
+     "rate": 2.1
+    },
+    {
+     "period": "2025-09",
+     "rate": 2.1
+    },
+    {
+     "period": "2025-11",
+     "rate": 2.2
+    },
+    {
+     "period": "2025-12",
+     "rate": 2.2
+    },
+    {
+     "period": "2026-01",
+     "rate": 2.2
+    },
+    {
+     "period": "2026-02",
+     "rate": 2.3
+    },
+    {
+     "period": "2026-03",
+     "rate": 2.3
+    },
+    {
+     "period": "2026-04",
+     "rate": 2.2
+    },
+    {
+     "period": "2026-05",
+     "rate": 2.1
+    },
+    {
+     "period": "2026-06",
+     "rate": 2
+    },
+    {
+     "period": "2026-07",
+     "rate": 2
+    },
+    {
+     "period": "2026-08",
+     "rate": 2
+    }
+   ]
+  },
+  "TN": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 3.4,
+    "unemployed": 119623,
+    "laborForce": 3486012
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 3.5
+    },
+    {
+     "period": "2025-08",
+     "rate": 3.5
+    },
+    {
+     "period": "2025-09",
+     "rate": 3.5
+    },
+    {
+     "period": "2025-11",
+     "rate": 3.6
+    },
+    {
+     "period": "2025-12",
+     "rate": 3.6
+    },
+    {
+     "period": "2026-01",
+     "rate": 3.5
+    },
+    {
+     "period": "2026-02",
+     "rate": 3.6
+    },
+    {
+     "period": "2026-03",
+     "rate": 3.6
+    },
+    {
+     "period": "2026-04",
+     "rate": 3.6
+    },
+    {
+     "period": "2026-05",
+     "rate": 3.6
+    },
+    {
+     "period": "2026-06",
+     "rate": 3.5
+    },
+    {
+     "period": "2026-07",
+     "rate": 3.4
+    },
+    {
+     "period": "2026-08",
+     "rate": 3.4
+    }
+   ]
+  },
+  "TX": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 4.4,
+    "unemployed": 707524,
+    "laborForce": 15932639
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 4.2
+    },
+    {
+     "period": "2025-08",
+     "rate": 4.2
+    },
+    {
+     "period": "2025-09",
+     "rate": 4.3
+    },
+    {
+     "period": "2025-11",
+     "rate": 4.3
+    },
+    {
+     "period": "2025-12",
+     "rate": 4.3
+    },
+    {
+     "period": "2026-01",
+     "rate": 4.3
+    },
+    {
+     "period": "2026-02",
+     "rate": 4.3
+    },
+    {
+     "period": "2026-03",
+     "rate": 4.3
+    },
+    {
+     "period": "2026-04",
+     "rate": 4.3
+    },
+    {
+     "period": "2026-05",
+     "rate": 4.3
+    },
+    {
+     "period": "2026-06",
+     "rate": 4.4
+    },
+    {
+     "period": "2026-07",
+     "rate": 4.5
+    },
+    {
+     "period": "2026-08",
+     "rate": 4.4
+    }
+   ]
+  },
+  "UT": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 3.5,
+    "unemployed": 64108,
+    "laborForce": 1826291
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 3.5
+    },
+    {
+     "period": "2025-08",
+     "rate": 3.6
+    },
+    {
+     "period": "2025-09",
+     "rate": 3.6
+    },
+    {
+     "period": "2025-11",
+     "rate": 3.7
+    },
+    {
+     "period": "2025-12",
+     "rate": 3.7
+    },
+    {
+     "period": "2026-01",
+     "rate": 3.8
+    },
+    {
+     "period": "2026-02",
+     "rate": 3.8
+    },
+    {
+     "period": "2026-03",
+     "rate": 3.8
+    },
+    {
+     "period": "2026-04",
+     "rate": 3.8
+    },
+    {
+     "period": "2026-05",
+     "rate": 3.7
+    },
+    {
+     "period": "2026-06",
+     "rate": 3.6
+    },
+    {
+     "period": "2026-07",
+     "rate": 3.6
+    },
+    {
+     "period": "2026-08",
+     "rate": 3.5
+    }
+   ]
+  },
+  "VT": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 2.6,
+    "unemployed": 8701,
+    "laborForce": 337925
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 2.6
+    },
+    {
+     "period": "2025-08",
+     "rate": 2.6
+    },
+    {
+     "period": "2025-09",
+     "rate": 2.6
+    },
+    {
+     "period": "2025-11",
+     "rate": 2.7
+    },
+    {
+     "period": "2025-12",
+     "rate": 2.7
+    },
+    {
+     "period": "2026-01",
+     "rate": 2.7
+    },
+    {
+     "period": "2026-02",
+     "rate": 2.6
+    },
+    {
+     "period": "2026-03",
+     "rate": 2.6
+    },
+    {
+     "period": "2026-04",
+     "rate": 2.6
+    },
+    {
+     "period": "2026-05",
+     "rate": 2.6
+    },
+    {
+     "period": "2026-06",
+     "rate": 2.6
+    },
+    {
+     "period": "2026-07",
+     "rate": 2.6
+    },
+    {
+     "period": "2026-08",
+     "rate": 2.6
+    }
+   ]
+  },
+  "VA": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 3.6,
+    "unemployed": 160408,
+    "laborForce": 4465164
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 3.3
+    },
+    {
+     "period": "2025-08",
+     "rate": 3.3
+    },
+    {
+     "period": "2025-09",
+     "rate": 3.4
+    },
+    {
+     "period": "2025-11",
+     "rate": 3.6
+    },
+    {
+     "period": "2025-12",
+     "rate": 3.6
+    },
+    {
+     "period": "2026-01",
+     "rate": 3.7
+    },
+    {
+     "period": "2026-02",
+     "rate": 3.8
+    },
+    {
+     "period": "2026-03",
+     "rate": 3.8
+    },
+    {
+     "period": "2026-04",
+     "rate": 3.8
+    },
+    {
+     "period": "2026-05",
+     "rate": 3.8
+    },
+    {
+     "period": "2026-06",
+     "rate": 3.8
+    },
+    {
+     "period": "2026-07",
+     "rate": 3.7
+    },
+    {
+     "period": "2026-08",
+     "rate": 3.6
+    }
+   ]
+  },
+  "WA": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 4.9,
+    "unemployed": 197474,
+    "laborForce": 4043691
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 4.6
+    },
+    {
+     "period": "2025-08",
+     "rate": 4.6
+    },
+    {
+     "period": "2025-09",
+     "rate": 4.7
+    },
+    {
+     "period": "2025-11",
+     "rate": 4.9
+    },
+    {
+     "period": "2025-12",
+     "rate": 4.9
+    },
+    {
+     "period": "2026-01",
+     "rate": 5
+    },
+    {
+     "period": "2026-02",
+     "rate": 5.1
+    },
+    {
+     "period": "2026-03",
+     "rate": 5.1
+    },
+    {
+     "period": "2026-04",
+     "rate": 5.2
+    },
+    {
+     "period": "2026-05",
+     "rate": 5.2
+    },
+    {
+     "period": "2026-06",
+     "rate": 5.2
+    },
+    {
+     "period": "2026-07",
+     "rate": 5
+    },
+    {
+     "period": "2026-08",
+     "rate": 4.9
+    }
+   ]
+  },
+  "WV": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 4,
+    "unemployed": 31269,
+    "laborForce": 772230
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 4.2
+    },
+    {
+     "period": "2025-08",
+     "rate": 4.3
+    },
+    {
+     "period": "2025-09",
+     "rate": 4.5
+    },
+    {
+     "period": "2025-11",
+     "rate": 4.6
+    },
+    {
+     "period": "2025-12",
+     "rate": 4.6
+    },
+    {
+     "period": "2026-01",
+     "rate": 4.6
+    },
+    {
+     "period": "2026-02",
+     "rate": 4.7
+    },
+    {
+     "period": "2026-03",
+     "rate": 4.5
+    },
+    {
+     "period": "2026-04",
+     "rate": 4.4
+    },
+    {
+     "period": "2026-05",
+     "rate": 4.3
+    },
+    {
+     "period": "2026-06",
+     "rate": 4.2
+    },
+    {
+     "period": "2026-07",
+     "rate": 4.1
+    },
+    {
+     "period": "2026-08",
+     "rate": 4
+    }
+   ]
+  },
+  "WI": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 3.2,
+    "unemployed": 102083,
+    "laborForce": 3148250
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 3
+    },
+    {
+     "period": "2025-08",
+     "rate": 3.1
+    },
+    {
+     "period": "2025-09",
+     "rate": 3.1
+    },
+    {
+     "period": "2025-11",
+     "rate": 3.2
+    },
+    {
+     "period": "2025-12",
+     "rate": 3.2
+    },
+    {
+     "period": "2026-01",
+     "rate": 3.3
+    },
+    {
+     "period": "2026-02",
+     "rate": 3.4
+    },
+    {
+     "period": "2026-03",
+     "rate": 3.5
+    },
+    {
+     "period": "2026-04",
+     "rate": 3.5
+    },
+    {
+     "period": "2026-05",
+     "rate": 3.4
+    },
+    {
+     "period": "2026-06",
+     "rate": 3.3
+    },
+    {
+     "period": "2026-07",
+     "rate": 3.3
+    },
+    {
+     "period": "2026-08",
+     "rate": 3.2
+    }
+   ]
+  },
+  "WY": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 3,
+    "unemployed": 8506,
+    "laborForce": 284980
+   },
+   "history": [
+    {
+     "period": "2025-07",
+     "rate": 3.3
+    },
+    {
+     "period": "2025-08",
+     "rate": 3.3
+    },
+    {
+     "period": "2025-09",
+     "rate": 3.4
+    },
+    {
+     "period": "2025-11",
+     "rate": 3.5
+    },
+    {
+     "period": "2025-12",
+     "rate": 3.5
+    },
+    {
+     "period": "2026-01",
+     "rate": 3.6
+    },
+    {
+     "period": "2026-02",
+     "rate": 3.6
+    },
+    {
+     "period": "2026-03",
+     "rate": 3.6
+    },
+    {
+     "period": "2026-04",
+     "rate": 3.5
+    },
+    {
+     "period": "2026-05",
+     "rate": 3.4
+    },
+    {
+     "period": "2026-06",
+     "rate": 3.2
+    },
+    {
+     "period": "2026-07",
+     "rate": 3
+    },
+    {
+     "period": "2026-08",
+     "rate": 3
+    }
+   ]
+  },
+  "PR": {
+   "latest": {
+    "period": "2026-08",
+    "rate": 6.1,
+    "unemployed": 76379,
+    "laborForce": 1254168
+   },
+   "history": [
+    {
+     "period": "2025-08",
+     "rate": 5.7
+    },
+    {
+     "period": "2025-09",
+     "rate": 5.7
+    },
+    {
+     "period": "2025-10",
+     "rate": 5.7
+    },
+    {
+     "period": "2025-11",
+     "rate": 5.7
+    },
+    {
+     "period": "2025-12",
+     "rate": 5.7
+    },
+    {
+     "period": "2026-01",
+     "rate": 5.7
+    },
+    {
+     "period": "2026-02",
+     "rate": 5.6
+    },
+    {
+     "period": "2026-03",
+     "rate": 5.6
+    },
+    {
+     "period": "2026-04",
+     "rate": 5.6
+    },
+    {
+     "period": "2026-05",
+     "rate": 5.6
+    },
+    {
+     "period": "2026-06",
+     "rate": 5.8
+    },
+    {
+     "period": "2026-07",
+     "rate": 6
+    },
+    {
+     "period": "2026-08",
+     "rate": 6.1
+    }
+   ]
+  }
+ }
+}
