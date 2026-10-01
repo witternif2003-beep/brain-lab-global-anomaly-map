@@ -314,9 +314,8 @@ export function addGaPatrolLayers(map: MapLibreMap): void {
       id: 'ga-patrol-dot',
       type: 'circle',
       source: GA_PATROL_SOURCE,
-      maxzoom: 18,
       paint: {
-        'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 4, 12, 6, 17, 8],
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 4, 12, 6, 17, 8, 18, 0],
         'circle-color': '#facc15',
         'circle-stroke-color': '#111827',
         'circle-stroke-width': 2,
@@ -331,7 +330,7 @@ export function addGaPatrolLayers(map: MapLibreMap): void {
     map.on('click', 'ga-patrol-dot', (e) => {
       const f = e.features?.[0];
       if (!f || f.geometry.type !== 'Point') return;
-      map.flyTo({ center: f.geometry.coordinates as LngLat, zoom: 19.5, pitch: 65, speed: 1.6 });
+      map.flyTo({ center: f.geometry.coordinates as LngLat, zoom: 19.5, pitch: Math.min(65, map.getMaxPitch()), speed: 1.6 });
     });
     map.on('mouseenter', 'ga-patrol-dot', () => {
       map.getCanvas().style.cursor = 'pointer';
