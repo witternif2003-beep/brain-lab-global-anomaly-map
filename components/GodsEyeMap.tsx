@@ -1358,7 +1358,7 @@ export default function GodsEyeMap({
       bearing: 0,
       maxZoom: 21,
       minZoom: 1,
-      attributionControl: false,
+      attributionControl: { compact: true },
       dragRotate: true,
       pitchWithRotate: true,
       touchZoomRotate: true,
