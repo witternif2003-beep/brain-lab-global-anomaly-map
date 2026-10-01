@@ -1,0 +1,335 @@
+{
+ "generatedAt": "2026-10-01T17:29:41Z",
+ "source": "SEC EDGAR submissions and XBRL companyfacts APIs (data.sec.gov)",
+ "companies": {
+  "BAH": {
+   "cik": 1443646,
+   "name": "Booz Allen Hamilton Holding Corp",
+   "tickers": [
+    "BAH"
+   ],
+   "exchanges": [
+    "NYSE"
+   ],
+   "industry": "Services-Management Consulting Services",
+   "incorporated": "DE",
+   "hq": "Mclean, VA",
+   "fiscalYearEnd": "0331",
+   "edgarUrl": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=1443646&type=10-K&dateb=&owner=include&count=40",
+   "lastPeriodicFiling": "2026-07-24",
+   "balanceSheet": {
+    "form": "10-Q",
+    "filed": "2026-07-24",
+    "accn": "0001628280-26-049495",
+    "docUrl": "https://www.sec.gov/Archives/edgar/data/1443646/000162828026049495/bah-20260630.htm",
+    "indexUrl": "https://www.sec.gov/Archives/edgar/data/1443646/000162828026049495/0001628280-26-049495-index.htm",
+    "viewerUrl": "https://www.sec.gov/cgi-bin/viewer?action=view&cik=1443646&accession_number=0001628280-26-049495&xbrl_type=v",
+    "assets": 7610000000,
+    "periodEnd": "2026-06-30",
+    "liabilities": 6408000000,
+    "equity": 1202000000,
+    "cash": 540000000,
+    "longTermDebt": 3917000000
+   },
+   "annual": {
+    "form": "10-K",
+    "filed": "2026-05-22",
+    "accn": "0001628280-26-037521",
+    "docUrl": "https://www.sec.gov/Archives/edgar/data/1443646/000162828026037521/bah-20260331.htm",
+    "indexUrl": "https://www.sec.gov/Archives/edgar/data/1443646/000162828026037521/0001628280-26-037521-index.htm",
+    "viewerUrl": "https://www.sec.gov/cgi-bin/viewer?action=view&cik=1443646&accession_number=0001628280-26-037521&xbrl_type=v",
+    "revenue": 11217000000,
+    "periodStart": "2025-04-01",
+    "periodEnd": "2026-03-31",
+    "netIncome": 851000000
+   }
+  },
+  "RTX": {
+   "cik": 101829,
+   "name": "RTX Corp",
+   "tickers": [
+    "RTX"
+   ],
+   "exchanges": [
+    "NYSE"
+   ],
+   "industry": "Aircraft Engines & Engine Parts",
+   "incorporated": "DE",
+   "hq": "Arlington, VA",
+   "fiscalYearEnd": "1231",
+   "edgarUrl": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=101829&type=10-K&dateb=&owner=include&count=40",
+   "lastPeriodicFiling": "2026-07-23",
+   "balanceSheet": {
+    "form": "10-Q",
+    "filed": "2026-07-23",
+    "accn": "0000101829-26-000027",
+    "docUrl": "https://www.sec.gov/Archives/edgar/data/101829/000010182926000027/rtx-20260630.htm",
+    "indexUrl": "https://www.sec.gov/Archives/edgar/data/101829/000010182926000027/0000101829-26-000027-index.htm",
+    "viewerUrl": "https://www.sec.gov/cgi-bin/viewer?action=view&cik=101829&accession_number=0000101829-26-000027&xbrl_type=v",
+    "assets": 173972000000,
+    "periodEnd": "2026-06-30",
+    "liabilities": 105828000000,
+    "equity": 68116000000,
+    "cash": 8305000000
+   },
+   "annual": {
+    "form": "10-K",
+    "filed": "2026-02-06",
+    "accn": "0000101829-26-000006",
+    "docUrl": "https://www.sec.gov/Archives/edgar/data/101829/000010182926000006/rtx-20251231.htm",
+    "indexUrl": "https://www.sec.gov/Archives/edgar/data/101829/000010182926000006/0000101829-26-000006-index.htm",
+    "viewerUrl": "https://www.sec.gov/cgi-bin/viewer?action=view&cik=101829&accession_number=0000101829-26-000006&xbrl_type=v",
+    "revenue": 88603000000,
+    "periodStart": "2025-01-01",
+    "periodEnd": "2025-12-31",
+    "netIncome": 6732000000
+   }
+  },
+  "CACI": {
+   "cik": 16058,
+   "name": "CACI INTERNATIONAL INC /DE/",
+   "tickers": [
+    "CACI"
+   ],
+   "exchanges": [
+    "NYSE"
+   ],
+   "industry": "Services-Computer Integrated Systems Design",
+   "incorporated": "DE",
+   "hq": "Reston, VA",
+   "fiscalYearEnd": "0630",
+   "edgarUrl": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=16058&type=10-K&dateb=&owner=include&count=40",
+   "lastPeriodicFiling": "2026-08-06",
+   "balanceSheet": {
+    "form": "10-K",
+    "filed": "2026-08-06",
+    "accn": "0001628280-26-054195",
+    "docUrl": "https://www.sec.gov/Archives/edgar/data/16058/000162828026054195/caci-20260630.htm",
+    "indexUrl": "https://www.sec.gov/Archives/edgar/data/16058/000162828026054195/0001628280-26-054195-index.htm",
+    "viewerUrl": "https://www.sec.gov/cgi-bin/viewer?action=view&cik=16058&accession_number=0001628280-26-054195&xbrl_type=v",
+    "assets": 11819644000,
+    "periodEnd": "2026-06-30",
+    "liabilities": 7356947000,
+    "equity": 4462697000,
+    "cash": 191756000,
+    "longTermDebt": 4854759000
+   },
+   "annual": {
+    "form": "10-K",
+    "filed": "2026-08-06",
+    "accn": "0001628280-26-054195",
+    "docUrl": "https://www.sec.gov/Archives/edgar/data/16058/000162828026054195/caci-20260630.htm",
+    "indexUrl": "https://www.sec.gov/Archives/edgar/data/16058/000162828026054195/0001628280-26-054195-index.htm",
+    "viewerUrl": "https://www.sec.gov/cgi-bin/viewer?action=view&cik=16058&accession_number=0001628280-26-054195&xbrl_type=v",
+    "revenue": 9567779000,
+    "periodStart": "2025-07-01",
+    "periodEnd": "2026-06-30",
+    "netIncome": 535808000
+   }
+  },
+  "AMTM": {
+   "cik": 2011286,
+   "name": "Amentum Holdings, Inc.",
+   "tickers": [
+    "AMTM"
+   ],
+   "exchanges": [
+    "NYSE"
+   ],
+   "industry": "Services-Business Services, NEC",
+   "incorporated": "DE",
+   "hq": "Chantilly, VA",
+   "fiscalYearEnd": "1002",
+   "edgarUrl": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=2011286&type=10-K&dateb=&owner=include&count=40",
+   "lastPeriodicFiling": "2026-08-11",
+   "balanceSheet": {
+    "form": "10-Q",
+    "filed": "2026-08-11",
+    "accn": "0001628280-26-055727",
+    "docUrl": "https://www.sec.gov/Archives/edgar/data/2011286/000162828026055727/amtm-20260703.htm",
+    "indexUrl": "https://www.sec.gov/Archives/edgar/data/2011286/000162828026055727/0001628280-26-055727-index.htm",
+    "viewerUrl": "https://www.sec.gov/cgi-bin/viewer?action=view&cik=2011286&accession_number=0001628280-26-055727&xbrl_type=v",
+    "assets": 11199000000,
+    "periodEnd": "2026-07-03",
+    "liabilities": 6410000000,
+    "equity": 4789000000,
+    "cash": 459000000,
+    "longTermDebt": 3771000000
+   },
+   "annual": {
+    "form": "10-K",
+    "filed": "2025-11-25",
+    "accn": "0001628280-25-053993",
+    "docUrl": "https://www.sec.gov/Archives/edgar/data/2011286/000162828025053993/amtm-20251003.htm",
+    "indexUrl": "https://www.sec.gov/Archives/edgar/data/2011286/000162828025053993/0001628280-25-053993-index.htm",
+    "viewerUrl": "https://www.sec.gov/cgi-bin/viewer?action=view&cik=2011286&accession_number=0001628280-25-053993&xbrl_type=v",
+    "revenue": 14393000000,
+    "periodStart": "2024-09-28",
+    "periodEnd": "2025-10-03",
+    "netIncome": 66000000
+   }
+  },
+  "KTOS": {
+   "cik": 1069258,
+   "name": "KRATOS DEFENSE & SECURITY SOLUTIONS, INC.",
+   "tickers": [
+    "KTOS"
+   ],
+   "exchanges": [
+    "Nasdaq"
+   ],
+   "industry": "Guided Missiles & Space Vehicles & Parts",
+   "incorporated": "DE",
+   "hq": "San Diego, CA",
+   "fiscalYearEnd": "1227",
+   "edgarUrl": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=1069258&type=10-K&dateb=&owner=include&count=40",
+   "lastPeriodicFiling": "2026-08-04",
+   "balanceSheet": {
+    "form": "10-Q",
+    "filed": "2026-08-04",
+    "accn": "0001069258-26-000077",
+    "docUrl": "https://www.sec.gov/Archives/edgar/data/1069258/000106925826000077/ktos-20260628.htm",
+    "indexUrl": "https://www.sec.gov/Archives/edgar/data/1069258/000106925826000077/0001069258-26-000077-index.htm",
+    "viewerUrl": "https://www.sec.gov/cgi-bin/viewer?action=view&cik=1069258&accession_number=0001069258-26-000077&xbrl_type=v",
+    "assets": 4089800000,
+    "periodEnd": "2026-06-28",
+    "liabilities": 663000000,
+    "equity": 3426800000,
+    "cash": 1437600000
+   },
+   "annual": {
+    "form": "10-K",
+    "filed": "2026-02-23",
+    "accn": "0001069258-26-000013",
+    "docUrl": "https://www.sec.gov/Archives/edgar/data/1069258/000106925826000013/ktos-20251228.htm",
+    "indexUrl": "https://www.sec.gov/Archives/edgar/data/1069258/000106925826000013/0001069258-26-000013-index.htm",
+    "viewerUrl": "https://www.sec.gov/cgi-bin/viewer?action=view&cik=1069258&accession_number=0001069258-26-000013&xbrl_type=v",
+    "revenue": 1346800000,
+    "periodStart": "2024-12-30",
+    "periodEnd": "2025-12-28",
+    "netIncome": 22000000
+   }
+  },
+  "SAIC": {
+   "cik": 1571123,
+   "name": "Science Applications International Corp",
+   "tickers": [
+    "SAIC"
+   ],
+   "exchanges": [
+    "Nasdaq"
+   ],
+   "industry": "Services-Computer Integrated Systems Design",
+   "incorporated": "DE",
+   "hq": "Reston, VA",
+   "fiscalYearEnd": "0129",
+   "edgarUrl": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=1571123&type=10-K&dateb=&owner=include&count=40",
+   "lastPeriodicFiling": "2026-08-31",
+   "balanceSheet": {
+    "form": "10-Q",
+    "filed": "2026-08-31",
+    "accn": "0001571123-26-000133",
+    "docUrl": "https://www.sec.gov/Archives/edgar/data/1571123/000157112326000133/saic-20260731.htm",
+    "indexUrl": "https://www.sec.gov/Archives/edgar/data/1571123/000157112326000133/0001571123-26-000133-index.htm",
+    "viewerUrl": "https://www.sec.gov/cgi-bin/viewer?action=view&cik=1571123&accession_number=0001571123-26-000133&xbrl_type=v",
+    "assets": 5423000000,
+    "periodEnd": "2026-07-31",
+    "equity": 1436000000,
+    "cash": 126000000,
+    "longTermDebt": 2452000000,
+    "liabilities": 3987000000,
+    "liabilitiesDerived": true
+   },
+   "annual": {
+    "form": "10-K",
+    "filed": "2026-03-16",
+    "accn": "0001571123-26-000029",
+    "docUrl": "https://www.sec.gov/Archives/edgar/data/1571123/000157112326000029/saic-20260130.htm",
+    "indexUrl": "https://www.sec.gov/Archives/edgar/data/1571123/000157112326000029/0001571123-26-000029-index.htm",
+    "viewerUrl": "https://www.sec.gov/cgi-bin/viewer?action=view&cik=1571123&accession_number=0001571123-26-000029&xbrl_type=v",
+    "revenue": 7262000000,
+    "periodStart": "2025-02-01",
+    "periodEnd": "2026-01-30",
+    "netIncome": 358000000
+   }
+  },
+  "DRS": {
+   "cik": 1833756,
+   "name": "Leonardo DRS, Inc.",
+   "tickers": [
+    "DRS"
+   ],
+   "exchanges": [
+    "Nasdaq"
+   ],
+   "industry": "Search, Detection, Navigation, Guidance, Aeronautical Sys",
+   "incorporated": "DE",
+   "hq": "Arlington, VA",
+   "fiscalYearEnd": "1231",
+   "edgarUrl": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=1833756&type=10-K&dateb=&owner=include&count=40",
+   "lastPeriodicFiling": "2026-07-30",
+   "balanceSheet": {
+    "form": "10-Q",
+    "filed": "2026-07-30",
+    "accn": "0001833756-26-000040",
+    "docUrl": "https://www.sec.gov/Archives/edgar/data/1833756/000183375626000040/drs-20260630.htm",
+    "indexUrl": "https://www.sec.gov/Archives/edgar/data/1833756/000183375626000040/0001833756-26-000040-index.htm",
+    "viewerUrl": "https://www.sec.gov/cgi-bin/viewer?action=view&cik=1833756&accession_number=0001833756-26-000040&xbrl_type=v",
+    "assets": 4197000000,
+    "periodEnd": "2026-06-30",
+    "equity": 2803000000,
+    "cash": 270000000,
+    "liabilities": 1394000000,
+    "liabilitiesDerived": true
+   },
+   "annual": {
+    "form": "10-K",
+    "filed": "2026-02-27",
+    "accn": "0001833756-26-000013",
+    "docUrl": "https://www.sec.gov/Archives/edgar/data/1833756/000183375626000013/drs-20251231.htm",
+    "indexUrl": "https://www.sec.gov/Archives/edgar/data/1833756/000183375626000013/0001833756-26-000013-index.htm",
+    "viewerUrl": "https://www.sec.gov/cgi-bin/viewer?action=view&cik=1833756&accession_number=0001833756-26-000013&xbrl_type=v",
+    "revenue": 3648000000,
+    "periodStart": "2025-01-01",
+    "periodEnd": "2025-12-31",
+    "netIncome": 278000000
+   }
+  },
+  "MANT": {
+   "cik": 892537,
+   "name": "MANTECH INTERNATIONAL CORP",
+   "tickers": [],
+   "exchanges": [],
+   "industry": "Services-Management Services",
+   "incorporated": "DE",
+   "hq": "Herndon, VA",
+   "fiscalYearEnd": "1231",
+   "edgarUrl": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=892537&type=10-K&dateb=&owner=include&count=40",
+   "lastPeriodicFiling": "2022-08-03",
+   "balanceSheet": {
+    "form": "10-Q",
+    "filed": "2022-08-03",
+    "accn": "0000892537-22-000016",
+    "docUrl": "https://www.sec.gov/Archives/edgar/data/892537/000089253722000016/mant-20220630.htm",
+    "indexUrl": "https://www.sec.gov/Archives/edgar/data/892537/000089253722000016/0000892537-22-000016-index.htm",
+    "viewerUrl": "https://www.sec.gov/cgi-bin/viewer?action=view&cik=892537&accession_number=0000892537-22-000016&xbrl_type=v",
+    "assets": 2648572000,
+    "periodEnd": "2022-06-30",
+    "liabilities": 942687000,
+    "equity": 1705885000
+   },
+   "annual": {
+    "form": "10-K",
+    "filed": "2022-02-25",
+    "accn": "0000892537-22-000007",
+    "docUrl": "https://www.sec.gov/Archives/edgar/data/892537/000089253722000007/mant-20211231.htm",
+    "indexUrl": "https://www.sec.gov/Archives/edgar/data/892537/000089253722000007/0000892537-22-000007-index.htm",
+    "viewerUrl": "https://www.sec.gov/cgi-bin/viewer?action=view&cik=892537&accession_number=0000892537-22-000007&xbrl_type=v",
+    "revenue": 2553956000,
+    "periodStart": "2021-01-01",
+    "periodEnd": "2021-12-31",
+    "netIncome": 137017000
+   }
+  }
+ }
+}

@@ -488,6 +488,11 @@ img, svg, canvas {
   max-height: none !important;
 }
 
+/* Keep marker popups above the map's corner controls / attribution */
+.maplibregl-popup {
+  z-index: 3;
+}
+
 /* Neon pink sparkle field */
 body::before,
 body::after {

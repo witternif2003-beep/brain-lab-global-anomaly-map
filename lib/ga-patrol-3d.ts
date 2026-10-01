@@ -21,13 +21,21 @@ const WALL_URL = '/geo/ga-wall.geojson';
 const ROADS_URL = '/geo/ga-roads.json';
 export const GA_PATROL_SOURCE = 'ga-patrol';
 export const GA_PATROL_ATTRIBUTION =
-  'Patrol: simulated run on GA roads inside the GA wall (visualization only; roads: U.S. Census TIGER/Line 2024) · figure: Cesium Man © Cesium, CC BY 4.0 (Khronos glTF Sample Assets)';
+  'Patrol: simulated chase of the abstract markers inside the GA wall at 2x walking speed (visualization only; roads: U.S. Census TIGER/Line 2024) · figure: Cesium Man © Cesium, CC BY 4.0 (Khronos glTF Sample Assets)';
 
-export const RUN_SPEED_MPS = 3.0;
+export const WALK_SPEED_MPS = 1.4;
+export const CHASE_SPEED_MPS = 2 * WALK_SPEED_MPS;
 // Cesium Man's clip is a walk cycle authored for ~1.4 m/s; speed it up so stride matches ground speed.
-const ANIMATION_TIME_SCALE = RUN_SPEED_MPS / 1.4;
-const OFFROAD_SHARE = 0.1;
-const ROAD_STINT_S: [number, number] = [9 * 60, 27 * 60];
+const ANIMATION_TIME_SCALE = CHASE_SPEED_MPS / 1.4;
+const CATCH_RADIUS_M = 10;
+// Beyond this the patrol prefers roads (greedy: each junction step must get closer to the target).
+const ROAD_CHASE_MIN_M = 2000;
+const JOIN_RADIUS_M = 1000;
+const JOIN_CHECK_S = 60;
+// Each new target is picked at random among the nearest CHASE_POOL markers.
+const CHASE_POOL = 3;
+const SUBSTEP_S = 2;
+const GRID_DEG = 0.02;
 const FIGURE_HEIGHT_M = 1.75;
 // Wall half-thickness (0.15 m) + concertina base coil (1.38 m offset + 0.38 m radius) + body clearance.
 const WALL_CLEARANCE_M = 2.5;
@@ -102,203 +110,251 @@ export function vector(a: LngLat, b: LngLat): { dist: number; heading: number } 
   return { dist: Math.hypot(x, y), heading: Math.atan2(y, x) };
 }
 
-/**
- * Random wall-to-wall walk confined to the Georgia wall ring. Each leg starts at the current
- * position, picks a random heading, and ends WALL_CLEARANCE_M short of the first wall segment
- * the ray hits, so the walker can never cross the wall line.
- */
-export class GaPatrolWalker implements PatrolMover {
-  private leg: Leg | null = null;
-  private lastTick = 0;
+type RoadGraph = { nodes: LngLat[]; adj: number[][]; grid: Map<string, number[]> };
 
-  constructor(private readonly ring: LngLat[]) {}
-
-  get ready(): boolean {
-    return this.leg !== null;
-  }
-
-  start(now: number): boolean {
-    let minX = Infinity;
-    let minY = Infinity;
-    let maxX = -Infinity;
-    let maxY = -Infinity;
-    for (const [x, y] of this.ring) {
-      minX = Math.min(minX, x);
-      minY = Math.min(minY, y);
-      maxX = Math.max(maxX, x);
-      maxY = Math.max(maxY, y);
-    }
-    for (let i = 0; i < 500; i++) {
-      const p: LngLat = [minX + Math.random() * (maxX - minX), minY + Math.random() * (maxY - minY)];
-      if (!insideRing(this.ring, p)) continue;
-      const leg = this.planLeg(p);
-      if (!leg) continue;
-      this.leg = leg;
-      this.lastTick = now;
-      return true;
-    }
-    return false;
-  }
-
-  position(): { lngLat: LngLat; heading: number } | null {
-    const leg = this.leg;
-    if (!leg) return null;
-    const f = leg.length > 0 ? leg.travelled / leg.length : 0;
-    return {
-      lngLat: [leg.from[0] + (leg.to[0] - leg.from[0]) * f, leg.from[1] + (leg.to[1] - leg.from[1]) * f],
-      heading: leg.heading,
-    };
-  }
-
-  tick(now: number): void {
-    if (!this.leg) return;
-    let dist = Math.min((now - this.lastTick) / 1000, MAX_CATCHUP_S) * RUN_SPEED_MPS;
-    this.lastTick = now;
-    while (dist > 0 && this.leg) {
-      const remaining = this.leg.length - this.leg.travelled;
-      if (dist < remaining) {
-        this.leg.travelled += dist;
-        return;
-      }
-      dist -= remaining;
-      const next = this.planLeg(this.leg.to);
-      if (!next) {
-        this.leg.travelled = this.leg.length;
-        return;
-      }
-      this.leg = next;
-    }
-  }
-
-  private planLeg(from: LngLat): Leg | null {
-    for (let attempt = 0; attempt < HEADING_TRIES; attempt++) {
-      const heading = Math.random() * Math.PI * 2;
-      const length = wallDistance(this.ring, from, heading);
-      if (length === null || length < MIN_LEG_M) continue;
-      return { from, to: offset(from, heading, length), length, heading, travelled: 0 };
-    }
-    return null;
-  }
+/** Markers the patrol can chase on a map; `caught` must move marker `i` elsewhere. */
+export interface GaPatrolQuarry {
+  positions(): LngLat[];
+  caught(i: number, patrol: LngLat): void;
 }
 
-type RoadGraph = { nodes: LngLat[]; adj: number[][] };
+const quarries = new WeakMap<MapLibreMap, GaPatrolQuarry>();
+
+export function setGaPatrolQuarry(map: MapLibreMap, quarry: GaPatrolQuarry): void {
+  quarries.set(map, quarry);
+}
+
+function cellKey(x: number, y: number): string {
+  return `${Math.floor(x / GRID_DEG)},${Math.floor(y / GRID_DEG)}`;
+}
+
+/** Random point strictly inside the ring, optionally at least `minFrom.dist` metres from `minFrom.p`. */
+export function randomInteriorPoint(ring: LngLat[], minFrom?: { p: LngLat; dist: number }): LngLat | null {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const [x, y] of ring) {
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
+    maxX = Math.max(maxX, x);
+    maxY = Math.max(maxY, y);
+  }
+  for (let i = 0; i < 1000; i++) {
+    const p: LngLat = [minX + Math.random() * (maxX - minX), minY + Math.random() * (maxY - minY)];
+    if (!insideRing(ring, p)) continue;
+    if (minFrom && vector(minFrom.p, p).dist < minFrom.dist) continue;
+    return p;
+  }
+  return null;
+}
 
 /**
- * Runs the Census primary/secondary road graph (already clipped inside the wall), turning at random
- * at each junction. After every road stint it makes an off-road out-and-back excursion lasting
- * OFFROAD_SHARE of the total, so ~90% of the time is on roads. Excursion legs are capped by
- * wallDistance, so they cannot reach the wall either.
+ * Chases the registered quarry at CHASE_SPEED_MPS: picks a random marker among the nearest
+ * CHASE_POOL, follows the Census road graph greedily while it is farther than ROAD_CHASE_MIN_M,
+ * then runs straight at it (sliding along the wall when blocked). Within CATCH_RADIUS_M the marker
+ * is reported caught and a new target is picked. Every off-road step is capped by wallDistance and
+ * road nodes are pre-clipped inside the wall, so the patrol cannot cross the wall.
  */
-export class GaRoadPatrol implements PatrolMover {
-  private queue: Leg[] = [];
-  private leg: Leg | null = null;
-  private node = 0;
-  private prevNode = -1;
-  private roadS = 0;
-  private stintS = 0;
+export class GaChasePatrol implements PatrolMover {
+  private pos: LngLat = [0, 0];
+  private heading = 0;
+  private started = false;
   private lastTick = 0;
-  readonly totals = { roadS: 0, offroadS: 0 };
+  private leg: Leg | null = null;
+  private legNode = -1;
+  private atNode = -1;
+  private prevNode = -1;
+  private target: number | null = null;
+  private sinceJoinCheck = Infinity;
+  catches = 0;
 
   constructor(
-    private readonly graph: RoadGraph,
     private readonly ring: LngLat[],
+    private readonly quarry: () => GaPatrolQuarry | undefined,
+    private readonly graph: RoadGraph | null,
   ) {}
 
+  get targetIndex(): number | null {
+    return this.target;
+  }
+
   start(now: number): boolean {
-    const n = this.graph.nodes.length;
-    for (let i = 0; i < 200; i++) {
-      const k = Math.floor(Math.random() * n);
-      if (this.graph.adj[k].length === 0) continue;
-      this.node = k;
-      this.stintS = this.randomStint();
-      this.lastTick = now;
-      this.leg = this.nextRoadLeg();
-      return this.leg !== null;
+    const g = this.graph;
+    if (g) {
+      for (let i = 0; i < 200 && !this.started; i++) {
+        const k = Math.floor(Math.random() * g.nodes.length);
+        if (!g.adj[k].length) continue;
+        this.pos = g.nodes[k];
+        this.atNode = k;
+        this.started = true;
+      }
     }
-    return false;
+    if (!this.started) {
+      const p = randomInteriorPoint(this.ring);
+      if (!p) return false;
+      this.pos = p;
+      this.started = true;
+    }
+    this.lastTick = now;
+    return true;
   }
 
   position(): { lngLat: LngLat; heading: number } | null {
-    const leg = this.leg;
-    if (!leg) return null;
-    const f = leg.length > 0 ? leg.travelled / leg.length : 0;
-    return {
-      lngLat: [leg.from[0] + (leg.to[0] - leg.from[0]) * f, leg.from[1] + (leg.to[1] - leg.from[1]) * f],
-      heading: leg.heading,
-    };
-  }
-
-  get onRoad(): boolean {
-    return this.leg?.road === true;
+    return this.started ? { lngLat: this.pos, heading: this.heading } : null;
   }
 
   tick(now: number): void {
-    if (!this.leg) return;
-    let dist = Math.min((now - this.lastTick) / 1000, MAX_CATCHUP_S) * RUN_SPEED_MPS;
+    if (!this.started) return;
+    let left = Math.min((now - this.lastTick) / 1000, MAX_CATCHUP_S);
     this.lastTick = now;
-    while (dist > 0 && this.leg) {
-      const onRoad = this.leg.road === true;
-      const step = Math.min(dist, this.leg.length - this.leg.travelled);
-      this.leg.travelled += step;
-      dist -= step;
-      const s = step / RUN_SPEED_MPS;
-      if (onRoad) {
-        this.roadS += s;
-        this.totals.roadS += s;
-      } else this.totals.offroadS += s;
-      if (this.leg.travelled < this.leg.length) return;
-      this.leg = this.advance();
+    while (left > 0) {
+      const dt = Math.min(left, SUBSTEP_S);
+      left -= dt;
+      this.sinceJoinCheck += dt;
+      this.step(dt * CHASE_SPEED_MPS);
     }
   }
 
-  private advance(): Leg | null {
-    const queued = this.queue.shift();
-    if (queued) return queued;
-    if (this.roadS >= this.stintS) {
-      const excursion = this.planExcursion((this.roadS * OFFROAD_SHARE) / (1 - OFFROAD_SHARE));
-      this.roadS = 0;
-      this.stintS = this.randomStint();
-      if (excursion) {
-        this.queue = [excursion[1]];
-        return excursion[0];
+  private step(dist: number): void {
+    const q = this.quarry();
+    const pts = q?.positions() ?? [];
+    if (!q || !pts.length) {
+      this.wander(dist);
+      return;
+    }
+    if (this.target === null || !pts[this.target]) this.target = this.pickTarget(pts);
+    const t = pts[this.target];
+    const d = vector(this.pos, t).dist;
+    if (d <= CATCH_RADIUS_M) {
+      q.caught(this.target, this.pos);
+      this.catches++;
+      this.target = null;
+      return;
+    }
+    if (this.leg && !this.leg.road && this.legNode < 0) this.leg = null;
+    if (this.leg?.road && d <= ROAD_CHASE_MIN_M) {
+      this.leg = null;
+      this.atNode = -1;
+    }
+    if (!this.leg && this.graph && d > ROAD_CHASE_MIN_M) this.planRoad(t, d);
+    if (this.leg) {
+      this.advance(dist);
+      return;
+    }
+    this.atNode = -1;
+    this.pursue(dist, t, d);
+  }
+
+  private advance(dist: number): void {
+    const leg = this.leg;
+    if (!leg) return;
+    leg.travelled = Math.min(leg.length, leg.travelled + dist);
+    const f = leg.length > 0 ? leg.travelled / leg.length : 1;
+    this.pos = [leg.from[0] + (leg.to[0] - leg.from[0]) * f, leg.from[1] + (leg.to[1] - leg.from[1]) * f];
+    this.heading = leg.heading;
+    if (leg.travelled < leg.length) return;
+    this.atNode = this.legNode;
+    this.leg = null;
+  }
+
+  private planRoad(t: LngLat, d: number): void {
+    const g = this.graph;
+    if (!g) return;
+    if (this.atNode >= 0) {
+      const here = this.atNode;
+      let best = -1;
+      let bestD = vector(g.nodes[here], t).dist - 1;
+      for (const m of g.adj[here]) {
+        if (m === this.prevNode) continue;
+        const dm = vector(g.nodes[m], t).dist;
+        if (dm < bestD) {
+          bestD = dm;
+          best = m;
+        }
+      }
+      if (best < 0) return;
+      const { dist, heading } = vector(g.nodes[here], g.nodes[best]);
+      this.leg = { from: g.nodes[here], to: g.nodes[best], length: dist, heading, travelled: 0, road: true };
+      this.legNode = best;
+      this.prevNode = here;
+      return;
+    }
+    if (this.sinceJoinCheck < JOIN_CHECK_S) return;
+    this.sinceJoinCheck = 0;
+    const n = this.joinNode(t, d);
+    if (n < 0) return;
+    const { dist, heading } = vector(this.pos, g.nodes[n]);
+    this.leg = { from: this.pos, to: g.nodes[n], length: dist, heading, travelled: 0 };
+    this.legNode = n;
+    this.prevNode = -1;
+  }
+
+  /** Nearby connected road node that is closer to the target, reachable in a straight line. */
+  private joinNode(t: LngLat, d: number): number {
+    const g = this.graph;
+    if (!g) return -1;
+    const [x, y] = this.pos;
+    const rx = Math.ceil(JOIN_RADIUS_M / (GRID_DEG * mPerDegLon(y)));
+    const ry = Math.ceil(JOIN_RADIUS_M / (GRID_DEG * M_PER_DEG_LAT));
+    const cx = Math.floor(x / GRID_DEG);
+    const cy = Math.floor(y / GRID_DEG);
+    let best = -1;
+    let bestScore = Infinity;
+    for (let i = cx - rx; i <= cx + rx; i++) {
+      for (let j = cy - ry; j <= cy + ry; j++) {
+        for (const n of g.grid.get(`${i},${j}`) ?? []) {
+          if (!g.adj[n].length) continue;
+          const v = vector(this.pos, g.nodes[n]).dist;
+          if (v > JOIN_RADIUS_M) continue;
+          const dn = vector(g.nodes[n], t).dist;
+          if (dn >= d) continue;
+          if (v + dn < bestScore) {
+            bestScore = v + dn;
+            best = n;
+          }
+        }
       }
     }
-    return this.nextRoadLeg();
+    if (best < 0) return -1;
+    const v = vector(this.pos, g.nodes[best]);
+    const room = wallDistance(this.ring, this.pos, v.heading);
+    return room !== null && room >= v.dist ? best : -1;
   }
 
-  private planExcursion(seconds: number): [Leg, Leg] | null {
-    const base = this.graph.nodes[this.node];
-    const want = (seconds * RUN_SPEED_MPS) / 2;
-    for (let attempt = 0; attempt < HEADING_TRIES; attempt++) {
-      const heading = Math.random() * Math.PI * 2;
-      const room = wallDistance(this.ring, base, heading);
-      if (room === null || room < want) continue;
-      const out = offset(base, heading, want);
-      const back = heading + Math.PI;
-      return [
-        { from: base, to: out, length: want, heading, travelled: 0 },
-        { from: out, to: base, length: want, heading: back, travelled: 0 },
-      ];
+  /** Straight at the target; when the wall blocks, fan out up to ±165° to slide along it. */
+  private pursue(dist: number, t: LngLat, d: number): void {
+    const want = vector(this.pos, t).heading;
+    for (let k = 0; k <= 11; k++) {
+      for (const sign of k === 0 ? [1] : [1, -1]) {
+        const heading = want + sign * k * (Math.PI / 12);
+        const room = wallDistance(this.ring, this.pos, heading);
+        if (room === null || room < 0.5) continue;
+        this.pos = offset(this.pos, heading, Math.min(dist, d, room));
+        this.heading = heading;
+        return;
+      }
     }
-    return null;
   }
 
-  private nextRoadLeg(): Leg | null {
-    const { nodes, adj } = this.graph;
-    const options = adj[this.node].filter((m) => m !== this.prevNode);
-    const choices = options.length ? options : adj[this.node];
-    if (!choices.length) return null;
-    const next = choices[Math.floor(Math.random() * choices.length)];
-    const from = nodes[this.node];
-    const to = nodes[next];
-    const { dist, heading } = vector(from, to);
-    this.prevNode = this.node;
-    this.node = next;
-    return { from, to, length: dist, heading, travelled: 0, road: true };
+  private wander(dist: number): void {
+    if (!this.leg) {
+      for (let attempt = 0; attempt < HEADING_TRIES && !this.leg; attempt++) {
+        const heading = Math.random() * Math.PI * 2;
+        const length = wallDistance(this.ring, this.pos, heading);
+        if (length === null || length < MIN_LEG_M) continue;
+        this.leg = { from: this.pos, to: offset(this.pos, heading, length), length, heading, travelled: 0 };
+        this.legNode = -1;
+      }
+    }
+    this.advance(dist);
+    this.atNode = -1;
   }
 
-  private randomStint(): number {
-    return ROAD_STINT_S[0] + Math.random() * (ROAD_STINT_S[1] - ROAD_STINT_S[0]);
+  private pickTarget(pts: LngLat[]): number {
+    const ranked = pts.map((p, i) => ({ i, d: vector(this.pos, p).dist })).sort((a, b) => a.d - b.d);
+    const pool = ranked.slice(0, CHASE_POOL);
+    return pool[Math.floor(Math.random() * pool.length)].i;
   }
 }
 
@@ -311,7 +367,14 @@ export async function loadGaRoadGraph(): Promise<RoadGraph> {
     adj[raw.edges[i]].push(raw.edges[i + 1]);
     adj[raw.edges[i + 1]].push(raw.edges[i]);
   }
-  return { nodes, adj };
+  const grid = new Map<string, number[]>();
+  nodes.forEach(([x, y], i) => {
+    const key = cellKey(x, y);
+    const cell = grid.get(key);
+    if (cell) cell.push(i);
+    else grid.set(key, [i]);
+  });
+  return { nodes, adj, grid };
 }
 
 let ringPromise: Promise<LngLat[]> | null = null;
@@ -330,11 +393,16 @@ export function loadGaWallRing(): Promise<LngLat[]> {
   return ringPromise;
 }
 
-const patrols = new WeakMap<MapLibreMap, PatrolMover>();
+const patrols = new WeakMap<MapLibreMap, GaChasePatrol>();
 
 /** Current patrol position on this map, if its patrol layer has started. */
 export function getGaPatrolPosition(map: MapLibreMap): LngLat | null {
   return patrols.get(map)?.position()?.lngLat ?? null;
+}
+
+/** Index (into the registered quarry) of the marker the patrol is currently chasing. */
+export function getGaPatrolTarget(map: MapLibreMap): number | null {
+  return patrols.get(map)?.targetIndex ?? null;
 }
 
 function markerData(walker: PatrolMover | null): GeoJSON.FeatureCollection {
@@ -348,7 +416,7 @@ function markerData(walker: PatrolMover | null): GeoJSON.FeatureCollection {
 }
 
 /**
- * Human-scale animated walker (three.js) driven by GaPatrolWalker. Also feeds the GA_PATROL_SOURCE
+ * Human-scale animated walker (three.js) driven by GaChasePatrol. Also feeds the GA_PATROL_SOURCE
  * point source so the patrol stays findable at zooms where a 1.75 m figure is sub-pixel.
  */
 export class GaPatrol3DLayer implements CustomLayerInterface {
@@ -362,7 +430,7 @@ export class GaPatrol3DLayer implements CustomLayerInterface {
   private readonly camera = new Camera();
   private readonly figure = new Group();
   private mixer: AnimationMixer | null = null;
-  private walker: PatrolMover | null = null;
+  private walker: GaChasePatrol | null = null;
   private lastFrame = 0;
   private timer: ReturnType<typeof setInterval> | null = null;
   private disposed = false;
@@ -411,13 +479,13 @@ export class GaPatrol3DLayer implements CustomLayerInterface {
     loadGaWallRing()
       .then(async (ring) => {
         if (this.disposed || ring.length < 4) return;
-        let walker: PatrolMover;
+        let graph: RoadGraph | null = null;
         try {
-          walker = new GaRoadPatrol(await loadGaRoadGraph(), ring);
+          graph = await loadGaRoadGraph();
         } catch (err) {
-          console.warn('[GaPatrol3D] road graph load failed, falling back to off-road patrol:', err);
-          walker = new GaPatrolWalker(ring);
+          console.warn('[GaPatrol3D] road graph load failed, chasing off-road only:', err);
         }
+        const walker = new GaChasePatrol(ring, () => quarries.get(map), graph);
         if (this.disposed || !walker.start(performance.now())) return;
         this.walker = walker;
         patrols.set(map, walker);
