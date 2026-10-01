@@ -866,6 +866,7 @@ export default function GodsEyeMap({
         data: '/geo/ga-wall.geojson',
         maxzoom: 20,
         tolerance: 0,
+        attribution: 'GA wall: design visualization (not a real structure) · path: U.S. Census Bureau 2024 1:500k boundary',
       });
     }
     if (!map.getLayer('ga-wall-path')) {
@@ -1756,19 +1757,6 @@ export default function GodsEyeMap({
           />
           {/* Map Surface: Mount MapLibre globe container directly with transparent deep space */}
           <div ref={containerRef} className="absolute inset-0 z-10" />
-          <div className="absolute top-3 right-3 z-20 pointer-events-none rounded-2xl bg-[#070e1c]/85 backdrop-blur-xl border border-[#7dd3fc]/50 px-3 py-2 text-[11px] font-mono space-y-1 shadow-[0_0_18px_rgba(125,211,252,0.25)] max-w-[260px]">
-            <div className="flex items-center gap-2 text-slate-100 font-bold tracking-wider">
-              <span className="inline-block w-4 h-1.5 rounded-full bg-gradient-to-r from-slate-400 via-slate-200 to-slate-400" />
-              GA PERIMETER WALL · 10 FT STEEL + CONCERTINA
-            </div>
-            <div className="flex items-center gap-2 text-[#7dd3fc] font-bold tracking-wider">
-              <span className="inline-block w-4 h-1.5 rounded-full bg-[#7dd3fc] shadow-[0_0_8px_#7dd3fc]" />
-              ALLY STATE BORDERS
-            </div>
-            <div className="text-slate-400 leading-snug">
-              Design visualization only — no such wall exists. Path: Census 2024 1:500k boundary. 3D wall renders at zoom 14+.
-            </div>
-          </div>
           {/* NASA ASTROMETRIC STAR TELEMETRY HUD (50 VERIFIED STELLAR METRICS) */}
           {selectedAstroStar && (
             <div className="absolute top-16 left-4 z-20 max-w-sm rounded-2xl bg-[#070e1c]/90 backdrop-blur-xl border border-[#38bdf8]/50 p-4 shadow-[0_12px_36px_rgba(0,0,0,0.85)] text-xs font-mono space-y-2.5 animate-fadeIn">
