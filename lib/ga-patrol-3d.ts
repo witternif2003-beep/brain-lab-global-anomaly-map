@@ -13,7 +13,7 @@ import {
   WebGLRenderer,
 } from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { MercatorCoordinate } from 'maplibre-gl';
+import { Marker, MercatorCoordinate } from 'maplibre-gl';
 import type { CustomLayerInterface, CustomRenderMethodInput, GeoJSONSource, Map as MapLibreMap } from 'maplibre-gl';
 
 const MODEL_URL = '/models/patrol/cesium-man.glb';
@@ -415,6 +415,14 @@ function markerData(walker: PatrolMover | null): GeoJSON.FeatureCollection {
   };
 }
 
+function patrolLabel(): HTMLElement {
+  const n = document.createElement('div');
+  n.textContent = 'PATROL · simulated';
+  n.style.cssText =
+    'pointer-events: none; padding: 1px 6px; border-radius: 4px; background: rgba(17, 24, 39, 0.85); color: #facc15; border: 1px solid #facc15; font: 600 11px/1.4 system-ui, sans-serif; letter-spacing: 0.04em; white-space: nowrap';
+  return n;
+}
+
 /**
  * Human-scale animated walker (three.js) driven by GaChasePatrol. Also feeds the GA_PATROL_SOURCE
  * point source so the patrol stays findable at zooms where a 1.75 m figure is sub-pixel.
@@ -433,6 +441,7 @@ export class GaPatrol3DLayer implements CustomLayerInterface {
   private walker: GaChasePatrol | null = null;
   private lastFrame = 0;
   private timer: ReturnType<typeof setInterval> | null = null;
+  private label: Marker | null = null;
   private disposed = false;
 
   onAdd(map: MapLibreMap, gl: WebGLRenderingContext | WebGL2RenderingContext): void {
@@ -505,6 +514,8 @@ export class GaPatrol3DLayer implements CustomLayerInterface {
     if (this.map) patrols.delete(this.map);
     if (this.timer) clearInterval(this.timer);
     this.timer = null;
+    this.label?.remove();
+    this.label = null;
     this.mixer?.stopAllAction();
     this.figure.traverse((o) => {
       if (o instanceof Mesh) o.geometry.dispose();
@@ -516,6 +527,11 @@ export class GaPatrol3DLayer implements CustomLayerInterface {
   private pushMarker(): void {
     const src = this.map?.getSource(GA_PATROL_SOURCE) as GeoJSONSource | undefined;
     src?.setData(markerData(this.walker));
+    const pos = this.walker?.position();
+    if (!this.map || !pos) return;
+    if (!this.label) this.label = new Marker({ element: patrolLabel(), anchor: 'bottom', offset: [0, -10] });
+    this.label.setLngLat(pos.lngLat);
+    if (!this.label.getElement().isConnected) this.label.addTo(this.map);
   }
 
   render(gl: WebGLRenderingContext | WebGL2RenderingContext, options: CustomRenderMethodInput): void {
