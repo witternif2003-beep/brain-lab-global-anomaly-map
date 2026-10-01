@@ -21,12 +21,13 @@ const WALL_URL = '/geo/ga-wall.geojson';
 const ROADS_URL = '/geo/ga-roads.json';
 export const GA_PATROL_SOURCE = 'ga-patrol';
 export const GA_PATROL_ATTRIBUTION =
-  'Patrol: simulated chase of the abstract markers inside the GA wall at 2x walking speed (visualization only; roads: U.S. Census TIGER/Line 2024) · figure: Cesium Man © Cesium, CC BY 4.0 (Khronos glTF Sample Assets)';
+  'Patrol: simulated chase of the abstract markers inside the GA wall at 65 mph (visualization only; roads: U.S. Census TIGER/Line 2024) · figure: Cesium Man © Cesium, CC BY 4.0 (Khronos glTF Sample Assets)';
 
 export const WALK_SPEED_MPS = 1.4;
-export const CHASE_SPEED_MPS = 2 * WALK_SPEED_MPS;
-// Cesium Man's clip is a walk cycle authored for ~1.4 m/s; speed it up so stride matches ground speed.
-const ANIMATION_TIME_SCALE = CHASE_SPEED_MPS / 1.4;
+// 65 mph, a typical U.S. highway speed limit.
+export const CHASE_SPEED_MPS = 65 * 0.44704;
+// Cesium Man's clip is a walk cycle authored for ~1.4 m/s; capped so the legs stay readable at speed.
+const ANIMATION_TIME_SCALE = Math.min(CHASE_SPEED_MPS / 1.4, 4);
 const CATCH_RADIUS_M = 10;
 // Beyond this the patrol prefers roads (greedy: each junction step must get closer to the target).
 const ROAD_CHASE_MIN_M = 2000;
