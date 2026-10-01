@@ -410,14 +410,14 @@ function markerData(walker: PatrolMover | null): GeoJSON.FeatureCollection {
   return {
     type: 'FeatureCollection',
     features: pos
-      ? [{ type: 'Feature', properties: { label: 'PATROL' }, geometry: { type: 'Point', coordinates: pos.lngLat } }]
+      ? [{ type: 'Feature', properties: { label: 'DISNEY' }, geometry: { type: 'Point', coordinates: pos.lngLat } }]
       : [],
   };
 }
 
 function patrolLabel(): HTMLElement {
   const n = document.createElement('div');
-  n.textContent = 'PATROL · simulated';
+  n.textContent = 'DISNEY';
   n.style.cssText =
     'pointer-events: none; padding: 1px 6px; border-radius: 4px; background: rgba(17, 24, 39, 0.85); color: #facc15; border: 1px solid #facc15; font: 600 11px/1.4 system-ui, sans-serif; letter-spacing: 0.04em; white-space: nowrap';
   return n;
