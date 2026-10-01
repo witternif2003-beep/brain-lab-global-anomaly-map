@@ -1,5 +1,6 @@
 "use client";
 import StatewideAnomalyDashboard from "../../components/StatewideAnomalyDashboard";
+import PublicAdvisoryStream from "../../components/PublicAdvisoryStream";
 import TerritoryCatalogPanel from "../../components/TerritoryCatalogPanel";
 import FbiDataSection from "../../components/fbi/FbiDataSection";
 import React, { useState, useEffect } from "react";
@@ -45,6 +46,7 @@ export default function GodsEyeTelemetryPage() {
       {/* DEDICATED LIVE NSA STATEWIDE ANOMALY DASHBOARD & CONTINUOUS INGESTION FEEDS — NSA ADMIN LEVEL ENFORCED */}
       <div id="nsa-statewide-dashboard" className="w-full scroll-mt-24 space-y-4">
         <StatewideAnomalyDashboard />
+        <PublicAdvisoryStream />
       </div>
 
       {/* 56-JURISDICTION TERRITORY CATALOG — 50,000 P1 RECORDS IN BATCHES (ADDITIVE; GA DATA UNTOUCHED) */}
