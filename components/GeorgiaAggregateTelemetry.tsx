@@ -59,7 +59,20 @@ interface Payload {
   };
 }
 
-const REFRESH_MS = 15 * 60_000;
+const REFRESH_MS = 5 * 60_000;
+const RECENT_MS = 60_000;
+
+interface Recent {
+  generatedAt: string;
+  latestReport: string | null;
+  counts: Record<"15" | "60" | "180" | "1440", number>;
+}
+
+const agoText = (iso: string | null, now: number) => {
+  if (!iso) return "—";
+  const m = Math.max(0, Math.round((now - new Date(iso).getTime()) / 60_000));
+  return m < 120 ? `${m} min ago` : `${Math.round(m / 60)} h ago`;
+};
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const ts = (iso: string) =>
   new Date(iso).toLocaleString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZoneName: "short" });
@@ -89,6 +102,25 @@ function Box({ title, children }: { title: string; children: React.ReactNode }) 
 export default function GeorgiaAggregateTelemetry() {
   const [data, setData] = useState<Payload | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [recent, setRecent] = useState<Recent | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    let alive = true;
+    const load = () =>
+      fetch("/api/ga-telemetry/recent")
+        .then((r) => (r.ok ? (r.json() as Promise<Recent>) : null))
+        .then((j) => alive && j && setRecent(j))
+        .catch(() => undefined);
+    void load();
+    const poll = setInterval(load, RECENT_MS);
+    const tick = setInterval(() => setNow(Date.now()), 15_000);
+    return () => {
+      alive = false;
+      clearInterval(poll);
+      clearInterval(tick);
+    };
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -123,7 +155,11 @@ export default function GeorgiaAggregateTelemetry() {
           <Hexagon className="w-4 h-4" /> Georgia Aggregate Telemetry · H3 Hex Grid
         </h3>
         <span className="text-[10px] text-emerald-400 font-bold">
-          {data ? `REFRESHED ${ts(data.generatedAt)} · EVERY 15 MIN` : error ? "FEED UNAVAILABLE" : "LOADING…"}
+          {data
+            ? `MAP + MODELS ${ts(data.generatedAt)} · EVERY 5 MIN${recent ? ` · COUNTS ${agoText(recent.generatedAt, now)} · EVERY 1 MIN` : ""}`
+            : error
+              ? "FEED UNAVAILABLE"
+              : "LOADING…"}
         </span>
       </div>
 
@@ -178,17 +214,24 @@ export default function GeorgiaAggregateTelemetry() {
 
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 text-center">
             {[
-              ["REPORTS · LAST 15 MIN", data.recent.last15m],
-              ["LAST 30 MIN", data.recent.last30m],
-              ["LAST 60 MIN", data.recent.last60m],
-              ["LAST 24 H", data.recent.last24h],
-              ["NEWEST REPORT LAG", data.recent.lagMinutes === null ? "—" : `${data.recent.lagMinutes} min`],
+              ["REPORTS · LAST 15 MIN", recent?.counts["15"] ?? data.recent.last15m],
+              ["LAST 1 H", recent?.counts["60"] ?? data.recent.last60m],
+              ["LAST 3 H", recent?.counts["180"] ?? "—"],
+              ["LAST 24 H", recent?.counts["1440"] ?? data.recent.last24h],
+              [
+                `NEWEST REPORT${recent?.latestReport ? ` · ${ts(recent.latestReport)}` : ""}`,
+                agoText(recent?.latestReport ?? data.window.latestReport, now),
+              ],
             ].map(([k, v]) => (
               <div key={k} className="rounded-xl border border-[#ff2ec4]/30 bg-[#1a0016]/40 py-2">
                 <div className="text-[9px] text-slate-400 tracking-widest">{k}</div>
                 <div className="text-[15px] font-black text-white">{typeof v === "number" ? v.toLocaleString() : v}</div>
               </div>
             ))}
+          </div>
+          <div className="text-[9px] text-slate-500 -mt-1">
+            Citywide APD report counts, rechecked every minute. APD adds reports to its public feed some time after they are filed, so the last
+            15–60 minutes often read low and fill in on later checks.
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
@@ -280,6 +323,11 @@ export default function GeorgiaAggregateTelemetry() {
                 <div className="text-[11px] text-slate-200">
                   {data.dispatch.total} calls in the public layer, {data.dispatch.from ? ts(data.dispatch.from) : "—"} → {data.dispatch.to ? ts(data.dispatch.to) : "—"}
                 </div>
+                {data.dispatch.to && now - new Date(data.dispatch.to).getTime() > 86_400_000 && (
+                  <div className="text-[11px] font-bold text-[#ff9100]">
+                    STALE: no new calls in APD&apos;s public dispatch layer for {Math.floor((now - new Date(data.dispatch.to).getTime()) / 86_400_000)} days
+                  </div>
+                )}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                   {(
                     [

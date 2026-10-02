@@ -17,7 +17,7 @@ const ATL_BBOX: [number, number, number, number] = [-84.56, 33.62, -84.28, 33.9]
 const PAGE = 2000;
 const WINDOW_DAYS = 30;
 const MODEL_DAYS = 120;
-const TTL_MS = 15 * 60_000;
+const TTL_MS = 5 * 60_000;
 const YEAR = 2026;
 
 let cache: { at: number; body: unknown } | null = null;
@@ -254,7 +254,7 @@ async function build() {
 export async function GET() {
   try {
     if (!cache || Date.now() - cache.at > TTL_MS) cache = { at: Date.now(), body: await build() };
-    return NextResponse.json(cache.body, { headers: { "Cache-Control": "public, s-maxage=900, stale-while-revalidate=300" } });
+    return NextResponse.json(cache.body, { headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=120" } });
   } catch (e) {
     return NextResponse.json(
       { error: e instanceof Error ? e.message : String(e), sourceUrl: PORTAL, generatedAt: new Date().toISOString() },

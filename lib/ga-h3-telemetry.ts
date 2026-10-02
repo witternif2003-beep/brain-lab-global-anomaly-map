@@ -3,7 +3,7 @@ import type { GeoJSONSource, Map as MapLibreMap } from 'maplibre-gl';
 import { reportGaFeed } from './ga-live-status';
 
 const API = '/api/ga-telemetry';
-const REFRESH_MS = 15 * 60_000;
+const REFRESH_MS = 5 * 60_000;
 const SPLIT_ZOOM = 12;
 const ATTRIBUTION =
   'Atlanta crime hexagons: Atlanta Police Department Open Data (NIBRS reports, last 30 days), H3 cells with fewer than 5 reports withheld · City of Atlanta only';
