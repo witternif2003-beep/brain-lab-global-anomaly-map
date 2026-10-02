@@ -9,7 +9,12 @@ const ATTRIBUTION =
 const EMPTY = { type: 'FeatureCollection' as const, features: [] };
 const RES = [7, 8] as const;
 
-type HexPayload = { hex?: Record<string, GeoJSON.FeatureCollection>; window?: { days: number } };
+type HexPayload = {
+  hex?: Record<string, GeoJSON.FeatureCollection>;
+  density?: GeoJSON.FeatureCollection;
+  precincts?: { geojson: GeoJSON.FeatureCollection | null };
+  window?: { days: number };
+};
 
 const bound = new WeakSet<MapLibreMap>();
 
@@ -44,6 +49,57 @@ export function addGaH3Telemetry(map: MapLibreMap): void {
       });
     }
   }
+  if (!map.getSource('ga-h3-density')) map.addSource('ga-h3-density', { type: 'geojson', data: EMPTY });
+  if (!map.getLayer('ga-h3-density-heat')) {
+    map.addLayer({
+      id: 'ga-h3-density-heat',
+      type: 'heatmap',
+      source: 'ga-h3-density',
+      maxzoom: 15,
+      paint: {
+        'heatmap-weight': ['interpolate', ['linear'], ['get', 'count'], 5, 0.1, 200, 1],
+        'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 8, 10, 12, 40, 15, 90],
+        'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 8, 0.6, 14, 1.4],
+        'heatmap-opacity': 0.55,
+      },
+    });
+  }
+  if (!map.getLayer('ga-h3-hotspot')) {
+    map.addLayer({
+      id: 'ga-h3-hotspot',
+      type: 'line',
+      source: 'ga-h3-r8',
+      minzoom: 10,
+      filter: ['>=', ['get', 'giConf'], 95],
+      paint: {
+        'line-color': ['case', ['>=', ['get', 'giConf'], 99], '#ff1744', '#ff9100'],
+        'line-width': ['interpolate', ['linear'], ['zoom'], 10, 1.2, 15, 3],
+      },
+    });
+  }
+  if (!map.getSource('ga-precincts')) map.addSource('ga-precincts', { type: 'geojson', data: EMPTY, attribution: 'APD main precincts (Voronoi service areas, approximate)' });
+  if (!map.getLayer('ga-precincts-line')) {
+    map.addLayer({
+      id: 'ga-precincts-line',
+      type: 'line',
+      source: 'ga-precincts',
+      minzoom: 9,
+      paint: { 'line-color': '#00e5ff', 'line-width': 1.4, 'line-dasharray': [3, 2], 'line-opacity': 0.8 },
+    });
+  }
+  if (!map.getLayer('ga-precincts-label')) {
+    map.addLayer({
+      id: 'ga-precincts-label',
+      type: 'symbol',
+      source: 'ga-precincts',
+      minzoom: 10,
+      layout: {
+        'text-field': ['concat', ['get', 'name'], '\n', ['to-string', ['get', 'count']], ' reports / 30 d'],
+        'text-size': 11,
+      },
+      paint: { 'text-color': '#e0f2fe', 'text-halo-color': '#001424', 'text-halo-width': 1.5 },
+    });
+  }
   if (bound.has(map)) return;
   bound.add(map);
 
@@ -55,6 +111,8 @@ export function addGaH3Telemetry(map: MapLibreMap): void {
       const d = (await r.json()) as HexPayload;
       days = d.window?.days ?? days;
       for (const res of RES) (map.getSource(`ga-h3-r${res}`) as GeoJSONSource | undefined)?.setData(d.hex?.[res] ?? EMPTY);
+      (map.getSource('ga-h3-density') as GeoJSONSource | undefined)?.setData(d.density ?? EMPTY);
+      (map.getSource('ga-precincts') as GeoJSONSource | undefined)?.setData(d.precincts?.geojson ?? EMPTY);
     } catch (err) {
       console.warn('[GaH3Telemetry] refresh failed:', err);
     }
@@ -74,9 +132,11 @@ export function addGaH3Telemetry(map: MapLibreMap): void {
       const box = document.createElement('div');
       box.style.cssText = 'font:11px ui-monospace,monospace;color:#0f172a;line-height:1.45';
       const top = p.topCategory === 'mixed' ? 'no single category with 5+ reports' : `${p.topCategory} (${p.topCategoryCount})`;
+      const gi = Number(p.giConf ?? 0);
       const rows: [string, string][] = [
         ['Reports, last ' + days + ' days', String(p.count)],
         ['Most common', top],
+        ...(p.giZ !== undefined ? [['Getis-Ord Gi* z', `${Number(p.giZ).toFixed(2)}${gi ? ` (hot spot, ${gi}%)` : ''}`] as [string, string]] : []),
         ['H3 cell', `${p.h3} (res ${p.resolution})`],
       ];
       const h = document.createElement('div');

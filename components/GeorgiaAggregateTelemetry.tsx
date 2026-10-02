@@ -20,6 +20,30 @@ interface Payload {
   suppressed: Record<string, { cells: number; incidents: number }>;
   hex: Record<string, { features: unknown[] }>;
   ytd: { year: number; total: number; byCategory: { category: string; count: number }[] };
+  recent: { lagMinutes: number | null; last15m: number; last30m: number; last60m: number; last24h: number };
+  models: {
+    days: number;
+    from: string | null;
+    to: string | null;
+    daily: { date: string; weekday: number; count: number }[];
+    changePoint: { date: string; probability: number; rateBefore: number; rateAfter: number } | null;
+    poisson: {
+      dispersion: number;
+      trendPerWeek: number;
+      weekdayRateRatio: number[];
+      forecast: { date: string; weekday: number; mean: number; low: number; high: number }[];
+    } | null;
+    hotspots: { method: string; cells99: number; cells95: number; cells90: number };
+  };
+  precincts: { geojson: { features: { properties: { name: string; count: number; share: number } }[] } | null };
+  rates: {
+    source: string;
+    sourceUrl: string;
+    cityPopulation: number | null;
+    cityPer100k: number | null;
+    byNpu: { npu: string; count: number; population: number | null; per100k: number | null }[];
+    note: string;
+  };
 }
 
 const REFRESH_MS = 15 * 60_000;
@@ -136,6 +160,104 @@ export default function GeorgiaAggregateTelemetry() {
               {data.ytd.byCategory.slice(0, 8).map((c) => (
                 <div key={c.category} className="flex justify-between text-[11px] text-slate-200"><span>{c.category}</span><span>{c.count.toLocaleString()}</span></div>
               ))}
+            </Box>
+          </div>
+
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 text-center">
+            {[
+              ["REPORTS · LAST 15 MIN", data.recent.last15m],
+              ["LAST 30 MIN", data.recent.last30m],
+              ["LAST 60 MIN", data.recent.last60m],
+              ["LAST 24 H", data.recent.last24h],
+              ["NEWEST REPORT LAG", data.recent.lagMinutes === null ? "—" : `${data.recent.lagMinutes} min`],
+            ].map(([k, v]) => (
+              <div key={k} className="rounded-xl border border-[#ff2ec4]/30 bg-[#1a0016]/40 py-2">
+                <div className="text-[9px] text-slate-400 tracking-widest">{k}</div>
+                <div className="text-[15px] font-black text-white">{typeof v === "number" ? v.toLocaleString() : v}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <Box title="7-DAY FORECAST · POISSON GLM">
+              {data.models.poisson ? (
+                <>
+                  {data.models.poisson.forecast.map((f) => (
+                    <div key={f.date} className="flex justify-between text-[11px] text-slate-200">
+                      <span>{WEEKDAYS[f.weekday]} {f.date.slice(5)}</span>
+                      <span>{Math.round(f.mean)} <span className="text-slate-500">({Math.round(f.low)}–{Math.round(f.high)})</span></span>
+                    </div>
+                  ))}
+                  <div className="text-[9px] text-slate-500">
+                    Fit on {data.models.days} days ({data.models.from} → {data.models.to}): day-of-week + linear trend.
+                    Trend {(data.models.poisson.trendPerWeek * 100).toFixed(2)}%/week · dispersion {data.models.poisson.dispersion.toFixed(2)}
+                    {data.models.poisson.dispersion > 1.5 ? " (overdispersed; intervals widened)" : ""}. 95% intervals.
+                  </div>
+                </>
+              ) : (
+                <div className="text-[11px] text-slate-400">Not enough daily data to fit.</div>
+              )}
+            </Box>
+            <Box title="CHANGE-POINT · BAYESIAN POISSON-GAMMA">
+              {data.models.changePoint ? (
+                <div className="text-[11px] text-slate-200 space-y-1">
+                  <div>Most likely shift: <b>{data.models.changePoint.date}</b></div>
+                  <div>
+                    {data.models.changePoint.rateBefore.toFixed(1)}/day → {data.models.changePoint.rateAfter.toFixed(1)}/day
+                  </div>
+                  <div>
+                    Posterior probability of a shift on that day: <b>{(data.models.changePoint.probability * 100).toFixed(1)}%</b>
+                  </div>
+                  <div className="text-[9px] text-slate-500">
+                    Single change-point, 50% prior of any change, segments of 7+ days. Low values mean no clear shift.
+                  </div>
+                </div>
+              ) : (
+                <div className="text-[11px] text-slate-400">Not enough daily data.</div>
+              )}
+            </Box>
+            <Box title="HOT SPOTS · GETIS-ORD Gi*">
+              <div className="text-[11px] text-slate-200 space-y-1">
+                <div>99% confidence: <b className="text-[#ff1744]">{data.models.hotspots.cells99}</b> cells</div>
+                <div>95% confidence: <b className="text-[#ff9100]">{data.models.hotspots.cells95}</b> cells</div>
+                <div>90% confidence: <b>{data.models.hotspots.cells90}</b> cells</div>
+                <div className="text-[9px] text-slate-500">{data.models.hotspots.method}. Outlined red/orange on the map; heatmap is a kernel density of published cell counts.</div>
+              </div>
+            </Box>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <Box title="PRECINCT SERVICE AREAS · VORONOI · 30 DAYS">
+              {data.precincts.geojson ? (
+                [...data.precincts.geojson.features]
+                  .sort((a, b) => b.properties.count - a.properties.count)
+                  .map((f) => (
+                    <div key={f.properties.name} className="flex justify-between text-[11px] text-slate-200">
+                      <span>{f.properties.name}</span>
+                      <span>{f.properties.count.toLocaleString()} <span className="text-slate-500">({(f.properties.share * 100).toFixed(1)}%)</span></span>
+                    </div>
+                  ))
+              ) : (
+                <div className="text-[11px] text-slate-400">Precinct layer unavailable.</div>
+              )}
+              <div className="text-[9px] text-slate-500">Nearest-precinct areas, an approximation; official APD zone boundaries differ.</div>
+            </Box>
+            <Box title="RATE PER 100K RESIDENTS · BY NPU · 30 DAYS">
+              {data.rates.cityPer100k !== null && (
+                <div className="text-[11px] text-white">
+                  City: <b>{data.rates.cityPer100k.toFixed(0)}</b> per 100k ({data.rates.cityPopulation?.toLocaleString()} residents)
+                </div>
+              )}
+              {data.rates.byNpu.slice(0, 8).map((r) => (
+                <div key={r.npu} className="flex justify-between text-[11px] text-slate-200">
+                  <span>NPU {r.npu}</span>
+                  <span>{r.per100k === null ? "—" : r.per100k.toFixed(0)} <span className="text-slate-500">({r.count})</span></span>
+                </div>
+              ))}
+              <div className="text-[9px] text-slate-500">
+                Population:{" "}
+                <a href={data.rates.sourceUrl} target="_blank" rel="noreferrer" className="underline">{data.rates.source}</a>. {data.rates.note}
+              </div>
             </Box>
           </div>
 
