@@ -68,6 +68,12 @@ interface Recent {
   counts: Record<"15" | "60" | "180" | "1440", number>;
 }
 
+interface Traffic {
+  generatedAt: string;
+  sourceUrl: string;
+  summary?: { total: number; byType: Record<string, number>; bySeverity: Record<string, number>; fullClosures: number; latestUpdate: string | null };
+}
+
 const agoText = (iso: string | null, now: number) => {
   if (!iso) return "—";
   const m = Math.max(0, Math.round((now - new Date(iso).getTime()) / 60_000));
@@ -103,6 +109,7 @@ export default function GeorgiaAggregateTelemetry() {
   const [data, setData] = useState<Payload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [recent, setRecent] = useState<Recent | null>(null);
+  const [traffic, setTraffic] = useState<Traffic | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
@@ -113,11 +120,19 @@ export default function GeorgiaAggregateTelemetry() {
         .then((j) => alive && j && setRecent(j))
         .catch(() => undefined);
     void load();
+    const loadTraffic = () =>
+      fetch("/api/ga-traffic")
+        .then((r) => (r.ok ? (r.json() as Promise<Traffic>) : null))
+        .then((j) => alive && j && setTraffic(j))
+        .catch(() => undefined);
+    void loadTraffic();
     const poll = setInterval(load, RECENT_MS);
+    const pollTraffic = setInterval(loadTraffic, REFRESH_MS);
     const tick = setInterval(() => setNow(Date.now()), 15_000);
     return () => {
       alive = false;
       clearInterval(poll);
+      clearInterval(pollTraffic);
       clearInterval(tick);
     };
   }, []);
@@ -317,17 +332,53 @@ export default function GeorgiaAggregateTelemetry() {
             </Box>
           </div>
 
-          <Box title="DISPATCH (CAD) · AGGREGATE COUNTS">
+          <Box title="LIVE INCIDENTS · GEORGIA DOT 511 · INSIDE THE WALL">
+            {traffic?.summary ? (
+              <>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 text-center">
+                  {[
+                    ["ACTIVE EVENTS", traffic.summary.total],
+                    ["INCIDENTS", traffic.summary.byType.Incident ?? 0],
+                    ["FULL CLOSURES", traffic.summary.fullClosures],
+                    ["MAJOR", traffic.summary.bySeverity.major ?? 0],
+                  ].map(([k, v]) => (
+                    <div key={k} className="rounded-xl border border-[#f97316]/30 bg-[#1a0c00]/40 py-2">
+                      <div className="text-[9px] text-slate-400 tracking-widest">{k}</div>
+                      <div className="text-[15px] font-black text-white">{Number(v).toLocaleString()}</div>
+                    </div>
+                  ))}
+                </div>
+                <div className="text-[11px] text-slate-200">
+                  {Object.entries(traffic.summary.byType)
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([k, v]) => `${v} ${k.toLowerCase()}`)
+                    .join(" · ")}
+                </div>
+                <div className="text-[9px] text-slate-500">
+                  Newest event update {agoText(traffic.summary.latestUpdate, now)} · checked {agoText(traffic.generatedAt, now)}, every 5 min. Statewide road
+                  incidents, closures, roadwork and events from{" "}
+                  <a href={traffic.sourceUrl} target="_blank" rel="noreferrer" className="underline">Georgia DOT 511GA</a>; shown on the map as coloured
+                  dots. This replaces APD&apos;s dispatch counts, whose public layer stopped updating.
+                </div>
+              </>
+            ) : (
+              <div className="text-[11px] text-slate-400">Loading Georgia DOT 511 events…</div>
+            )}
+          </Box>
+
+          <details className="rounded-xl border border-slate-700/50 bg-[#001424]/40 px-3 py-2">
+            <summary className="cursor-pointer text-[10px] font-black tracking-widest text-slate-400">
+              ARCHIVED · APD DISPATCH (CAD) SNAPSHOT
+              {data.dispatch.ok && data.dispatch.to
+                ? ` · ${ts(data.dispatch.to)} · NOT LIVE (${Math.floor((now - new Date(data.dispatch.to).getTime()) / 86_400_000)} DAYS OLD)`
+                : ""}
+            </summary>
+            <div className="space-y-1.5 pt-1.5">
             {data.dispatch.ok ? (
               <>
                 <div className="text-[11px] text-slate-200">
                   {data.dispatch.total} calls in the public layer, {data.dispatch.from ? ts(data.dispatch.from) : "—"} → {data.dispatch.to ? ts(data.dispatch.to) : "—"}
                 </div>
-                {data.dispatch.to && now - new Date(data.dispatch.to).getTime() > 86_400_000 && (
-                  <div className="text-[11px] font-bold text-[#ff9100]">
-                    STALE: no new calls in APD&apos;s public dispatch layer for {Math.floor((now - new Date(data.dispatch.to).getTime()) / 86_400_000)} days
-                  </div>
-                )}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                   {(
                     [
@@ -349,14 +400,15 @@ export default function GeorgiaAggregateTelemetry() {
                   ))}
                 </div>
                 <div className="text-[9px] text-slate-500">
-                  APD publishes this layer as a snapshot, not a live feed; it has not changed since the dates above. {data.dispatch.note}{" "}
+                  {data.dispatch.note}{" "}
                   <a href={data.dispatch.sourceUrl} target="_blank" rel="noreferrer" className="underline">Source</a>
                 </div>
               </>
             ) : (
               <div className="text-[11px] text-slate-400">Dispatch layer unavailable: {data.dispatch.error}</div>
             )}
-          </Box>
+            </div>
+          </details>
 
           <div className="text-[10px] text-slate-400 space-y-1">
             <div>
