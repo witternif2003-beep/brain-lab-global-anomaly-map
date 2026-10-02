@@ -6,9 +6,9 @@ import {
   loadGaWallRing,
   offset,
   randomInteriorPoint,
+  CHASE_SPEED_MPS,
   setGaPatrolQuarry,
   vector,
-  WALK_SPEED_MPS,
   wallDistance,
 } from './ga-patrol-3d';
 import type { LngLat } from './ga-patrol-3d';
@@ -16,7 +16,7 @@ import secProfiles from './ga-company-profiles.json';
 
 export const GA_COMPETITORS_SOURCE = 'ga-competitor-markers';
 const ATTRIBUTION =
-  'Competitor markers: user-supplied list, abstract simulated movement inside the GA wall (not real locations or activity) · profiles: SEC EDGAR, USAspending.gov, company sites (icons via Google favicon service)';
+  'Competitor markers: user-supplied list, abstract simulated movement inside the GA wall at 5× highway speed, steering away from the patrol (not real locations or activity) · profiles: SEC EDGAR, USAspending.gov, company sites (icons via Google favicon service)';
 
 type Filing = {
   form: string;
@@ -139,14 +139,19 @@ const ENTRIES: Entry[] = [
   { name: 'VTG', listed: 'Chantilly, VA', url: 'https://vtgdefense.com/', domain: 'vtgdefense.com', status: NO_SEC_FILINGS },
 ];
 
-const FLEE_RADIUS_M = 1500;
-const FLEE_RELEASE_M = 2000;
-const FLEE_LEG_M = 200;
+// 5x the patrol's 65 mph highway speed (~325 mph).
+export const MARKER_SPEED_MPS = 5 * CHASE_SPEED_MPS;
+const FLEE_RADIUS_M = 30_000;
+const FLEE_RELEASE_M = 40_000;
+const FLEE_LEG_M = 3000;
+// Random swerve applied to each flee leg so escapes zig-zag instead of running a straight line.
+const FLEE_JITTER_RAD = Math.PI / 6;
+const WANDER_CANDIDATES = 4;
 const MIN_LEG_M = 25;
 const HEADING_TRIES = 64;
-const SUBSTEP_S = 5;
+const SUBSTEP_S = 1;
 const MAX_CATCHUP_S = 3600;
-const PUSH_INTERVAL_MS = 1000;
+const PUSH_INTERVAL_MS = 250;
 const RESPAWN_MIN_FROM_PATROL_M = 20_000;
 
 type Agent = {
@@ -159,9 +164,10 @@ type Agent = {
 };
 
 /**
- * One abstract marker per listed entity. Each walks wall-to-wall legs at WALK_SPEED_MPS; while the
- * patrol is within FLEE_RADIUS_M it switches to short legs pointing as directly away from the patrol
- * as the wall allows. Every leg length comes from wallDistance, so no marker can cross the wall.
+ * One abstract marker per listed entity, moving at MARKER_SPEED_MPS. Wander legs run wall to wall,
+ * picking the farthest-from-patrol endpoint among WANDER_CANDIDATES random headings; while the
+ * patrol is within FLEE_RADIUS_M it switches to short zig-zag legs pointing as directly away from
+ * the patrol as the wall allows. Every leg length comes from wallDistance, so no marker can cross the wall.
  * A caught marker respawns at a random point inside the wall, away from the patrol.
  */
 export class GaCompetitorSwarm {
@@ -210,7 +216,7 @@ export class GaCompetitorSwarm {
       a.fleeing = shouldFlee;
       this.replan(a, patrol);
     }
-    let dist = dt * WALK_SPEED_MPS;
+    let dist = dt * MARKER_SPEED_MPS;
     while (dist > 0) {
       const step = Math.min(dist, a.length - a.travelled);
       a.travelled += step;
@@ -223,7 +229,7 @@ export class GaCompetitorSwarm {
   }
 
   private replan(a: Agent, patrol: LngLat | null): boolean {
-    const leg = a.fleeing && patrol ? this.fleeLeg(a.pos, patrol) : this.wanderLeg(a.pos);
+    const leg = a.fleeing && patrol ? this.fleeLeg(a.pos, patrol) : this.wanderLeg(a.pos, patrol);
     if (!leg) {
       a.from = a.pos;
       a.to = a.pos;
@@ -235,19 +241,28 @@ export class GaCompetitorSwarm {
     return true;
   }
 
-  private wanderLeg(from: LngLat): Pick<Agent, 'from' | 'to' | 'length'> | null {
-    for (let i = 0; i < HEADING_TRIES; i++) {
+  private wanderLeg(from: LngLat, patrol: LngLat | null = null): Pick<Agent, 'from' | 'to' | 'length'> | null {
+    let best: Pick<Agent, 'from' | 'to' | 'length'> | null = null;
+    let bestScore = -Infinity;
+    let found = 0;
+    for (let i = 0; i < HEADING_TRIES && found < (patrol ? WANDER_CANDIDATES : 1); i++) {
       const heading = Math.random() * Math.PI * 2;
       const length = wallDistance(this.ring, from, heading);
       if (length === null || length < MIN_LEG_M) continue;
-      return { from, to: offset(from, heading, length), length };
+      found++;
+      const to = offset(from, heading, length);
+      const score = patrol ? vector(patrol, to).dist : 0;
+      if (score > bestScore) {
+        bestScore = score;
+        best = { from, to, length };
+      }
     }
-    return null;
+    return best;
   }
 
   /** Best heading away from the patrol: straight away first, then fanning out up to ±165° along the wall. */
   private fleeLeg(from: LngLat, patrol: LngLat): Pick<Agent, 'from' | 'to' | 'length'> | null {
-    const away = vector(patrol, from).heading;
+    const away = vector(patrol, from).heading + (Math.random() * 2 - 1) * FLEE_JITTER_RAD;
     for (let k = 0; k <= 11; k++) {
       for (const sign of k === 0 ? [1] : [1, -1]) {
         const heading = away + sign * k * (Math.PI / 12);
