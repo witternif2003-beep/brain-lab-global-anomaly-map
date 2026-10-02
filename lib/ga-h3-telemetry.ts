@@ -1,5 +1,6 @@
 import { Popup } from 'maplibre-gl';
 import type { GeoJSONSource, Map as MapLibreMap } from 'maplibre-gl';
+import { reportGaFeed } from './ga-live-status';
 
 const API = '/api/ga-telemetry';
 const REFRESH_MS = 15 * 60_000;
@@ -13,7 +14,8 @@ type HexPayload = {
   hex?: Record<string, GeoJSON.FeatureCollection>;
   density?: GeoJSON.FeatureCollection;
   precincts?: { geojson: GeoJSON.FeatureCollection | null };
-  window?: { days: number };
+  window?: { days: number; latestReport?: string | null };
+  incidents?: number;
 };
 
 const bound = new WeakSet<MapLibreMap>();
@@ -113,6 +115,11 @@ export function addGaH3Telemetry(map: MapLibreMap): void {
       for (const res of RES) (map.getSource(`ga-h3-r${res}`) as GeoJSONSource | undefined)?.setData(d.hex?.[res] ?? EMPTY);
       (map.getSource('ga-h3-density') as GeoJSONSource | undefined)?.setData(d.density ?? EMPTY);
       (map.getSource('ga-precincts') as GeoJSONSource | undefined)?.setData(d.precincts?.geojson ?? EMPTY);
+      reportGaFeed(map, {
+        id: 'crime', label: 'APD crime reports (hexes)', color: '#db2777', count: d.incidents ?? null,
+        detail: `last ${days} days · City of Atlanta only · cells under 5 hidden`,
+        updatedAt: d.window?.latestReport ?? null, sourceUrl: 'https://atlanta-police-opendata-atlantapd.hub.arcgis.com',
+      });
     } catch (err) {
       console.warn('[GaH3Telemetry] refresh failed:', err);
     }

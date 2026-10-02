@@ -1,6 +1,7 @@
 import { Popup } from 'maplibre-gl';
 import type { ExpressionSpecification, GeoJSONSource, MapLayerMouseEvent, Map as MapLibreMap } from 'maplibre-gl';
 import { insideRing, loadGaWallRing, type LngLat } from './ga-patrol-3d';
+import { reportGaFeed } from './ga-live-status';
 
 const API = '/api/ga-traffic';
 const REFRESH_MS = 5 * 60_000;
@@ -20,7 +21,11 @@ const TYPE_COLOR: ExpressionSpecification = [
   '#a3a3a3',
 ];
 
-type TrafficPayload = { points?: GeoJSON.FeatureCollection; lines?: GeoJSON.FeatureCollection };
+type TrafficPayload = {
+  points?: GeoJSON.FeatureCollection;
+  lines?: GeoJSON.FeatureCollection;
+  summary?: { byType: Record<string, number>; bySeverity: Record<string, number>; fullClosures: number; latestUpdate: string | null };
+};
 
 const bound = new WeakSet<MapLibreMap>();
 
@@ -100,6 +105,23 @@ export function addGaTrafficLayers(map: MapLibreMap): void {
       },
     });
   }
+  if (!map.getLayer(`${POINTS}-label`)) {
+    map.addLayer({
+      id: `${POINTS}-label`,
+      type: 'symbol',
+      source: POINTS,
+      minzoom: 9,
+      layout: {
+        'text-field': ['concat', ['get', 'label'], ' · ', ['get', 'roadway'], ['case', ['==', ['get', 'fullClosure'], true], ' · CLOSED', '']],
+        'text-size': 10,
+        'text-offset': [0, 1.1],
+        'text-anchor': 'top',
+        'text-max-width': 16,
+        'symbol-sort-key': ['case', ['==', ['get', 'severity'], 'major'], 0, 1],
+      },
+      paint: { 'text-color': '#fde68a', 'text-halo-color': '#1c1917', 'text-halo-width': 1.4 },
+    });
+  }
   if (bound.has(map)) return;
   bound.add(map);
 
@@ -109,8 +131,15 @@ export function addGaTrafficLayers(map: MapLibreMap): void {
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const d = (await r.json()) as TrafficPayload;
       const clip = (fc?: GeoJSON.FeatureCollection) => ({ type: 'FeatureCollection' as const, features: (fc?.features ?? []).filter((f) => insideWall(ring, f)) });
-      (map.getSource(POINTS) as GeoJSONSource | undefined)?.setData(clip(d.points));
+      const points = clip(d.points);
+      (map.getSource(POINTS) as GeoJSONSource | undefined)?.setData(points);
       (map.getSource(LINES) as GeoJSONSource | undefined)?.setData(clip(d.lines));
+      const types = Object.entries(d.summary?.byType ?? {}).map(([k, v]) => `${v} ${k.toLowerCase()}`).join(', ');
+      reportGaFeed(map, {
+        id: 'traffic', label: 'GDOT 511 road events', color: '#f97316', count: points.features.length,
+        detail: `${types}${d.summary ? ` · ${d.summary.bySeverity.major ?? 0} major` : ''}`,
+        updatedAt: d.summary?.latestUpdate ?? null, sourceUrl: ITEM,
+      });
     } catch (err) {
       console.warn('[GaTraffic] refresh failed:', err);
     }
