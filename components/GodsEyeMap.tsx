@@ -14,6 +14,7 @@ import { GaWall3DLayer, GA_WALL_3D_MIN_ZOOM } from '../lib/ga-wall-3d';
 import { addGaPatrolLayers } from '../lib/ga-patrol-3d';
 import { addGaCompetitorLayers } from '../lib/ga-competitors';
 import { addDisneyLiveBoard } from '../lib/disney-live';
+import { addGaH3Telemetry } from '../lib/ga-h3-telemetry';
 
 const ALLY_STATE_CODES = ['AL', 'FL', 'NC', 'SC', 'TN', 'TX', 'VA'];
 
@@ -916,6 +917,7 @@ export default function GodsEyeMap({
     if (!map.getLayer('ga-wall-3d')) {
       map.addLayer(new GaWall3DLayer());
     }
+    addGaH3Telemetry(map);
     addGaPatrolLayers(map);
     addGaCompetitorLayers(map);
     addDisneyLiveBoard(map);

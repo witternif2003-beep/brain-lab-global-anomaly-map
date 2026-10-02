@@ -20,6 +20,7 @@
     "autoprefixer": "^10.6.1",
     "clsx": "^2.1.1",
     "geojson-vt": "^5.0.2",
+    "h3-js": "4.4.0",
     "lucide-react": "^1.48.0",
     "maplibre-gl": "^6.11.2",
     "next": "^16.3.6",
