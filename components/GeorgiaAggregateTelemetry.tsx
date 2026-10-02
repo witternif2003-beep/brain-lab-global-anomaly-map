@@ -36,6 +36,19 @@ interface Payload {
     hotspots: { method: string; cells99: number; cells95: number; cells90: number };
   };
   precincts: { geojson: { features: { properties: { name: string; count: number; share: number } }[] } | null };
+  dispatch:
+    | {
+        ok: true;
+        sourceUrl: string;
+        total: number;
+        from: string | null;
+        to: string | null;
+        zone: { rows: { key: string; count: number }[]; suppressed: number };
+        priority: { rows: { key: string; count: number }[]; suppressed: number };
+        callSource: { rows: { key: string; count: number }[]; suppressed: number };
+        note: string;
+      }
+    | { ok: false; sourceUrl: string; error: string };
   rates: {
     source: string;
     sourceUrl: string;
@@ -260,6 +273,42 @@ export default function GeorgiaAggregateTelemetry() {
               </div>
             </Box>
           </div>
+
+          <Box title="DISPATCH (CAD) · AGGREGATE COUNTS">
+            {data.dispatch.ok ? (
+              <>
+                <div className="text-[11px] text-slate-200">
+                  {data.dispatch.total} calls in the public layer, {data.dispatch.from ? ts(data.dispatch.from) : "—"} → {data.dispatch.to ? ts(data.dispatch.to) : "—"}
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                  {(
+                    [
+                      ["Zone", data.dispatch.zone],
+                      ["Priority", data.dispatch.priority],
+                      ["Call source", data.dispatch.callSource],
+                    ] as const
+                  ).map(([label, g]) => (
+                    <div key={label}>
+                      <div className="text-[9px] text-slate-400 tracking-widest">{label.toUpperCase()}</div>
+                      {g.rows.map((r) => (
+                        <div key={r.key} className="flex justify-between text-[11px] text-slate-200">
+                          <span>{r.key}</span>
+                          <span>{r.count}</span>
+                        </div>
+                      ))}
+                      {g.suppressed > 0 && <div className="text-[9px] text-slate-500">{g.suppressed} in groups under 5, withheld</div>}
+                    </div>
+                  ))}
+                </div>
+                <div className="text-[9px] text-slate-500">
+                  APD publishes this layer as a snapshot, not a live feed; it has not changed since the dates above. {data.dispatch.note}{" "}
+                  <a href={data.dispatch.sourceUrl} target="_blank" rel="noreferrer" className="underline">Source</a>
+                </div>
+              </>
+            ) : (
+              <div className="text-[11px] text-slate-400">Dispatch layer unavailable: {data.dispatch.error}</div>
+            )}
+          </Box>
 
           <div className="text-[10px] text-slate-400 space-y-1">
             <div>

@@ -9,6 +9,7 @@ const LAYER = "https://services3.arcgis.com/Et5Qfajgiyosiw4d/arcgis/rest/service
 const PORTAL = "https://atlanta-police-opendata-atlantapd.hub.arcgis.com";
 const SERVICES = "https://services3.arcgis.com/Et5Qfajgiyosiw4d/arcgis/rest/services";
 const PRECINCTS = `${SERVICES}/APDmainprecincts/FeatureServer/0`;
+const CAD = `${SERVICES}/OnlineCADData/FeatureServer/0`;
 const ARC_NPU =
   "https://services1.arcgis.com/Ug5xGQbHsD8zuZzM/arcgis/rest/services/ACS%202024%20Demographic%20Population/FeatureServer/15";
 const ARC_ITEM = "https://www.arcgis.com/home/item.html?id=ed685cf5eda54f348a9547f5d0d2b84b";
@@ -54,6 +55,53 @@ async function context() {
   return { sites, population };
 }
 
+const countStat = JSON.stringify([{ statisticType: "count", onStatisticField: "OBJECTID", outStatisticFieldName: "n" }]);
+
+async function dispatch() {
+  const groupBy = async (field: string) => {
+    const r = await query<Record<string, string | number | null>>(
+      { where: "1=1", groupByFieldsForStatistics: field, outStatistics: countStat },
+      CAD,
+    );
+    const rows = (r.features ?? []).map((f) => ({ key: String(f.attributes[field] ?? "").trim() || "unspecified", count: Number(f.attributes.n) }));
+    const shown = rows.filter((x) => x.count >= K_MIN).sort((a, b) => b.count - a.count);
+    return { rows: shown, suppressed: rows.reduce((a, b) => a + b.count, 0) - shown.reduce((a, b) => a + b.count, 0) };
+  };
+  try {
+    const [span, zone, priority, callSource] = await Promise.all([
+      query<{ n: number; mn: number | null; mx: number | null }>(
+        {
+          where: "1=1",
+          outStatistics: JSON.stringify([
+            { statisticType: "count", onStatisticField: "OBJECTID", outStatisticFieldName: "n" },
+            { statisticType: "min", onStatisticField: "IncidentDate", outStatisticFieldName: "mn" },
+            { statisticType: "max", onStatisticField: "IncidentDate", outStatisticFieldName: "mx" },
+          ]),
+        },
+        CAD,
+      ),
+      groupBy("Zone"),
+      groupBy("CurrentPriorityKey"),
+      groupBy("CallSource"),
+    ]);
+    const a = span.features?.[0]?.attributes;
+    return {
+      ok: true as const,
+      source: "APD OnlineCADData (public ArcGIS layer)",
+      sourceUrl: CAD,
+      total: a?.n ?? 0,
+      from: a?.mn ? new Date(a.mn).toISOString() : null,
+      to: a?.mx ? new Date(a.mx).toISOString() : null,
+      zone,
+      priority,
+      callSource,
+      note: "Server-side counts only; no call rows, locations, caller, phone, officer or comment fields are requested. Groups under 5 calls are withheld.",
+    };
+  } catch (e) {
+    return { ok: false as const, source: "APD OnlineCADData", sourceUrl: CAD, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
 async function build() {
   const now = new Date();
   const since = new Date(now.getTime() - WINDOW_DAYS * 86_400_000);
@@ -61,7 +109,7 @@ async function build() {
   const where = `ReportDate >= ${sqlTs(modelSince)} AND ReportDate <= ${sqlTs(now)} AND Latitude IS NOT NULL AND Longitude IS NOT NULL`;
   const ytdWhere = `ReportDate >= DATE '${YEAR}-01-01' AND ReportDate <= ${sqlTs(now)}`;
 
-  const [{ count = 0 }, ytd, ctx] = await Promise.all([
+  const [{ count = 0 }, ytd, ctx, cad] = await Promise.all([
     query<never>({ where, returnCountOnly: "true" }),
     query<{ NIBRS_Bucket: string | null; n: number }>({
       where: ytdWhere,
@@ -69,6 +117,7 @@ async function build() {
       outStatistics: JSON.stringify([{ statisticType: "count", onStatisticField: "OBJECTID", outStatisticFieldName: "n" }]),
     }),
     context(),
+    dispatch(),
   ]);
 
   const pages = await Promise.all(
@@ -193,6 +242,7 @@ async function build() {
       byNpu: npuRates,
       note: "Residential population; areas with many workers or visitors (e.g. Downtown) show high per-resident rates.",
     },
+    dispatch: cad,
     ytd: {
       year: YEAR,
       total: ytdRows.reduce((a, b) => a + b.count, 0),
