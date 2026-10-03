@@ -2,6 +2,7 @@ import { Popup } from 'maplibre-gl';
 import type { ExpressionSpecification, GeoJSONSource, MapLayerMouseEvent, Map as MapLibreMap } from 'maplibre-gl';
 import { insideRing, loadGaWallRing, type LngLat } from './ga-patrol-3d';
 import { reportGaFeed } from './ga-live-status';
+import { hitsGaAnomaly } from './ga-anomaly-bulbs';
 
 const API = '/api/ga-traffic';
 const REFRESH_MS = 5 * 60_000;
@@ -152,7 +153,9 @@ export function addGaTrafficLayers(map: MapLibreMap): void {
   });
 
   for (const layer of [`${POINTS}-circle`, `${LINES}-line`]) {
-    map.on('click', layer, (e) => popup(map, e));
+    map.on('click', layer, (e) => {
+      if (!hitsGaAnomaly(map, e)) popup(map, e);
+    });
     map.on('mouseenter', layer, () => (map.getCanvas().style.cursor = 'pointer'));
     map.on('mouseleave', layer, () => (map.getCanvas().style.cursor = ''));
   }

@@ -2,6 +2,7 @@ import { Popup } from 'maplibre-gl';
 import type { ExpressionSpecification, GeoJSONSource, MapLayerMouseEvent, Map as MapLibreMap } from 'maplibre-gl';
 import { insideRing, loadGaWallRing, type LngLat } from './ga-patrol-3d';
 import { reportGaFeed } from './ga-live-status';
+import { hitsGaAnomaly } from './ga-anomaly-bulbs';
 
 const API = '/api/ga-hydromet';
 const REFRESH_MS = 5 * 60_000;
@@ -167,7 +168,9 @@ export function addGaHydrometLayers(map: MapLibreMap): void {
     bound.delete(map);
   });
 
-  map.on('click', `${GAUGES}-circle`, (e) => gaugePopup(map, e));
+  map.on('click', `${GAUGES}-circle`, (e) => {
+    if (!hitsGaAnomaly(map, e)) gaugePopup(map, e);
+  });
   map.on('click', `${ALERTS}-fill`, (e) => {
     if (map.queryRenderedFeatures(e.point).some((f) => f.layer.id !== `${ALERTS}-fill` && f.layer.type !== 'raster' && f.layer.type !== 'background' && /^(ga-|disney)/.test(f.layer.id))) return;
     alertPopup(map, e);

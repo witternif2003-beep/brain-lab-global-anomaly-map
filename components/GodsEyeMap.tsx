@@ -17,6 +17,7 @@ import { addDisneyLiveBoard } from '../lib/disney-live';
 import { addGaH3Telemetry } from '../lib/ga-h3-telemetry';
 import { addGaTrafficLayers } from '../lib/ga-traffic-layer';
 import { addGaHydrometLayers } from '../lib/ga-hydromet-layer';
+import { addGaAnomalyBulbs } from '../lib/ga-anomaly-bulbs';
 
 const ALLY_STATE_CODES = ['AL', 'FL', 'NC', 'SC', 'TN', 'TX', 'VA'];
 
@@ -922,6 +923,7 @@ export default function GodsEyeMap({
     addGaH3Telemetry(map);
     addGaHydrometLayers(map);
     addGaTrafficLayers(map);
+    addGaAnomalyBulbs(map);
     addGaPatrolLayers(map);
     addGaCompetitorLayers(map);
     addDisneyLiveBoard(map);
