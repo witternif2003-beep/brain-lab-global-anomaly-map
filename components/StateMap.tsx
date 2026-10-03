@@ -1,18 +1,6 @@
 'use client';
 import { OUTBOUND_GA_PERSON_TEMPLATES, getInterpolatedArcPoint, VerifiedPersonLeavingGA } from '../lib/telemetry-arcs';
 
-// Safe module initialization
-if (typeof window !== 'undefined') {
-  try {
-    const ml = require('maplibre-gl');
-    if (ml && typeof ml.setWorkerUrl === 'function') {
-      ml.setWorkerUrl('/maplibre-gl-worker.mjs');
-    }
-  } catch (e) {
-    console.warn('[MapLibre] Worker URL initialization deferred:', e);
-  }
-}
-
 // FIPS to state abbreviation lookup table
 const FIPS_TO_ABBR: Record<string, string> = {
   '01': 'AL', '12': 'FL', '13': 'GA', '37': 'NC',
@@ -73,8 +61,9 @@ const BASEMAPS = {
     sources: {
       sat: {
         type: 'raster',
-        tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+        tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}?blankTile=false'],
         tileSize: 256,
+        maxzoom: 21,
         attribution: '© Esri, Maxar, Earthstar Geographics',
       },
     },
@@ -175,7 +164,7 @@ export default function StateMap({
         source: 'all-states',
         filter: ['==', ['get', 'STUSPS'], 'GA'],
         paint: {
-          'line-color': '#dc2626',
+          'line-color': '#7f1d1d',
           'line-width': [
             'interpolate', ['exponential', 1.5], ['zoom'],
             3, 4,
@@ -183,8 +172,8 @@ export default function StateMap({
             18, 22,
             24, 30,
           ],
-          'line-blur': 6,
-          'line-opacity': 0.75,
+          'line-blur': 0,
+          'line-opacity': 1,
         },
       });
     }
@@ -196,7 +185,7 @@ export default function StateMap({
         source: 'all-states',
         filter: ['==', ['get', 'STUSPS'], 'GA'],
         paint: {
-          'line-color': '#ef4444',
+          'line-color': '#7f1d1d',
           'line-width': [
             'interpolate', ['exponential', 1.5], ['zoom'],
             3, 1.2,
@@ -580,6 +569,7 @@ export default function StateMap({
     const webgpuAvailable = typeof navigator !== 'undefined' && 'gpu' in navigator;
 
     // Initialize MapLibre Map with dark satellite style by default
+    maplibregl.setWorkerUrl('/maplibre-gl-worker.mjs');
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: BASEMAPS.satellite as any,
@@ -588,7 +578,7 @@ export default function StateMap({
       pitch: 0,
       bearing: 0,
       minZoom: 1,
-      maxZoom: 35,
+      maxZoom: 21,
       maxPitch: 85,
       attributionControl: false,
       experimentalZoomLevelsToOverscale: 4,

@@ -45,7 +45,7 @@ export default function BuildFreshnessChip({ buildSha }: { buildSha: string }) {
     return (
       <button
         onClick={() => window.location.reload()}
-        className="fixed bottom-3 right-3 z-[60] font-mono text-[10px] font-black px-3 py-1.5 rounded-full bg-[#f5a623] text-[#0d0a06] shadow-[0_0_16px_rgba(245,166,35,0.7)] flex items-center gap-1.5 animate-pulse"
+        className="fixed bottom-3 right-3 z-[60] font-mono text-[10px] font-black px-3 py-1.5 rounded-full bg-[#ff2ec4] text-[#1a0014] shadow-[0_0_16px_rgba(255,46,196,0.7)] flex items-center gap-1.5 animate-pulse"
         title={`Viewing cached build ${short}; live is ${liveSha}. Tap to reload.`}
       >
         <RefreshCw className="w-3 h-3" />
