@@ -1,21 +1,18 @@
 import { Popup } from 'maplibre-gl';
-import type { ExpressionSpecification, GeoJSONSource, MapLayerMouseEvent, Map as MapLibreMap } from 'maplibre-gl';
+import type { GeoJSONSource, Map as MapLibreMap } from 'maplibre-gl';
 import { insideRing, loadGaWallRing, type LngLat } from './ga-patrol-3d';
 import { reportGaFeed } from './ga-live-status';
+import { setGaDeckGroup } from './ga-deck-overlay';
+import { GA_ANOMALY_LEVEL_COLORS, hexToRgba } from './ga-point-colors';
 
 export const GA_ANOMALY_SOURCE = 'ga-anomaly-bulbs';
-export const GA_ANOMALY_CORE = `${GA_ANOMALY_SOURCE}-core`;
-const GLOW = `${GA_ANOMALY_SOURCE}-glow`;
-const PULSE = `${GA_ANOMALY_SOURCE}-pulse`;
 const LABEL = `${GA_ANOMALY_SOURCE}-label`;
 const REFRESH_MS = 5 * 60_000;
-const PULSE_HZ = 0.5;
 const CORE_PX = 7;
 const EMPTY = { type: 'FeatureCollection' as const, features: [] };
 const ATTRIBUTION =
   'Anomaly bulbs: rule-based flags on public feeds (APD open data Gi* hotspots, NOAA/NWS gauges and alerts, Georgia DOT 511) · statistical/threshold signals, not findings about any person';
 
-const LEVEL_COLOR = ['#22c55e', '#22c55e', '#facc15', '#f97316', '#ef4444'];
 const LEVEL_TEXT = ['', 'LOW', 'GUARDED', 'ELEVATED', 'HIGH'];
 
 type Level = 1 | 2 | 3 | 4;
@@ -215,25 +212,23 @@ function toFeature(b: Bulb, i: number): GeoJSON.Feature<GeoJSON.Point> {
     type: 'Feature',
     id: i,
     geometry: { type: 'Point', coordinates: b.coord },
-    properties: { ...b, coord: undefined, color: LEVEL_COLOR[b.level] },
+    properties: { ...b, coord: undefined, color: GA_ANOMALY_LEVEL_COLORS[b.level] },
   };
 }
 
-function popup(map: MapLibreMap, e: MapLayerMouseEvent) {
-  const p = e.features?.[0]?.properties;
-  if (!p) return;
+function popup(map: MapLibreMap, lngLat: LngLat, p: Record<string, unknown>) {
   const level = Number(p.level);
   const el = document.createElement('div');
   el.style.cssText = 'font:11px ui-monospace,monospace;color:#0f172a;line-height:1.45';
   const h = document.createElement('div');
-  h.style.cssText = `font-weight:800;margin-bottom:4px;border-left:4px solid ${LEVEL_COLOR[level]};padding-left:6px`;
+  h.style.cssText = `font-weight:800;margin-bottom:4px;border-left:4px solid ${GA_ANOMALY_LEVEL_COLORS[level]};padding-left:6px`;
   h.textContent = `${str(p.title)} · ${LEVEL_TEXT[level]}`;
   el.append(h);
   const observed = str(p.observedAt);
   const rows: [string, string][] = [
     ['Source', str(p.sourceName)],
     ['Observed', observed ? new Date(observed).toLocaleString() : 'no timestamp'],
-    ['Location', `${e.lngLat.lat.toFixed(4)}, ${e.lngLat.lng.toFixed(4)}`],
+    ['Location', `${lngLat[1].toFixed(4)}, ${lngLat[0].toFixed(4)}`],
     ['Confidence', str(p.confidence)],
     ['Basis', str(p.basis)],
     ['Suggested action', str(p.action)],
@@ -251,7 +246,7 @@ function popup(map: MapLibreMap, e: MapLayerMouseEvent) {
   a.rel = 'noreferrer';
   a.textContent = 'Open source ↗';
   el.append(a);
-  new Popup({ closeButton: true, maxWidth: 'min(340px, 90vw)' }).setLngLat(e.lngLat).setDOMContent(el).addTo(map);
+  new Popup({ closeButton: true, maxWidth: 'min(340px, 90vw)' }).setLngLat(lngLat).setDOMContent(el).addTo(map);
 }
 
 async function getJson<T>(url: string): Promise<T | null> {
@@ -263,44 +258,12 @@ async function getJson<T>(url: string): Promise<T | null> {
   }
 }
 
-/** True when a click landed on an anomaly bulb, so feed layers underneath can skip their own popup. */
-export function hitsGaAnomaly(map: MapLibreMap, e: MapLayerMouseEvent): boolean {
-  return !!map.getLayer(GA_ANOMALY_CORE) && map.queryRenderedFeatures(e.point, { layers: [GA_ANOMALY_CORE] }).length > 0;
-}
-
 const bound = new WeakSet<MapLibreMap>();
 
 /** Fixed-size glowing anomaly indicators flagged from the live public Georgia feeds (idempotent). */
 export function addGaAnomalyBulbs(map: MapLibreMap): void {
   if (!map.getSource(GA_ANOMALY_SOURCE))
     map.addSource(GA_ANOMALY_SOURCE, { type: 'geojson', data: EMPTY, attribution: ATTRIBUTION });
-  const viewport = { 'circle-pitch-alignment': 'viewport', 'circle-pitch-scale': 'viewport' } as const;
-  const opacity: ExpressionSpecification = ['interpolate', ['linear'], ['zoom'], 5, 0.85, 12, 1];
-  if (!map.getLayer(GLOW)) {
-    map.addLayer({
-      id: GLOW,
-      type: 'circle',
-      source: GA_ANOMALY_SOURCE,
-      paint: { ...viewport, 'circle-radius': CORE_PX * 2, 'circle-color': ['get', 'color'], 'circle-blur': 0.9, 'circle-opacity': ['interpolate', ['linear'], ['zoom'], 5, 0.5, 12, 0.6] },
-    });
-  }
-  if (!map.getLayer(PULSE)) {
-    map.addLayer({
-      id: PULSE,
-      type: 'circle',
-      source: GA_ANOMALY_SOURCE,
-      filter: ['>=', ['get', 'level'], 3],
-      paint: { ...viewport, 'circle-radius': CORE_PX * 2, 'circle-color': 'rgba(0,0,0,0)', 'circle-stroke-color': ['get', 'color'], 'circle-stroke-width': 2, 'circle-stroke-opacity': 0.8 },
-    });
-  }
-  if (!map.getLayer(GA_ANOMALY_CORE)) {
-    map.addLayer({
-      id: GA_ANOMALY_CORE,
-      type: 'circle',
-      source: GA_ANOMALY_SOURCE,
-      paint: { ...viewport, 'circle-radius': CORE_PX, 'circle-color': '#f8fafc', 'circle-stroke-color': ['get', 'color'], 'circle-stroke-width': 2.5, 'circle-opacity': opacity, 'circle-stroke-opacity': opacity },
-    });
-  }
   if (!map.getLayer(LABEL)) {
     map.addLayer({
       id: LABEL,
@@ -326,7 +289,22 @@ export function addGaAnomalyBulbs(map: MapLibreMap): void {
       ...(h ? [...gaugeBulbs(h), ...alertBulbs(h)] : []),
       ...(tr ? trafficBulbs(tr) : []),
     ].filter((b) => !ring.length || insideRing(ring, b.coord));
-    (map.getSource(GA_ANOMALY_SOURCE) as GeoJSONSource | undefined)?.setData({ type: 'FeatureCollection', features: bulbs.map(toFeature) });
+    const features = bulbs.map(toFeature);
+    (map.getSource(GA_ANOMALY_SOURCE) as GeoJSONSource | undefined)?.setData({ type: 'FeatureCollection', features });
+    setGaDeckGroup(map, 'bulbs', {
+      z: 30,
+      items: bulbs.map((bulb) => ({
+        coord: bulb.coord,
+        radiusPx: CORE_PX,
+        fill: [248, 250, 252, 255],
+        stroke: hexToRgba(GA_ANOMALY_LEVEL_COLORS[bulb.level]),
+        strokePx: 2.5,
+        glow: bulb.level / 4,
+        pulse: bulb.level >= 3,
+        props: { ...bulb },
+      })),
+      onClick: popup,
+    });
     const byLevel = [4, 3, 2, 1].map((l) => [LEVEL_TEXT[l], bulbs.filter((b) => b.level === l).length] as const).filter(([, n]) => n);
     const failed = [!t && 'crime', !h && 'hydromet', !tr && 'traffic'].filter(Boolean);
     reportGaFeed(map, {
@@ -343,25 +321,8 @@ export function addGaAnomalyBulbs(map: MapLibreMap): void {
   void refresh();
   const timer = setInterval(() => void refresh(), REFRESH_MS);
 
-  let frame = 0;
-  let last = 0;
-  const animate = (now: number) => {
-    frame = requestAnimationFrame(animate);
-    if (now - last < 50 || !map.getLayer(PULSE)) return;
-    last = now;
-    const phase = (now / 1000) * PULSE_HZ * 2 * Math.PI;
-    const s = (1 - Math.cos(phase)) / 2;
-    map.setPaintProperty(PULSE, 'circle-radius', CORE_PX * (1.2 + 1.6 * s));
-    map.setPaintProperty(PULSE, 'circle-stroke-opacity', 0.9 * (1 - s));
-  };
-  frame = requestAnimationFrame(animate);
-
   map.once('remove', () => {
     clearInterval(timer);
-    cancelAnimationFrame(frame);
     bound.delete(map);
   });
-  map.on('click', GA_ANOMALY_CORE, (e) => popup(map, e));
-  map.on('mouseenter', GA_ANOMALY_CORE, () => (map.getCanvas().style.cursor = 'pointer'));
-  map.on('mouseleave', GA_ANOMALY_CORE, () => (map.getCanvas().style.cursor = ''));
 }

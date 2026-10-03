@@ -1,7 +1,7 @@
 import { Popup } from 'maplibre-gl';
 import type { GeoJSONSource, Map as MapLibreMap } from 'maplibre-gl';
 import { reportGaFeed } from './ga-live-status';
-import { hitsGaAnomaly } from './ga-anomaly-bulbs';
+import { hitsGaDeck } from './ga-deck-overlay';
 
 const API = '/api/ga-telemetry';
 const REFRESH_MS = 5 * 60_000;
@@ -136,7 +136,7 @@ export function addGaH3Telemetry(map: MapLibreMap): void {
     const layer = `ga-h3-r${r}-fill`;
     map.on('click', layer, (e) => {
       const p = e.features?.[0]?.properties;
-      if (!p || hitsGaAnomaly(map, e)) return;
+      if (!p || hitsGaDeck(map, e.point)) return;
       const box = document.createElement('div');
       box.style.cssText = 'font:11px ui-monospace,monospace;color:#0f172a;line-height:1.45';
       const top = p.topCategory === 'mixed' ? 'no single category with 5+ reports' : `${p.topCategory} (${p.topCategoryCount})`;

@@ -1,8 +1,9 @@
 import { Popup } from 'maplibre-gl';
-import type { ExpressionSpecification, GeoJSONSource, MapLayerMouseEvent, Map as MapLibreMap } from 'maplibre-gl';
+import type { GeoJSONSource, Map as MapLibreMap } from 'maplibre-gl';
 import { insideRing, loadGaWallRing, type LngLat } from './ga-patrol-3d';
 import { reportGaFeed } from './ga-live-status';
-import { hitsGaAnomaly } from './ga-anomaly-bulbs';
+import { hitsGaDeck, setGaDeckGroup } from './ga-deck-overlay';
+import { colorMatchExpression, GA_TRAFFIC_DEFAULT_COLOR, GA_TRAFFIC_TYPE_COLORS, hexToRgba } from './ga-point-colors';
 
 const API = '/api/ga-traffic';
 const REFRESH_MS = 5 * 60_000;
@@ -13,14 +14,7 @@ const EMPTY = { type: 'FeatureCollection' as const, features: [] };
 const POINTS = 'ga-traffic-points';
 const LINES = 'ga-traffic-lines';
 
-const TYPE_COLOR: ExpressionSpecification = [
-  'match', ['get', 'type'],
-  'accidentsAndIncidents', '#ef4444',
-  'closures', '#f97316',
-  'roadwork', '#facc15',
-  'specialEvents', '#22d3ee',
-  '#a3a3a3',
-];
+const TYPE_COLOR = colorMatchExpression('type', GA_TRAFFIC_TYPE_COLORS, GA_TRAFFIC_DEFAULT_COLOR);
 
 type TrafficPayload = {
   points?: GeoJSON.FeatureCollection;
@@ -38,9 +32,7 @@ function insideWall(ring: LngLat[], f: GeoJSON.Feature): boolean {
   return false;
 }
 
-function popup(map: MapLibreMap, e: MapLayerMouseEvent) {
-  const p = e.features?.[0]?.properties;
-  if (!p) return;
+function popup(map: MapLibreMap, lngLat: LngLat, p: Record<string, unknown>) {
   const box = document.createElement('div');
   box.style.cssText = 'font:11px ui-monospace,monospace;color:#0f172a;line-height:1.45';
   const h = document.createElement('div');
@@ -71,7 +63,7 @@ function popup(map: MapLibreMap, e: MapLayerMouseEvent) {
   a.rel = 'noreferrer';
   a.textContent = 'Source ↗';
   box.append(a);
-  new Popup({ closeButton: true, maxWidth: 'min(300px, 90vw)' }).setLngLat(e.lngLat).setDOMContent(box).addTo(map);
+  new Popup({ closeButton: true, maxWidth: 'min(300px, 90vw)' }).setLngLat(lngLat).setDOMContent(box).addTo(map);
 }
 
 /** Live Georgia DOT 511 road events (incidents, closures, roadwork, special events) inside the GA wall (idempotent). */
@@ -89,20 +81,6 @@ export function addGaTrafficLayers(map: MapLibreMap): void {
         'line-width': ['interpolate', ['linear'], ['zoom'], 6, 2, 14, 6],
         'line-opacity': 0.85,
         'line-dasharray': ['case', ['==', ['get', 'fullClosure'], true], ['literal', [1, 0]], ['literal', [2, 1]]],
-      },
-    });
-  }
-  if (!map.getLayer(`${POINTS}-circle`)) {
-    map.addLayer({
-      id: `${POINTS}-circle`,
-      type: 'circle',
-      source: POINTS,
-      paint: {
-        'circle-color': TYPE_COLOR,
-        'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, ['case', ['==', ['get', 'severity'], 'major'], 4, 2.5], 14, ['case', ['==', ['get', 'severity'], 'major'], 10, 7]],
-        'circle-stroke-color': ['case', ['==', ['get', 'fullClosure'], true], '#ffffff', '#111827'],
-        'circle-stroke-width': ['case', ['==', ['get', 'severity'], 'major'], 2, 1],
-        'circle-opacity': 0.92,
       },
     });
   }
@@ -135,6 +113,25 @@ export function addGaTrafficLayers(map: MapLibreMap): void {
       const points = clip(d.points);
       (map.getSource(POINTS) as GeoJSONSource | undefined)?.setData(points);
       (map.getSource(LINES) as GeoJSONSource | undefined)?.setData(clip(d.lines));
+      setGaDeckGroup(map, 'traffic', {
+        z: 10,
+        items: points.features.flatMap((feature) => {
+          if (feature.geometry.type !== 'Point') return [];
+          const props = feature.properties ?? {};
+          const major = props.severity === 'major';
+          const color = GA_TRAFFIC_TYPE_COLORS[String(props.type)] ?? GA_TRAFFIC_DEFAULT_COLOR;
+          const stroke = props.fullClosure === true || props.fullClosure === 'true' ? '#ffffff' : '#111827';
+          return [{
+            coord: feature.geometry.coordinates as LngLat,
+            radiusPx: major ? 6 : 4,
+            fill: hexToRgba(color, 235),
+            stroke: hexToRgba(stroke),
+            strokePx: major ? 2 : 1,
+            props: { ...props },
+          }];
+        }),
+        onClick: popup,
+      });
       const types = Object.entries(d.summary?.byType ?? {}).map(([k, v]) => `${v} ${k.toLowerCase()}`).join(', ');
       reportGaFeed(map, {
         id: 'traffic', label: 'GDOT 511 road events', color: '#f97316', count: points.features.length,
@@ -152,11 +149,11 @@ export function addGaTrafficLayers(map: MapLibreMap): void {
     bound.delete(map);
   });
 
-  for (const layer of [`${POINTS}-circle`, `${LINES}-line`]) {
-    map.on('click', layer, (e) => {
-      if (!hitsGaAnomaly(map, e)) popup(map, e);
-    });
-    map.on('mouseenter', layer, () => (map.getCanvas().style.cursor = 'pointer'));
-    map.on('mouseleave', layer, () => (map.getCanvas().style.cursor = ''));
-  }
+  map.on('click', `${LINES}-line`, (e) => {
+    if (hitsGaDeck(map, e.point)) return;
+    const props = e.features?.[0]?.properties;
+    if (props) popup(map, [e.lngLat.lng, e.lngLat.lat], props);
+  });
+  map.on('mouseenter', `${LINES}-line`, () => (map.getCanvas().style.cursor = 'pointer'));
+  map.on('mouseleave', `${LINES}-line`, () => (map.getCanvas().style.cursor = ''));
 }

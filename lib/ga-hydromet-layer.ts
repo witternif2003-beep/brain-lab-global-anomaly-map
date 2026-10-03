@@ -2,7 +2,8 @@ import { Popup } from 'maplibre-gl';
 import type { ExpressionSpecification, GeoJSONSource, MapLayerMouseEvent, Map as MapLibreMap } from 'maplibre-gl';
 import { insideRing, loadGaWallRing, type LngLat } from './ga-patrol-3d';
 import { reportGaFeed } from './ga-live-status';
-import { hitsGaAnomaly } from './ga-anomaly-bulbs';
+import { hitsGaDeck, setGaDeckGroup } from './ga-deck-overlay';
+import { colorMatchExpression, GA_FLOOD_CATEGORY_COLORS, GA_FLOOD_DEFAULT_COLOR, hexToRgba } from './ga-point-colors';
 
 const API = '/api/ga-hydromet';
 const REFRESH_MS = 5 * 60_000;
@@ -13,9 +14,7 @@ const EMPTY = { type: 'FeatureCollection' as const, features: [] };
 const SEVERITY_COLOR: ExpressionSpecification = [
   'match', ['get', 'severity'], 'Extreme', '#a855f7', 'Severe', '#ef4444', 'Moderate', '#f97316', 'Minor', '#facc15', '#38bdf8',
 ];
-const FLOOD_COLOR: ExpressionSpecification = [
-  'match', ['get', 'category'], 'no_flooding', '#22c55e', 'action', '#eab308', 'minor', '#f97316', 'moderate', '#ef4444', 'major', '#a855f7', '#64748b',
-];
+const FLOOD_COLOR = colorMatchExpression('category', GA_FLOOD_CATEGORY_COLORS, GA_FLOOD_DEFAULT_COLOR);
 const CATEGORY_TEXT: Record<string, string> = {
   no_flooding: 'Below flood stage', action: 'Action stage', minor: 'Minor flooding', moderate: 'Moderate flooding', major: 'Major flooding',
   low_threshold: 'Below gauge threshold', not_defined: 'No flood stage defined', out_of_service: 'Out of service', obs_not_current: 'Observation not current',
@@ -57,23 +56,21 @@ function box(title: string, rows: [string, string][], href: string, link: string
 const when = (v: unknown) => (typeof v === 'string' && v && v !== 'null' ? new Date(v).toLocaleString() : '');
 const num = (v: unknown, unit: unknown) => (v === null || v === undefined || v === 'null' ? '' : `${Number(v).toFixed(2)} ${String(unit ?? '')}`.trim());
 
-function gaugePopup(map: MapLibreMap, e: MapLayerMouseEvent) {
-  const p = e.features?.[0]?.properties;
-  if (!p) return;
+function gaugePopup(map: MapLibreMap, lngLat: LngLat, p: Record<string, unknown>) {
   const el = box(
     `NOAA RIVER GAUGE · ${String(p.lid)}`,
     [
       ['Site', String(p.name)],
-      ['Status', CATEGORY_TEXT[p.category] ?? String(p.category)],
+      ['Status', CATEGORY_TEXT[String(p.category)] ?? String(p.category)],
       ['Stage', num(p.stage, p.stageUnit)],
       ['Flow', num(p.flow, p.flowUnit)],
       ['Observed', when(p.observedAt)],
-      ['Forecast', p.forecastAt ? `${num(p.forecastStage, p.stageUnit)} · ${CATEGORY_TEXT[p.forecastCategory] ?? p.forecastCategory} · ${when(p.forecastAt)}` : ''],
+      ['Forecast', p.forecastAt ? `${num(p.forecastStage, p.stageUnit)} · ${CATEGORY_TEXT[String(p.forecastCategory)] ?? p.forecastCategory} · ${when(p.forecastAt)}` : ''],
     ],
     `https://water.noaa.gov/gauges/${encodeURIComponent(String(p.lid).toLowerCase())}`,
     'Hydrograph ↗',
   );
-  new Popup({ closeButton: true, maxWidth: 'min(300px, 90vw)' }).setLngLat(e.lngLat).setDOMContent(el).addTo(map);
+  new Popup({ closeButton: true, maxWidth: 'min(300px, 90vw)' }).setLngLat(lngLat).setDOMContent(el).addTo(map);
 }
 
 function alertPopup(map: MapLibreMap, e: MapLayerMouseEvent) {
@@ -106,20 +103,6 @@ export function addGaHydrometLayers(map: MapLibreMap): void {
     map.addLayer({ id: `${ALERTS}-fill`, type: 'fill', source: ALERTS, paint: { 'fill-color': SEVERITY_COLOR, 'fill-opacity': 0.16 } });
   if (!map.getLayer(`${ALERTS}-line`))
     map.addLayer({ id: `${ALERTS}-line`, type: 'line', source: ALERTS, paint: { 'line-color': SEVERITY_COLOR, 'line-width': 1.6, 'line-dasharray': [4, 2] } });
-  if (!map.getLayer(`${GAUGES}-circle`)) {
-    map.addLayer({
-      id: `${GAUGES}-circle`,
-      type: 'circle',
-      source: GAUGES,
-      paint: {
-        'circle-color': FLOOD_COLOR,
-        'circle-radius': ['interpolate', ['linear'], ['zoom'], 5, ['case', ['>=', ['get', 'rank'], 1], 4.5, 2.2], 13, ['case', ['>=', ['get', 'rank'], 1], 10, 6]],
-        'circle-stroke-color': '#0c4a6e',
-        'circle-stroke-width': 1,
-        'circle-opacity': 0.9,
-      },
-    });
-  }
   if (!map.getLayer(`${GAUGES}-label`)) {
     map.addLayer({
       id: `${GAUGES}-label`,
@@ -127,7 +110,7 @@ export function addGaHydrometLayers(map: MapLibreMap): void {
       source: GAUGES,
       minzoom: 9,
       layout: { 'text-field': ['get', 'label'], 'text-size': 10, 'text-offset': [0, 1.1], 'text-anchor': 'top', 'text-max-width': 14, 'symbol-sort-key': ['-', 0, ['get', 'rank']] },
-      paint: { 'text-color': '#bae6fd', 'text-halo-color': '#001424', 'text-halo-width': 1.4 },
+      paint: { 'text-color': FLOOD_COLOR, 'text-halo-color': '#001424', 'text-halo-width': 1.4 },
     });
   }
   if (bound.has(map)) return;
@@ -143,6 +126,23 @@ export function addGaHydrometLayers(map: MapLibreMap): void {
         (f) => !ring.length || (f.geometry.type === 'Point' && insideRing(ring, f.geometry.coordinates as LngLat)),
       );
       (map.getSource(GAUGES) as GeoJSONSource | undefined)?.setData({ type: 'FeatureCollection', features: gauges });
+      setGaDeckGroup(map, 'gauges', {
+        z: 20,
+        items: gauges.flatMap((feature) => {
+          if (feature.geometry.type !== 'Point') return [];
+          const props = feature.properties ?? {};
+          const color = GA_FLOOD_CATEGORY_COLORS[String(props.category)] ?? GA_FLOOD_DEFAULT_COLOR;
+          return [{
+            coord: feature.geometry.coordinates as LngLat,
+            radiusPx: Number(props.rank) >= 1 ? 6 : 3.5,
+            fill: hexToRgba(color, 230),
+            stroke: hexToRgba('#0c4a6e'),
+            strokePx: 1,
+            props: { ...props },
+          }];
+        }),
+        onClick: gaugePopup,
+      });
       if (d.alerts) {
         const events = Object.entries(d.alerts.summary.byEvent).map(([k, v]) => `${v} ${k}`).join(', ');
         reportGaFeed(map, {
@@ -168,15 +168,11 @@ export function addGaHydrometLayers(map: MapLibreMap): void {
     bound.delete(map);
   });
 
-  map.on('click', `${GAUGES}-circle`, (e) => {
-    if (!hitsGaAnomaly(map, e)) gaugePopup(map, e);
-  });
   map.on('click', `${ALERTS}-fill`, (e) => {
+    if (hitsGaDeck(map, e.point)) return;
     if (map.queryRenderedFeatures(e.point).some((f) => f.layer.id !== `${ALERTS}-fill` && f.layer.type !== 'raster' && f.layer.type !== 'background' && /^(ga-|disney)/.test(f.layer.id))) return;
     alertPopup(map, e);
   });
-  for (const layer of [`${GAUGES}-circle`, `${ALERTS}-fill`]) {
-    map.on('mouseenter', layer, () => (map.getCanvas().style.cursor = 'pointer'));
-    map.on('mouseleave', layer, () => (map.getCanvas().style.cursor = ''));
-  }
+  map.on('mouseenter', `${ALERTS}-fill`, () => (map.getCanvas().style.cursor = 'pointer'));
+  map.on('mouseleave', `${ALERTS}-fill`, () => (map.getCanvas().style.cursor = ''));
 }

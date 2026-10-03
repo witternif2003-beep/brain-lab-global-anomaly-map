@@ -18,15 +18,17 @@ import { addGaH3Telemetry } from '../lib/ga-h3-telemetry';
 import { addGaTrafficLayers } from '../lib/ga-traffic-layer';
 import { addGaHydrometLayers } from '../lib/ga-hydromet-layer';
 import { addGaAnomalyBulbs } from '../lib/ga-anomaly-bulbs';
+import { addGaChangeLayer } from '../lib/ga-change-layer';
 
 const ALLY_STATE_CODES = ['AL', 'FL', 'NC', 'SC', 'TN', 'TX', 'VA'];
 
-function makeSteelPanelImage(size = 128): ImageData | null {
+function makeSteelPanelImage(size = 128, scale = 1): ImageData | null {
   const canvas = document.createElement('canvas');
-  canvas.width = size;
-  canvas.height = size;
+  canvas.width = size * scale;
+  canvas.height = size * scale;
   const ctx = canvas.getContext('2d');
   if (!ctx) return null;
+  ctx.scale(scale, scale);
   const rib = size / 32; // 32 ribs per repeat → 0.25 m corrugation at z20 (was 8 → 1 m blobs)
   for (let x = 0; x < size; x++) {
     const phase = (x % rib) / rib;
@@ -34,7 +36,7 @@ function makeSteelPanelImage(size = 128): ImageData | null {
     ctx.fillStyle = `rgb(${shade - 12}, ${shade - 4}, ${shade + 6})`;
     ctx.fillRect(x, 0, 1, size);
   }
-  const img = ctx.getImageData(0, 0, size, size);
+  const img = ctx.getImageData(0, 0, size * scale, size * scale);
   let seed = 7;
   for (let i = 0; i < img.data.length; i += 4) {
     seed = (seed * 16807) % 2147483647;
@@ -52,15 +54,16 @@ function makeSteelPanelImage(size = 128): ImageData | null {
     ctx.fillRect(x, 6, 2, 2);
     ctx.fillRect(x, size / 2 + 6, 2, 2);
   }
-  return ctx.getImageData(0, 0, size, size);
+  return ctx.getImageData(0, 0, size * scale, size * scale);
 }
 
-function makeConcertinaImage(size = 64): ImageData | null {
+function makeConcertinaImage(size = 64, scale = 1): ImageData | null {
   const canvas = document.createElement('canvas');
-  canvas.width = size;
-  canvas.height = size;
+  canvas.width = size * scale;
+  canvas.height = size * scale;
   const ctx = canvas.getContext('2d');
   if (!ctx) return null;
+  ctx.scale(scale, scale);
   ctx.fillStyle = 'rgb(18, 22, 28)';
   ctx.fillRect(0, 0, size, size);
   const loops = 8; // 8 coils per repeat → 0.5 m coils at z20 (was 4 → 1 m+ blobs)
@@ -86,7 +89,7 @@ function makeConcertinaImage(size = 64): ImageData | null {
       ctx.fillRect(bx - 1, by - 0.5, 2, 1);
     }
   }
-  return ctx.getImageData(0, 0, size, size);
+  return ctx.getImageData(0, 0, size * scale, size * scale);
 }
 
 // Helper function to safely inject verified 3D Custom Layer Starfield
@@ -727,6 +730,7 @@ export default function GodsEyeMap({
 
   // Layer stack constructor
   const addMapLayers = useCallback((map: maplibregl.Map) => {
+    const patternScale = Math.min(3, Math.ceil(window.devicePixelRatio || 1));
     // ═══ VERIFIED 3D SKYBOX STARFIELD (GeoLibre PR #440 / @geoql/maplibre-gl-starfield) ═══
     injectStarfieldLayer(map);
 
@@ -862,12 +866,12 @@ export default function GodsEyeMap({
 
     // ─── GEORGIA WALL (design visualization): 10 ft steel wall + concertina ───
     if (!map.hasImage('steel-panel')) {
-      const steel = makeSteelPanelImage();
-      if (steel) map.addImage('steel-panel', steel);
+      const steel = makeSteelPanelImage(128, patternScale);
+      if (steel) map.addImage('steel-panel', steel, { pixelRatio: patternScale });
     }
     if (!map.hasImage('concertina-wire')) {
-      const wire = makeConcertinaImage();
-      if (wire) map.addImage('concertina-wire', wire);
+      const wire = makeConcertinaImage(64, patternScale);
+      if (wire) map.addImage('concertina-wire', wire, { pixelRatio: patternScale });
     }
     if (!map.getSource('ga-wall')) {
       map.addSource('ga-wall', {
@@ -924,6 +928,7 @@ export default function GodsEyeMap({
     addGaHydrometLayers(map);
     addGaTrafficLayers(map);
     addGaAnomalyBulbs(map);
+    addGaChangeLayer(map);
     addGaPatrolLayers(map);
     addGaCompetitorLayers(map);
     addDisneyLiveBoard(map);
@@ -1364,9 +1369,24 @@ export default function GodsEyeMap({
 
 // Default MapLibre bundled worker
 
-    const webgpuAvailable = typeof navigator !== 'undefined' && 'gpu' in navigator;
-
     maplibregl.setWorkerUrl('/maplibre-gl-worker.mjs');
+
+    let lim = 4096;
+    let probeContext: WebGL2RenderingContext | null = null;
+    try {
+      const probe = document.createElement('canvas');
+      probeContext = probe.getContext('webgl2');
+      if (probeContext) {
+        const renderbuffer = Number(probeContext.getParameter(probeContext.MAX_RENDERBUFFER_SIZE));
+        const viewport = probeContext.getParameter(probeContext.MAX_VIEWPORT_DIMS) as Int32Array;
+        const maximum = Math.min(renderbuffer, Number(viewport[0]), Number(viewport[1]));
+        if (Number.isFinite(maximum) && maximum > 0) lim = maximum;
+      }
+    } catch {
+      lim = 4096;
+    } finally {
+      probeContext?.getExtension('WEBGL_lose_context')?.loseContext();
+    }
 
     const map = new maplibregl.Map({
       container: containerRef.current,
@@ -1380,12 +1400,25 @@ export default function GodsEyeMap({
       minZoom: 1,
       attributionControl: { compact: true },
       canvasContextAttributes: { antialias: true },
+      pixelRatio: window.devicePixelRatio || 1,
+      maxCanvasSize: [lim, lim],
       dragRotate: true,
       pitchWithRotate: true,
       touchZoomRotate: true,
       touchPitch: true,
       cooperativeGestures: false,
     } as any);
+
+    let dprMedia: MediaQueryList | null = null;
+    const onDprChange = () => {
+      map.setPixelRatio(window.devicePixelRatio || 1);
+      armDprListener();
+    };
+    const armDprListener = () => {
+      dprMedia = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+      dprMedia.addEventListener('change', onDprChange, { once: true });
+    };
+    armDprListener();
 
     // Geolocate control (Locate icon at top of right rail)
     map.addControl(
@@ -1494,6 +1527,7 @@ export default function GodsEyeMap({
       clearTimeout(fallbackTimer);
       clearTimeout(resizeTimer);
       if (resizeObserver) resizeObserver.disconnect();
+      dprMedia?.removeEventListener('change', onDprChange);
       if (typeof window !== 'undefined' && (window as any).__map === map) {
         delete (window as any).__map;
       }

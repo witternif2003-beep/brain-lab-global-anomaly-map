@@ -12,7 +12,7 @@ export interface GaFeedStatus {
 }
 
 const STALE_MIN = 90;
-const order = ['anomalies', 'traffic', 'alerts', 'gauges', 'crime'];
+const order = ['anomalies', 'imagery', 'traffic', 'alerts', 'gauges', 'crime', 'renderer', 'bench'];
 const feeds = new WeakMap<MapLibreMap, Map<string, GaFeedStatus>>();
 const controls = new WeakMap<MapLibreMap, GaLiveLegend>();
 
