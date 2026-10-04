@@ -20,8 +20,10 @@ import { addGaHydrometLayers } from '../lib/ga-hydromet-layer';
 import { addGaAnomalyBulbs } from '../lib/ga-anomaly-bulbs';
 import { addGaChangeLayer } from '../lib/ga-change-layer';
 import { scaleMarkersInsideGaWall, type RadiusExpression } from '../lib/ga-marker-scale';
+import { exportMapAt8k } from '../lib/map-8k-export';
 
 const ALLY_STATE_CODES = ['AL', 'FL', 'NC', 'SC', 'TN', 'TX', 'VA'];
+const STARMAP_8K_MIN_DEVICE_PX = 2560;
 
 function makeSteelPanelImage(size = 128, scale = 1): ImageData | null {
   const canvas = document.createElement('canvas');
@@ -376,6 +378,24 @@ export default function GodsEyeMap({
 
   // NSA Admin Real-Time Star Constellations Canvas Animation
   const starsCanvasRef = useRef<HTMLCanvasElement>(null);
+  const [export8kStatus, setExport8kStatus] = useState<string | null>(null);
+  const save8k = useCallback(async () => {
+    const map = mapRef.current;
+    if (!map) return;
+    setExport8kStatus('rendering…');
+    try {
+      const { blob, width, height } = await exportMapAt8k(map, starsCanvasRef.current);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `georgia-map-${width}x${height}.png`;
+      a.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
+      setExport8kStatus(`saved ${width}×${height}`);
+    } catch (err) {
+      setExport8kStatus(err instanceof Error ? err.message : 'export failed');
+    }
+  }, []);
 
   useEffect(() => {
     const canvas = starsCanvasRef.current;
@@ -384,14 +404,24 @@ export default function GodsEyeMap({
     if (!ctx) return;
 
     let animId: number;
-    let width = (canvas.width = canvas.parentElement?.clientWidth || window.innerWidth);
-    let height = (canvas.height = canvas.parentElement?.clientHeight || 600);
+    let width = 0;
+    let height = 0;
+    const sizeCanvas = () => {
+      const dpr = window.devicePixelRatio || 1;
+      width = canvas.parentElement?.clientWidth || window.innerWidth;
+      height = canvas.parentElement?.clientHeight || 600;
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    };
+    sizeCanvas();
 
     // Official NASA Scientific Visualization Studio (SVS-4851) Deep Space Star Map & Milky Way Panorama
     const nasaMilkyWayImg = typeof window !== 'undefined' ? new window.Image() : null;
     let nasaImgLoaded = false;
     if (nasaMilkyWayImg) {
-      nasaMilkyWayImg.src = '/assets/nasa-svs-starmap.jpg';
+      const devicePx = Math.max(window.screen.width, window.screen.height) * (window.devicePixelRatio || 1);
+      nasaMilkyWayImg.src = devicePx >= STARMAP_8K_MIN_DEVICE_PX ? '/assets/nasa-svs-starmap-8k.jpg' : '/assets/nasa-svs-starmap.jpg';
       nasaMilkyWayImg.onload = () => {
         nasaImgLoaded = true;
       };
@@ -399,8 +429,7 @@ export default function GodsEyeMap({
 
     const onResize = () => {
       if (!canvas) return;
-      width = canvas.width = canvas.parentElement?.clientWidth || window.innerWidth;
-      height = canvas.height = canvas.parentElement?.clientHeight || 600;
+      sizeCanvas();
     };
     window.addEventListener('resize', onResize);
 
@@ -1826,6 +1855,17 @@ export default function GodsEyeMap({
           />
           {/* Map Surface: Mount MapLibre globe container directly with transparent deep space */}
           <div ref={containerRef} className="absolute inset-0 z-10" />
+          <div className="absolute top-3 right-3 z-20 flex flex-row-reverse items-center gap-2 font-mono">
+            <button
+              type="button"
+              onClick={save8k}
+              disabled={export8kStatus === 'rendering…'}
+              className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold tracking-wider border bg-[#070d18]/90 text-[#38bdf8] border-[#38bdf8]/60 hover:border-[#38bdf8] disabled:opacity-60"
+            >
+              SAVE 8K PNG
+            </button>
+            {export8kStatus && <span className="text-[10px] text-slate-300 bg-[#070d18]/80 rounded px-1.5 py-0.5">{export8kStatus}</span>}
+          </div>
           {/* NASA ASTROMETRIC STAR TELEMETRY HUD (50 VERIFIED STELLAR METRICS) */}
           {selectedAstroStar && (
             <div className="absolute top-16 left-4 z-20 max-w-sm rounded-2xl bg-[#070e1c]/90 backdrop-blur-xl border border-[#38bdf8]/50 p-4 shadow-[0_12px_36px_rgba(0,0,0,0.85)] text-xs font-mono space-y-2.5 animate-fadeIn">
