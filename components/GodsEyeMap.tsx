@@ -19,7 +19,7 @@ import { addGaTrafficLayers } from '../lib/ga-traffic-layer';
 import { addGaHydrometLayers } from '../lib/ga-hydromet-layer';
 import { addGaAnomalyBulbs } from '../lib/ga-anomaly-bulbs';
 import { addGaChangeLayer } from '../lib/ga-change-layer';
-import { scaleMarkersInsideGaWall, type RadiusExpression } from '../lib/ga-marker-scale';
+import { glowRadius, scaleMarkersInsideGaWall, type RadiusExpression } from '../lib/ga-marker-scale';
 import { exportMapAt8k } from '../lib/map-8k-export';
 
 const ALLY_STATE_CODES = ['AL', 'FL', 'NC', 'SC', 'TN', 'TX', 'VA'];
@@ -175,11 +175,11 @@ const GA_BOUNDS: maplibregl.LngLatBoundsLike = [
 
 const GA_WALL_MARKER_RADII: Record<string, RadiusExpression> = {
   'anomaly-clusters': (k) => ['*', k, ['step', ['get', 'point_count'], 18, 5, 24, 15, 32]],
-  'anomaly-pulse': (k) => ['interpolate', ['linear'], ['zoom'], 5, ['*', 12, k], 12, ['*', 24, k]],
+  'anomaly-pulse': (k, g) => ['interpolate', ['linear'], ['zoom'], 5, ['*', glowRadius(6, 12, g), k], 12, ['*', glowRadius(14, 24, g), k]],
   'anomaly-points': (k) => ['interpolate', ['linear'], ['zoom'], 5, ['*', 6, k], 12, ['*', 14, k]],
-  'godseye-entities-halo': (k) => ['*', 12, k],
+  'godseye-entities-halo': (k, g) => ['*', glowRadius(5.5, 12, g), k],
   'godseye-entities-core': (k) => ['*', 5.5, k],
-  'telemetry-pulse-glow': (k) => ['*', 14, k],
+  'telemetry-pulse-glow': (k, g) => ['*', glowRadius(5, 14, g), k],
   'telemetry-pulse-core': (k) => ['*', 5, k],
 };
 

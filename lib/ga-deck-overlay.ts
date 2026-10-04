@@ -3,7 +3,7 @@ import type { MapLibreOverlay } from '@deck.gl/maplibre';
 import type { Map as MapLibreMap } from 'maplibre-gl';
 import { insideRing, loadGaWallRing, type LngLat } from './ga-patrol-3d';
 import { reportGaFeed } from './ga-live-status';
-import { GA_MARKER_SCALE } from './ga-marker-scale';
+import { GA_MARKER_SCALE, gaGlowMultiplier } from './ga-marker-scale';
 
 export type RGBA = [number, number, number, number];
 export interface GaDeckItem {
@@ -234,7 +234,7 @@ function createLayers(state: DeckState): Layer[] {
         id: `ga-deck-${key}-bloom`,
         data: glow,
         getPosition: (item: GaDeckItem) => item.coord,
-        getRadius: (item: GaDeckItem) => item.radiusPx * GA_MARKER_SCALE * 3.2,
+        getRadius: (item: GaDeckItem) => item.radiusPx * GA_MARKER_SCALE * gaGlowMultiplier(3.2),
         getFillColor: (item: GaDeckItem) => [item.stroke[0], item.stroke[1], item.stroke[2], Math.round(255 * 0.18 * Math.max(0, Math.min(1, item.glow ?? 0)))],
         radiusUnits: 'pixels',
         lineWidthUnits: 'pixels',
@@ -246,7 +246,7 @@ function createLayers(state: DeckState): Layer[] {
         id: `ga-deck-${key}-halo`,
         data: glow,
         getPosition: (item: GaDeckItem) => item.coord,
-        getRadius: (item: GaDeckItem) => item.radiusPx * GA_MARKER_SCALE * 2,
+        getRadius: (item: GaDeckItem) => item.radiusPx * GA_MARKER_SCALE * gaGlowMultiplier(2),
         getFillColor: (item: GaDeckItem) => [item.stroke[0], item.stroke[1], item.stroke[2], Math.round(255 * 0.45 * Math.max(0, Math.min(1, item.glow ?? 0)))],
         radiusUnits: 'pixels',
         lineWidthUnits: 'pixels',
@@ -279,7 +279,7 @@ function createLayers(state: DeckState): Layer[] {
         getFillColor: [0, 0, 0, 0],
         getLineColor: (item: GaDeckItem) => item.stroke,
         getLineWidth: (item: GaDeckItem) => item.strokePx,
-        radiusScale: state.pulseRadiusScale,
+        radiusScale: gaGlowMultiplier(state.pulseRadiusScale),
         opacity: state.pulseOpacity,
         radiusUnits: 'pixels',
         lineWidthUnits: 'pixels',
