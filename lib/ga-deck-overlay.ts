@@ -22,7 +22,7 @@ export interface GaDeckGroup {
   onClick: (map: MapLibreMap, lngLat: LngLat, props: Record<string, unknown>) => void;
 }
 
-type GroupKey = 'bulbs' | 'traffic' | 'gauges' | 'imagery';
+type GroupKey = 'bulbs' | 'traffic' | 'gauges' | 'imagery' | 'fires';
 type Renderer = 'webgl2' | 'webgpu';
 type Point = { x: number; y: number };
 type DeckModules = {
@@ -163,6 +163,7 @@ function snapshot(state: DeckState): DeckSnapshot {
       traffic: state.groups.get('traffic')?.items.length ?? 0,
       gauges: state.groups.get('gauges')?.items.length ?? 0,
       imagery: state.groups.get('imagery')?.items.length ?? 0,
+      fires: state.groups.get('fires')?.items.length ?? 0,
     },
     pulse: { radiusScale: state.pulseRadiusScale, opacity: state.pulseOpacity },
   };

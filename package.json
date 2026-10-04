@@ -36,6 +36,7 @@
     "postcss": "^8.5.28",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
+    "satellite.js": "6.0.2",
     "tailwindcss": "^4.3.3",
     "three": "^0.186.1",
     "web-vitals": "^6.2.2",
