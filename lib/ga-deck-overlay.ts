@@ -22,7 +22,7 @@ export interface GaDeckGroup {
   onClick: (map: MapLibreMap, lngLat: LngLat, props: Record<string, unknown>) => void;
 }
 
-type GroupKey = 'bulbs' | 'traffic' | 'gauges' | 'imagery' | 'fires';
+type GroupKey = 'bulbs' | 'traffic' | 'gauges' | 'imagery' | 'fires' | 'aircraft' | 'transit' | 'micromobility' | 'stations' | 'streamgauges';
 type Renderer = 'webgl2' | 'webgpu';
 type Point = { x: number; y: number };
 type DeckModules = {
@@ -91,6 +91,7 @@ const ADDITIVE_PARAMETERS = {
 } as const;
 const BENCH_COLOR: RGBA = [0, 255, 255, 153];
 const SOURCE_URL = 'https://deck.gl/docs/developer-guide/webgpu';
+const HIT_BOX_PX = 24;
 
 function getState(map: MapLibreMap): DeckState {
   let state = states.get(map);
@@ -164,6 +165,11 @@ function snapshot(state: DeckState): DeckSnapshot {
       gauges: state.groups.get('gauges')?.items.length ?? 0,
       imagery: state.groups.get('imagery')?.items.length ?? 0,
       fires: state.groups.get('fires')?.items.length ?? 0,
+      aircraft: state.groups.get('aircraft')?.items.length ?? 0,
+      transit: state.groups.get('transit')?.items.length ?? 0,
+      micromobility: state.groups.get('micromobility')?.items.length ?? 0,
+      stations: state.groups.get('stations')?.items.length ?? 0,
+      streamgauges: state.groups.get('streamgauges')?.items.length ?? 0,
     },
     pulse: { radiusScale: state.pulseRadiusScale, opacity: state.pulseOpacity },
   };
@@ -191,10 +197,19 @@ function publishState(map: MapLibreMap, state: DeckState): void {
 
 function hitAt(map: MapLibreMap, state: DeckState, point: Point): { group: GaDeckGroup; item: GaDeckItem } | null {
   const groups = [...state.groups.values()].sort((a, b) => b.z - a.z);
+  const corners = [[-HIT_BOX_PX, -HIT_BOX_PX], [HIT_BOX_PX, -HIT_BOX_PX], [HIT_BOX_PX, HIT_BOX_PX], [-HIT_BOX_PX, HIT_BOX_PX]].map(([dx, dy]) =>
+    map.unproject([point.x + dx, point.y + dy]),
+  );
+  const lngs = corners.map((c) => c.lng);
+  const lats = corners.map((c) => c.lat);
+  const bounds = corners.every((c) => Number.isFinite(c.lng) && Number.isFinite(c.lat))
+    ? { w: Math.min(...lngs), e: Math.max(...lngs), s: Math.min(...lats), n: Math.max(...lats) }
+    : null;
   for (const group of groups) {
     let closest: GaDeckItem | null = null;
     let closestDistance = Infinity;
     for (const item of group.items) {
+      if (bounds && (item.coord[0] < bounds.w || item.coord[0] > bounds.e || item.coord[1] < bounds.s || item.coord[1] > bounds.n)) continue;
       const projected = map.project(item.coord);
       const distance = Math.hypot(projected.x - point.x, projected.y - point.y);
       if (distance <= Math.max(item.radiusPx * GA_MARKER_SCALE + item.strokePx, 8) && distance < closestDistance) {

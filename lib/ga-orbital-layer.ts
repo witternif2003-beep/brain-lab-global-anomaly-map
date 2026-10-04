@@ -47,7 +47,7 @@ interface FirePayload {
 
 const bound = new WeakSet<MapLibreMap>();
 
-function box(title: string, rows: [string, string][], href: string, link: string) {
+export function box(title: string, rows: [string, string][], href: string, link: string) {
   const el = document.createElement('div');
   el.style.cssText = 'font:11px ui-monospace,monospace;color:#0f172a;line-height:1.45';
   const h = document.createElement('div');

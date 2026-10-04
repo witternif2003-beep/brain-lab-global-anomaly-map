@@ -20,6 +20,7 @@ import { addGaHydrometLayers } from '../lib/ga-hydromet-layer';
 import { addGaAnomalyBulbs } from '../lib/ga-anomaly-bulbs';
 import { addGaChangeLayer } from '../lib/ga-change-layer';
 import { addGaOrbitalLayers } from '../lib/ga-orbital-layer';
+import { addGaLiveMarkerLayers } from '../lib/ga-live-markers-layer';
 import { glowRadius, scaleMarkersInsideGaWall, type RadiusExpression } from '../lib/ga-marker-scale';
 import { exportMapAt8k } from '../lib/map-8k-export';
 
@@ -971,6 +972,7 @@ export default function GodsEyeMap({
     addGaAnomalyBulbs(map);
     addGaChangeLayer(map);
     addGaOrbitalLayers(map);
+    addGaLiveMarkerLayers(map);
     addGaPatrolLayers(map);
     addGaCompetitorLayers(map);
     addDisneyLiveBoard(map);
