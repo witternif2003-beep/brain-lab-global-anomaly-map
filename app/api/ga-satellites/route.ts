@@ -12,6 +12,8 @@ const GROUPS: Record<string, string> = {
   science: "Science",
   geodetic: "Geodetic",
   "gps-ops": "GPS",
+  visual: "Brightest",
+  amateur: "Amateur radio",
 };
 const SATNOGS = "https://db.satnogs.org/api/tle/?format=json";
 const TTL_MS = 2 * 60 * 60_000;

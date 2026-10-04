@@ -1,4 +1,4 @@
-import { degreesLat, degreesLong, eciToGeodetic, gstime, propagate, type SatRec } from "satellite.js";
+import { degreesLat, degreesLong, degreesToRadians, ecfToLookAngles, eciToEcf, eciToGeodetic, gstime, propagate, type SatRec } from "satellite.js";
 
 export interface TleEntry {
   name: string;
@@ -69,4 +69,18 @@ export function subPoint(satrec: SatRec, date: Date): SatPosition | null {
   const lat = degreesLat(geo.latitude);
   if (!Number.isFinite(lon) || !Number.isFinite(lat) || !Number.isFinite(geo.height)) return null;
   return { lon, lat, altKm: geo.height, speedKmS: Math.sqrt(x * x + y * y + z * z) };
+}
+
+/** Central Georgia, used as the reference observer for "above the horizon from Georgia". */
+export const GA_OBSERVER = { lat: 32.68, lon: -83.22, heightKm: 0.1 };
+
+/** Elevation of the satellite above the local horizon at `observer`, in degrees, or null if propagation fails. */
+export function elevationDeg(satrec: SatRec, date: Date, observer = GA_OBSERVER): number | null {
+  const pv = propagate(satrec, date);
+  if (!pv || typeof pv.position !== "object") return null;
+  const look = ecfToLookAngles(
+    { latitude: degreesToRadians(observer.lat), longitude: degreesToRadians(observer.lon), height: observer.heightKm },
+    eciToEcf(pv.position, gstime(date)),
+  );
+  return (look.elevation * 180) / Math.PI;
 }

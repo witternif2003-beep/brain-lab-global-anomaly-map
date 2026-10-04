@@ -6,7 +6,7 @@ import { reportGaFeed } from './ga-live-status';
 import { hitsGaDeck, setGaDeckGroup } from './ga-deck-overlay';
 import { hexToRgba } from './ga-point-colors';
 import { GA_GLOW_SCALE, GA_MARKER_SCALE } from './ga-marker-scale';
-import { subPoint, type TleEntry } from './ga-satellites/tle';
+import { elevationDeg, subPoint, type TleEntry } from './ga-satellites/tle';
 import type { FireConfidence } from './ga-fires/parse';
 
 const SATS = 'ga-satellites';
@@ -19,10 +19,12 @@ const FIRE_REFRESH_MS = 10 * 60_000;
 const REGION = { west: -97, south: 22, east: -68, north: 44 };
 const TRACK_MIN = { back: 3, ahead: 9 };
 const STALE_EPOCH_DAYS = 7;
+const MIN_ELEVATION_DEG = 10;
+const LEO_MAX_KM = 2_000;
 
 const GROUP_COLOR: ExpressionSpecification = [
   'match', ['get', 'group'],
-  'Space stations', '#f472b6', 'Weather', '#38bdf8', 'Earth resources', '#4ade80', 'Science', '#c084fc', 'Geodetic', '#fbbf24', 'GPS', '#94a3b8',
+  'Space stations', '#f472b6', 'Weather', '#38bdf8', 'Earth resources', '#4ade80', 'Science', '#c084fc', 'Geodetic', '#fbbf24', 'GPS', '#94a3b8', 'Brightest', '#fde047', 'Amateur radio', '#fb923c',
   '#e2e8f0',
 ];
 const CORE_PX = 4.5;
@@ -80,7 +82,8 @@ function satPopup(map: MapLibreMap, e: MapLayerMouseEvent) {
     [
       ['NORAD ID', String(p.norad)],
       ['Group', String(p.group)],
-      ['Over Georgia now', p.overhead === true || p.overhead === 'true' ? 'yes' : 'no'],
+      ['Directly over the GA wall', p.overhead === true || p.overhead === 'true' ? 'yes' : 'no'],
+      ['Elevation from central GA', p.elevationDeg === null || p.elevationDeg === undefined ? '' : `${Number(p.elevationDeg).toFixed(1)}° ${Number(p.elevationDeg) >= MIN_ELEVATION_DEG ? '(above the horizon)' : '(not usefully visible)'}`],
       ['Altitude', `${Number(p.altKm).toFixed(0)} km`],
       ['Speed', `${Number(p.speedKmS).toFixed(2)} km/s`],
       ['Sub-point', `${Number(p.lat).toFixed(3)}, ${Number(p.lon).toFixed(3)}`],
@@ -142,7 +145,7 @@ export function addGaOrbitalLayers(map: MapLibreMap): void {
       paint: {
         'circle-radius': inWall(CORE_PX * 0.7, CORE_PX * GA_MARKER_SCALE),
         'circle-color': GROUP_COLOR,
-        'circle-opacity': inWall(0.55, 1),
+        'circle-opacity': ['case', ['any', ['get', 'overhead'], ['get', 'visible']], 1, 0.45],
         'circle-stroke-color': '#0b1220',
         'circle-stroke-width': 1,
       },
@@ -150,7 +153,7 @@ export function addGaOrbitalLayers(map: MapLibreMap): void {
   }
   if (!map.getLayer(`${SATS}-label`)) {
     map.addLayer({
-      id: `${SATS}-label`, type: 'symbol', source: SATS, filter: ['==', ['get', 'overhead'], true], minzoom: 5,
+      id: `${SATS}-label`, type: 'symbol', source: SATS, filter: ['any', ['==', ['get', 'overhead'], true], ['==', ['get', 'visible'], true]], minzoom: 5,
       layout: { 'text-field': ['get', 'label'], 'text-size': 10, 'text-offset': [0, 1.1], 'text-anchor': 'top', 'text-max-width': 16 },
       paint: { 'text-color': GROUP_COLOR, 'text-halo-color': '#020617', 'text-halo-width': 1.4 },
     });
@@ -184,7 +187,7 @@ export function addGaOrbitalLayers(map: MapLibreMap): void {
       });
       tick();
     } catch (err) {
-      reportGaFeed(map, { id: 'satellites', label: 'Satellites over GA (TLE)', color: '#38bdf8', count: null, updatedAt: null, sourceUrl: 'https://celestrak.org/NORAD/elements/', error: String(err) });
+      reportGaFeed(map, { id: 'satellites', label: `Satellites above GA horizon (≥${MIN_ELEVATION_DEG}°)`, color: '#38bdf8', count: null, updatedAt: null, sourceUrl: 'https://celestrak.org/NORAD/elements/', error: String(err) });
     }
   };
 
@@ -196,25 +199,29 @@ export function addGaOrbitalLayers(map: MapLibreMap): void {
     const tracks: GeoJSON.Feature<GeoJSON.LineString>[] = [];
     for (const sat of tracked) {
       const p = subPoint(sat.satrec, date);
-      if (!p || !inRegion(p.lon, p.lat)) continue;
+      if (!p) continue;
+      const elev = elevationDeg(sat.satrec, date);
+      const visible = elev !== null && elev >= MIN_ELEVATION_DEG;
+      if (!visible && !inRegion(p.lon, p.lat)) continue;
       const overhead = ring.length > 3 && insideRing(ring, [p.lon, p.lat]);
       points.push({
         type: 'Feature',
         geometry: { type: 'Point', coordinates: [p.lon, p.lat] },
-        properties: { name: sat.name, norad: sat.norad, group: sat.group, epoch: sat.epoch, overhead, altKm: p.altKm, speedKmS: p.speedKmS, lon: p.lon, lat: p.lat, label: `${sat.name} · ${p.altKm.toFixed(0)} km` },
+        properties: { name: sat.name, norad: sat.norad, group: sat.group, epoch: sat.epoch, overhead, visible, elevationDeg: elev, altKm: p.altKm, speedKmS: p.speedKmS, lon: p.lon, lat: p.lat, label: `${sat.name} · ${p.altKm.toFixed(0)} km` },
       });
-      if (overhead) {
+      if (overhead || (visible && p.altKm < LEO_MAX_KM)) {
         const t = trackLine(sat, now);
         if (t) tracks.push(t);
       }
     }
     (map.getSource(SATS) as GeoJSONSource | undefined)?.setData({ type: 'FeatureCollection', features: points });
     (map.getSource(TRACKS) as GeoJSONSource | undefined)?.setData({ type: 'FeatureCollection', features: tracks });
-    const over = points.filter((f) => f.properties?.overhead);
-    const names = over.slice(0, 3).map((f) => String(f.properties?.name)).join(', ');
+    const over = points.filter((f) => f.properties?.overhead).length;
+    const vis = points.filter((f) => f.properties?.visible).sort((a, b) => Number(b.properties?.elevationDeg) - Number(a.properties?.elevationDeg));
+    const names = vis.slice(0, 3).map((f) => String(f.properties?.name)).join(', ');
     reportGaFeed(map, {
-      id: 'satellites', label: 'Satellites over GA (TLE)', color: '#38bdf8', count: over.length,
-      detail: `${tracked.length} tracked · ${points.length} in region${names ? ` · ${names}${over.length > 3 ? '…' : ''}` : ''}${satMeta.errors?.length ? ` · ${satMeta.errors.length} group(s) failed` : ''}`,
+      id: 'satellites', label: `Satellites above GA horizon (≥${MIN_ELEVATION_DEG}°)`, color: '#38bdf8', count: vis.length,
+      detail: `${over} directly over the wall · ${tracked.length} tracked${names ? ` · highest: ${names}` : ''}${satMeta.errors?.length ? ` · ${satMeta.errors.length} group(s) failed` : ''}`,
       updatedAt: date.toISOString(), sourceUrl: satMeta.sourceUrl ?? 'https://celestrak.org/NORAD/elements/',
       error: satMeta.source?.includes('unreachable') ? 'CelesTrak unreachable; using SatNOGS element sets' : null,
     });
