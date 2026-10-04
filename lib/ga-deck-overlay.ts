@@ -3,6 +3,7 @@ import type { MapLibreOverlay } from '@deck.gl/maplibre';
 import type { Map as MapLibreMap } from 'maplibre-gl';
 import { insideRing, loadGaWallRing, type LngLat } from './ga-patrol-3d';
 import { reportGaFeed } from './ga-live-status';
+import { GA_MARKER_SCALE } from './ga-marker-scale';
 
 export type RGBA = [number, number, number, number];
 export interface GaDeckItem {
@@ -195,7 +196,7 @@ function hitAt(map: MapLibreMap, state: DeckState, point: Point): { group: GaDec
     for (const item of group.items) {
       const projected = map.project(item.coord);
       const distance = Math.hypot(projected.x - point.x, projected.y - point.y);
-      if (distance <= Math.max(item.radiusPx + item.strokePx, 8) && distance < closestDistance) {
+      if (distance <= Math.max(item.radiusPx * GA_MARKER_SCALE + item.strokePx, 8) && distance < closestDistance) {
         closest = item;
         closestDistance = distance;
       }
@@ -233,7 +234,7 @@ function createLayers(state: DeckState): Layer[] {
         id: `ga-deck-${key}-bloom`,
         data: glow,
         getPosition: (item: GaDeckItem) => item.coord,
-        getRadius: (item: GaDeckItem) => item.radiusPx * 3.2,
+        getRadius: (item: GaDeckItem) => item.radiusPx * GA_MARKER_SCALE * 3.2,
         getFillColor: (item: GaDeckItem) => [item.stroke[0], item.stroke[1], item.stroke[2], Math.round(255 * 0.18 * Math.max(0, Math.min(1, item.glow ?? 0)))],
         radiusUnits: 'pixels',
         lineWidthUnits: 'pixels',
@@ -245,7 +246,7 @@ function createLayers(state: DeckState): Layer[] {
         id: `ga-deck-${key}-halo`,
         data: glow,
         getPosition: (item: GaDeckItem) => item.coord,
-        getRadius: (item: GaDeckItem) => item.radiusPx * 2,
+        getRadius: (item: GaDeckItem) => item.radiusPx * GA_MARKER_SCALE * 2,
         getFillColor: (item: GaDeckItem) => [item.stroke[0], item.stroke[1], item.stroke[2], Math.round(255 * 0.45 * Math.max(0, Math.min(1, item.glow ?? 0)))],
         radiusUnits: 'pixels',
         lineWidthUnits: 'pixels',
@@ -258,7 +259,7 @@ function createLayers(state: DeckState): Layer[] {
       id: `ga-deck-${key}-core`,
       data: group.items,
       getPosition: (item: GaDeckItem) => item.coord,
-      getRadius: (item: GaDeckItem) => item.radiusPx,
+      getRadius: (item: GaDeckItem) => item.radiusPx * GA_MARKER_SCALE,
       getFillColor: (item: GaDeckItem) => item.fill,
       getLineColor: (item: GaDeckItem) => item.stroke,
       getLineWidth: (item: GaDeckItem) => item.strokePx,
@@ -274,7 +275,7 @@ function createLayers(state: DeckState): Layer[] {
         id: `ga-deck-${key}-pulse`,
         data: pulse,
         getPosition: (item: GaDeckItem) => item.coord,
-        getRadius: (item: GaDeckItem) => item.radiusPx,
+        getRadius: (item: GaDeckItem) => item.radiusPx * GA_MARKER_SCALE,
         getFillColor: [0, 0, 0, 0],
         getLineColor: (item: GaDeckItem) => item.stroke,
         getLineWidth: (item: GaDeckItem) => item.strokePx,

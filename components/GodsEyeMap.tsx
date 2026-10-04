@@ -19,6 +19,7 @@ import { addGaTrafficLayers } from '../lib/ga-traffic-layer';
 import { addGaHydrometLayers } from '../lib/ga-hydromet-layer';
 import { addGaAnomalyBulbs } from '../lib/ga-anomaly-bulbs';
 import { addGaChangeLayer } from '../lib/ga-change-layer';
+import { scaleMarkersInsideGaWall, type RadiusExpression } from '../lib/ga-marker-scale';
 
 const ALLY_STATE_CODES = ['AL', 'FL', 'NC', 'SC', 'TN', 'TX', 'VA'];
 
@@ -169,6 +170,16 @@ const GA_BOUNDS: maplibregl.LngLatBoundsLike = [
   [-85.6, 30.3], // SW
   [-80.8, 35.0], // NE
 ];
+
+const GA_WALL_MARKER_RADII: Record<string, RadiusExpression> = {
+  'anomaly-clusters': (k) => ['*', k, ['step', ['get', 'point_count'], 18, 5, 24, 15, 32]],
+  'anomaly-pulse': (k) => ['interpolate', ['linear'], ['zoom'], 5, ['*', 12, k], 12, ['*', 24, k]],
+  'anomaly-points': (k) => ['interpolate', ['linear'], ['zoom'], 5, ['*', 6, k], 12, ['*', 14, k]],
+  'godseye-entities-halo': (k) => ['*', 12, k],
+  'godseye-entities-core': (k) => ['*', 5.5, k],
+  'telemetry-pulse-glow': (k) => ['*', 14, k],
+  'telemetry-pulse-core': (k) => ['*', 5, k],
+};
 
 // Initial baseline anomalies converted to GeoJSON Feature collection
 const INITIAL_ANOMALIES: AnomalyFeature[] = GEORGIA_ANOMALIES.map((a, idx) => ({
@@ -1287,6 +1298,8 @@ export default function GodsEyeMap({
         },
       });
     }
+
+    scaleMarkersInsideGaWall(map, GA_WALL_MARKER_RADII);
 
     // Dynamic Directional Heading Chevron (Rotating in real-time with bearing)
     if (!map.getLayer('telemetry-pulse-arrow')) {
