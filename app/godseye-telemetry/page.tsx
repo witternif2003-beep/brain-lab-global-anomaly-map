@@ -2,6 +2,7 @@
 import StatewideAnomalyDashboard from "../../components/StatewideAnomalyDashboard";
 import PublicAdvisoryStream from "../../components/PublicAdvisoryStream";
 import GeorgiaAggregateTelemetry from "../../components/GeorgiaAggregateTelemetry";
+import GeorgiaUcrStatewide from "../../components/GeorgiaUcrStatewide";
 import TerritoryCatalogPanel from "../../components/TerritoryCatalogPanel";
 import FbiDataSection from "../../components/fbi/FbiDataSection";
 import React, { useState, useEffect } from "react";
@@ -52,6 +53,7 @@ export default function GodsEyeTelemetryPage() {
       <div id="nsa-statewide-dashboard" className="w-full scroll-mt-24 space-y-4">
         <StatewideAnomalyDashboard />
         <GeorgiaAggregateTelemetry />
+        <GeorgiaUcrStatewide />
         <PublicAdvisoryStream />
       </div>
 
