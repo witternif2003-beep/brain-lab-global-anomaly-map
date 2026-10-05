@@ -31,7 +31,7 @@ export interface GaDeckGroup {
   onClick: (map: MapLibreMap, lngLat: LngLat, props: Record<string, unknown>) => void;
 }
 
-type GroupKey = 'bulbs' | 'traffic' | 'gauges' | 'imagery' | 'fires' | 'aircraft' | 'transit' | 'micromobility' | 'stations' | 'streamgauges';
+export type GroupKey = 'bulbs' | 'traffic' | 'gauges' | 'imagery' | 'fires' | 'aircraft' | 'transit' | 'micromobility' | 'stations' | 'streamgauges';
 type Renderer = 'webgl2' | 'webgpu';
 type Point = { x: number; y: number };
 type DeckModules = {
@@ -86,6 +86,7 @@ interface DeckState {
   benchData: BenchData | null;
   published: DeckSnapshot | null;
   zoom: number;
+  focus: ReadonlySet<GroupKey> | null;
 }
 
 const states = new WeakMap<MapLibreMap, DeckState>();
@@ -131,6 +132,7 @@ function getState(map: MapLibreMap): DeckState {
     benchData: null,
     published: null,
     zoom: map.getZoom(),
+    focus: null,
   };
   states.set(map, state);
   publishState(map, state);
@@ -215,7 +217,7 @@ function publishState(map: MapLibreMap, state: DeckState): void {
 }
 
 function hitAt(map: MapLibreMap, state: DeckState, point: Point): { group: GaDeckGroup; item: GaDeckItem } | null {
-  const groups = [...state.groups.values()].sort((a, b) => b.z - a.z);
+  const groups = [...state.groups.entries()].filter(([key]) => shown(state, key)).map(([, group]) => group).sort((a, b) => b.z - a.z);
   const corners = [[-HIT_BOX_PX, -HIT_BOX_PX], [HIT_BOX_PX, -HIT_BOX_PX], [HIT_BOX_PX, HIT_BOX_PX], [-HIT_BOX_PX, HIT_BOX_PX]].map(([dx, dy]) =>
     map.unproject([point.x + dx, point.y + dy]),
   );
@@ -262,6 +264,7 @@ function groupViews(group: GaDeckGroup): GroupViews {
   return views;
 }
 
+const shown = (state: DeckState, key: GroupKey) => !state.focus || state.focus.has(key);
 const showsLabels = (state: DeckState, group: GaDeckGroup) => group.labelMinZoom !== undefined && state.zoom >= group.labelMinZoom;
 const labelKeys = (state: DeckState) => [...state.groups.entries()].filter(([, g]) => showsLabels(state, g)).map(([k]) => k).join(',');
 const LABEL_FONT = '"JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace';
@@ -271,7 +274,7 @@ function createLayers(state: DeckState): Layer[] {
   const { ScatterplotLayer, IconLayer, TextLayer } = state.modules;
   const layers: Layer[] = [];
   const labelLayers: Layer[] = [];
-  for (const [key, group] of [...state.groups.entries()].sort((a, b) => a[1].z - b[1].z)) {
+  for (const [key, group] of [...state.groups.entries()].filter(([k]) => shown(state, k)).sort((a, b) => a[1].z - b[1].z)) {
     const { glow, pulse, dots, icons, labels } = groupViews(group);
     if (glow.length) {
       layers.push(new ScatterplotLayer({
@@ -640,4 +643,11 @@ export function setGaDeckGroup(map: MapLibreMap, key: GroupKey, group: GaDeckGro
   publishState(map, state);
   if (state.overlay) updateLayers(state);
   if (!state.initPromise) state.initPromise = initialize(map, state);
+}
+
+/** Draws only the given groups (all groups when `keys` is null). */
+export function setGaDeckFocus(map: MapLibreMap, keys: readonly GroupKey[] | null): void {
+  const state = getState(map);
+  state.focus = keys ? new Set(keys) : null;
+  updateLayers(state);
 }

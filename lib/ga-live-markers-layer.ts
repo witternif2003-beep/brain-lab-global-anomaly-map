@@ -1,8 +1,8 @@
 import { Popup } from 'maplibre-gl';
-import type { Map as MapLibreMap } from 'maplibre-gl';
+import type { IControl, Map as MapLibreMap } from 'maplibre-gl';
 import { insideRing, loadGaWallRing, offset, type LngLat } from './ga-patrol-3d';
 import { reportGaFeed } from './ga-live-status';
-import { setGaDeckGroup, type GaDeckItem } from './ga-deck-overlay';
+import { setGaDeckFocus, setGaDeckGroup, type GaDeckItem, type GroupKey } from './ga-deck-overlay';
 import { hexToRgba } from './ga-point-colors';
 import type { GaIconShape } from './ga-marker-icons';
 import { box } from './ga-orbital-layer';
@@ -109,6 +109,71 @@ const SPECS: Record<LiveLayer, Spec> = {
 };
 
 const bound = new WeakSet<MapLibreMap>();
+const FOCUS_GROUPS: readonly GroupKey[] = ['aircraft', 'transit', 'micromobility'];
+const FOCUS_KEEP = /^(sat|ga-fill|ga-glow|ga-outline|ally-|ga-wall-)/;
+
+/** Toggle that hides every other overlay so all aircraft, transit buses and scooters/bikes inside the wall stand out. */
+class GaLiveFocusControl implements IControl {
+  private map: MapLibreMap | null = null;
+  private button: HTMLButtonElement | null = null;
+  private hidden = new Set<string>();
+  private active = false;
+  private readonly onStyle = () => this.hideOthers();
+
+  onAdd(map: MapLibreMap): HTMLElement {
+    this.map = map;
+    const el = document.createElement('div');
+    el.className = 'maplibregl-ctrl';
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.style.cssText =
+      'background:rgba(7,14,28,.92);border:1px solid rgba(56,189,248,.6);border-radius:10px;color:#e2e8f0;font:700 10px ui-monospace,monospace;letter-spacing:.06em;padding:6px 9px;cursor:pointer;max-width:min(230px,60vw);text-align:left';
+    button.addEventListener('click', () => this.toggle());
+    el.append(button);
+    this.button = button;
+    this.paint();
+    return el;
+  }
+
+  onRemove(): void {
+    this.map?.off('styledata', this.onStyle);
+    this.button?.parentElement?.remove();
+    this.map = null;
+  }
+
+  private paint(): void {
+    if (!this.button) return;
+    this.button.textContent = this.active ? 'SHOW ALL LAYERS' : 'SHOW ONLY AIRCRAFT · TRANSIT · SCOOTERS';
+    this.button.setAttribute('aria-pressed', String(this.active));
+    this.button.style.color = this.active ? '#38bdf8' : '#e2e8f0';
+  }
+
+  private hideOthers(): void {
+    const map = this.map;
+    if (!map || !this.active) return;
+    for (const layer of map.getStyle().layers ?? []) {
+      if (FOCUS_KEEP.test(layer.id) || this.hidden.has(layer.id) || map.getLayoutProperty(layer.id, 'visibility') === 'none') continue;
+      this.hidden.add(layer.id);
+      map.setLayoutProperty(layer.id, 'visibility', 'none');
+    }
+  }
+
+  private toggle(): void {
+    const map = this.map;
+    if (!map) return;
+    this.active = !this.active;
+    if (this.active) {
+      this.hideOthers();
+      map.on('styledata', this.onStyle);
+    } else {
+      map.off('styledata', this.onStyle);
+      for (const id of this.hidden) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', 'visible');
+      this.hidden.clear();
+    }
+    setGaDeckFocus(map, this.active ? FOCUS_GROUPS : null);
+    this.paint();
+  }
+}
 
 function sourceLink(layer: LiveLayer, m: LiveMarker): { href: string; text: string } {
   if (layer === 'streamgauges') return { href: `https://waterdata.usgs.gov/monitoring-location/${encodeURIComponent(String(m.props.site))}/`, text: 'USGS site page ↗' };
@@ -189,6 +254,8 @@ export function addGaLiveMarkerLayers(map: MapLibreMap): void {
     }
   };
 
+  const focus = new GaLiveFocusControl();
+  map.addControl(focus, 'top-right');
   const layers = Object.keys(SPECS) as LiveLayer[];
   layers.forEach((l) => void load(l));
   const timers = [
