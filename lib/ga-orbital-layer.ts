@@ -28,6 +28,20 @@ const GROUP_COLOR: ExpressionSpecification = [
   '#e2e8f0',
 ];
 const CORE_PX = 4.5;
+const LABEL_CHIP = 'ga-label-chip';
+
+/** 24×24 rounded see-through chip with a faint cyan rim, stretched behind label text. */
+function labelChip(): { width: number; height: number; data: Uint8Array } {
+  const n = 24, r = 6, data = new Uint8Array(n * n * 4);
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+    const dx = Math.max(r - x - 0.5, 0, x + 0.5 - (n - r)), dy = Math.max(r - y - 0.5, 0, y + 0.5 - (n - r));
+    const d = r - Math.hypot(dx, dy);
+    if (d < 0) continue;
+    const rim = d < 1.5, i = (y * n + x) * 4;
+    data.set(rim ? [56, 189, 248, 120] : [2, 6, 23, 125], i);
+  }
+  return { width: n, height: n, data };
+}
 const GLOW_PX = 11;
 const inWall = (outside: number, inside: number): ExpressionSpecification => ['case', ['get', 'overhead'], inside, outside];
 
@@ -151,11 +165,15 @@ export function addGaOrbitalLayers(map: MapLibreMap): void {
       },
     });
   }
+  if (!map.hasImage(LABEL_CHIP)) map.addImage(LABEL_CHIP, labelChip(), { pixelRatio: 2, stretchX: [[6, 18]], stretchY: [[6, 18]], content: [6, 6, 18, 18] });
   if (!map.getLayer(`${SATS}-label`)) {
     map.addLayer({
       id: `${SATS}-label`, type: 'symbol', source: SATS, filter: ['any', ['==', ['get', 'overhead'], true], ['==', ['get', 'visible'], true]], minzoom: 5,
-      layout: { 'text-field': ['get', 'label'], 'text-size': 10, 'text-offset': [0, 1.1], 'text-anchor': 'top', 'text-max-width': 16 },
-      paint: { 'text-color': GROUP_COLOR, 'text-halo-color': '#020617', 'text-halo-width': 1.4 },
+      layout: {
+        'text-field': ['get', 'label'], 'text-size': 10, 'text-offset': [0, 1.2], 'text-anchor': 'top', 'text-max-width': 16,
+        'icon-image': LABEL_CHIP, 'icon-text-fit': 'both', 'icon-text-fit-padding': [1, 4, 1, 4],
+      },
+      paint: { 'text-color': GROUP_COLOR, 'text-halo-color': '#020617', 'text-halo-width': 0.8 },
     });
   }
   if (!map.getLayer(`${FIRE_LABELS}-label`)) {

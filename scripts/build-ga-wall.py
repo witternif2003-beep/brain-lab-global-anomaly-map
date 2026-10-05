@@ -2,13 +2,17 @@
 
 Input: U.S. Census Bureau 2024 cartographic boundary file, 1:500,000
   https://www2.census.gov/geo/tiger/GENZ2024/shp/cb_2024_us_state_500k.zip
-Outputs:
-  public/geo/all-states.geojson  (8 map states, 500k geometry, ~100 m simplification)
-  public/geo/ga-wall.geojson     (design visualization: 3.05 m wall + concertina coils
-                                  along Georgia's mainland boundary)
+Outputs (every official polygon part is kept; shared borders are simplified together with
+shapely.coverage_simplify, so neighbouring states neither overlap nor leave gaps):
+  public/geo/all-states.geojson        (8 map states)
+  public/geo/competitor-states.geojson (the 7 non-GA states + one label point each)
+  public/geo/<st>-state-boundary.geojson (one file per state)
+  public/geo/ga-wall.geojson           (design visualization: 3.05 m wall + concertina coils
+                                        around every Georgia part; the first `path` feature
+                                        is the mainland ring used for inside-the-wall filters)
 
 Usage: python3 scripts/build-ga-wall.py <path/to/cb_2024_us_state_500k.shp>
-Requires: pyshp, shapely
+Requires: pyshp, shapely>=2.1
 """
 import json
 import math
@@ -16,7 +20,9 @@ import sys
 from pathlib import Path
 
 import shapefile
+import shapely
 from shapely.geometry import MultiPolygon, Polygon, mapping, shape
+from shapely.ops import unary_union
 from shapely.ops import transform
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -37,6 +43,7 @@ BASE_COIL_OFFSET_M = 1.0
 LAT0 = 32.7
 M_PER_DEG_LAT = 111_320.0
 M_PER_DEG_LON = M_PER_DEG_LAT * math.cos(math.radians(LAT0))
+SIMPLIFY_DEG = 0.0003
 
 
 def to_m(x, y, z=None):
@@ -75,34 +82,50 @@ def main(shp_path):
         if props["STUSPS"] in STATES:
             geoms[props["STUSPS"]] = shape(shp.__geo_interface__)
 
-    features = []
-    for code, (name, density) in STATES.items():
-        g = geoms[code]
-        if isinstance(g, MultiPolygon):
-            g = MultiPolygon([p for p in g.geoms if p.area >= 0.002])
-        g = g.simplify(0.0003, preserve_topology=True)
-        features.append(
+    codes = list(STATES)
+    simplified = dict(zip(codes, shapely.coverage_simplify([geoms[c] for c in codes], SIMPLIFY_DEG)))
+
+    def feature(code):
+        name, density = STATES[code]
+        return {
+            "type": "Feature",
+            "properties": {"name": name, "density": density, "STUSPS": code},
+            "geometry": rounded(simplified[code], 5),
+        }
+
+    def write(rel, features):
+        (ROOT / rel).write_text(json.dumps({"type": "FeatureCollection", "features": features}, separators=(",", ":")))
+
+    write("public/geo/all-states.geojson", [feature(c) for c in STATES])
+    competitors = [feature(c) for c in STATES if c != "GA"]
+    for c in STATES:
+        if c == "GA":
+            continue
+        pt = max(geoms[c].geoms, key=lambda p: p.area).representative_point() if isinstance(geoms[c], MultiPolygon) else geoms[c].representative_point()
+        competitors.append(
             {
                 "type": "Feature",
-                "properties": {"name": name, "density": density, "STUSPS": code},
-                "geometry": rounded(g, 5),
+                "properties": {"name": STATES[c][0], "STUSPS": c, "label": True},
+                "geometry": {"type": "Point", "coordinates": [round(pt.x, 5), round(pt.y, 5)]},
             }
         )
-    (ROOT / "public/geo/all-states.geojson").write_text(
-        json.dumps({"type": "FeatureCollection", "features": features}, separators=(",", ":"))
-    )
+    write("public/geo/competitor-states.geojson", competitors)
+    for c in STATES:
+        write(f"public/geo/{c.lower()}-state-boundary.geojson", [feature(c)])
 
-    ga = geoms["GA"]
-    mainland = max(ga.geoms, key=lambda p: p.area) if isinstance(ga, MultiPolygon) else ga
-    mainland = Polygon(mainland.exterior).simplify(0.0003, preserve_topology=True)
-    ga_m = transform(to_m, mainland)
-    perimeter_km = ga_m.exterior.length / 1000
+    ga_parts = list(simplified["GA"].geoms) if isinstance(simplified["GA"], MultiPolygon) else [simplified["GA"]]
+    ga_parts = [Polygon(p.exterior) for p in sorted(ga_parts, key=lambda p: -p.area)]
+    ga_m = [transform(to_m, p) for p in ga_parts]
+    perimeter_km = sum(p.exterior.length for p in ga_m) / 1000
+
+    def bands(inner, outer):
+        return unary_union([ring_band(p, inner, outer) for p in ga_m])
 
     half = WALL_THICKNESS_M / 2
     parts = [
-        ("wall", ring_band(ga_m, -half, half), 0.0, WALL_HEIGHT_M),
-        ("wire-top", ring_band(ga_m, -COIL_DIAMETER_M / 2, COIL_DIAMETER_M / 2), WALL_HEIGHT_M, WALL_HEIGHT_M + COIL_DIAMETER_M),
-        ("wire-base", ring_band(ga_m, BASE_COIL_OFFSET_M, BASE_COIL_OFFSET_M + COIL_DIAMETER_M), 0.0, COIL_DIAMETER_M),
+        ("wall", bands(-half, half), 0.0, WALL_HEIGHT_M),
+        ("wire-top", bands(-COIL_DIAMETER_M / 2, COIL_DIAMETER_M / 2), WALL_HEIGHT_M, WALL_HEIGHT_M + COIL_DIAMETER_M),
+        ("wire-base", bands(BASE_COIL_OFFSET_M, BASE_COIL_OFFSET_M + COIL_DIAMETER_M), 0.0, COIL_DIAMETER_M),
     ]
     wall_features = [
         {
@@ -112,17 +135,16 @@ def main(shp_path):
         }
         for part, geom, base, height in parts
     ]
-    wall_features.append(
-        {
-            "type": "Feature",
-            "properties": {"part": "path", "perimeter_km": round(perimeter_km, 1)},
-            "geometry": {"type": "LineString", "coordinates": [[round(x, 6), round(y, 6)] for x, y in mainland.exterior.coords]},
-        }
-    )
-    (ROOT / "public/geo/ga-wall.geojson").write_text(
-        json.dumps({"type": "FeatureCollection", "features": wall_features}, separators=(",", ":"))
-    )
-    print(f"GA mainland perimeter {perimeter_km:.1f} km, {len(mainland.exterior.coords)} vertices")
+    for i, (poly, poly_m) in enumerate(zip(ga_parts, ga_m)):
+        wall_features.append(
+            {
+                "type": "Feature",
+                "properties": {"part": "path", "ring": "mainland" if i == 0 else "island", "perimeter_km": round(poly_m.exterior.length / 1000, 1)},
+                "geometry": {"type": "LineString", "coordinates": [[round(x, 6), round(y, 6)] for x, y in poly.exterior.coords]},
+            }
+        )
+    write("public/geo/ga-wall.geojson", wall_features)
+    print(f"GA wall: {len(ga_parts)} rings, perimeter {perimeter_km:.1f} km, mainland {len(ga_parts[0].exterior.coords)} vertices")
 
 
 if __name__ == "__main__":

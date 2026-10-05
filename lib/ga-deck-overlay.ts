@@ -4,6 +4,7 @@ import type { Map as MapLibreMap } from 'maplibre-gl';
 import { insideRing, loadGaWallRing, type LngLat } from './ga-patrol-3d';
 import { reportGaFeed } from './ga-live-status';
 import { GA_MARKER_SCALE, gaGlowMultiplier } from './ga-marker-scale';
+import { gaMarkerIcon, type GaIconShape } from './ga-marker-icons';
 
 export type RGBA = [number, number, number, number];
 export interface GaDeckItem {
@@ -14,11 +15,19 @@ export interface GaDeckItem {
   strokePx: number;
   glow?: number;
   pulse?: boolean;
+  /** Drawn as this glyph (sized `iconPx`) instead of a circle. */
+  icon?: GaIconShape;
+  iconPx?: number;
+  /** Heading in degrees clockwise from north; rotates the glyph on the map. */
+  angle?: number;
+  /** Short see-through tag drawn under the marker once zoomed in to the group's `labelMinZoom`. */
+  label?: string;
   props: Record<string, unknown>;
 }
 export interface GaDeckGroup {
   items: GaDeckItem[];
   z: number;
+  labelMinZoom?: number;
   onClick: (map: MapLibreMap, lngLat: LngLat, props: Record<string, unknown>) => void;
 }
 
@@ -28,6 +37,8 @@ type Point = { x: number; y: number };
 type DeckModules = {
   MapLibreOverlay: typeof import('@deck.gl/maplibre').MapLibreOverlay;
   ScatterplotLayer: typeof import('@deck.gl/layers').ScatterplotLayer;
+  IconLayer: typeof import('@deck.gl/layers').IconLayer;
+  TextLayer: typeof import('@deck.gl/layers').TextLayer;
 };
 type BenchData = {
   length: number;
@@ -74,10 +85,12 @@ interface DeckState {
   benchStarted: boolean;
   benchData: BenchData | null;
   published: DeckSnapshot | null;
+  zoom: number;
 }
 
 const states = new WeakMap<MapLibreMap, DeckState>();
-const viewsByGroup = new WeakMap<GaDeckGroup, { glow: GaDeckItem[]; pulse: GaDeckItem[] }>();
+type GroupViews = { glow: GaDeckItem[]; pulse: GaDeckItem[]; dots: GaDeckItem[]; icons: GaDeckItem[]; labels: GaDeckItem[] };
+const viewsByGroup = new WeakMap<GaDeckGroup, GroupViews>();
 const DEPTH_PARAMETERS = { depthCompare: 'always', depthWriteEnabled: false } as const;
 const ADDITIVE_PARAMETERS = {
   ...DEPTH_PARAMETERS,
@@ -117,12 +130,18 @@ function getState(map: MapLibreMap): DeckState {
     benchStarted: false,
     benchData: null,
     published: null,
+    zoom: map.getZoom(),
   };
   states.set(map, state);
   publishState(map, state);
   map.on('click', (event) => {
     const hit = hitAt(map, state!, event.point);
     if (hit) hit.group.onClick(map, hit.item.coord, hit.item.props);
+  });
+  map.on('zoomend', () => {
+    const before = labelKeys(state!);
+    state!.zoom = map.getZoom();
+    if (labelKeys(state!) !== before) updateLayers(state!);
   });
   map.on('mousemove', (event) => {
     state!.pointer = event.point;
@@ -212,7 +231,8 @@ function hitAt(map: MapLibreMap, state: DeckState, point: Point): { group: GaDec
       if (bounds && (item.coord[0] < bounds.w || item.coord[0] > bounds.e || item.coord[1] < bounds.s || item.coord[1] > bounds.n)) continue;
       const projected = map.project(item.coord);
       const distance = Math.hypot(projected.x - point.x, projected.y - point.y);
-      if (distance <= Math.max(item.radiusPx * GA_MARKER_SCALE + item.strokePx, 8) && distance < closestDistance) {
+      const reach = item.icon ? (item.iconPx ?? 0) * GA_MARKER_SCALE / 2 : item.radiusPx * GA_MARKER_SCALE + item.strokePx;
+      if (distance <= Math.max(reach, 8) && distance < closestDistance) {
         closest = item;
         closestDistance = distance;
       }
@@ -227,24 +247,32 @@ export function hitsGaDeck(map: MapLibreMap, point: { x: number; y: number }): b
   return !!state && !!hitAt(map, state, point);
 }
 
-function groupViews(group: GaDeckGroup): { glow: GaDeckItem[]; pulse: GaDeckItem[] } {
+function groupViews(group: GaDeckGroup): GroupViews {
   let views = viewsByGroup.get(group);
   if (!views) {
     views = {
       glow: group.items.filter((item) => (item.glow ?? 0) > 0),
       pulse: group.items.filter((item) => !!item.pulse),
+      dots: group.items.filter((item) => !item.icon),
+      icons: group.items.filter((item) => !!item.icon),
+      labels: group.items.filter((item) => !!item.label),
     };
     viewsByGroup.set(group, views);
   }
   return views;
 }
 
+const showsLabels = (state: DeckState, group: GaDeckGroup) => group.labelMinZoom !== undefined && state.zoom >= group.labelMinZoom;
+const labelKeys = (state: DeckState) => [...state.groups.entries()].filter(([, g]) => showsLabels(state, g)).map(([k]) => k).join(',');
+const LABEL_FONT = '"JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace';
+
 function createLayers(state: DeckState): Layer[] {
   if (!state.modules) return [];
-  const { ScatterplotLayer } = state.modules;
+  const { ScatterplotLayer, IconLayer, TextLayer } = state.modules;
   const layers: Layer[] = [];
+  const labelLayers: Layer[] = [];
   for (const [key, group] of [...state.groups.entries()].sort((a, b) => a[1].z - b[1].z)) {
-    const { glow, pulse } = groupViews(group);
+    const { glow, pulse, dots, icons, labels } = groupViews(group);
     if (glow.length) {
       layers.push(new ScatterplotLayer({
         id: `ga-deck-${key}-bloom`,
@@ -271,9 +299,49 @@ function createLayers(state: DeckState): Layer[] {
         parameters: ADDITIVE_PARAMETERS,
       }));
     }
-    layers.push(new ScatterplotLayer({
+    if (icons.length) {
+      layers.push(new IconLayer<GaDeckItem>({
+        id: `ga-deck-${key}-icon`,
+        data: icons,
+        getPosition: (item) => item.coord,
+        getIcon: (item) => gaMarkerIcon(item.icon!, item.fill, item.stroke),
+        getSize: (item) => (item.iconPx ?? 12) * GA_MARKER_SCALE,
+        getAngle: (item) => -(item.angle ?? 0),
+        sizeUnits: 'pixels',
+        billboard: false,
+        alphaCutoff: 0.02,
+        pickable: false,
+        parameters: DEPTH_PARAMETERS,
+      }));
+    }
+    if (labels.length && showsLabels(state, group)) {
+      labelLayers.push(new TextLayer<GaDeckItem>({
+        id: `ga-deck-${key}-label`,
+        data: labels,
+        getPosition: (item) => item.coord,
+        getText: (item) => item.label!,
+        getColor: (item) => [Math.min(255, item.fill[0] + 30), Math.min(255, item.fill[1] + 30), Math.min(255, item.fill[2] + 30), 240],
+        getSize: 10,
+        getPixelOffset: (item) => [0, Math.round(((item.iconPx ?? item.radiusPx * 2) * GA_MARKER_SCALE) / 2) + 3],
+        getTextAnchor: 'middle',
+        getAlignmentBaseline: 'top',
+        fontFamily: LABEL_FONT,
+        fontWeight: 600,
+        characterSet: 'auto',
+        background: true,
+        getBackgroundColor: [2, 6, 23, 120],
+        getBorderColor: (item) => [item.fill[0], item.fill[1], item.fill[2], 110],
+        getBorderWidth: 1,
+        backgroundPadding: [4, 1, 4, 1],
+        backgroundBorderRadius: 3,
+        billboard: true,
+        pickable: false,
+        parameters: DEPTH_PARAMETERS,
+      }));
+    }
+    if (dots.length) layers.push(new ScatterplotLayer({
       id: `ga-deck-${key}-core`,
-      data: group.items,
+      data: dots,
       getPosition: (item: GaDeckItem) => item.coord,
       getRadius: (item: GaDeckItem) => item.radiusPx * GA_MARKER_SCALE,
       getFillColor: (item: GaDeckItem) => item.fill,
@@ -307,6 +375,7 @@ function createLayers(state: DeckState): Layer[] {
       }));
     }
   }
+  layers.push(...labelLayers);
   if (state.benchData) {
     layers.push(new ScatterplotLayer({
       id: 'ga-deck-bench',
@@ -347,7 +416,7 @@ function startPulse(map: MapLibreMap, state: DeckState): void {
 
 async function loadModules(): Promise<DeckModules> {
   const [maplibre, layers] = await Promise.all([import('@deck.gl/maplibre'), import('@deck.gl/layers')]);
-  return { MapLibreOverlay: maplibre.MapLibreOverlay, ScatterplotLayer: layers.ScatterplotLayer };
+  return { MapLibreOverlay: maplibre.MapLibreOverlay, ScatterplotLayer: layers.ScatterplotLayer, IconLayer: layers.IconLayer, TextLayer: layers.TextLayer };
 }
 
 async function addRenderer(map: MapLibreMap, state: DeckState, renderer: Renderer, modules: DeckModules, deviceProps?: Record<string, unknown>): Promise<void> {

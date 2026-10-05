@@ -271,6 +271,7 @@ export default function StateMap({
         id: 'competitor-outline',
         type: 'line',
         source: 'competitors',
+        filter: ['!=', ['geometry-type'], 'Point'],
         paint: {
           'line-color': '#475569',
           'line-width': 1.5,
@@ -285,6 +286,7 @@ export default function StateMap({
         id: 'competitor-labels',
         type: 'symbol',
         source: 'competitors',
+        filter: ['==', ['geometry-type'], 'Point'],
         layout: {
           'text-field': ['get', 'STUSPS'],
           'text-size': 13,
