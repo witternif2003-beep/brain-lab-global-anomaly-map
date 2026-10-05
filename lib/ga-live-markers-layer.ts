@@ -54,7 +54,7 @@ const countBy = (ms: LiveMarker[], key: string) => {
 
 const SPECS: Record<LiveLayer, Spec> = {
   aircraft: {
-    label: 'Aircraft (ADS-B)', color: '#e0f2fe', stroke: '#0369a1', radiusPx: 4.5, z: 30, refreshMs: 10_000,
+    label: 'Aircraft (ADS-B)', color: '#e0f2fe', stroke: '#0369a1', radiusPx: 4.5, z: 33, refreshMs: 10_000,
     iconPx: 26, labelMinZoom: 7,
     icon: (m) => ({ shape: 'aircraft', angle: heading(m.props.track) }),
     tag: (m) => [m.label === 'no callsign' ? '' : m.label, altTag(m.props)].filter(Boolean).join(' · '),
@@ -70,7 +70,7 @@ const SPECS: Record<LiveLayer, Spec> = {
     detail: (ms) => `${ms.filter((m) => !m.props.onGround).length} airborne · ${ms.filter((m) => m.props.onGround).length} on ground · PIA/LADD aircraft removed`,
   },
   transit: {
-    label: 'Transit buses (GTFS-RT)', color: '#fbbf24', stroke: '#78350f', radiusPx: 4, z: 28, refreshMs: 20_000,
+    label: 'Transit buses (GTFS-RT)', color: '#fbbf24', stroke: '#78350f', radiusPx: 4, z: 32, refreshMs: 20_000,
     iconPx: 20, labelMinZoom: 11,
     icon: (m) => (heading(m.props.bearing) === undefined ? { shape: 'vehicle' } : { shape: 'heading', angle: heading(m.props.bearing) }),
     tag: (m) => (m.props.route ? `${m.props.agency} ${m.props.route}` : String(m.props.agency)),
@@ -79,8 +79,8 @@ const SPECS: Record<LiveLayer, Spec> = {
     detail: (ms) => `${countBy(ms, 'agency')} · ${new Set(ms.map((m) => `${m.props.agency}:${m.props.route}`)).size} routes running`,
   },
   micromobility: {
-    label: 'Parked scooters/bikes (GBFS)', color: '#a3e635', stroke: '#365314', radiusPx: 2.4, z: 12, refreshMs: 60_000,
-    iconPx: 9, icon: () => ({ shape: 'scooter' }),
+    label: 'Parked scooters/bikes (GBFS)', color: '#a3e635', stroke: '#365314', radiusPx: 2.4, z: 31, refreshMs: 60_000,
+    iconPx: 12, icon: () => ({ shape: 'scooter' }),
     title: (m) => `SHARED ${String(m.props.vehicleType ?? 'vehicle').toUpperCase()} · ${m.label}`,
     rows: (p) => [['Status', p.disabled ? 'disabled' : 'available'], ['Range', fmt(p.rangeKm, ' km')]],
     detail: (ms) => `${countBy(ms, 'operator')} · City of Atlanta · reserved ones hidden`,

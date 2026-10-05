@@ -65,6 +65,7 @@ declare global {
 }
 
 interface DeckState {
+  map: MapLibreMap;
   groups: Map<GroupKey, GaDeckGroup>;
   overlay: MapLibreOverlay | null;
   modules: DeckModules | null;
@@ -86,6 +87,7 @@ interface DeckState {
   benchData: BenchData | null;
   published: DeckSnapshot | null;
   zoom: number;
+  bearing: number;
 }
 
 const states = new WeakMap<MapLibreMap, DeckState>();
@@ -105,11 +107,13 @@ const ADDITIVE_PARAMETERS = {
 const BENCH_COLOR: RGBA = [0, 255, 255, 153];
 const SOURCE_URL = 'https://deck.gl/docs/developer-guide/webgpu';
 const HIT_BOX_PX = 24;
+const DECK_LAYER_GROUP_ID = 'deck-maplibre-layer-group-last';
 
 function getState(map: MapLibreMap): DeckState {
   let state = states.get(map);
   if (state) return state;
   state = {
+    map,
     groups: new Map(),
     overlay: null,
     modules: null,
@@ -131,6 +135,7 @@ function getState(map: MapLibreMap): DeckState {
     benchData: null,
     published: null,
     zoom: map.getZoom(),
+    bearing: map.getBearing(),
   };
   states.set(map, state);
   publishState(map, state);
@@ -142,6 +147,15 @@ function getState(map: MapLibreMap): DeckState {
     const before = labelKeys(state!);
     state!.zoom = map.getZoom();
     if (labelKeys(state!) !== before) updateLayers(state!);
+  });
+  map.on('styledata', () => {
+    if (state!.renderer === 'webgl2' && !map.getLayer(DECK_LAYER_GROUP_ID)) updateLayers(state!);
+  });
+  map.on('rotateend', () => {
+    const bearing = map.getBearing();
+    if (bearing === state!.bearing) return;
+    state!.bearing = bearing;
+    updateLayers(state!);
   });
   map.on('mousemove', (event) => {
     state!.pointer = event.point;
@@ -306,9 +320,10 @@ function createLayers(state: DeckState): Layer[] {
         getPosition: (item) => item.coord,
         getIcon: (item) => gaMarkerIcon(item.icon!, item.fill, item.stroke),
         getSize: (item) => (item.iconPx ?? 12) * GA_MARKER_SCALE,
-        getAngle: (item) => -(item.angle ?? 0),
+        getAngle: (item) => (item.angle === undefined ? 0 : state.bearing - item.angle),
+        updateTriggers: { getAngle: state.bearing },
         sizeUnits: 'pixels',
-        billboard: false,
+        billboard: true,
         alphaCutoff: 0.02,
         pickable: false,
         parameters: DEPTH_PARAMETERS,
@@ -392,8 +407,23 @@ function createLayers(state: DeckState): Layer[] {
   return layers;
 }
 
+/**
+ * The interleaved overlay only inserts its layer group while `map.isStyleLoaded()`, which stays false while any
+ * GeoJSON source is being re-fed (the animated pulse/patrol/satellite layers re-feed every frame), so the check is
+ * relaxed for the call and a not-yet-loaded style is retried on the next update.
+ */
 function updateLayers(state: DeckState): void {
-  if (state.overlay && state.modules) state.overlay.setProps({ layers: createLayers(state) });
+  const { overlay, map } = state;
+  if (!overlay || !state.modules) return;
+  const isStyleLoaded = map.isStyleLoaded;
+  map.isStyleLoaded = () => Boolean(map.style);
+  try {
+    overlay.setProps({ layers: createLayers(state) });
+  } catch (error) {
+    if (!/style is not done loading/i.test(String(error))) throw error;
+  } finally {
+    map.isStyleLoaded = isStyleLoaded;
+  }
 }
 
 function startPulse(map: MapLibreMap, state: DeckState): void {
