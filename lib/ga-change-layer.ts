@@ -191,6 +191,8 @@ export function addGaChangeLayer(map: MapLibreMap): void {
           return {
             coord: [cell.lng, cell.lat] as LngLat,
             radiusPx: confirmed ? 6 : 4,
+            icon: 'scan' as const,
+            iconPx: confirmed ? 18 : 13,
             fill: hexToRgba(color, confirmed ? 235 : 170),
             stroke: hexToRgba(confirmed ? '#ffffff' : '#1e1b4b'),
             strokePx: confirmed ? 2 : 1,

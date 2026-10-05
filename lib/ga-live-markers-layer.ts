@@ -70,13 +70,13 @@ const SPECS: Record<LiveLayer, Spec> = {
     detail: (ms) => `${ms.filter((m) => !m.props.onGround).length} airborne · ${ms.filter((m) => m.props.onGround).length} on ground · PIA/LADD aircraft removed`,
   },
   transit: {
-    label: 'MARTA buses (GTFS-RT)', color: '#fbbf24', stroke: '#78350f', radiusPx: 4, z: 28, refreshMs: 20_000,
+    label: 'Transit buses (GTFS-RT)', color: '#fbbf24', stroke: '#78350f', radiusPx: 4, z: 28, refreshMs: 20_000,
     iconPx: 20, labelMinZoom: 11,
     icon: (m) => (heading(m.props.bearing) === undefined ? { shape: 'vehicle' } : { shape: 'heading', angle: heading(m.props.bearing) }),
-    tag: (m) => (m.props.route ? `MARTA ${m.props.route}` : 'MARTA'),
-    title: (m) => `MARTA · ${m.label}`,
+    tag: (m) => (m.props.route ? `${m.props.agency} ${m.props.route}` : String(m.props.agency)),
+    title: (m) => `${String(m.props.agency).toUpperCase()} · ${m.label}`,
     rows: (p) => [['Vehicle', fmt(p.vehicle)], ['Speed', fmt(p.speedMph, ' mph')], ['Bearing', fmt(p.bearing, '°')]],
-    detail: (ms) => `${new Set(ms.map((m) => m.props.route)).size} routes running`,
+    detail: (ms) => `${countBy(ms, 'agency')} · ${new Set(ms.map((m) => `${m.props.agency}:${m.props.route}`)).size} routes running`,
   },
   micromobility: {
     label: 'Parked scooters/bikes (GBFS)', color: '#a3e635', stroke: '#365314', radiusPx: 2.4, z: 12, refreshMs: 60_000,
@@ -114,7 +114,7 @@ function sourceLink(layer: LiveLayer, m: LiveMarker): { href: string; text: stri
   if (layer === 'streamgauges') return { href: `https://waterdata.usgs.gov/monitoring-location/${encodeURIComponent(String(m.props.site))}/`, text: 'USGS site page ↗' };
   if (layer === 'stations') return { href: `https://mesonet.agron.iastate.edu/sites/site.php?station=${encodeURIComponent(String(m.props.station))}&network=${encodeURIComponent(String(m.props.network))}`, text: 'IEM station page ↗' };
   if (layer === 'aircraft') return { href: `https://adsb.lol/?lat=${m.lat}&lon=${m.lon}&zoom=11`, text: 'Open area in adsb.lol ↗' };
-  if (layer === 'transit') return { href: 'https://itsmarta.com/', text: 'MARTA ↗' };
+  if (layer === 'transit') return m.props.agency === 'MARTA' ? { href: 'https://itsmarta.com/', text: 'MARTA ↗' } : { href: 'https://mobilitydatabase.org/', text: 'Mobility Database feed catalogue ↗' };
   return { href: 'https://github.com/MobilityData/gbfs', text: 'GBFS specification ↗' };
 }
 
@@ -138,7 +138,7 @@ function aircraftCoord(m: LiveMarker, now: number): LngLat {
   return offset([m.lon, m.lat], ((90 - track) * Math.PI) / 180, gs * KT_TO_MS * dt);
 }
 
-/** Live public markers inside the GA wall: ADS-B aircraft, MARTA buses, parked shared scooters, weather/hydro stations and USGS gauges (idempotent). */
+/** Live public markers inside the GA wall: ADS-B aircraft, public transit buses, parked shared scooters, weather/hydro stations and USGS gauges (idempotent). */
 export function addGaLiveMarkerLayers(map: MapLibreMap): void {
   if (bound.has(map)) return;
   bound.add(map);

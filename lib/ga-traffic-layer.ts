@@ -124,6 +124,8 @@ export function addGaTrafficLayers(map: MapLibreMap): void {
           return [{
             coord: feature.geometry.coordinates as LngLat,
             radiusPx: major ? 6 : 4,
+            icon: 'alert' as const,
+            iconPx: major ? 20 : 15,
             fill: hexToRgba(color, 235),
             stroke: hexToRgba(stroke),
             strokePx: major ? 2 : 1,

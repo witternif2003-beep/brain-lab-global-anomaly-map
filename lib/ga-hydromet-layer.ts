@@ -135,6 +135,8 @@ export function addGaHydrometLayers(map: MapLibreMap): void {
           return [{
             coord: feature.geometry.coordinates as LngLat,
             radiusPx: Number(props.rank) >= 1 ? 6 : 3.5,
+            icon: 'gauge' as const,
+            iconPx: Number(props.rank) >= 1 ? 18 : 12,
             fill: hexToRgba(color, 230),
             stroke: hexToRgba('#0c4a6e'),
             strokePx: 1,

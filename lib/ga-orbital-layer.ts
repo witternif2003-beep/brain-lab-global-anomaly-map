@@ -263,6 +263,8 @@ export function addGaOrbitalLayers(map: MapLibreMap): void {
           return {
             coord: f.geometry.coordinates as LngLat,
             radiusPx: frp >= 50 ? 6 : frp >= 10 ? 4.5 : 3.5,
+            icon: 'flame' as const,
+            iconPx: frp >= 50 ? 20 : frp >= 10 ? 16 : 13,
             fill: hexToRgba(FIRE_COLORS[conf], 235),
             stroke: hexToRgba('#450a0a'),
             strokePx: 1,

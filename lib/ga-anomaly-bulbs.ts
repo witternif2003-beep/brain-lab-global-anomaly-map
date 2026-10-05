@@ -296,6 +296,8 @@ export function addGaAnomalyBulbs(map: MapLibreMap): void {
       items: bulbs.map((bulb) => ({
         coord: bulb.coord,
         radiusPx: CORE_PX,
+        icon: 'beacon' as const,
+        iconPx: 22,
         fill: [248, 250, 252, 255],
         stroke: hexToRgba(GA_ANOMALY_LEVEL_COLORS[bulb.level]),
         strokePx: 2.5,

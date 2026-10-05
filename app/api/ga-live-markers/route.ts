@@ -25,6 +25,11 @@ const iem = (network: string): Feed => ({
   url: `https://mesonet.agron.iastate.edu/api/1/currents.json?network=${network}`,
   load: json((j) => parseIemCurrents(j, network)),
 });
+const gtfsRt = (agency: string, url: string): Feed => ({
+  id: `${agency} GTFS-RT`,
+  url,
+  load: async (r) => transitMarkers(decodeGtfsRtVehicles(new Uint8Array(await r.arrayBuffer())).vehicles, agency),
+});
 
 const LAYERS: Record<LiveLayer, LayerSpec> = {
   aircraft: {
@@ -36,13 +41,17 @@ const LAYERS: Record<LiveLayer, LayerSpec> = {
   },
   transit: {
     ttlS: 20,
-    source: "MARTA bus positions (GTFS-realtime)",
-    sourceUrl: "https://itsmarta.com/app-developer-resources.aspx",
-    feeds: [{
-      id: "MARTA GTFS-RT",
-      url: "https://gtfs-rt.itsmarta.com/TMGTFSRealTimeWebService/vehicle/vehiclepositions.pb",
-      load: async (r) => transitMarkers(decodeGtfsRtVehicles(new Uint8Array(await r.arrayBuffer())).vehicles, "MARTA"),
-    }],
+    source: "Public bus positions (GTFS-realtime) from MARTA, Ride Gwinnett, CobbLinc, Athens-Clarke Transit, UGA Campus Transit, Connect Douglas and Georgia Tech Stinger; feeds listed in the Mobility Database",
+    sourceUrl: "https://mobilitydatabase.org/",
+    feeds: [
+      gtfsRt("MARTA", "https://gtfs-rt.itsmarta.com/TMGTFSRealTimeWebService/vehicle/vehiclepositions.pb"),
+      gtfsRt("Ride Gwinnett", "https://realtimegwinnett.availtec.com/InfoPoint/gtfs-realtime.ashx?type=vehicleposition"),
+      gtfsRt("CobbLinc", "https://cobb.rideralerts.com/InfoPoint/GTFS-Realtime.ashx?Type=VehiclePosition"),
+      gtfsRt("Athens Transit", "https://bustracker.accgov.com/InfoPoint/GTFS-Realtime.ashx?Type=VehiclePosition"),
+      gtfsRt("UGA Transit", "https://passio3.com/uga/passioTransit/gtfs/realtime/vehiclePositions"),
+      gtfsRt("Connect Douglas", "https://passio3.com/douglas/passioTransit/gtfs/realtime/vehiclePositions"),
+      gtfsRt("GT Stinger", "https://passio3.com/gatech/passioTransit/gtfs/realtime/vehiclePositions"),
+    ],
   },
   micromobility: {
     ttlS: 60,
