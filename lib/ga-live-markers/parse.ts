@@ -1,6 +1,6 @@
 export const GA_BBOX = { west: -85.7, south: 30.3, east: -80.8, north: 35.1 };
 
-export type LiveLayer = "aircraft" | "transit" | "micromobility" | "stations" | "streamgauges";
+export type LiveLayer = "aircraft" | "transit" | "micromobility" | "stations" | "streamgauges" | "quakes";
 export type LiveValue = string | number | boolean | null;
 
 export interface LiveMarker {
@@ -266,4 +266,28 @@ export function parseUsgsIv(json: { value?: { timeSeries?: UsgsSeries[] } }): Li
     if (m) out.set(site, m);
   }
   return [...out.values()];
+}
+
+interface UsgsQuakeFeature {
+  geometry?: { coordinates?: unknown[] } | null;
+  properties?: { mag?: number | null; place?: string | null; time?: number | null; type?: string | null; url?: string | null; status?: string | null };
+}
+
+/** Seismic events from a USGS FDSN event GeoJSON response (magnitude, depth, review status, event page). */
+export function parseUsgsQuakes(json: { features?: UsgsQuakeFeature[] }): LiveMarker[] {
+  return (json.features ?? [])
+    .map((f) => {
+      const [lon, lat, depth] = f.geometry?.coordinates ?? [];
+      const p = f.properties ?? {};
+      const mag = num(p.mag);
+      const time = num(p.time);
+      return marker(num(lon), num(lat), time === null ? null : new Date(time).toISOString(), `M${mag === null ? "?" : mag.toFixed(1)} ${p.place ?? ""}`.trim(), {
+        mag: mag === null ? null : round(mag, 2),
+        depthKm: num(depth) === null ? null : round(num(depth)!, 1),
+        eventType: p.type ?? null,
+        status: p.status ?? null,
+        url: p.url ?? null,
+      });
+    })
+    .filter(keep);
 }

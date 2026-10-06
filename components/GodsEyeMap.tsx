@@ -387,14 +387,14 @@ export default function GodsEyeMap({
     if (!map) return;
     setExport8kStatus('rendering…');
     try {
-      const { blob, width, height } = await exportMapAt8k(map, starsCanvasRef.current);
+      const { blob, width, height, liveIcons } = await exportMapAt8k(map, starsCanvasRef.current);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = `georgia-map-${width}x${height}.png`;
       a.click();
       window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
-      setExport8kStatus(`saved ${width}×${height}`);
+      setExport8kStatus(liveIcons ? `saved ${width}×${height}` : `saved ${width}×${height} · live icons not captured`);
     } catch (err) {
       setExport8kStatus(err instanceof Error ? err.message : 'export failed');
     }

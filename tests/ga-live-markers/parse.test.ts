@@ -7,6 +7,7 @@ import {
   parseIemCurrents,
   parseOpenSky,
   parseUsgsIv,
+  parseUsgsQuakes,
   transitMarkers,
 } from "../../lib/ga-live-markers/parse";
 
@@ -121,4 +122,18 @@ test("USGS IV parser takes the latest value per site and skips no-data sentinels
   assert.equal(ms[0].props.gageHeightFt, 0.97);
   assert.equal(ms[0].props.provisional, true);
   assert.equal(ms[0].observedAt, "2026-10-04T12:45:00.000Z");
+});
+
+test("parseUsgsQuakes keeps Georgia-area events with magnitude, depth and event page", () => {
+  const ms = parseUsgsQuakes({
+    features: [
+      { geometry: { coordinates: [-85.42, 34.45, 9.87] }, properties: { mag: 1.97, place: "14 km ENE of Mentone, Alabama", time: 1_790_000_000_000, type: "earthquake", status: "reviewed", url: "https://earthquake.usgs.gov/earthquakes/eventpage/se60000000" } },
+      { geometry: { coordinates: [-120, 36, 5] }, properties: { mag: 3, place: "California", time: 1_790_000_000_000 } },
+      { geometry: null, properties: { mag: 2 } },
+    ],
+  });
+  assert.equal(ms.length, 1);
+  assert.equal(ms[0].label, "M2.0 14 km ENE of Mentone, Alabama");
+  assert.deepEqual(ms[0].props, { mag: 1.97, depthKm: 9.9, eventType: "earthquake", status: "reviewed", url: "https://earthquake.usgs.gov/earthquakes/eventpage/se60000000" });
+  assert.equal(ms[0].observedAt, new Date(1_790_000_000_000).toISOString());
 });

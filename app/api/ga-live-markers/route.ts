@@ -6,6 +6,7 @@ import {
   parseIemCurrents,
   parseOpenSky,
   parseUsgsIv,
+  parseUsgsQuakes,
   transitMarkers,
   type LiveLayer,
   type LiveMarker,
@@ -16,7 +17,7 @@ export const maxDuration = 30;
 
 const UA = { "User-Agent": "brain-lab-global-anomaly-map (public-data map; https://brain-lab-six.vercel.app)" };
 
-interface Feed { id: string; url: string; load: (r: Response) => Promise<LiveMarker[]> }
+interface Feed { id: string; url: string | (() => string); load: (r: Response) => Promise<LiveMarker[]> }
 interface LayerSpec { ttlS: number; source: string; sourceUrl: string; feeds: Feed[]; fallback?: Feed[] }
 
 const json = (f: (j: never) => LiveMarker[]) => async (r: Response) => f((await r.json()) as never);
@@ -68,6 +69,16 @@ const LAYERS: Record<LiveLayer, LayerSpec> = {
     sourceUrl: "https://mesonet.agron.iastate.edu/api/",
     feeds: [iem("GA_ASOS"), iem("GA_DCP"), iem("GA_RWIS"), iem("GA_COOP")],
   },
+  quakes: {
+    ttlS: 60,
+    source: "USGS ANSS ComCat earthquakes in the Georgia area, last 30 days (FDSN event service; automatic solutions may be revised)",
+    sourceUrl: "https://earthquake.usgs.gov/fdsnws/event/1/",
+    feeds: [{
+      id: "USGS ComCat",
+      url: () => `https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&orderby=time&minlatitude=30.3&maxlatitude=35.1&minlongitude=-85.7&maxlongitude=-80.8&starttime=${new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10)}`,
+      load: json((j) => parseUsgsQuakes(j)),
+    }],
+  },
   streamgauges: {
     ttlS: 300,
     source: "USGS stream gauges, latest gage height (NWIS instantaneous values, provisional data)",
@@ -76,19 +87,21 @@ const LAYERS: Record<LiveLayer, LayerSpec> = {
   },
 };
 
+const feedUrl = (f: Feed) => (typeof f.url === "function" ? f.url() : f.url);
+
 const cache = new Map<LiveLayer, { at: number; body: unknown }>();
 
 async function run(feeds: Feed[]) {
   const results = await Promise.allSettled(
     feeds.map(async (f) => {
-      const r = await fetch(f.url, { cache: "no-store", headers: UA, signal: AbortSignal.timeout(15_000) });
+      const r = await fetch(feedUrl(f), { cache: "no-store", headers: UA, signal: AbortSignal.timeout(15_000) });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       return f.load(r);
     }),
   );
   return feeds.map((f, i) => {
     const r = results[i];
-    return { id: f.id, url: f.url, markers: r.status === "fulfilled" ? r.value : [], error: r.status === "rejected" ? String(r.reason) : null };
+    return { id: f.id, url: feedUrl(f), markers: r.status === "fulfilled" ? r.value : [], error: r.status === "rejected" ? String(r.reason) : null };
   });
 }
 
@@ -102,7 +115,7 @@ async function build(layer: LiveLayer) {
     if (fb.some((f) => !f.error)) {
       feeds = [...feeds, ...fb];
       source = `${fb.map((f) => f.id).join(", ")} (fallback; ${spec.feeds.map((f) => f.id).join(", ")} unreachable)`;
-      sourceUrl = spec.fallback[0].url;
+      sourceUrl = feedUrl(spec.fallback[0]);
     }
   }
   if (feeds.every((f) => f.error)) throw new Error(feeds.map((f) => `${f.id}: ${f.error}`).join("; "));

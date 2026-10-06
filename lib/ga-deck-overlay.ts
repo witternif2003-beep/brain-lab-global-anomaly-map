@@ -4,7 +4,7 @@ import type { Map as MapLibreMap } from 'maplibre-gl';
 import { insideRing, loadGaWallRing, type LngLat } from './ga-patrol-3d';
 import { reportGaFeed } from './ga-live-status';
 import { GA_MARKER_SCALE, gaGlowMultiplier } from './ga-marker-scale';
-import { gaMarkerIcon, type GaIconShape } from './ga-marker-icons';
+import { GA_ICON_CELL_SCALE, gaIconAtlas, gaIconKey, type GaIconAtlas, type GaIconShape } from './ga-marker-icons';
 
 export type RGBA = [number, number, number, number];
 export interface GaDeckItem {
@@ -31,7 +31,7 @@ export interface GaDeckGroup {
   onClick: (map: MapLibreMap, lngLat: LngLat, props: Record<string, unknown>) => void;
 }
 
-type GroupKey = 'bulbs' | 'traffic' | 'gauges' | 'imagery' | 'fires' | 'aircraft' | 'transit' | 'micromobility' | 'stations' | 'streamgauges';
+type GroupKey = 'bulbs' | 'traffic' | 'gauges' | 'imagery' | 'fires' | 'aircraft' | 'transit' | 'micromobility' | 'stations' | 'streamgauges' | 'quakes';
 type Renderer = 'webgl2' | 'webgpu';
 type Point = { x: number; y: number };
 type DeckModules = {
@@ -88,12 +88,14 @@ interface DeckState {
   published: DeckSnapshot | null;
   zoom: number;
   bearing: number;
+  atlas: GaIconAtlas | null;
+  afterRender: Set<(canvas: HTMLCanvasElement) => void>;
 }
 
 const states = new WeakMap<MapLibreMap, DeckState>();
 type GroupViews = { glow: GaDeckItem[]; pulse: GaDeckItem[]; dots: GaDeckItem[]; icons: GaDeckItem[]; labels: GaDeckItem[] };
 const viewsByGroup = new WeakMap<GaDeckGroup, GroupViews>();
-const DEPTH_PARAMETERS = { depthCompare: 'always', depthWriteEnabled: false } as const;
+const DEPTH_PARAMETERS = { depthCompare: 'always', depthWriteEnabled: false, cullMode: 'none' } as const;
 const ADDITIVE_PARAMETERS = {
   ...DEPTH_PARAMETERS,
   blend: true,
@@ -107,7 +109,6 @@ const ADDITIVE_PARAMETERS = {
 const BENCH_COLOR: RGBA = [0, 255, 255, 153];
 const SOURCE_URL = 'https://deck.gl/docs/developer-guide/webgpu';
 const HIT_BOX_PX = 24;
-const DECK_LAYER_GROUP_ID = 'deck-maplibre-layer-group-last';
 
 function getState(map: MapLibreMap): DeckState {
   let state = states.get(map);
@@ -136,6 +137,8 @@ function getState(map: MapLibreMap): DeckState {
     published: null,
     zoom: map.getZoom(),
     bearing: map.getBearing(),
+    atlas: null,
+    afterRender: new Set(),
   };
   states.set(map, state);
   publishState(map, state);
@@ -147,9 +150,6 @@ function getState(map: MapLibreMap): DeckState {
     const before = labelKeys(state!);
     state!.zoom = map.getZoom();
     if (labelKeys(state!) !== before) updateLayers(state!);
-  });
-  map.on('styledata', () => {
-    if (state!.renderer === 'webgl2' && !map.getLayer(DECK_LAYER_GROUP_ID)) updateLayers(state!);
   });
   map.on('rotateend', () => {
     const bearing = map.getBearing();
@@ -203,6 +203,7 @@ function snapshot(state: DeckState): DeckSnapshot {
       micromobility: state.groups.get('micromobility')?.items.length ?? 0,
       stations: state.groups.get('stations')?.items.length ?? 0,
       streamgauges: state.groups.get('streamgauges')?.items.length ?? 0,
+      quakes: state.groups.get('quakes')?.items.length ?? 0,
     },
     pulse: { radiusScale: state.pulseRadiusScale, opacity: state.pulseOpacity },
   };
@@ -215,8 +216,8 @@ function publishState(map: MapLibreMap, state: DeckState): void {
   const detail = state.renderer === 'webgpu'
     ? 'deck.gl 9.4 · WebGPU (experimental, overlaid)'
     : state.webgpuAdapterFound
-      ? 'deck.gl 9.4 · WebGL2 (interleaved) · WebGPU adapter found; overlaid WebGPU is opt-in (?renderer=webgpu) until compositing is verified'
-      : 'deck.gl 9.4 · WebGL2 (interleaved)';
+      ? 'deck.gl 9.4 · WebGL2 (overlaid) · WebGPU adapter found; overlaid WebGPU is opt-in (?renderer=webgpu) until compositing is verified'
+      : 'deck.gl 9.4 · WebGL2 (overlaid)';
   reportGaFeed(map, {
     id: 'renderer',
     label: 'Map renderer',
@@ -254,6 +255,35 @@ function hitAt(map: MapLibreMap, state: DeckState, point: Point): { group: GaDec
     if (closest) return { group, item: closest };
   }
   return null;
+}
+
+/** The overlaid deck.gl canvas drawn above the MapLibre canvas, if one is attached. */
+export function gaDeckCanvas(map: MapLibreMap): HTMLCanvasElement | null {
+  return states.get(map)?.overlay?.getCanvas() ?? null;
+}
+
+/** Runs `draw` with the overlaid deck.gl canvas right after its next frame, while its drawing buffer is still valid. */
+export function onNextGaDeckFrame(map: MapLibreMap, draw: (canvas: HTMLCanvasElement) => void, timeoutMs: number): Promise<boolean> {
+  const state = states.get(map);
+  if (!state?.overlay) return Promise.resolve(false);
+  return new Promise((resolve) => {
+    const run = (canvas: HTMLCanvasElement) => {
+      window.clearTimeout(timer);
+      draw(canvas);
+      resolve(true);
+    };
+    const timer = window.setTimeout(() => {
+      state.afterRender.delete(run);
+      resolve(false);
+    }, timeoutMs);
+    state.afterRender.add(run);
+    map.triggerRepaint();
+  });
+}
+
+/** Sets the deck.gl drawing-buffer pixel ratio (`true` restores the device pixel ratio). */
+export function setGaDeckPixelRatio(map: MapLibreMap, ratio: number | true): void {
+  states.get(map)?.overlay?.setProps({ useDevicePixels: ratio });
 }
 
 export function hitsGaDeck(map: MapLibreMap, point: { x: number; y: number }): boolean {
@@ -313,13 +343,15 @@ function createLayers(state: DeckState): Layer[] {
         parameters: ADDITIVE_PARAMETERS,
       }));
     }
-    if (icons.length) {
+    if (icons.length && state.atlas) {
       layers.push(new IconLayer<GaDeckItem>({
         id: `ga-deck-${key}-icon`,
         data: icons,
         getPosition: (item) => item.coord,
-        getIcon: (item) => gaMarkerIcon(item.icon!, item.fill, item.stroke),
-        getSize: (item) => (item.iconPx ?? 12) * GA_MARKER_SCALE,
+        iconAtlas: state.atlas.url,
+        iconMapping: state.atlas.mapping,
+        getIcon: (item) => gaIconKey(item.icon!, item.fill, item.stroke),
+        getSize: (item) => (item.iconPx ?? 12) * GA_MARKER_SCALE * GA_ICON_CELL_SCALE,
         getAngle: (item) => (item.angle === undefined ? 0 : state.bearing - item.angle),
         updateTriggers: { getAngle: state.bearing },
         sizeUnits: 'pixels',
@@ -407,23 +439,9 @@ function createLayers(state: DeckState): Layer[] {
   return layers;
 }
 
-/**
- * The interleaved overlay only inserts its layer group while `map.isStyleLoaded()`, which stays false while any
- * GeoJSON source is being re-fed (the animated pulse/patrol/satellite layers re-feed every frame), so the check is
- * relaxed for the call and a not-yet-loaded style is retried on the next update.
- */
 function updateLayers(state: DeckState): void {
-  const { overlay, map } = state;
-  if (!overlay || !state.modules) return;
-  const isStyleLoaded = map.isStyleLoaded;
-  map.isStyleLoaded = () => Boolean(map.style);
-  try {
-    overlay.setProps({ layers: createLayers(state) });
-  } catch (error) {
-    if (!/style is not done loading/i.test(String(error))) throw error;
-  } finally {
-    map.isStyleLoaded = isStyleLoaded;
-  }
+  if (!state.overlay || !state.modules) return;
+  state.overlay.setProps({ layers: createLayers(state) });
 }
 
 function startPulse(map: MapLibreMap, state: DeckState): void {
@@ -451,12 +469,20 @@ async function loadModules(): Promise<DeckModules> {
 
 async function addRenderer(map: MapLibreMap, state: DeckState, renderer: Renderer, modules: DeckModules, deviceProps?: Record<string, unknown>): Promise<void> {
   const overlay = new modules.MapLibreOverlay({
-    interleaved: renderer === 'webgl2',
+    interleaved: false,
     layers: [],
     ...(deviceProps ? { deviceProps } : {}),
     onAfterRender: () => {
       if (state.overlay === overlay) {
+        const container = overlay.getCanvas()?.parentElement;
+        const canvasContainer = map.getCanvasContainer();
+        if (container && canvasContainer.nextElementSibling !== container) canvasContainer.after(container);
         state.firstRender = true;
+        const canvas = overlay.getCanvas();
+        if (canvas) {
+          for (const draw of state.afterRender) draw(canvas);
+        }
+        state.afterRender.clear();
         publishState(map, state);
       }
     },
@@ -667,6 +693,7 @@ async function initialize(map: MapLibreMap, state: DeckState): Promise<void> {
 export function setGaDeckGroup(map: MapLibreMap, key: GroupKey, group: GaDeckGroup): void {
   const state = getState(map);
   state.groups.set(key, group);
+  state.atlas = gaIconAtlas(group.items);
   publishState(map, state);
   if (state.overlay) updateLayers(state);
   if (!state.initPromise) state.initPromise = initialize(map, state);

@@ -99,6 +99,15 @@ const SPECS: Record<LiveLayer, Spec> = {
     ],
     detail: (ms) => countBy(ms, 'network').replace(/GA_/g, ''),
   },
+  quakes: {
+    label: 'Earthquakes, last 30 days (USGS)', color: '#c084fc', stroke: '#4c1d95', radiusPx: 4, z: 30, refreshMs: 60_000,
+    iconPx: 22, labelMinZoom: 6,
+    icon: () => ({ shape: 'quake' }),
+    tag: (m) => (m.props.mag === null ? '' : `M${Number(m.props.mag).toFixed(1)}`),
+    title: (m) => `EARTHQUAKE · ${m.label}`,
+    rows: (p) => [['Magnitude', fmt(p.mag)], ['Depth', fmt(p.depthKm, ' km')], ['Event type', fmt(p.eventType)], ['Review status', fmt(p.status)]],
+    detail: (ms) => (ms.length ? `largest M${Math.max(...ms.map((m) => Number(m.props.mag) || 0)).toFixed(1)} · USGS ComCat` : 'none recorded in the last 30 days · USGS ComCat'),
+  },
   streamgauges: {
     label: 'USGS stream gauges', color: '#2dd4bf', stroke: '#134e4a', radiusPx: 3.2, z: 18, refreshMs: 5 * 60_000,
     iconPx: 14, icon: () => ({ shape: 'gauge' }),
@@ -113,6 +122,7 @@ const bound = new WeakSet<MapLibreMap>();
 function sourceLink(layer: LiveLayer, m: LiveMarker): { href: string; text: string } {
   if (layer === 'streamgauges') return { href: `https://waterdata.usgs.gov/monitoring-location/${encodeURIComponent(String(m.props.site))}/`, text: 'USGS site page ↗' };
   if (layer === 'stations') return { href: `https://mesonet.agron.iastate.edu/sites/site.php?station=${encodeURIComponent(String(m.props.station))}&network=${encodeURIComponent(String(m.props.network))}`, text: 'IEM station page ↗' };
+  if (layer === 'quakes' && m.props.url) return { href: String(m.props.url), text: 'USGS event page ↗' };
   if (layer === 'aircraft') return { href: `https://adsb.lol/?lat=${m.lat}&lon=${m.lon}&zoom=11`, text: 'Open area in adsb.lol ↗' };
   if (layer === 'transit') return m.props.agency === 'MARTA' ? { href: 'https://itsmarta.com/', text: 'MARTA ↗' } : { href: 'https://mobilitydatabase.org/', text: 'Mobility Database feed catalogue ↗' };
   return { href: 'https://github.com/MobilityData/gbfs', text: 'GBFS specification ↗' };
@@ -138,7 +148,7 @@ function aircraftCoord(m: LiveMarker, now: number): LngLat {
   return offset([m.lon, m.lat], ((90 - track) * Math.PI) / 180, gs * KT_TO_MS * dt);
 }
 
-/** Live public markers inside the GA wall: ADS-B aircraft, public transit buses, parked shared scooters, weather/hydro stations and USGS gauges (idempotent). */
+/** Live public markers inside the GA wall: ADS-B aircraft, public transit buses, parked shared scooters, weather/hydro stations, USGS gauges and USGS earthquakes (idempotent). */
 export function addGaLiveMarkerLayers(map: MapLibreMap): void {
   if (bound.has(map)) return;
   bound.add(map);
