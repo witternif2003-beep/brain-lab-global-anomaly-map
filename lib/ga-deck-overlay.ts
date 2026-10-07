@@ -53,6 +53,7 @@ type DeckSnapshot = {
   renderer: Renderer | null;
   fallbackReason: string | null;
   counts: Record<GroupKey, number>;
+  labelsShown: number | null;
   pulse: { radiusScale: number; opacity: number };
 };
 
@@ -95,6 +96,9 @@ interface DeckState {
   bearing: number;
   atlas: GaIconAtlas | null;
   afterRender: Set<(canvas: HTMLCanvasElement) => void>;
+  /** Labels kept by the last `declutterLabels` pass; null until the first pass. */
+  labelShown: Set<GaDeckItem> | null;
+  labelVersion: number;
 }
 
 const states = new WeakMap<MapLibreMap, DeckState>();
@@ -151,6 +155,8 @@ function getState(map: MapLibreMap): DeckState {
     bearing: map.getBearing(),
     atlas: null,
     afterRender: new Set(),
+    labelShown: null,
+    labelVersion: 0,
   };
   states.set(map, state);
   publishState(map, state);
@@ -159,9 +165,11 @@ function getState(map: MapLibreMap): DeckState {
     if (hit) hit.group.onClick(map, hit.item.coord, hit.item.props);
   });
   map.on('zoomend', () => {
-    const before = zoomKey(state!);
     state!.zoom = map.getZoom();
-    if (zoomKey(state!) !== before) updateLayers(state!);
+  });
+  map.on('moveend', () => {
+    declutterLabels(state!);
+    updateLayers(state!);
   });
   map.on('rotateend', () => {
     const bearing = map.getBearing();
@@ -204,6 +212,7 @@ function snapshot(state: DeckState): DeckSnapshot {
   return {
     renderer: state.renderer,
     fallbackReason: state.fallbackReason,
+    labelsShown: state.labelShown?.size ?? null,
     counts: {
       bulbs: state.groups.get('bulbs')?.items.length ?? 0,
       traffic: state.groups.get('traffic')?.items.length ?? 0,
@@ -340,8 +349,64 @@ function groupViews(group: GaDeckGroup): GroupViews {
 }
 
 const showsLabels = (state: DeckState, group: GaDeckGroup) => group.labelMinZoom !== undefined && state.zoom >= group.labelMinZoom;
-const labelKeys = (state: DeckState) => [...state.groups.entries()].filter(([, g]) => showsLabels(state, g)).map(([k]) => k).join(',');
-const zoomKey = (state: DeckState) => `${labelKeys(state)}|${modelScale(state.zoom)}`;
+const LABEL_CHAR_PX = 6.2;
+const LABEL_HEIGHT_PX = 14;
+const LABEL_GAP_PX = 2;
+const LABEL_CELL_PX = 64;
+const labelOffsetPx = (item: GaDeckItem) => Math.round(((item.iconPx ?? item.radiusPx * 2) * GA_MARKER_SCALE) / 2) + 3;
+
+/** Greedy screen-space placement: higher-z groups (then airborne aircraft) claim space first; overlapping lower-priority labels are dropped until the next move. */
+function declutterLabels(state: DeckState): void {
+  const { map } = state;
+  const canvas = map.getCanvas();
+  const w = canvas.clientWidth;
+  const h = canvas.clientHeight;
+  const b = map.getBounds();
+  const padLng = (b.getEast() - b.getWest()) * 0.25;
+  const padLat = (b.getNorth() - b.getSouth()) * 0.25;
+  const [west, east, south, north] = [b.getWest() - padLng, b.getEast() + padLng, b.getSouth() - padLat, b.getNorth() + padLat];
+  const grid = new Map<string, [number, number, number, number][]>();
+  const shown = new Set<GaDeckItem>();
+  const groups = [...state.groups.values()].filter((g) => showsLabels(state, g)).sort((a, b2) => b2.z - a.z);
+  for (const group of groups) {
+    const labels = groupViews(group).labels;
+    const ordered = labels.some((item) => item.model?.elevM) ? [...labels].sort((a, b2) => (b2.model?.elevM ? 1 : 0) - (a.model?.elevM ? 1 : 0)) : labels;
+    for (const item of ordered) {
+      const [lng, lat] = item.coord;
+      if (lng < west || lng > east || lat < south || lat > north) continue;
+      const p = map.project(item.coord);
+      const half = (item.label!.length * LABEL_CHAR_PX + 10) / 2 + LABEL_GAP_PX;
+      const top = p.y + labelOffsetPx(item) - LABEL_GAP_PX;
+      const rect: [number, number, number, number] = [p.x - half, top, p.x + half, top + LABEL_HEIGHT_PX + 2 * LABEL_GAP_PX];
+      if (rect[2] < -w * 0.25 || rect[0] > w * 1.25 || rect[3] < -h * 0.25 || rect[1] > h * 1.25) continue;
+      const cells: string[] = [];
+      for (let cx = Math.floor(rect[0] / LABEL_CELL_PX); cx <= Math.floor(rect[2] / LABEL_CELL_PX); cx++) {
+        for (let cy = Math.floor(rect[1] / LABEL_CELL_PX); cy <= Math.floor(rect[3] / LABEL_CELL_PX); cy++) cells.push(`${cx}:${cy}`);
+      }
+      const hit = cells.some((c) => grid.get(c)?.some((r) => r[0] < rect[2] && rect[0] < r[2] && r[1] < rect[3] && rect[1] < r[3]));
+      if (hit) continue;
+      for (const c of cells) {
+        const list = grid.get(c);
+        if (list) list.push(rect);
+        else grid.set(c, [rect]);
+      }
+      shown.add(item);
+    }
+  }
+  state.labelShown = shown;
+  state.labelVersion++;
+}
+
+const placedByGroup = new WeakMap<GaDeckGroup, { version: number; items: GaDeckItem[] }>();
+function placedLabels(state: DeckState, group: GaDeckGroup, labels: GaDeckItem[]): GaDeckItem[] {
+  const shown = state.labelShown;
+  if (!shown) return labels;
+  const cached = placedByGroup.get(group);
+  if (cached?.version === state.labelVersion) return cached.items;
+  const items = labels.filter((item) => shown.has(item));
+  placedByGroup.set(group, { version: state.labelVersion, items });
+  return items;
+}
 const LABEL_FONT = '"JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace';
 
 function createLayers(state: DeckState): Layer[] {
@@ -427,15 +492,16 @@ function createLayers(state: DeckState): Layer[] {
         parameters: DEPTH_PARAMETERS,
       }));
     }
-    if (labels.length && showsLabels(state, group)) {
+    const placed = labels.length && showsLabels(state, group) ? placedLabels(state, group, labels) : [];
+    if (placed.length) {
       labelLayers.push(new TextLayer<GaDeckItem>({
         id: `ga-deck-${key}-label`,
-        data: labels,
+        data: placed,
         getPosition: (item) => item.coord,
         getText: (item) => item.label!,
         getColor: (item) => [Math.min(255, item.fill[0] + 30), Math.min(255, item.fill[1] + 30), Math.min(255, item.fill[2] + 30), 240],
         getSize: 10,
-        getPixelOffset: (item) => [0, Math.round(((item.iconPx ?? item.radiusPx * 2) * GA_MARKER_SCALE) / 2) + 3],
+        getPixelOffset: (item) => [0, labelOffsetPx(item)],
         getTextAnchor: 'middle',
         getAlignmentBaseline: 'top',
         fontFamily: LABEL_FONT,
@@ -767,6 +833,7 @@ export function setGaDeckGroup(map: MapLibreMap, key: GroupKey, group: GaDeckGro
   const state = getState(map);
   state.groups.set(key, group);
   state.atlas = gaIconAtlas(group.items);
+  if (group.labelMinZoom !== undefined) declutterLabels(state);
   publishState(map, state);
   if (state.overlay) updateLayers(state);
   if (!state.initPromise) state.initPromise = initialize(map, state);
