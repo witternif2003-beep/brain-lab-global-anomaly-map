@@ -8,6 +8,7 @@ import type { GaIconShape } from './ga-marker-icons';
 import type { GaModelKind } from './ga-mesh-models';
 import { box } from './ga-orbital-layer';
 import type { LiveLayer, LiveMarker, LiveValue } from './ga-live-markers/parse';
+import { classifySnapshot, type CameraState } from './ga-live-markers/snapshot';
 
 interface Payload {
   generatedAt?: string;
@@ -86,9 +87,13 @@ const SPECS: Record<LiveLayer, Spec> = {
     rows: (p) => [
       ['Camera', fmt(p.camera)],
       ['Roadway', `${fmt(p.roadway)}${p.direction ? ` · ${p.direction}` : ''}`],
-      ['Image', p.imageUrl ? 'live snapshot from 511ga.org, refreshed every 60 s while open' : 'no enabled view published by GDOT'],
+      ['Image', p.imageUrl ? 'live picture from 511ga.org, checked and refreshed every 60 s while open' : 'no enabled view published by GDOT'],
+      ['Video', 'GDOT video streams need a 511GA login, so only the live picture is shown'],
     ],
-    detail: (ms) => `${ms.filter((m) => m.props.imageUrl).length} with a live snapshot · tap a camera to view`,
+    detail: (ms) => {
+      const n = (s: CameraState) => ms.filter((m) => cameraState(m) === s).length;
+      return `${n('live')} verified live · ${n('offline')} with no live picture (hidden) · ${ms.length - n('live') - n('offline')} not checked yet, zoom in to check`;
+    },
   },
   augusta911: {
     label: 'Augusta E911 calls, last 24 h', color: '#ef4444', stroke: '#1d4ed8', radiusPx: 4.5, z: 29, refreshMs: 2 * 60_000,
@@ -291,8 +296,33 @@ function sourceLink(layer: LiveLayer, m: LiveMarker): { href: string; text: stri
 }
 
 const CAMERA_REFRESH_MS = 60_000;
+/** Cameras in view are checked from this zoom (about 2 mi across a phone screen); unchecked ones are hidden from here on. */
+const CAMERA_VERIFY_MIN_ZOOM = 13;
+const CAMERA_VERIFY_MAX = 40;
+const CAMERA_VERIFY_PARALLEL = 6;
+const CAMERA_STATUS_TTL_MS = 5 * 60_000;
+const cameraStatus = new Map<string, { state: CameraState; at: number }>();
+const cameraState = (m: LiveMarker): CameraState | null => (typeof m.props.imageUrl === 'string' ? cameraStatus.get(m.props.imageUrl)?.state ?? null : 'offline');
 
-function popupFor(layer: LiveLayer) {
+/** Fetches a fresh 511GA picture and records whether it is a real frame or one of 511GA's "no live feed" placeholders. */
+async function checkCamera(url: string): Promise<{ state: CameraState; blob: Blob | null }> {
+  let state: CameraState = 'offline';
+  let blob: Blob | null = null;
+  try {
+    const r = await fetch(`${url}?t=${Date.now()}`, { cache: 'no-store', signal: AbortSignal.timeout(20_000) });
+    if (r.ok) {
+      blob = await r.blob();
+      const hash = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', await blob.arrayBuffer())), (b) => b.toString(16).padStart(2, '0')).join('');
+      state = classifySnapshot(r.headers.get('content-type'), blob.size, hash);
+    }
+  } catch {
+    state = 'offline';
+  }
+  cameraStatus.set(url, { state, at: Date.now() });
+  return { state, blob: state === 'live' ? blob : null };
+}
+
+function popupFor(layer: LiveLayer, onCameraChecked?: () => void) {
   return (map: MapLibreMap, lngLat: LngLat, props: Record<string, unknown>) => {
     const m = props.marker as LiveMarker;
     const link = sourceLink(layer, m);
@@ -304,14 +334,36 @@ function popupFor(layer: LiveLayer) {
       const img = document.createElement('img');
       const stamp = document.createElement('div');
       img.alt = `GDOT camera ${m.label}`;
-      img.style.cssText = 'display:block;width:100%;aspect-ratio:16/9;object-fit:contain;background:#0f172a;margin:4px 0';
+      img.style.cssText = 'display:none;width:100%;aspect-ratio:16/9;object-fit:contain;background:#0f172a;margin:4px 0';
       stamp.style.cssText = 'font:10px ui-monospace,monospace;color:#475569';
-      img.onload = () => { stamp.textContent = `snapshot loaded ${new Date().toLocaleTimeString()}`; };
-      img.onerror = () => { stamp.textContent = 'snapshot unavailable from 511ga.org'; };
-      const refresh = () => { img.src = `${src}?t=${Date.now()}`; };
-      refresh();
-      const timer = window.setInterval(refresh, CAMERA_REFRESH_MS);
-      popup.on('close', () => window.clearInterval(timer));
+      stamp.textContent = 'checking camera…';
+      let objectUrl = '';
+      let open = true;
+      const refresh = async () => {
+        const { state, blob } = await checkCamera(src);
+        if (!open) return;
+        onCameraChecked?.();
+        const t = new Date().toLocaleTimeString();
+        if (blob) {
+          if (objectUrl) URL.revokeObjectURL(objectUrl);
+          objectUrl = URL.createObjectURL(blob);
+          img.src = objectUrl;
+          img.style.display = 'block';
+          stamp.textContent = `LIVE · verified real picture at ${t} · next check in 60 s`;
+          stamp.style.color = '#15803d';
+        } else {
+          img.style.display = 'none';
+          stamp.textContent = `NO LIVE PICTURE at ${t}: 511GA is serving its "stream not available" image for this camera · rechecking every 60 s`;
+          stamp.style.color = '#b91c1c';
+        }
+      };
+      void refresh();
+      const timer = window.setInterval(() => void refresh(), CAMERA_REFRESH_MS);
+      popup.on('close', () => {
+        open = false;
+        window.clearInterval(timer);
+        if (objectUrl) URL.revokeObjectURL(objectUrl);
+      });
       el.insertBefore(stamp, el.children[1] ?? null);
       el.insertBefore(img, stamp);
     }
@@ -340,21 +392,69 @@ export function addGaLiveMarkerLayers(map: MapLibreMap): void {
     const now = Date.now();
     const fill = hexToRgba(spec.color, 235);
     const stroke = hexToRgba(spec.stroke);
-    const items: GaDeckItem[] = ms.map((m) => ({
+    const zoomedIn = map.getZoom() >= CAMERA_VERIFY_MIN_ZOOM;
+    const shown = layer === 'gdotcams' ? ms.filter((m) => cameraState(m) === 'live' || (!zoomedIn && cameraState(m) === null)) : ms;
+    const items: GaDeckItem[] = shown.map((m) => {
+      const unchecked = layer === 'gdotcams' && cameraState(m) !== 'live';
+      return {
       coord: layer === 'aircraft' ? aircraftCoord(m, now) : [m.lon, m.lat],
       radiusPx: spec.radiusPx,
-      ...toIcon(spec.icon(m)),
+      ...(unchecked ? {} : toIcon(spec.icon(m))),
       iconPx: spec.iconPx,
-      label: spec.tag?.(m) || undefined,
-      model: modelFor(layer, m),
-      fill: layer === 'micromobility' && m.props.disabled ? hexToRgba('#64748b', 200) : layer === 'aircraft' && m.props.emergency ? hexToRgba('#ef4444') : fill,
+      label: unchecked ? undefined : spec.tag?.(m) || undefined,
+      model: unchecked ? undefined : modelFor(layer, m),
+      fill: unchecked || (layer === 'micromobility' && m.props.disabled) ? hexToRgba('#64748b', 200) : layer === 'aircraft' && m.props.emergency ? hexToRgba('#ef4444') : fill,
       stroke,
       strokePx: layer === 'micromobility' ? 0.5 : 1,
       pulse: (layer === 'aircraft' && !!m.props.emergency) || (layer === 'tfr' && tfrState(m.props, now) === 'active'),
       props: { marker: m },
-    }));
-    setGaDeckGroup(map, layer, { z: spec.z, labelMinZoom: spec.labelMinZoom, items, onClick: popupFor(layer) });
+      };
+    });
+    setGaDeckGroup(map, layer, { z: spec.z, labelMinZoom: spec.labelMinZoom, items, onClick: popupFor(layer, layer === 'gdotcams' ? camerasChanged : undefined) });
   };
+
+  const reports: Partial<Record<LiveLayer, () => void>> = {};
+  const camerasChanged = () => {
+    render('gdotcams');
+    reports.gdotcams?.();
+  };
+  let verifying = false;
+  /** Checks the cameras in view (nearest the centre first) once zoomed in, so only verified-live cameras are drawn. */
+  const verifyCamerasInView = async () => {
+    if (verifying || map.getZoom() < CAMERA_VERIFY_MIN_ZOOM) return;
+    const b = map.getBounds();
+    const c = map.getCenter();
+    const now = Date.now();
+    const todo = (current.gdotcams ?? [])
+      .filter((m) => typeof m.props.imageUrl === 'string' && b.contains([m.lon, m.lat]) && now - (cameraStatus.get(String(m.props.imageUrl))?.at ?? 0) > CAMERA_STATUS_TTL_MS)
+      .sort((a, d) => Math.hypot(a.lon - c.lng, a.lat - c.lat) - Math.hypot(d.lon - c.lng, d.lat - c.lat))
+      .slice(0, CAMERA_VERIFY_MAX);
+    if (!todo.length) return;
+    verifying = true;
+    try {
+      const queue = [...todo];
+      let done = 0;
+      await Promise.all(Array.from({ length: CAMERA_VERIFY_PARALLEL }, async () => {
+        for (let m = queue.shift(); m; m = queue.shift()) {
+          await checkCamera(String(m.props.imageUrl));
+          if (++done % CAMERA_VERIFY_PARALLEL === 0) camerasChanged();
+        }
+      }));
+    } finally {
+      verifying = false;
+      camerasChanged();
+    }
+  };
+  let wasZoomedIn = map.getZoom() >= CAMERA_VERIFY_MIN_ZOOM;
+  const onMoveEnd = () => {
+    const zoomedIn = map.getZoom() >= CAMERA_VERIFY_MIN_ZOOM;
+    if (zoomedIn !== wasZoomedIn) {
+      wasZoomedIn = zoomedIn;
+      render('gdotcams');
+    }
+    void verifyCamerasInView();
+  };
+  map.on('moveend', onMoveEnd);
 
   const load = async (layer: LiveLayer) => {
     const spec = SPECS[layer];
@@ -368,13 +468,15 @@ export function addGaLiveMarkerLayers(map: MapLibreMap): void {
       const failed = (d.feeds ?? []).filter((f) => f.error);
       const unplaced = (d.feeds ?? []).reduce((a, f) => a + (f.unplaced ?? 0), 0);
       const newest = ms.reduce<string | null>((a, m) => (m.observedAt && (!a || m.observedAt > a) ? m.observedAt : a), null);
-      reportGaFeed(map, {
+      reports[layer] = () => reportGaFeed(map, {
         id: layer, label: spec.label, color: spec.color, count: ms.length,
         detail: `${spec.detail(ms)}${unplaced ? ` · ${unplaced} not placed (no map location)` : ''} · refresh ${Math.round(spec.refreshMs / 1000)} s`,
         updatedAt: newest ?? d.generatedAt ?? null,
         sourceUrl: d.sourceUrl ?? '',
         error: failed.length ? `unavailable: ${failed.map((f) => `${f.id} (${f.error})`).join(', ')}` : null,
       });
+      reports[layer]();
+      if (layer === 'gdotcams') void verifyCamerasInView();
       if (layer === 'aircraft') {
         const adsb = ms.filter((m) => typeof m.props.gpsNacp === 'number');
         reportGaFeed(map, {
@@ -397,6 +499,7 @@ export function addGaLiveMarkerLayers(map: MapLibreMap): void {
   ];
   map.once('remove', () => {
     timers.forEach(clearInterval);
+    map.off('moveend', onMoveEnd);
     bound.delete(map);
   });
 }
