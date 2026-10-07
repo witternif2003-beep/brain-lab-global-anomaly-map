@@ -8,7 +8,7 @@ import type { GaIconShape } from './ga-marker-icons';
 import type { GaModelKind } from './ga-mesh-models';
 import { box } from './ga-orbital-layer';
 import type { LiveLayer, LiveMarker, LiveValue } from './ga-live-markers/parse';
-import { classifySnapshot, type CameraState } from './ga-live-markers/snapshot';
+import type { CameraState } from './ga-live-markers/snapshot';
 
 interface Payload {
   generatedAt?: string;
@@ -304,22 +304,22 @@ const CAMERA_STATUS_TTL_MS = 5 * 60_000;
 const cameraStatus = new Map<string, { state: CameraState; at: number }>();
 const cameraState = (m: LiveMarker): CameraState | null => (typeof m.props.imageUrl === 'string' ? cameraStatus.get(m.props.imageUrl)?.state ?? null : 'offline');
 
-/** Fetches a fresh 511GA picture and records whether it is a real frame or one of 511GA's "no live feed" placeholders. */
+/** Asks /api/ga-camera for a fresh 511GA picture; it answers with the image only when it is a real frame, not a "no live feed" placeholder. */
 async function checkCamera(url: string): Promise<{ state: CameraState; blob: Blob | null }> {
   let state: CameraState = 'offline';
   let blob: Blob | null = null;
   try {
-    const r = await fetch(`${url}?t=${Date.now()}`, { cache: 'no-store', signal: AbortSignal.timeout(20_000) });
-    if (r.ok) {
+    const view = url.split('/').pop() ?? '';
+    const r = await fetch(`/api/ga-camera?view=${encodeURIComponent(view)}`, { cache: 'no-store', signal: AbortSignal.timeout(20_000) });
+    if (r.ok && r.headers.get('x-camera-state') === 'live') {
+      state = 'live';
       blob = await r.blob();
-      const hash = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', await blob.arrayBuffer())), (b) => b.toString(16).padStart(2, '0')).join('');
-      state = classifySnapshot(r.headers.get('content-type'), blob.size, hash);
     }
   } catch {
     state = 'offline';
   }
   cameraStatus.set(url, { state, at: Date.now() });
-  return { state, blob: state === 'live' ? blob : null };
+  return { state, blob };
 }
 
 function popupFor(layer: LiveLayer, onCameraChecked?: () => void) {
@@ -340,7 +340,7 @@ function popupFor(layer: LiveLayer, onCameraChecked?: () => void) {
       let objectUrl = '';
       let open = true;
       const refresh = async () => {
-        const { state, blob } = await checkCamera(src);
+        const { blob } = await checkCamera(src);
         if (!open) return;
         onCameraChecked?.();
         const t = new Date().toLocaleTimeString();
@@ -349,7 +349,7 @@ function popupFor(layer: LiveLayer, onCameraChecked?: () => void) {
           objectUrl = URL.createObjectURL(blob);
           img.src = objectUrl;
           img.style.display = 'block';
-          stamp.textContent = `LIVE · verified real picture at ${t} · next check in 60 s`;
+          stamp.textContent = `LIVE CAMERA · real 511GA camera picture, not a placeholder · checked ${t} · rechecked every 60 s`;
           stamp.style.color = '#15803d';
         } else {
           img.style.display = 'none';
