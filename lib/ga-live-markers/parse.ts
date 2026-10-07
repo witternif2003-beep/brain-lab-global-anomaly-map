@@ -1,7 +1,7 @@
 export const GA_BBOX = { west: -85.7, south: 30.3, east: -80.8, north: 35.1 };
 
 export type OsmInfraKind = "signals" | "towers" | "police" | "firestations" | "sirens" | "speedcams" | "alpr";
-export type LiveLayer = "aircraft" | "transit" | "micromobility" | "stations" | "streamgauges" | "quakes" | "tfr" | OsmInfraKind;
+export type LiveLayer = "aircraft" | "transit" | "micromobility" | "stations" | "streamgauges" | "quakes" | "tfr" | "augusta911" | "athens911" | OsmInfraKind;
 export type LiveValue = string | number | boolean | null;
 
 export interface LiveMarker {
@@ -398,4 +398,127 @@ export function parseTfrXml(xml: string, item: TfrListItem): LiveMarker | null {
     upperRef: xmlText(xml, "codeDistVerUpper"),
     facility: item.facility ?? null,
   });
+}
+
+const EASTERN = "America/New_York";
+const easternOffsetMin = (t: number) => {
+  const tz = new Intl.DateTimeFormat("en-US", { timeZone: EASTERN, timeZoneName: "shortOffset" }).formatToParts(new Date(t)).find((x) => x.type === "timeZoneName")?.value ?? "";
+  const m = tz.match(/GMT([+-])(\d{1,2})(?::(\d{2}))?/);
+  return m ? (m[1] === "-" ? -1 : 1) * (Number(m[2]) * 60 + Number(m[3] ?? 0)) : 0;
+};
+
+/** UTC ISO time for a wall-clock time in US Eastern (handles EST/EDT). */
+export function easternToIso(y: number, mo: number, d: number, h: number, mi: number): string {
+  const wall = Date.UTC(y, mo - 1, d, h, mi);
+  const first = wall - easternOffsetMin(wall) * 60_000;
+  return new Date(wall - easternOffsetMin(first) * 60_000).toISOString();
+}
+
+export interface BskyFeedItem {
+  reason?: unknown;
+  post?: {
+    uri?: string;
+    author?: { handle?: string };
+    record?: { text?: string; createdAt?: string; facets?: { features?: { uri?: string }[] }[] };
+  };
+}
+
+export interface Augusta911Call {
+  callType: string;
+  location: string;
+  calledAt: string | null;
+  postedAt: string | null;
+  postUrl: string | null;
+  coord: [number, number] | null;
+}
+
+const AUG_POST = /^(\d{1,2})\/(\d{1,2})\/(\d{4})@(\d{1,2}):(\d{2}) ([AP])M: (.+?) at (.+?)(?: https?:\/\/\S*)?$/s;
+const COORD_TEXT = /^(-?\d{1,2}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)$/;
+
+/** Calls from the Augusta, GA E911 Bluesky author feed (`app.bsky.feed.getAuthorFeed`); reposts and unparseable posts are skipped, repeated posts of one call are merged. */
+export function parseAugusta911Feed(json: { feed?: BskyFeedItem[] }): Augusta911Call[] {
+  const seen = new Set<string>();
+  const out: Augusta911Call[] = [];
+  for (const it of json.feed ?? []) {
+    const post = it.post;
+    const rec = post?.record;
+    if (it.reason || !rec?.text) continue;
+    const m = rec.text.trim().match(AUG_POST);
+    if (!m) continue;
+    const mapUri = rec.facets?.flatMap((f) => f.features ?? []).map((f) => f.uri ?? "").find((u) => /[?&]q=/.test(u));
+    const q = mapUri ? new URL(mapUri).searchParams.get("q") : null;
+    const location = (q ?? m[8]).replace(/\s+/g, " ").replace(/\.{3}$/, "").trim();
+    const hour = (Number(m[4]) % 12) + (m[6] === "P" ? 12 : 0);
+    const calledAt = easternToIso(Number(m[3]), Number(m[1]), Number(m[2]), hour, Number(m[5]));
+    const callType = m[7].replace(/\s+/g, " ").trim();
+    const key = `${calledAt}|${callType}|${location}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const c = location.replace(/\s+AUGUSTA\s+GA$/i, "").match(COORD_TEXT);
+    const rkey = post?.uri?.split("/").pop();
+    out.push({
+      callType,
+      location,
+      calledAt,
+      postedAt: rec.createdAt ?? null,
+      postUrl: rkey && post?.author?.handle ? `https://bsky.app/profile/${post.author.handle}/post/${rkey}` : null,
+      coord: c ? [Number(c[2]), Number(c[1])] : null,
+    });
+  }
+  return out;
+}
+
+/** Single-line query for the Augusta GIS address locator: city suffix dropped, "A AND B" written as an intersection "A & B". */
+export const augustaGeocodeQuery = (location: string) => location.replace(/\s+AUGUSTA\s+GA$/i, "").replace(/\s+AND\s+/gi, " & ").replace(/\s+/g, " ").trim();
+
+export interface GeocodeHit { lon: number; lat: number; score: number; matched: string }
+
+/** Esri locator scores: ≥ 80 a good match; 60–79 placed but flagged approximate; below 60 not placed. */
+export const GEOCODE_GOOD_SCORE = 80;
+export const GEOCODE_MIN_SCORE = 60;
+
+/** Map markers for Augusta E911 calls; location is the coordinate in the post or the Augusta GIS locator match, calls without either are dropped. */
+export function augusta911Markers(calls: Augusta911Call[], geocode: (query: string) => GeocodeHit | null): LiveMarker[] {
+  return calls
+    .map((c) => {
+      const hit = c.coord ? null : geocode(augustaGeocodeQuery(c.location));
+      const [lon, lat] = c.coord ?? (hit ? [hit.lon, hit.lat] : [null, null]);
+      const delayMin = c.calledAt && c.postedAt ? Math.round((Date.parse(c.postedAt) - Date.parse(c.calledAt)) / 60_000) : null;
+      return marker(lon, lat, c.calledAt, c.callType, {
+        agency: "Augusta-Richmond County E911",
+        callType: c.callType,
+        location: c.location,
+        postedAt: c.postedAt,
+        postDelayMin: delayMin,
+        placedBy: c.coord ? "coordinates in post" : "Augusta GIS address locator",
+        matched: hit?.matched ?? null,
+        matchScore: hit ? Math.round(hit.score) : null,
+        approximate: hit !== null && hit.score < GEOCODE_GOOD_SCORE,
+        postUrl: c.postUrl,
+      });
+    })
+    .filter(keep);
+}
+
+export interface AccpdFeature {
+  attributes?: { Incident_Number?: string | null; Incident_Type?: string | null; Date?: number | null; Lat?: number | null; Lon?: number | null; Call_Source?: string | null; Personnel_Incidentcount?: number | null; ObjectId?: number | null };
+}
+
+/** Athens-Clarke PD calls for service from the county's `Incidents_accpd_Public` ArcGIS layer, at the published point; the layer gives a date only, so `observedAt` is local midnight. */
+export function parseAccpdIncidents(json: { features?: AccpdFeature[] }): LiveMarker[] {
+  return (json.features ?? [])
+    .map((f) => {
+      const a = f.attributes ?? {};
+      const t = num(a.Date);
+      return marker(num(a.Lon), num(a.Lat), t === null ? null : new Date(t).toISOString(), a.Incident_Type?.trim() || "Call for service", {
+        agency: "Athens-Clarke County Police",
+        incident: a.Incident_Number ?? null,
+        callType: a.Incident_Type?.trim() || null,
+        callSource: a.Call_Source?.trim() || null,
+        date: t === null ? null : new Date(t).toLocaleDateString("en-CA", { timeZone: EASTERN }),
+        personnel: num(a.Personnel_Incidentcount),
+        objectId: num(a.ObjectId),
+      });
+    })
+    .filter(keep);
 }

@@ -14,6 +14,7 @@ export const BEACON_CATEGORIES: BeaconCategory[] = [
   { domain: 'Emergency warning', name: 'V2X light-bar integration (C-V2X OBU)', feeds: [], note: NOT_PUBLIC },
   { domain: 'Communications', name: 'P25 land mobile radio (Phase 1 FDMA / Phase 2 TDMA)', feeds: ['towers'], note: 'tower sites · radio traffic not published' },
   { domain: 'Communications', name: 'Mobile data terminals (MDTs)', feeds: [], note: NOT_PUBLIC },
+  { domain: 'Communications', name: 'CAD dispatch / public 911 calls (delayed)', feeds: ['augusta911', 'athens911'], note: 'call locations published by Augusta E911 and Athens-Clarke PD · no unit positions' },
   { domain: 'Location & tracking', name: 'Automatic vehicle location (AVL)', feeds: ['transit'], note: 'public transit AVL · police AVL not published' },
   { domain: 'Location & tracking', name: 'LoJack police tracking computers', feeds: [], note: NOT_PUBLIC },
   { domain: 'Location & tracking', name: 'Covert RFID / IR trackers', feeds: [], note: 'NO PUBLIC SOURCE · covert tracking' },

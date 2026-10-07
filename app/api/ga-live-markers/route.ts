@@ -1,8 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 import {
+  augusta911Markers,
+  augustaGeocodeQuery,
   decodeGtfsRtVehicles,
   GA_BBOX,
+  parseAccpdIncidents,
   parseAdsbLol,
+  parseAugusta911Feed,
   parseGbfsFreeBikes,
   parseIemCurrents,
   parseOpenSky,
@@ -11,6 +15,10 @@ import {
   parseUsgsIv,
   parseUsgsQuakes,
   transitMarkers,
+  GEOCODE_MIN_SCORE,
+  type AccpdFeature,
+  type BskyFeedItem,
+  type GeocodeHit,
   type LiveLayer,
   type LiveMarker,
   type OsmInfraKind,
@@ -22,7 +30,8 @@ export const maxDuration = 120;
 
 const UA = { "User-Agent": "brain-lab-global-anomaly-map (public-data map; https://brain-lab-six.vercel.app)" };
 
-interface Feed { id: string; url: string | (() => string); load?: (r: Response) => Promise<LiveMarker[]>; markers?: () => Promise<LiveMarker[]> }
+interface Placed { markers: LiveMarker[]; unplaced: number }
+interface Feed { id: string; url: string | (() => string); load?: (r: Response) => Promise<LiveMarker[]>; markers?: () => Promise<LiveMarker[] | Placed> }
 interface LayerSpec { ttlS: number; source: string; sourceUrl: string; feeds: Feed[]; fallback?: Feed[] }
 
 const json = (f: (j: never) => LiveMarker[]) => async (r: Response) => f((await r.json()) as never);
@@ -93,7 +102,110 @@ async function gaTfrs(): Promise<LiveMarker[]> {
   return out.filter((m): m is LiveMarker => m !== null);
 }
 
+const getJson = async <T,>(url: string, timeoutMs = 15_000): Promise<T> => {
+  const r = await fetch(url, { cache: "no-store", headers: UA, signal: AbortSignal.timeout(timeoutMs) });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const d = (await r.json()) as T & { error?: { message?: string } };
+  if (d.error) throw new Error(d.error.message ?? "service error");
+  return d;
+};
+
+const AUG_HANDLE = "auge911feed.bsky.social";
+const AUG_FEED = `https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=${AUG_HANDLE}&filter=posts_no_replies&limit=100`;
+const AUG_LOCATOR = "https://gismap.augustaga.gov/arcgis/rest/services/AGS_AddressComposite/GeocodeServer/findAddressCandidates";
+const AUG_WINDOW_MS = 24 * 3600_000;
+const AUG_MAX_PAGES = 4;
+const AUG_GEOCODE_BATCH = 4;
+const geoMemo = new Map<string, GeocodeHit | null>();
+
+/** Intersections are retried with the locator's other separators ("AND", "/") when "&" finds no candidate. */
+async function augustaGeocode(query: string): Promise<GeocodeHit | null> {
+  const memo = geoMemo.get(query);
+  if (memo !== undefined) return memo;
+  let hit: GeocodeHit | null = null;
+  for (const q of query.includes(" & ") ? [query, query.replace(" & ", " AND "), query.replace(" & ", " / ")] : [query]) {
+    hit = await augustaLocate(q);
+    if (hit) break;
+  }
+  if (geoMemo.size >= 5000) geoMemo.clear();
+  geoMemo.set(query, hit);
+  return hit;
+}
+
+async function augustaLocate(query: string): Promise<GeocodeHit | null> {
+  const d = await getJson<{ candidates?: { address?: string; score?: number; location?: { x?: number; y?: number } }[] }>(
+    `${AUG_LOCATOR}?SingleLine=${encodeURIComponent(query)}&outSR=4326&maxLocations=1&f=json`,
+  );
+  const c = d.candidates?.[0];
+  const hit = c && (c.score ?? 0) >= GEOCODE_MIN_SCORE && Number.isFinite(c.location?.x) && Number.isFinite(c.location?.y)
+    ? { lon: c.location!.x!, lat: c.location!.y!, score: c.score!, matched: c.address ?? query }
+    : null;
+  return hit;
+}
+
+/** Augusta E911 calls posted in the last 24 h, placed by coordinates in the post or the Augusta GIS locator. */
+async function augusta911(): Promise<Placed> {
+  const since = Date.now() - AUG_WINDOW_MS;
+  const feed: BskyFeedItem[] = [];
+  let cursor: string | undefined;
+  for (let page = 0; page < AUG_MAX_PAGES; page++) {
+    const d = await getJson<{ feed?: BskyFeedItem[]; cursor?: string }>(cursor ? `${AUG_FEED}&cursor=${encodeURIComponent(cursor)}` : AUG_FEED);
+    feed.push(...(d.feed ?? []));
+    const oldest = d.feed?.at(-1)?.post?.record?.createdAt;
+    if (!d.cursor || !oldest || Date.parse(oldest) < since) break;
+    cursor = d.cursor;
+  }
+  const calls = parseAugusta911Feed({ feed }).filter((c) => c.calledAt && Date.parse(c.calledAt) >= since);
+  const queries = [...new Set(calls.filter((c) => !c.coord).map((c) => augustaGeocodeQuery(c.location)))];
+  const hits = new Map<string, GeocodeHit | null>();
+  const errors: string[] = [];
+  for (let i = 0; i < queries.length; i += AUG_GEOCODE_BATCH) {
+    await Promise.all(queries.slice(i, i + AUG_GEOCODE_BATCH).map(async (q) => {
+      try {
+        hits.set(q, await augustaGeocode(q));
+      } catch (err) {
+        errors.push(String(err));
+      }
+    }));
+  }
+  if (queries.length && errors.length === queries.length) throw new Error(`Augusta GIS locator unreachable: ${errors[0]}`);
+  const markers = augusta911Markers(calls, (q) => hits.get(q) ?? null);
+  return { markers, unplaced: calls.length - markers.length };
+}
+
+const ACCPD = "https://services2.arcgis.com/xSEULKvB31odt3XQ/arcgis/rest/services/Incidents_accpd_Public/FeatureServer/0";
+const ACCPD_PAGE = 1000;
+const ACCPD_MAX = 6000;
+
+/** Every Athens-Clarke PD call for service dated in the last 7 days, newest first, unfiltered. */
+async function athens911(): Promise<Placed> {
+  const markers: LiveMarker[] = [];
+  let total = 0;
+  for (let offset = 0; offset < ACCPD_MAX; offset += ACCPD_PAGE) {
+    const d = await getJson<{ features?: AccpdFeature[]; exceededTransferLimit?: boolean }>(
+      `${ACCPD}/query?where=${encodeURIComponent("Date >= CURRENT_TIMESTAMP - 7")}&outFields=*&returnGeometry=false&orderByFields=${encodeURIComponent("ObjectId DESC")}&resultOffset=${offset}&resultRecordCount=${ACCPD_PAGE}&f=json`,
+      30_000,
+    );
+    total += d.features?.length ?? 0;
+    markers.push(...parseAccpdIncidents(d));
+    if (!d.exceededTransferLimit) break;
+  }
+  return { markers, unplaced: total - markers.length };
+}
+
 const LAYERS: Record<LiveLayer, LayerSpec> = {
+  augusta911: {
+    ttlS: 120,
+    source: "Augusta-Richmond County E911 public incident feed (official Bluesky account linked from augustaga.gov), calls from the last 24 h; call type and location as posted, placed by the Augusta GIS address locator (match score ≥ 60; below 80 flagged approximate) or coordinates in the post",
+    sourceUrl: "https://www.augustaga.gov/66/E911-Emergency-Services",
+    feeds: [{ id: "Augusta E911 (Bluesky)", url: AUG_FEED, markers: augusta911 }],
+  },
+  athens911: {
+    ttlS: 1800,
+    source: "Athens-Clarke County Police calls for service logged in CAD (county ArcGIS layer Incidents_accpd_Public), dated in the last 7 days; unfiltered, at the exact point the county publishes; date only, published with a delay",
+    sourceUrl: ACCPD,
+    feeds: [{ id: "ACCPD Incidents (ArcGIS)", url: ACCPD, markers: athens911 }],
+  },
   tfr: {
     ttlS: 300,
     source: "FAA temporary flight restrictions (incl. UAS/drone restrictions) listed for Georgia on tfr.faa.gov; centre of each restricted area",
@@ -177,7 +289,9 @@ async function run(feeds: Feed[]) {
   );
   return feeds.map((f, i) => {
     const r = results[i];
-    return { id: f.id, url: feedUrl(f), markers: r.status === "fulfilled" ? r.value : [], error: r.status === "rejected" ? String(r.reason) : null };
+    const v = r.status === "fulfilled" ? r.value : [];
+    const placed = Array.isArray(v) ? { markers: v, unplaced: null } : v;
+    return { id: f.id, url: feedUrl(f), ...placed, error: r.status === "rejected" ? String(r.reason) : null };
   });
 }
 
@@ -201,7 +315,7 @@ async function build(layer: LiveLayer) {
     refreshSeconds: spec.ttlS,
     source,
     sourceUrl,
-    feeds: feeds.map((f) => ({ id: f.id, url: f.url, count: f.error ? null : f.markers.length, error: f.error })),
+    feeds: feeds.map((f) => ({ id: f.id, url: f.url, count: f.error ? null : f.markers.length, unplaced: f.unplaced, error: f.error })),
     markers: feeds.flatMap((f) => f.markers),
   };
 }

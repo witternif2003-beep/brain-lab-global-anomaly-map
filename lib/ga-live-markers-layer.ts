@@ -14,7 +14,7 @@ interface Payload {
   refreshSeconds?: number;
   source?: string;
   sourceUrl?: string;
-  feeds?: { id: string; count: number | null; error: string | null }[];
+  feeds?: { id: string; count: number | null; unplaced?: number | null; error: string | null }[];
   markers?: LiveMarker[];
   error?: string;
 }
@@ -33,6 +33,7 @@ interface Spec {
   title: (m: LiveMarker) => string;
   rows: (p: Record<string, LiveValue>) => [string, string][];
   detail: (ms: LiveMarker[]) => string;
+  dateOnly?: boolean;
 }
 
 const KT_TO_MS = 0.514444;
@@ -73,8 +74,43 @@ const tfrState = (p: Record<string, LiveValue>, now = Date.now()) => {
   return 'active';
 };
 const when = (v: LiveValue) => (typeof v === 'string' && v ? new Date(v).toLocaleString() : '');
+const topCounts = (ms: LiveMarker[], key: string, n: number) => countBy(ms, key).split(', ').slice(0, n).join(', ');
 
 const SPECS: Record<LiveLayer, Spec> = {
+  augusta911: {
+    label: 'Augusta E911 calls, last 24 h', color: '#ef4444', stroke: '#1d4ed8', radiusPx: 4.5, z: 29, refreshMs: 2 * 60_000,
+    iconPx: 20, labelMinZoom: 12,
+    icon: () => ({ shape: 'alert' }),
+    tag: (m) => m.label,
+    title: (m) => `AUGUSTA E911 · ${m.label}`,
+    rows: (p) => [
+      ['Location', fmt(p.location)],
+      ['Posted', when(p.postedAt)],
+      ['Post delay', fmt(p.postDelayMin, ' min after call time')],
+      ['Placed by', `${fmt(p.placedBy)}${p.approximate ? ' · APPROXIMATE' : ''}`],
+      ['Matched', fmt(p.matched)],
+      ['Match score', fmt(p.matchScore)],
+    ],
+    detail: (ms) => (ms.length ? `${topCounts(ms, 'callType', 3)} · ${ms.filter((m) => m.props.approximate).length} approximate` : 'no calls posted in the last 24 h'),
+  },
+  athens911: {
+    label: 'Athens-Clarke PD calls, last 7 days', color: '#2563eb', stroke: '#ef4444', radiusPx: 3, z: 28, refreshMs: 30 * 60_000,
+    iconPx: 14, labelMinZoom: 15, dateOnly: true,
+    icon: () => ({ shape: 'beacon' }),
+    tag: (m) => m.label,
+    title: (m) => `ATHENS-CLARKE PD · ${m.label}`,
+    rows: (p) => [
+      ['Incident', fmt(p.incident)],
+      ['Call source', fmt(p.callSource)],
+      ['Date', `${fmt(p.date)} (date only, no time published)`],
+      ['Personnel', fmt(p.personnel)],
+      ['Position', 'exact point published by Athens-Clarke County'],
+    ],
+    detail: (ms) => {
+      const newest = ms.reduce((a, m) => (String(m.props.date ?? '') > a ? String(m.props.date) : a), '');
+      return ms.length ? `${ms.filter((m) => m.props.callSource === '911').length} via 911 · newest date ${newest} · unfiltered` : 'no calls dated in the last 7 days';
+    },
+  },
   tfr: {
     label: 'FAA flight restrictions (TFR)', color: '#ef4444', stroke: '#1e3a8a', radiusPx: 5, z: 34, refreshMs: 5 * 60_000,
     iconPx: 26, labelMinZoom: 6,
@@ -233,6 +269,8 @@ function sourceLink(layer: LiveLayer, m: LiveMarker): { href: string; text: stri
   if (layer === 'streamgauges') return { href: `https://waterdata.usgs.gov/monitoring-location/${encodeURIComponent(String(m.props.site))}/`, text: 'USGS site page ↗' };
   if (layer === 'stations') return { href: `https://mesonet.agron.iastate.edu/sites/site.php?station=${encodeURIComponent(String(m.props.station))}&network=${encodeURIComponent(String(m.props.network))}`, text: 'IEM station page ↗' };
   if (layer === 'quakes' && m.props.url) return { href: String(m.props.url), text: 'USGS event page ↗' };
+  if (layer === 'augusta911') return m.props.postUrl ? { href: String(m.props.postUrl), text: 'Augusta E911 post ↗' } : { href: 'https://www.augustaga.gov/66/E911-Emergency-Services', text: 'Augusta E911 ↗' };
+  if (layer === 'athens911') return { href: 'https://services2.arcgis.com/xSEULKvB31odt3XQ/arcgis/rest/services/Incidents_accpd_Public/FeatureServer/0', text: 'ACCPD public ArcGIS layer ↗' };
   if (layer === 'aircraft') return { href: `https://adsb.lol/?lat=${m.lat}&lon=${m.lon}&zoom=11`, text: 'Open area in adsb.lol ↗' };
   if (layer === 'transit') return m.props.agency === 'MARTA' ? { href: 'https://itsmarta.com/', text: 'MARTA ↗' } : { href: 'https://mobilitydatabase.org/', text: 'Mobility Database feed catalogue ↗' };
   return { href: 'https://github.com/MobilityData/gbfs', text: 'GBFS specification ↗' };
@@ -242,7 +280,7 @@ function popupFor(layer: LiveLayer) {
   return (map: MapLibreMap, lngLat: LngLat, props: Record<string, unknown>) => {
     const m = props.marker as LiveMarker;
     const link = sourceLink(layer, m);
-    const rows = [...SPECS[layer].rows(m.props), ['Reported', m.observedAt ? new Date(m.observedAt).toLocaleString() : ''] as [string, string]];
+    const rows = SPECS[layer].dateOnly ? SPECS[layer].rows(m.props) : [...SPECS[layer].rows(m.props), ['Reported', m.observedAt ? new Date(m.observedAt).toLocaleString() : ''] as [string, string]];
     new Popup({ closeButton: true, maxWidth: 'min(300px, 90vw)' })
       .setLngLat(lngLat)
       .setDOMContent(box(SPECS[layer].title(m), rows, link.href, link.text))
@@ -258,7 +296,7 @@ function aircraftCoord(m: LiveMarker, now: number): LngLat {
   return offset([m.lon, m.lat], ((90 - track) * Math.PI) / 180, gs * KT_TO_MS * dt);
 }
 
-/** Public markers inside the GA wall: ADS-B aircraft, transit buses, parked shared scooters, weather/hydro stations, USGS gauges and earthquakes, FAA TFRs, and OSM-mapped public-safety infrastructure (idempotent). */
+/** Public markers inside the GA wall: ADS-B aircraft, transit buses, parked shared scooters, weather/hydro stations, USGS gauges and earthquakes, FAA TFRs, Augusta E911 and Athens-Clarke PD calls for service, and OSM-mapped public-safety infrastructure (idempotent). */
 export function addGaLiveMarkerLayers(map: MapLibreMap): void {
   if (bound.has(map)) return;
   bound.add(map);
@@ -297,10 +335,11 @@ export function addGaLiveMarkerLayers(map: MapLibreMap): void {
       current[layer] = ms;
       render(layer);
       const failed = (d.feeds ?? []).filter((f) => f.error);
+      const unplaced = (d.feeds ?? []).reduce((a, f) => a + (f.unplaced ?? 0), 0);
       const newest = ms.reduce<string | null>((a, m) => (m.observedAt && (!a || m.observedAt > a) ? m.observedAt : a), null);
       reportGaFeed(map, {
         id: layer, label: spec.label, color: spec.color, count: ms.length,
-        detail: `${spec.detail(ms)} · refresh ${Math.round(spec.refreshMs / 1000)} s`,
+        detail: `${spec.detail(ms)}${unplaced ? ` · ${unplaced} not placed (no map location)` : ''} · refresh ${Math.round(spec.refreshMs / 1000)} s`,
         updatedAt: newest ?? d.generatedAt ?? null,
         sourceUrl: d.sourceUrl ?? '',
         error: failed.length ? `unavailable: ${failed.map((f) => `${f.id} (${f.error})`).join(', ')}` : null,
