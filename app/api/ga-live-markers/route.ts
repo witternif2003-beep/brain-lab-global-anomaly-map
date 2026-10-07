@@ -1,23 +1,28 @@
 import { NextResponse, type NextRequest } from "next/server";
 import {
   decodeGtfsRtVehicles,
+  GA_BBOX,
   parseAdsbLol,
   parseGbfsFreeBikes,
   parseIemCurrents,
   parseOpenSky,
+  parseOverpassInfra,
+  parseTfrXml,
   parseUsgsIv,
   parseUsgsQuakes,
   transitMarkers,
   type LiveLayer,
   type LiveMarker,
+  type OsmInfraKind,
+  type TfrListItem,
 } from "../../../lib/ga-live-markers/parse";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 30;
+export const maxDuration = 120;
 
 const UA = { "User-Agent": "brain-lab-global-anomaly-map (public-data map; https://brain-lab-six.vercel.app)" };
 
-interface Feed { id: string; url: string | (() => string); load: (r: Response) => Promise<LiveMarker[]> }
+interface Feed { id: string; url: string | (() => string); load?: (r: Response) => Promise<LiveMarker[]>; markers?: () => Promise<LiveMarker[]> }
 interface LayerSpec { ttlS: number; source: string; sourceUrl: string; feeds: Feed[]; fallback?: Feed[] }
 
 const json = (f: (j: never) => LiveMarker[]) => async (r: Response) => f((await r.json()) as never);
@@ -32,7 +37,76 @@ const gtfsRt = (agency: string, url: string): Feed => ({
   load: async (r) => transitMarkers(decodeGtfsRtVehicles(new Uint8Array(await r.arrayBuffer())).vehicles, agency),
 });
 
+const OSM_TTL_S = 6 * 3600;
+const OVERPASS = [
+  { url: "https://overpass-api.de/api/interpreter", timeoutMs: 65_000 },
+  { url: "https://overpass.private.coffee/api/interpreter", timeoutMs: 45_000 },
+];
+const OSM_QUERY = `[out:json][timeout:60][bbox:${GA_BBOX.south},${GA_BBOX.west},${GA_BBOX.north},${GA_BBOX.east}];node["highway"="traffic_signals"];out skel qt;(nwr["amenity"~"^(police|fire_station)$"];nwr["emergency"="siren"];nwr["man_made"~"^(mast|tower)$"]["tower:type"="communication"];node["highway"="speed_camera"];nwr["man_made"="surveillance"]["surveillance:type"~"^alpr$",i];);out center tags qt;`;
+let osmMemo: { at: number; data: Promise<Record<OsmInfraKind, LiveMarker[]>> } | null = null;
+
+/** One shared Overpass query per instance for every OSM infrastructure layer, with a mirror fallback. */
+function osmInfra() {
+  if (!osmMemo || Date.now() - osmMemo.at > OSM_TTL_S * 1000) {
+    const data = (async () => {
+      const errors: string[] = [];
+      for (const ep of OVERPASS) {
+        try {
+          const r = await fetch(`${ep.url}?data=${encodeURIComponent(OSM_QUERY)}`, { cache: "no-store", headers: UA, signal: AbortSignal.timeout(ep.timeoutMs) });
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return parseOverpassInfra(await r.json());
+        } catch (err) {
+          errors.push(`${new URL(ep.url).host}: ${String(err)}`);
+        }
+      }
+      throw new Error(errors.join("; "));
+    })();
+    const memo = { at: Date.now(), data };
+    osmMemo = memo;
+    data.catch(() => {
+      if (osmMemo === memo) osmMemo = null;
+    });
+  }
+  return osmMemo.data;
+}
+
+const osm = (kind: OsmInfraKind, source: string): LayerSpec => ({
+  ttlS: OSM_TTL_S,
+  source: `${source} mapped in OpenStreetMap (ODbL), Overpass API; locations only, re-queried every 6 h`,
+  sourceUrl: "https://www.openstreetmap.org/copyright",
+  feeds: [{ id: "OSM Overpass", url: OVERPASS[0].url, markers: async () => (await osmInfra())[kind] }],
+});
+
+const TFR_LIST = "https://tfr.faa.gov/tfrapi/exportTfrList";
+const tfrDetail = (id: string) => `https://tfr.faa.gov/download/detail_${id.replace("/", "_")}.xml`;
+
+async function gaTfrs(): Promise<LiveMarker[]> {
+  const r = await fetch(TFR_LIST, { cache: "no-store", headers: UA, signal: AbortSignal.timeout(15_000) });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const items = ((await r.json()) as TfrListItem[]).filter((t) => t.state === "GA" && t.notam_id);
+  const out = await Promise.all(
+    items.map(async (t) => {
+      const d = await fetch(tfrDetail(t.notam_id!), { cache: "no-store", headers: UA, signal: AbortSignal.timeout(15_000) });
+      return d.ok ? parseTfrXml(await d.text(), t) : null;
+    }),
+  );
+  return out.filter((m): m is LiveMarker => m !== null);
+}
+
 const LAYERS: Record<LiveLayer, LayerSpec> = {
+  tfr: {
+    ttlS: 300,
+    source: "FAA temporary flight restrictions (incl. UAS/drone restrictions) listed for Georgia on tfr.faa.gov; centre of each restricted area",
+    sourceUrl: "https://tfr.faa.gov/",
+    feeds: [{ id: "FAA TFR", url: TFR_LIST, markers: gaTfrs }],
+  },
+  signals: osm("signals", "Traffic signals (signal-preemption points; preemption equipment itself is not mapped)"),
+  towers: osm("towers", "Communication masts/towers (radio, cellular, broadcast; owner and use as tagged)"),
+  police: osm("police", "Police stations and facilities"),
+  firestations: osm("firestations", "Fire stations"),
+  sirens: osm("sirens", "Outdoor warning sirens"),
+  speedcams: osm("speedcams", "Fixed speed-enforcement cameras"),
+  alpr: osm("alpr", "Fixed licence-plate-reader camera positions (no plate reads, no camera owner data beyond OSM tags)"),
   aircraft: {
     ttlS: 10,
     source: "ADS-B aircraft positions from adsb.lol (ODbL); aircraft in the FAA PIA/LADD privacy programmes are removed",
@@ -94,6 +168,8 @@ const cache = new Map<LiveLayer, { at: number; body: unknown }>();
 async function run(feeds: Feed[]) {
   const results = await Promise.allSettled(
     feeds.map(async (f) => {
+      if (f.markers) return f.markers();
+      if (!f.load) throw new Error("feed has no loader");
       const r = await fetch(feedUrl(f), { cache: "no-store", headers: UA, signal: AbortSignal.timeout(15_000) });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       return f.load(r);

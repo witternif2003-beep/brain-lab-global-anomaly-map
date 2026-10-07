@@ -1,4 +1,5 @@
 import type { IControl, Map as MapLibreMap } from 'maplibre-gl';
+import { BEACON_CATEGORIES } from './ga-beacon-categories';
 
 export interface GaFeedStatus {
   id: string;
@@ -12,7 +13,7 @@ export interface GaFeedStatus {
 }
 
 const STALE_MIN = 90;
-const order = ['anomalies', 'aircraft', 'transit', 'micromobility', 'stations', 'streamgauges', 'satellites', 'fires', 'imagery', 'traffic', 'alerts', 'gauges', 'crime', 'fbi-wanted', 'fbi-cde', 'renderer', 'bench'];
+const order = ['anomalies', 'aircraft', 'transit', 'micromobility', 'stations', 'streamgauges', 'quakes', 'tfr', 'police', 'firestations', 'sirens', 'speedcams', 'alpr', 'towers', 'signals', 'gps-integrity', 'satellites', 'fires', 'imagery', 'traffic', 'alerts', 'gauges', 'crime', 'fbi-wanted', 'fbi-cde', 'renderer', 'bench'];
 const feeds = new WeakMap<MapLibreMap, Map<string, GaFeedStatus>>();
 const controls = new WeakMap<MapLibreMap, GaLiveLegend>();
 
@@ -29,6 +30,7 @@ class GaLiveLegend implements IControl {
   private body: HTMLDivElement | null = null;
   private timer: ReturnType<typeof setInterval> | null = null;
   private map: MapLibreMap | null = null;
+  private beaconsOpen = false;
 
   onAdd(map: MapLibreMap): HTMLElement {
     this.map = map;
@@ -83,6 +85,53 @@ class GaLiveLegend implements IControl {
       this.body.append(row);
     }
     if (!list.length) this.body.textContent = 'loading…';
+    else this.body.append(this.beacons(list));
+  }
+
+  private beacons(list: GaFeedStatus[]): HTMLDetailsElement {
+    const byId = new Map(list.map((f) => [f.id, f]));
+    const total = list.reduce((a, f) => a + (f.count ?? 0), 0);
+    const el = document.createElement('details');
+    el.open = this.beaconsOpen;
+    el.addEventListener('toggle', () => (this.beaconsOpen = el.open));
+    el.style.cssText = 'margin-top:8px;border-top:1px solid rgba(239,68,68,.45);padding-top:5px';
+    const mapped = BEACON_CATEGORIES.filter((c) => c.feeds.length).length;
+    const summary = document.createElement('summary');
+    summary.textContent = `BEACON CATEGORIES · ${mapped} public / ${BEACON_CATEGORIES.length - mapped} not public`;
+    summary.style.cssText = 'cursor:pointer;font-weight:800;letter-spacing:.06em;color:#f87171';
+    el.append(summary);
+    let domain = '';
+    BEACON_CATEGORIES.forEach((c, i) => {
+      if (c.domain !== domain) {
+        domain = c.domain;
+        const h = document.createElement('div');
+        h.textContent = domain.toUpperCase();
+        h.style.cssText = 'margin-top:6px;font-weight:800;color:#60a5fa;letter-spacing:.05em';
+        el.append(h);
+      }
+      const fs = c.feeds.flatMap((id) => byId.get(id) ?? []);
+      const count = c.feeds[0] === '*' ? total : fs.length ? fs.reduce((a, f) => a + (f.count ?? 0), 0) : null;
+      const err = fs.find((f) => f.error);
+      const row = document.createElement('div');
+      row.style.cssText = 'margin-top:3px;line-height:1.3';
+      const head = document.createElement('div');
+      head.style.cssText = 'display:flex;gap:6px;align-items:center';
+      const dot = document.createElement('span');
+      dot.style.cssText = `width:7px;height:7px;flex:none;border-radius:2px;background:${c.feeds.length ? (i % 2 ? '#3b82f6' : '#ef4444') : '#475569'}`;
+      const name = document.createElement('span');
+      name.textContent = c.name;
+      name.style.cssText = `font-weight:700;color:${c.feeds.length ? '#f8fafc' : '#94a3b8'}`;
+      const n = document.createElement('span');
+      n.textContent = count === null ? '—' : count.toLocaleString();
+      n.style.cssText = 'margin-left:auto;font-weight:800;color:#f8fafc';
+      head.append(dot, name, n);
+      const sub = document.createElement('div');
+      sub.style.cssText = `padding-left:13px;color:${err ? '#f87171' : '#94a3b8'}`;
+      sub.textContent = err ? `feed error: ${err.error}` : c.note;
+      row.append(head, sub);
+      el.append(row);
+    });
+    return el;
   }
 }
 

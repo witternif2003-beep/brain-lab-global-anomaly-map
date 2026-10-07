@@ -1,6 +1,7 @@
 export const GA_BBOX = { west: -85.7, south: 30.3, east: -80.8, north: 35.1 };
 
-export type LiveLayer = "aircraft" | "transit" | "micromobility" | "stations" | "streamgauges" | "quakes";
+export type OsmInfraKind = "signals" | "towers" | "police" | "firestations" | "sirens" | "speedcams" | "alpr";
+export type LiveLayer = "aircraft" | "transit" | "micromobility" | "stations" | "streamgauges" | "quakes" | "tfr" | OsmInfraKind;
 export type LiveValue = string | number | boolean | null;
 
 export interface LiveMarker {
@@ -28,7 +29,7 @@ const MAX_POSITION_AGE_S = 60;
 
 interface AdsbAircraft {
   flight?: string; t?: string; lat?: number; lon?: number; alt_baro?: number | "ground"; gs?: number; track?: number;
-  seen_pos?: number; category?: string; emergency?: string; dbFlags?: number;
+  seen_pos?: number; category?: string; emergency?: string; dbFlags?: number; type?: string; nac_p?: number;
 }
 
 /** Aircraft from an adsb.lol / readsb `v2` response; drops PIA/LADD aircraft and never returns ICAO hex or registration. */
@@ -45,6 +46,7 @@ export function parseAdsbLol(json: { ac?: AdsbAircraft[]; now?: number }, nowMs 
         track: num(a.track),
         category: a.category ?? null,
         emergency: a.emergency && a.emergency !== "none" ? a.emergency : null,
+        gpsNacp: a.type?.startsWith("adsb") ? num(a.nac_p) : null,
       }),
     )
     .filter(keep);
@@ -65,6 +67,7 @@ export function parseOpenSky(json: { time?: number; states?: unknown[][] | null 
         track: num(s[10]),
         category: null,
         emergency: null,
+        gpsNacp: null,
       });
     })
     .filter(keep);
@@ -290,4 +293,109 @@ export function parseUsgsQuakes(json: { features?: UsgsQuakeFeature[] }): LiveMa
       });
     })
     .filter(keep);
+}
+
+interface OsmElement {
+  type?: string;
+  id?: number;
+  lat?: number;
+  lon?: number;
+  center?: { lat?: number; lon?: number };
+  tags?: Record<string, string>;
+}
+
+/** Which mapped public-safety infrastructure an OSM element is; untagged nodes are `out skel` traffic-signal nodes. */
+export function osmInfraKind(tags: Record<string, string> | undefined): OsmInfraKind | null {
+  if (!tags || tags.highway === "traffic_signals") return "signals";
+  if (tags.amenity === "police") return "police";
+  if (tags.amenity === "fire_station") return "firestations";
+  if (tags.emergency === "siren") return "sirens";
+  if (tags.highway === "speed_camera") return "speedcams";
+  if (tags.man_made === "surveillance" && tags["surveillance:type"]?.toUpperCase() === "ALPR") return "alpr";
+  if ((tags.man_made === "mast" || tags.man_made === "tower") && tags["tower:type"] === "communication") return "towers";
+  return null;
+}
+
+const INFRA_LABEL: Record<OsmInfraKind, string> = {
+  signals: "Traffic signal",
+  towers: "Communication tower",
+  police: "Police facility",
+  firestations: "Fire station",
+  sirens: "Outdoor warning siren",
+  speedcams: "Speed camera",
+  alpr: "Plate-reader camera (location)",
+};
+
+const tagOr = (t: Record<string, string>, ...keys: string[]) => keys.map((k) => t[k]).find((v) => v?.trim())?.trim() ?? null;
+const commUses = (t: Record<string, string>) =>
+  Object.entries(t)
+    .filter(([k, v]) => k.startsWith("communication:") && v === "yes")
+    .map(([k]) => k.slice("communication:".length).replace(/_/g, " "))
+    .join(", ") || null;
+
+/** OpenStreetMap public-safety infrastructure from an Overpass JSON response, split by kind; `observedAt` is the OSM database time. */
+export function parseOverpassInfra(json: { osm3s?: { timestamp_osm_base?: string }; elements?: OsmElement[] }): Record<OsmInfraKind, LiveMarker[]> {
+  const asOf = json.osm3s?.timestamp_osm_base ?? null;
+  const out: Record<OsmInfraKind, LiveMarker[]> = { signals: [], towers: [], police: [], firestations: [], sirens: [], speedcams: [], alpr: [] };
+  for (const e of json.elements ?? []) {
+    const kind = osmInfraKind(e.tags);
+    if (!kind || !e.type || e.id === undefined) continue;
+    const t = e.tags ?? {};
+    const name = tagOr(t, "name", "official_name");
+    const m = marker(num(e.lon ?? e.center?.lon), num(e.lat ?? e.center?.lat), asOf, name ?? INFRA_LABEL[kind], {
+      osm: `${e.type}/${e.id}`,
+      kind: INFRA_LABEL[kind],
+      named: name !== null,
+      operator: tagOr(t, "operator"),
+      heightM: num(t.height),
+      uses: kind === "towers" ? commUses(t) : null,
+      sirenType: kind === "sirens" ? tagOr(t, "siren:type") : null,
+      sirenPurpose: kind === "sirens" ? tagOr(t, "siren:purpose") : null,
+    });
+    if (m) out[kind].push(m);
+  }
+  return out;
+}
+
+export interface TfrListItem {
+  notam_id?: string;
+  type?: string;
+  facility?: string;
+  state?: string;
+  description?: string;
+  creation_date?: string;
+}
+
+const xmlText = (xml: string, tag: string) => xml.match(new RegExp(`<${tag}>([^<]*)</${tag}>`))?.[1]?.trim() ?? null;
+const dms = (v: string) => {
+  const m = v.match(/^([0-9.]+)([NSEW])$/);
+  if (!m) return null;
+  const n = Number(m[1]);
+  return Number.isFinite(n) ? (m[2] === "S" || m[2] === "W" ? -n : n) : null;
+};
+const utc = (v: string | null) => (v ? `${v}Z` : null);
+
+/** Centre, name, window and ceiling of an FAA temporary flight restriction from its tfr.faa.gov XNOTAM detail XML. */
+export function parseTfrXml(xml: string, item: TfrListItem): LiveMarker | null {
+  const pts: [number, number][] = [];
+  for (const m of xml.matchAll(/<geoLat>([^<]+)<\/geoLat>\s*<geoLong>([^<]+)<\/geoLong>/g)) {
+    const lat = dms(m[1].trim());
+    const lon = dms(m[2].trim());
+    if (lat !== null && lon !== null) pts.push([lon, lat]);
+  }
+  if (!pts.length) return null;
+  const lon = pts.reduce((a, p) => a + p[0], 0) / pts.length;
+  const lat = pts.reduce((a, p) => a + p[1], 0) / pts.length;
+  const upper = num(xmlText(xml, "valDistVerUpper"));
+  return marker(lon, lat, utc(xmlText(xml, "dateIssued")), xmlText(xml, "txtLocalName") ?? item.description ?? "TFR", {
+    notam: item.notam_id ?? null,
+    tfrType: item.type ?? null,
+    place: item.description ?? null,
+    area: xmlText(xml, "txtName"),
+    effective: utc(xmlText(xml, "dateEffective")),
+    expires: utc(xmlText(xml, "dateExpire")),
+    upperFt: upper,
+    upperRef: xmlText(xml, "codeDistVerUpper"),
+    facility: item.facility ?? null,
+  });
 }

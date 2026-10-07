@@ -52,7 +52,89 @@ const countBy = (ms: LiveMarker[], key: string) => {
   return [...c.entries()].sort((a, b) => b[1] - a[1]).map(([k, n]) => `${n} ${k}`).join(', ');
 };
 
+const lowGps = (m: LiveMarker) => typeof m.props.gpsNacp === 'number' && m.props.gpsNacp <= 7;
+
+const osmRows = (p: Record<string, LiveValue>): [string, string][] => [
+  ['Operator', fmt(p.operator)],
+  ['Height', fmt(p.heightM, ' m')],
+  ['Uses', fmt(p.uses)],
+  ['Siren type', fmt(p.sirenType)],
+  ['Purpose', fmt(p.sirenPurpose)],
+  ['OSM', fmt(p.osm)],
+];
+const osmTag = (m: LiveMarker) => (m.props.named ? m.label : '');
+const OSM_REFRESH_MS = 30 * 60_000;
+const tfrState = (p: Record<string, LiveValue>, now = Date.now()) => {
+  const from = Date.parse(String(p.effective ?? ''));
+  const to = Date.parse(String(p.expires ?? ''));
+  if (Number.isFinite(to) && to < now) return 'expired';
+  if (Number.isFinite(from) && from > now) return 'scheduled';
+  return 'active';
+};
+const when = (v: LiveValue) => (typeof v === 'string' && v ? new Date(v).toLocaleString() : '');
+
 const SPECS: Record<LiveLayer, Spec> = {
+  tfr: {
+    label: 'FAA flight restrictions (TFR)', color: '#ef4444', stroke: '#1e3a8a', radiusPx: 5, z: 34, refreshMs: 5 * 60_000,
+    iconPx: 26, labelMinZoom: 6,
+    icon: () => ({ shape: 'airspace' }),
+    tag: (m) => `TFR ${m.props.notam ?? ''} · ${tfrState(m.props)}`,
+    title: (m) => `FAA TFR ${m.props.notam ?? ''} · ${m.label}`,
+    rows: (p) => [
+      ['Type', fmt(p.tfrType)],
+      ['Status', tfrState(p)],
+      ['Area', fmt(p.area)],
+      ['Where', fmt(p.place)],
+      ['From', when(p.effective)],
+      ['Until', when(p.expires)],
+      ['Ceiling', p.upperFt === null ? '' : `${p.upperFt} ft ${p.upperRef === 'HEI' ? 'above ground' : String(p.upperRef ?? '')}`.trim()],
+      ['ARTCC', fmt(p.facility)],
+      ['Position', 'centre of the restricted area'],
+    ],
+    detail: (ms) => (ms.length ? `${ms.filter((m) => tfrState(m.props) === 'active').length} active · ${ms.filter((m) => tfrState(m.props) === 'scheduled').length} scheduled` : 'none listed for Georgia'),
+  },
+  police: {
+    label: 'Police facilities (OSM)', color: '#2563eb', stroke: '#ef4444', radiusPx: 4, z: 26, refreshMs: OSM_REFRESH_MS,
+    iconPx: 18, labelMinZoom: 11, icon: () => ({ shape: 'shield' }), tag: osmTag,
+    title: (m) => `POLICE FACILITY · ${m.label}`, rows: osmRows,
+    detail: (ms) => `${ms.filter((m) => m.props.named).length} named · mapped locations, not vehicles`,
+  },
+  firestations: {
+    label: 'Fire stations (OSM)', color: '#ef4444', stroke: '#1d4ed8', radiusPx: 4, z: 25, refreshMs: OSM_REFRESH_MS,
+    iconPx: 16, labelMinZoom: 12, icon: () => ({ shape: 'house' }), tag: osmTag,
+    title: (m) => `FIRE STATION · ${m.label}`, rows: osmRows,
+    detail: (ms) => `${ms.filter((m) => m.props.named).length} named · mapped locations`,
+  },
+  sirens: {
+    label: 'Outdoor warning sirens (OSM)', color: '#f43f5e', stroke: '#2563eb', radiusPx: 3.5, z: 24, refreshMs: OSM_REFRESH_MS,
+    iconPx: 16, labelMinZoom: 12, icon: () => ({ shape: 'siren' }), tag: osmTag,
+    title: (m) => `WARNING SIREN · ${m.label}`, rows: osmRows,
+    detail: () => 'mapped locations · not siren activations',
+  },
+  towers: {
+    label: 'Communication towers (OSM)', color: '#f87171', stroke: '#7f1d1d', radiusPx: 2.5, z: 15, refreshMs: OSM_REFRESH_MS,
+    iconPx: 12, icon: () => ({ shape: 'tower' }),
+    title: (m) => `COMM TOWER · ${m.label}`, rows: osmRows,
+    detail: (ms) => `${ms.filter((m) => m.props.operator).length} with operator tagged · mapped locations`,
+  },
+  speedcams: {
+    label: 'Speed cameras (OSM)', color: '#3b82f6', stroke: '#ef4444', radiusPx: 3, z: 23, refreshMs: OSM_REFRESH_MS,
+    iconPx: 14, labelMinZoom: 12, icon: () => ({ shape: 'camera' }), tag: osmTag,
+    title: (m) => `SPEED CAMERA · ${m.label}`, rows: osmRows,
+    detail: () => 'fixed camera locations · no speed readings',
+  },
+  alpr: {
+    label: 'Plate-reader camera locations (OSM)', color: '#dc2626', stroke: '#1e40af', radiusPx: 3, z: 22, refreshMs: OSM_REFRESH_MS,
+    iconPx: 13, icon: () => ({ shape: 'camera' }),
+    title: () => 'PLATE-READER CAMERA (location only)', rows: osmRows,
+    detail: (ms) => `${ms.filter((m) => m.props.operator).length} with operator tagged · fixed positions only, no plate reads`,
+  },
+  signals: {
+    label: 'Traffic signals (OSM)', color: '#60a5fa', stroke: '#1e3a8a', radiusPx: 2, z: 14, refreshMs: OSM_REFRESH_MS,
+    iconPx: 9, icon: () => ({ shape: 'signal' }),
+    title: () => 'TRAFFIC SIGNAL', rows: osmRows,
+    detail: () => 'signal-preemption points · locations only, no signal state',
+  },
   aircraft: {
     label: 'Aircraft (ADS-B)', color: '#e0f2fe', stroke: '#0369a1', radiusPx: 4.5, z: 33, refreshMs: 10_000,
     iconPx: 26, labelMinZoom: 7,
@@ -65,9 +147,10 @@ const SPECS: Record<LiveLayer, Spec> = {
       ['Ground speed', fmt(p.gsKt, ' kt')],
       ['Track', fmt(p.track, '°')],
       ['Emergency', fmt(p.emergency)],
+      ['GPS accuracy (NACp)', fmt(p.gpsNacp)],
       ['Position', 'moved forward each second from the last report using speed and track'],
     ],
-    detail: (ms) => `${ms.filter((m) => !m.props.onGround).length} airborne · ${ms.filter((m) => m.props.onGround).length} on ground · PIA/LADD aircraft removed`,
+    detail: (ms) => `${ms.filter((m) => !m.props.onGround).length} airborne · ${ms.filter((m) => m.props.onGround).length} on ground · ${ms.filter(lowGps).length} with low GPS accuracy · PIA/LADD aircraft removed`,
   },
   transit: {
     label: 'Transit buses (GTFS-RT)', color: '#fbbf24', stroke: '#78350f', radiusPx: 4, z: 32, refreshMs: 20_000,
@@ -120,6 +203,8 @@ const SPECS: Record<LiveLayer, Spec> = {
 const bound = new WeakSet<MapLibreMap>();
 
 function sourceLink(layer: LiveLayer, m: LiveMarker): { href: string; text: string } {
+  if (m.props.osm) return { href: `https://www.openstreetmap.org/${m.props.osm}`, text: 'OpenStreetMap ↗' };
+  if (layer === 'tfr' && m.props.notam) return { href: `https://tfr.faa.gov/tfr3/?page=detail_${String(m.props.notam).replace('/', '_')}`, text: 'FAA TFR page ↗' };
   if (layer === 'streamgauges') return { href: `https://waterdata.usgs.gov/monitoring-location/${encodeURIComponent(String(m.props.site))}/`, text: 'USGS site page ↗' };
   if (layer === 'stations') return { href: `https://mesonet.agron.iastate.edu/sites/site.php?station=${encodeURIComponent(String(m.props.station))}&network=${encodeURIComponent(String(m.props.network))}`, text: 'IEM station page ↗' };
   if (layer === 'quakes' && m.props.url) return { href: String(m.props.url), text: 'USGS event page ↗' };
@@ -148,7 +233,7 @@ function aircraftCoord(m: LiveMarker, now: number): LngLat {
   return offset([m.lon, m.lat], ((90 - track) * Math.PI) / 180, gs * KT_TO_MS * dt);
 }
 
-/** Live public markers inside the GA wall: ADS-B aircraft, public transit buses, parked shared scooters, weather/hydro stations, USGS gauges and USGS earthquakes (idempotent). */
+/** Public markers inside the GA wall: ADS-B aircraft, transit buses, parked shared scooters, weather/hydro stations, USGS gauges and earthquakes, FAA TFRs, and OSM-mapped public-safety infrastructure (idempotent). */
 export function addGaLiveMarkerLayers(map: MapLibreMap): void {
   if (bound.has(map)) return;
   bound.add(map);
@@ -170,7 +255,7 @@ export function addGaLiveMarkerLayers(map: MapLibreMap): void {
       fill: layer === 'micromobility' && m.props.disabled ? hexToRgba('#64748b', 200) : layer === 'aircraft' && m.props.emergency ? hexToRgba('#ef4444') : fill,
       stroke,
       strokePx: layer === 'micromobility' ? 0.5 : 1,
-      pulse: layer === 'aircraft' && !!m.props.emergency,
+      pulse: (layer === 'aircraft' && !!m.props.emergency) || (layer === 'tfr' && tfrState(m.props, now) === 'active'),
       props: { marker: m },
     }));
     setGaDeckGroup(map, layer, { z: spec.z, labelMinZoom: spec.labelMinZoom, items, onClick: popupFor(layer) });
@@ -194,6 +279,15 @@ export function addGaLiveMarkerLayers(map: MapLibreMap): void {
         sourceUrl: d.sourceUrl ?? '',
         error: failed.length ? `unavailable: ${failed.map((f) => `${f.id} (${f.error})`).join(', ')}` : null,
       });
+      if (layer === 'aircraft') {
+        const adsb = ms.filter((m) => typeof m.props.gpsNacp === 'number');
+        reportGaFeed(map, {
+          id: 'gps-integrity', label: 'ADS-B GPS accuracy (NACp ≤ 7)', color: '#f43f5e', count: adsb.filter(lowGps).length,
+          detail: `of ${adsb.length} ADS-B aircraft reporting accuracy · low values can mean GPS interference or older avionics`,
+          updatedAt: newest ?? d.generatedAt ?? null,
+          sourceUrl: d.sourceUrl ?? '',
+        });
+      }
     } catch (err) {
       reportGaFeed(map, { id: layer, label: spec.label, color: spec.color, count: null, updatedAt: null, sourceUrl: '', error: String(err) });
     }

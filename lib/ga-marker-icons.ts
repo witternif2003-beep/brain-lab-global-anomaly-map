@@ -1,7 +1,7 @@
 import type { RGBA } from './ga-deck-overlay';
 
 /** Marker glyphs drawn in a 64×64 box pointing north; directional ones are rotated by heading. */
-export type GaIconShape = 'aircraft' | 'heading' | 'vehicle' | 'scooter' | 'station' | 'gauge' | 'alert' | 'flame' | 'beacon' | 'scan' | 'quake';
+export type GaIconShape = 'aircraft' | 'heading' | 'vehicle' | 'scooter' | 'station' | 'gauge' | 'alert' | 'flame' | 'beacon' | 'scan' | 'quake' | 'signal' | 'tower' | 'shield' | 'house' | 'siren' | 'airspace' | 'camera';
 
 const PATHS: Record<GaIconShape, string> = {
   aircraft: 'M32 4 L36.5 24 L58 36 L58 42 L36.5 35.5 L35.5 49 L43 55 L43 60 L32 57 L21 60 L21 55 L28.5 49 L27.5 35.5 L6 42 L6 36 L27.5 24 Z',
@@ -15,6 +15,13 @@ const PATHS: Record<GaIconShape, string> = {
   beacon: 'M32 3 L39 25 L61 32 L39 39 L32 61 L25 39 L3 32 L25 25 Z',
   scan: 'M8 8 H56 V56 H8 Z',
   quake: 'M32 4 A28 28 0 1 1 32 60 A28 28 0 1 1 32 4 Z',
+  signal: 'M20 4 H44 V60 H20 Z',
+  tower: 'M32 4 L48 60 H40 L36.5 45 H27.5 L24 60 H16 Z',
+  shield: 'M32 4 L56 12 V30 C56 46 45 56 32 61 C19 56 8 46 8 30 V12 Z',
+  house: 'M32 5 L58 28 H51 V58 H13 V28 H6 Z',
+  siren: 'M14 46 V34 A18 18 0 0 1 50 34 V46 H56 V56 H8 V46 Z',
+  airspace: 'M21 4 H43 L60 21 V43 L43 60 H21 L4 43 V21 Z',
+  camera: 'M6 18 H22 L26 11 H38 L42 18 H58 V54 H6 Z',
 };
 
 /** Inner marks drawn in the outline colour on top of the glyph. */
@@ -22,6 +29,13 @@ const DETAIL: Partial<Record<GaIconShape, string>> = {
   alert: 'M29.5 23 H34.5 L33.5 41 H30.5 Z M29.5 45 H34.5 V50 H29.5 Z',
   beacon: 'M38 32 A6 6 0 1 1 26 32 A6 6 0 1 1 38 32 Z',
   scan: 'M30 16 H34 V30 H48 V34 H34 V48 H30 V34 H16 V30 H30 Z',
+  signal: 'M37 15 A5 5 0 1 1 27 15 A5 5 0 1 1 37 15 Z M37 32 A5 5 0 1 1 27 32 A5 5 0 1 1 37 32 Z M37 49 A5 5 0 1 1 27 49 A5 5 0 1 1 37 49 Z',
+  tower: 'M36 12 A4 4 0 1 1 28 12 A4 4 0 1 1 36 12 Z M26 30 H38 V34 H26 Z',
+  shield: 'M32 17 L35.5 27 H46 L37.5 33 L41 43 L32 37 L23 43 L26.5 33 L18 27 H28.5 Z',
+  house: 'M29 31 H35 V37 H41 V43 H35 V49 H29 V43 H23 V37 H29 Z',
+  siren: 'M30 22 H34 V42 H30 Z',
+  airspace: 'M15 29 H49 V35 H15 Z',
+  camera: 'M42 35 A10 10 0 1 1 22 35 A10 10 0 1 1 42 35 Z',
   quake: 'M8 34 L18 34 L23 22 L29 46 L35 14 L41 42 L46 30 L56 30 L56 34 L48.5 34 L41 52 L35 26 L29 58 L23 34 L20.5 38 L8 38 Z',
 };
 
