@@ -16,7 +16,10 @@ import type { CustomLayerInterface, CustomRenderMethodInput, Map as MapLibreMap 
 import {
   EPT_ROOT,
   GA_LIDAR_SOURCE_URL,
+  IMAGERY_TILE_URL,
+  IMAGERY_ZOOM,
   decodeNode,
+  imageryPixel,
   lidarColor,
   lngLatFrom3857,
   lngLatTo3857,
@@ -27,7 +30,10 @@ import {
 import type { EptProject, Hierarchy, LidarNodeData } from './ga-lidar/ept';
 
 export const GA_LIDAR_MIN_ZOOM = 15;
-const VIEW_TILES = 2.5;
+const VIEW_TILES = 3.5;
+const POINT_BUDGET_TOUCH = 2_500_000;
+const POINT_BUDGET_DESKTOP = 5_000_000;
+const IMAGERY_CACHE_TILES = 96;
 const FETCH_PARALLEL = 6;
 const TERRAIN_GRID = 8;
 const SURFACE_LIFT_M = 0.25;
@@ -41,6 +47,8 @@ export interface GaLidarStats {
   nodesPlanned: number;
   nodesDrawn: number;
   pointsDrawn: number;
+  /** Nodes whose points carry true colour sampled from the imagery under them. */
+  nodesTrueColor: number;
   loading: number;
   errors: number;
   status: string;
@@ -59,7 +67,7 @@ const VERTEX = /* glsl */ `
     vec4 py = mvp * vec4(position + vec3(0.0, uSpacing, 0.0), 1.0);
     vec2 s0 = p0.xy / p0.w;
     float size = max(length((px.xy / px.w - s0) * uViewport), length((py.xy / py.w - s0) * uViewport)) * 0.5;
-    gl_PointSize = clamp(size * 1.6, 1.5, uMaxPx);
+    gl_PointSize = clamp(size * 1.4, 1.5, uMaxPx);
     gl_Position = p0;
     vColor = aColor;
   }
@@ -71,7 +79,8 @@ const FRAGMENT = /* glsl */ `
     vec2 c = gl_PointCoord * 2.0 - 1.0;
     float r = dot(c, c);
     if (r > 1.0) discard;
-    gl_FragColor = vec4(vColor * (1.0 - 0.25 * r), 1.0);
+    float dome = sqrt(1.0 - r);
+    gl_FragColor = vec4(vColor * (0.5 + 0.5 * dome), 1.0);
   }
 `;
 
@@ -79,6 +88,7 @@ interface DrawnNode {
   points: Points;
   data: LidarNodeData;
   terrainStale: boolean;
+  trueColor: boolean;
 }
 
 /**
@@ -113,6 +123,8 @@ export class GaLidar3DLayer implements CustomLayerInterface {
   private readonly drawn = new Map<string, DrawnNode>();
   private readonly inflight = new Set<string>();
   private generation = 0;
+  private readonly imagery = new Map<string, Promise<Uint8ClampedArray | null>>();
+  private imageryCanvas: HTMLCanvasElement | null = null;
   private timer: ReturnType<typeof setTimeout> | null = null;
   private readonly stats: GaLidarStats = {
     project: null,
@@ -121,6 +133,7 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     nodesPlanned: 0,
     nodesDrawn: 0,
     pointsDrawn: 0,
+    nodesTrueColor: 0,
     loading: 0,
     errors: 0,
     status: 'idle',
@@ -168,6 +181,7 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     this.stats.nodesDrawn = this.drawn.size;
     this.stats.pointsDrawn = [...this.drawn.values()].reduce((s, n) => s + n.data.count, 0);
     this.stats.loading = this.inflight.size;
+    this.stats.nodesTrueColor = [...this.drawn.values()].filter((n) => n.trueColor).length;
   }
 
   /** OSM extruded footprints would hide the measured roofs, so they step aside while LiDAR is drawn. */
@@ -226,7 +240,7 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     const half = (VIEW_TILES * WORLD_3857) / 2 ** zoom;
     const targetDepth = targetDepthFor(project, half);
     const touch = typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0;
-    const view = { cx, cy, half, targetDepth, pointBudget: touch ? 1_200_000 : 2_500_000 };
+    const view = { cx, cy, half, targetDepth, pointBudget: touch ? POINT_BUDGET_TOUCH : POINT_BUDGET_DESKTOP };
     this.stats.targetDepth = targetDepth;
     this.setStatus('loading hierarchy');
 
@@ -301,11 +315,74 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     geometry.setAttribute('aColor', new Uint8BufferAttribute(col, 3, true));
     const points = new Points(geometry, this.material);
     points.frustumCulled = false;
-    const node: DrawnNode = { points, data, terrainStale: false };
+    const node: DrawnNode = { points, data, terrainStale: false, trueColor: false };
     this.applySurface(node);
     this.scene.add(points);
     this.drawn.set(key, node);
     this.setStatus(this.inflight.size > 1 ? 'loading points' : 'ready');
+    this.map?.triggerRepaint();
+    void this.colorFromImagery(key, node);
+  }
+
+  /** Esri World Imagery tile as RGBA pixels, or null where the tile is missing or unreadable. */
+  private imageryTile(z: number, tx: number, ty: number): Promise<Uint8ClampedArray | null> {
+    const id = `${z}/${tx}/${ty}`;
+    const cached = this.imagery.get(id);
+    if (cached) return cached;
+    const load = (async () => {
+      try {
+        const r = await fetch(`${IMAGERY_TILE_URL}/${z}/${ty}/${tx}?blankTile=false`);
+        if (!r.ok) return null;
+        const bitmap = await createImageBitmap(await r.blob());
+        const canvas = (this.imageryCanvas ??= document.createElement('canvas'));
+        canvas.width = 256;
+        canvas.height = 256;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        if (!ctx) return null;
+        ctx.drawImage(bitmap, 0, 0, 256, 256);
+        bitmap.close();
+        return ctx.getImageData(0, 0, 256, 256).data;
+      } catch {
+        return null;
+      }
+    })();
+    this.imagery.set(id, load);
+    if (this.imagery.size > IMAGERY_CACHE_TILES) this.imagery.delete(this.imagery.keys().next().value as string);
+    return load;
+  }
+
+  /** Recolours a node with the aerial-photo colour under each return (classification colours stay where imagery is missing). */
+  private async colorFromImagery(key: string, node: DrawnNode): Promise<void> {
+    const { data } = node;
+    const z = Math.min(IMAGERY_ZOOM, Math.floor(Math.log2(WORLD_3857 / data.width)) + 1);
+    const a = imageryPixel(data.minX, data.minY + data.width, z);
+    const b = imageryPixel(data.minX + data.width, data.minY, z);
+    const tiles = new Map<string, Uint8ClampedArray | null>();
+    await Promise.all(
+      Array.from({ length: (b.tx - a.tx + 1) * (b.ty - a.ty + 1) }, async (_, i) => {
+        const tx = a.tx + (i % (b.tx - a.tx + 1));
+        const ty = a.ty + Math.floor(i / (b.tx - a.tx + 1));
+        tiles.set(`${tx}/${ty}`, await this.imageryTile(z, tx, ty));
+      }),
+    );
+    if (this.drawn.get(key) !== node) return;
+    const attr = node.points.geometry.getAttribute('aColor');
+    const col = attr.array as Uint8Array;
+    let hits = 0;
+    for (let i = 0; i < data.count; i++) {
+      const p = imageryPixel(data.minX + data.x[i], data.minY + data.y[i], z);
+      const px = tiles.get(`${p.tx}/${p.ty}`);
+      if (!px) continue;
+      const o = (p.py * 256 + p.px) * 4;
+      col[i * 3] = px[o];
+      col[i * 3 + 1] = px[o + 1];
+      col[i * 3 + 2] = px[o + 2];
+      hits++;
+    }
+    if (!hits) return;
+    attr.needsUpdate = true;
+    node.trueColor = true;
+    this.setStatus(this.stats.status);
     this.map?.triggerRepaint();
   }
 
@@ -387,7 +464,7 @@ export function addGaLidarLayers(map: MapLibreMap): void {
     map.addSource(ATTRIBUTION_SOURCE, {
       type: 'geojson',
       data: { type: 'FeatureCollection', features: [] },
-      attribution: `LiDAR: <a href="${GA_LIDAR_SOURCE_URL}" target="_blank" rel="noopener">USGS 3DEP point clouds</a> (GA 2009–2018 surveys, Entwine/AWS Open Data) — classified returns at measured height above ground`,
+      attribution: `LiDAR: <a href="${GA_LIDAR_SOURCE_URL}" target="_blank" rel="noopener">USGS 3DEP point clouds</a> (GA 2009–2018 surveys, Entwine/AWS Open Data) — returns at measured height above ground, coloured from Esri World Imagery`,
     });
   }
   if (!map.getLayer(ATTRIBUTION_SOURCE)) {

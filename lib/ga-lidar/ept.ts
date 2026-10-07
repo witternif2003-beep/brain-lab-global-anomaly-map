@@ -26,6 +26,20 @@ export function lngLatFrom3857(x: number, y: number): [number, number] {
   return [(x / R) * (180 / Math.PI), (2 * Math.atan(Math.exp(y / R)) - Math.PI / 2) * (180 / Math.PI)];
 }
 
+export const IMAGERY_ZOOM = 18;
+export const IMAGERY_TILE_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile';
+
+/** Web-Mercator tile (x, y) and pixel within its 256×256 image for an EPSG:3857 location. */
+export function imageryPixel(x: number, y: number, z = IMAGERY_ZOOM): { tx: number; ty: number; px: number; py: number } {
+  const half = Math.PI * R;
+  const tile = (2 * half) / 2 ** z;
+  const fx = (x + half) / tile;
+  const fy = (half - y) / tile;
+  const tx = Math.floor(fx);
+  const ty = Math.floor(fy);
+  return { tx, ty, px: Math.min(255, Math.floor((fx - tx) * 256)), py: Math.min(255, Math.floor((fy - ty) * 256)) };
+}
+
 export function findProject(name: string): EptProject | null {
   return GA_LIDAR_PROJECTS.find((p) => p.name === name) ?? null;
 }

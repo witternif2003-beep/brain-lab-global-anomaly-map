@@ -6,6 +6,7 @@ import {
   encodeNode,
   findProject,
   heightAboveGround,
+  imageryPixel,
   lidarColor,
   lngLatFrom3857,
   lngLatTo3857,
@@ -114,4 +115,14 @@ test("lidarColor grades buildings by height and shades by intensity", () => {
   const dim = lidarColor(2, 0, 0);
   const bright = lidarColor(2, 0, 255);
   assert.ok(dim[0] < bright[0]);
+});
+
+test("imageryPixel maps EPSG:3857 to the Web-Mercator tile and pixel", () => {
+  const half = Math.PI * 6378137;
+  assert.deepEqual(imageryPixel(-half, half, 1), { tx: 0, ty: 0, px: 0, py: 0 });
+  assert.deepEqual(imageryPixel(half / 2, -half / 2, 1), { tx: 1, ty: 1, px: 128, py: 128 });
+  const [x, y] = lngLatTo3857(-84.388, 33.757);
+  const p = imageryPixel(x, y, 18);
+  assert.equal(p.tx, Math.floor(((-84.388 + 180) / 360) * 2 ** 18));
+  assert.ok(p.px >= 0 && p.px < 256 && p.py >= 0 && p.py < 256);
 });
