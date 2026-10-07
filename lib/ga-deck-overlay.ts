@@ -34,7 +34,7 @@ export interface GaDeckGroup {
   onClick: (map: MapLibreMap, lngLat: LngLat, props: Record<string, unknown>) => void;
 }
 
-type GroupKey = 'bulbs' | 'traffic' | 'gauges' | 'imagery' | 'fires' | 'aircraft' | 'transit' | 'micromobility' | 'stations' | 'streamgauges' | 'quakes' | 'tfr' | 'signals' | 'towers' | 'police' | 'firestations' | 'sirens' | 'speedcams' | 'alpr' | 'augusta911' | 'athens911';
+type GroupKey = 'bulbs' | 'traffic' | 'gauges' | 'imagery' | 'fires' | 'aircraft' | 'transit' | 'micromobility' | 'stations' | 'streamgauges' | 'quakes' | 'tfr' | 'signals' | 'towers' | 'police' | 'firestations' | 'sirens' | 'speedcams' | 'alpr' | 'augusta911' | 'athens911' | 'gdotcams';
 type Renderer = 'webgl2' | 'webgpu';
 type Point = { x: number; y: number };
 type DeckModules = {
@@ -235,6 +235,7 @@ function snapshot(state: DeckState): DeckSnapshot {
       alpr: state.groups.get('alpr')?.items.length ?? 0,
       augusta911: state.groups.get('augusta911')?.items.length ?? 0,
       athens911: state.groups.get('athens911')?.items.length ?? 0,
+      gdotcams: state.groups.get('gdotcams')?.items.length ?? 0,
     },
     pulse: { radiusScale: state.pulseRadiusScale, opacity: state.pulseOpacity },
   };

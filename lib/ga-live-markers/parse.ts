@@ -1,7 +1,7 @@
 export const GA_BBOX = { west: -85.7, south: 30.3, east: -80.8, north: 35.1 };
 
 export type OsmInfraKind = "signals" | "towers" | "police" | "firestations" | "sirens" | "speedcams" | "alpr";
-export type LiveLayer = "aircraft" | "transit" | "micromobility" | "stations" | "streamgauges" | "quakes" | "tfr" | "augusta911" | "athens911" | OsmInfraKind;
+export type LiveLayer = "aircraft" | "transit" | "micromobility" | "stations" | "streamgauges" | "quakes" | "tfr" | "augusta911" | "athens911" | "gdotcams" | OsmInfraKind;
 export type LiveValue = string | number | boolean | null;
 
 export interface LiveMarker {
@@ -518,6 +518,39 @@ export function parseAccpdIncidents(json: { features?: AccpdFeature[] }): LiveMa
         date: t === null ? null : new Date(t).toLocaleDateString("en-CA", { timeZone: EASTERN }),
         personnel: num(a.Personnel_Incidentcount),
         objectId: num(a.ObjectId),
+      });
+    })
+    .filter(keep);
+}
+
+export interface Ga511Camera {
+  Id?: number | null;
+  Source?: string | null;
+  Roadway?: string | null;
+  Direction?: string | null;
+  Latitude?: number | null;
+  Longitude?: number | null;
+  Location?: string | null;
+  Name?: string | null;
+  Views?: { Id?: number | null; Url?: string | null; Status?: string | null; Description?: string | null }[] | null;
+}
+
+const GA511_IMAGE = /^https:\/\/511ga\.org\/map\/Cctv\/\d+$/;
+
+/** GDOT traffic cameras from the 511GA developer API (`/api/v2/get/cameras`); imageUrl is the first enabled 511ga.org snapshot view. */
+export function parse511Cameras(json: Ga511Camera[] | null | undefined): LiveMarker[] {
+  return (Array.isArray(json) ? json : [])
+    .map((c) => {
+      const views = c.Views ?? [];
+      const view = views.find((v) => v.Status === "Enabled" && GA511_IMAGE.test(v.Url ?? ""));
+      return marker(num(c.Longitude), num(c.Latitude), null, c.Location?.trim() || c.Name?.trim() || "Traffic camera", {
+        camera: c.Name?.trim() || null,
+        cameraId: num(c.Id),
+        roadway: c.Roadway?.trim() || null,
+        direction: c.Direction?.trim() || null,
+        source: c.Source?.trim() || null,
+        imageUrl: view?.Url ?? null,
+        views: views.length,
       });
     })
     .filter(keep);

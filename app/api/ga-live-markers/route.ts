@@ -4,6 +4,7 @@ import {
   augustaGeocodeQuery,
   decodeGtfsRtVehicles,
   GA_BBOX,
+  parse511Cameras,
   parseAccpdIncidents,
   parseAdsbLol,
   parseAugusta911Feed,
@@ -18,6 +19,7 @@ import {
   GEOCODE_MIN_SCORE,
   type AccpdFeature,
   type BskyFeedItem,
+  type Ga511Camera,
   type GeocodeHit,
   type LiveLayer,
   type LiveMarker,
@@ -193,7 +195,24 @@ async function athens911(): Promise<Placed> {
   return { markers, unplaced: total - markers.length };
 }
 
+const GA511_CAMERAS = "https://511ga.org/api/v2/get/cameras";
+
+/** 511GA developer API (key required, throttled to 10 calls per 60 s); the key is only sent upstream, never echoed in the response. */
+async function gdotCameras(): Promise<LiveMarker[]> {
+  const key = process.env.GA511_API_KEY;
+  if (!key) throw new Error("GA511_API_KEY is not configured (free developer key: https://511ga.org/developers/doc)");
+  const r = await fetch(`${GA511_CAMERAS}?key=${encodeURIComponent(key)}&format=json`, { cache: "no-store", headers: UA, signal: AbortSignal.timeout(30_000) });
+  if (!r.ok) throw new Error(`511GA HTTP ${r.status}`);
+  return parse511Cameras((await r.json()) as Ga511Camera[]);
+}
+
 const LAYERS: Record<LiveLayer, LayerSpec> = {
+  gdotcams: {
+    ttlS: 3600,
+    source: "Georgia DOT traffic cameras from the 511GA developer API; snapshot images are served by 511ga.org and refresh about every 60 s (live video needs a 511GA login and is not shown)",
+    sourceUrl: "https://511ga.org/cctv",
+    feeds: [{ id: "511GA cameras", url: GA511_CAMERAS, markers: gdotCameras }],
+  },
   augusta911: {
     ttlS: 120,
     source: "Augusta-Richmond County E911 public incident feed (official Bluesky account linked from augustaga.gov), calls from the last 24 h; call type and location as posted, placed by the Augusta GIS address locator (match score ≥ 60; below 80 flagged approximate) or coordinates in the post",

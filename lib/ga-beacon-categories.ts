@@ -18,6 +18,7 @@ export const BEACON_CATEGORIES: BeaconCategory[] = [
   { domain: 'Location & tracking', name: 'Automatic vehicle location (AVL)', feeds: ['transit'], note: 'public transit AVL · police AVL not published' },
   { domain: 'Location & tracking', name: 'LoJack police tracking computers', feeds: [], note: NOT_PUBLIC },
   { domain: 'Location & tracking', name: 'Covert RFID / IR trackers', feeds: [], note: 'NO PUBLIC SOURCE · covert tracking' },
+  { domain: 'Surveillance & detection', name: 'Traffic CCTV (GDOT 511GA)', feeds: ['gdotcams'], note: 'public DOT road cameras · live snapshot on tap · video needs 511GA login' },
   { domain: 'Surveillance & detection', name: 'Automated licence-plate readers (ALPR)', feeds: ['alpr'], note: 'fixed camera positions · no plate reads' },
   { domain: 'Surveillance & detection', name: 'Drone detection & Remote ID', feeds: ['tfr'], note: 'FAA UAS/flight restrictions · operator locations not shown' },
   { domain: 'Surveillance & detection', name: 'Radar & LIDAR speed enforcement', feeds: ['speedcams'], note: 'fixed speed cameras · handheld units not published' },

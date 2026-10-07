@@ -77,6 +77,19 @@ const when = (v: LiveValue) => (typeof v === 'string' && v ? new Date(v).toLocal
 const topCounts = (ms: LiveMarker[], key: string, n: number) => countBy(ms, key).split(', ').slice(0, n).join(', ');
 
 const SPECS: Record<LiveLayer, Spec> = {
+  gdotcams: {
+    label: 'GDOT traffic cameras (511GA)', color: '#1d4ed8', stroke: '#ef4444', radiusPx: 3.5, z: 24, refreshMs: 60 * 60_000,
+    iconPx: 16, labelMinZoom: 15, dateOnly: true,
+    icon: () => ({ shape: 'camera' }),
+    tag: (m) => String(m.props.camera ?? ''),
+    title: (m) => `GDOT CAMERA · ${m.label}`,
+    rows: (p) => [
+      ['Camera', fmt(p.camera)],
+      ['Roadway', `${fmt(p.roadway)}${p.direction ? ` · ${p.direction}` : ''}`],
+      ['Image', p.imageUrl ? 'live snapshot from 511ga.org, refreshed every 60 s while open' : 'no enabled view published by GDOT'],
+    ],
+    detail: (ms) => `${ms.filter((m) => m.props.imageUrl).length} with a live snapshot · tap a camera to view`,
+  },
   augusta911: {
     label: 'Augusta E911 calls, last 24 h', color: '#ef4444', stroke: '#1d4ed8', radiusPx: 4.5, z: 29, refreshMs: 2 * 60_000,
     iconPx: 20, labelMinZoom: 12,
@@ -242,7 +255,7 @@ const bound = new WeakSet<MapLibreMap>();
 const FT_TO_M = 0.3048;
 const STATIC_MODEL: Partial<Record<LiveLayer, GaModelKind>> = {
   transit: 'bus', micromobility: 'scooter', stations: 'weather', streamgauges: 'gauge', signals: 'signal',
-  police: 'police', firestations: 'firestation', sirens: 'siren', speedcams: 'speedcam', alpr: 'alpr',
+  police: 'police', firestations: 'firestation', sirens: 'siren', speedcams: 'speedcam', alpr: 'alpr', gdotcams: 'speedcam',
 };
 /** ADS-B emitter category → generic airframe model and scale (DO-260B: A1 light, A2 small, A3 large, A4 high-vortex, A5 heavy, A6 high-performance, A7 rotorcraft). */
 const AIRFRAME: Record<string, [GaModelKind, number]> = {
@@ -269,6 +282,7 @@ function sourceLink(layer: LiveLayer, m: LiveMarker): { href: string; text: stri
   if (layer === 'streamgauges') return { href: `https://waterdata.usgs.gov/monitoring-location/${encodeURIComponent(String(m.props.site))}/`, text: 'USGS site page ↗' };
   if (layer === 'stations') return { href: `https://mesonet.agron.iastate.edu/sites/site.php?station=${encodeURIComponent(String(m.props.station))}&network=${encodeURIComponent(String(m.props.network))}`, text: 'IEM station page ↗' };
   if (layer === 'quakes' && m.props.url) return { href: String(m.props.url), text: 'USGS event page ↗' };
+  if (layer === 'gdotcams') return { href: 'https://511ga.org/cctv', text: '511GA cameras ↗' };
   if (layer === 'augusta911') return m.props.postUrl ? { href: String(m.props.postUrl), text: 'Augusta E911 post ↗' } : { href: 'https://www.augustaga.gov/66/E911-Emergency-Services', text: 'Augusta E911 ↗' };
   if (layer === 'athens911') return { href: 'https://services2.arcgis.com/xSEULKvB31odt3XQ/arcgis/rest/services/Incidents_accpd_Public/FeatureServer/0', text: 'ACCPD public ArcGIS layer ↗' };
   if (layer === 'aircraft') return { href: `https://adsb.lol/?lat=${m.lat}&lon=${m.lon}&zoom=11`, text: 'Open area in adsb.lol ↗' };
@@ -276,15 +290,32 @@ function sourceLink(layer: LiveLayer, m: LiveMarker): { href: string; text: stri
   return { href: 'https://github.com/MobilityData/gbfs', text: 'GBFS specification ↗' };
 }
 
+const CAMERA_REFRESH_MS = 60_000;
+
 function popupFor(layer: LiveLayer) {
   return (map: MapLibreMap, lngLat: LngLat, props: Record<string, unknown>) => {
     const m = props.marker as LiveMarker;
     const link = sourceLink(layer, m);
     const rows = SPECS[layer].dateOnly ? SPECS[layer].rows(m.props) : [...SPECS[layer].rows(m.props), ['Reported', m.observedAt ? new Date(m.observedAt).toLocaleString() : ''] as [string, string]];
-    new Popup({ closeButton: true, maxWidth: 'min(300px, 90vw)' })
-      .setLngLat(lngLat)
-      .setDOMContent(box(SPECS[layer].title(m), rows, link.href, link.text))
-      .addTo(map);
+    const el = box(SPECS[layer].title(m), rows, link.href, link.text);
+    const popup = new Popup({ closeButton: true, maxWidth: layer === 'gdotcams' ? 'min(480px, 94vw)' : 'min(300px, 90vw)' }).setLngLat(lngLat);
+    if (layer === 'gdotcams' && typeof m.props.imageUrl === 'string') {
+      const src = m.props.imageUrl;
+      const img = document.createElement('img');
+      const stamp = document.createElement('div');
+      img.alt = `GDOT camera ${m.label}`;
+      img.style.cssText = 'display:block;width:100%;aspect-ratio:16/9;object-fit:contain;background:#0f172a;margin:4px 0';
+      stamp.style.cssText = 'font:10px ui-monospace,monospace;color:#475569';
+      img.onload = () => { stamp.textContent = `snapshot loaded ${new Date().toLocaleTimeString()}`; };
+      img.onerror = () => { stamp.textContent = 'snapshot unavailable from 511ga.org'; };
+      const refresh = () => { img.src = `${src}?t=${Date.now()}`; };
+      refresh();
+      const timer = window.setInterval(refresh, CAMERA_REFRESH_MS);
+      popup.on('close', () => window.clearInterval(timer));
+      el.insertBefore(stamp, el.children[1] ?? null);
+      el.insertBefore(img, stamp);
+    }
+    popup.setDOMContent(el).addTo(map);
   };
 }
 
@@ -296,7 +327,7 @@ function aircraftCoord(m: LiveMarker, now: number): LngLat {
   return offset([m.lon, m.lat], ((90 - track) * Math.PI) / 180, gs * KT_TO_MS * dt);
 }
 
-/** Public markers inside the GA wall: ADS-B aircraft, transit buses, parked shared scooters, weather/hydro stations, USGS gauges and earthquakes, FAA TFRs, Augusta E911 and Athens-Clarke PD calls for service, and OSM-mapped public-safety infrastructure (idempotent). */
+/** Public markers inside the GA wall: ADS-B aircraft, transit buses, parked shared scooters, weather/hydro stations, USGS gauges and earthquakes, FAA TFRs, Augusta E911 and Athens-Clarke PD calls for service, GDOT 511GA traffic cameras, and OSM-mapped public-safety infrastructure (idempotent). */
 export function addGaLiveMarkerLayers(map: MapLibreMap): void {
   if (bound.has(map)) return;
   bound.add(map);
