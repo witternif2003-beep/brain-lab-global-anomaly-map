@@ -5,6 +5,7 @@ import { reportGaFeed } from './ga-live-status';
 import { setGaDeckGroup, type GaDeckItem } from './ga-deck-overlay';
 import { hexToRgba } from './ga-point-colors';
 import type { GaIconShape } from './ga-marker-icons';
+import type { GaModelKind } from './ga-mesh-models';
 import { box } from './ga-orbital-layer';
 import type { LiveLayer, LiveMarker, LiveValue } from './ga-live-markers/parse';
 
@@ -202,6 +203,30 @@ const SPECS: Record<LiveLayer, Spec> = {
 
 const bound = new WeakSet<MapLibreMap>();
 
+const FT_TO_M = 0.3048;
+const STATIC_MODEL: Partial<Record<LiveLayer, GaModelKind>> = {
+  transit: 'bus', micromobility: 'scooter', stations: 'weather', streamgauges: 'gauge', signals: 'signal',
+  police: 'police', firestations: 'firestation', sirens: 'siren', speedcams: 'speedcam', alpr: 'alpr',
+};
+/** ADS-B emitter category → generic airframe model and scale (DO-260B: A1 light, A2 small, A3 large, A4 high-vortex, A5 heavy, A6 high-performance, A7 rotorcraft). */
+const AIRFRAME: Record<string, [GaModelKind, number]> = {
+  A1: ['lightplane', 1], A2: ['lightplane', 1.6], A3: ['airliner', 0.9], A4: ['airliner', 1.1], A5: ['airliner', 1.7], A6: ['lightplane', 1.4], A7: ['helicopter', 1],
+};
+
+function modelFor(layer: LiveLayer, m: LiveMarker): GaDeckItem['model'] {
+  if (layer === 'aircraft') {
+    const [kind, s] = AIRFRAME[String(m.props.category)] ?? ['airliner', 0.8];
+    const ft = Number(m.props.altFt);
+    return { kind, scale: [s, s, s], elevM: m.props.onGround || !Number.isFinite(ft) ? 0 : Math.max(0, ft * FT_TO_M) };
+  }
+  if (layer === 'towers') {
+    const h = Number(m.props.heightM);
+    return { kind: 'tower', scale: [1, 1, Number.isFinite(h) && h > 0 ? Math.min(10, Math.max(0.2, h / 60)) : 1] };
+  }
+  const kind = STATIC_MODEL[layer];
+  return kind ? { kind } : undefined;
+}
+
 function sourceLink(layer: LiveLayer, m: LiveMarker): { href: string; text: string } {
   if (m.props.osm) return { href: `https://www.openstreetmap.org/${m.props.osm}`, text: 'OpenStreetMap ↗' };
   if (layer === 'tfr' && m.props.notam) return { href: `https://tfr.faa.gov/tfr3/?page=detail_${String(m.props.notam).replace('/', '_')}`, text: 'FAA TFR page ↗' };
@@ -252,6 +277,7 @@ export function addGaLiveMarkerLayers(map: MapLibreMap): void {
       ...toIcon(spec.icon(m)),
       iconPx: spec.iconPx,
       label: spec.tag?.(m) || undefined,
+      model: modelFor(layer, m),
       fill: layer === 'micromobility' && m.props.disabled ? hexToRgba('#64748b', 200) : layer === 'aircraft' && m.props.emergency ? hexToRgba('#ef4444') : fill,
       stroke,
       strokePx: layer === 'micromobility' ? 0.5 : 1,

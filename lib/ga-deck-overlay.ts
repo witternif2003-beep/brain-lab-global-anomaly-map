@@ -5,6 +5,7 @@ import { insideRing, loadGaWallRing, type LngLat } from './ga-patrol-3d';
 import { reportGaFeed } from './ga-live-status';
 import { GA_MARKER_SCALE, gaGlowMultiplier } from './ga-marker-scale';
 import { GA_ICON_CELL_SCALE, gaIconAtlas, gaIconKey, type GaIconAtlas, type GaIconShape } from './ga-marker-icons';
+import { GA_MODEL_REACH_M, gaMesh, type GaModelKind } from './ga-mesh-models';
 
 export type RGBA = [number, number, number, number];
 export interface GaDeckItem {
@@ -22,6 +23,8 @@ export interface GaDeckItem {
   angle?: number;
   /** Short see-through tag drawn under the marker once zoomed in to the group's `labelMinZoom`. */
   label?: string;
+  /** 3D model drawn in place of the glyph from `GA_MODEL_MIN_ZOOM`; `elevM` lifts it above the ground point (the glyph stays as its ground marker). */
+  model?: { kind: GaModelKind; scale?: [number, number, number]; elevM?: number };
   props: Record<string, unknown>;
 }
 export interface GaDeckGroup {
@@ -39,6 +42,8 @@ type DeckModules = {
   ScatterplotLayer: typeof import('@deck.gl/layers').ScatterplotLayer;
   IconLayer: typeof import('@deck.gl/layers').IconLayer;
   TextLayer: typeof import('@deck.gl/layers').TextLayer;
+  LineLayer: typeof import('@deck.gl/layers').LineLayer;
+  SimpleMeshLayer: typeof import('@deck.gl/mesh-layers').SimpleMeshLayer;
 };
 type BenchData = {
   length: number;
@@ -93,7 +98,7 @@ interface DeckState {
 }
 
 const states = new WeakMap<MapLibreMap, DeckState>();
-type GroupViews = { glow: GaDeckItem[]; pulse: GaDeckItem[]; dots: GaDeckItem[]; icons: GaDeckItem[]; labels: GaDeckItem[] };
+type GroupViews = { glow: GaDeckItem[]; pulse: GaDeckItem[]; dots: GaDeckItem[]; icons: GaDeckItem[]; streetIcons: GaDeckItem[]; labels: GaDeckItem[]; models: Map<GaModelKind, GaDeckItem[]>; elevated: GaDeckItem[] };
 const viewsByGroup = new WeakMap<GaDeckGroup, GroupViews>();
 const DEPTH_PARAMETERS = { depthCompare: 'always', depthWriteEnabled: false, cullMode: 'none' } as const;
 const ADDITIVE_PARAMETERS = {
@@ -109,6 +114,13 @@ const ADDITIVE_PARAMETERS = {
 const BENCH_COLOR: RGBA = [0, 255, 255, 153];
 const SOURCE_URL = 'https://deck.gl/docs/developer-guide/webgpu';
 const HIT_BOX_PX = 24;
+const MESH_PARAMETERS = { depthCompare: 'less-equal', depthWriteEnabled: true, cullMode: 'none' } as const;
+const EARTH_CIRCUMFERENCE_M = 40_075_016.686;
+/** Zoom from which live markers with a `model` draw as 3D models. */
+export const GA_MODEL_MIN_ZOOM = 15;
+/** Models are true scale from zoom 19 and enlarged by up to 16× below it so they stay visible. */
+const modelScale = (zoom: number) => (zoom < GA_MODEL_MIN_ZOOM ? 0 : 2 ** Math.min(4, Math.max(0, Math.floor(19 - zoom))));
+const metresPerPixel = (lat: number, zoom: number) => (EARTH_CIRCUMFERENCE_M * Math.cos((lat * Math.PI) / 180)) / (512 * 2 ** zoom);
 
 function getState(map: MapLibreMap): DeckState {
   let state = states.get(map);
@@ -147,9 +159,9 @@ function getState(map: MapLibreMap): DeckState {
     if (hit) hit.group.onClick(map, hit.item.coord, hit.item.props);
   });
   map.on('zoomend', () => {
-    const before = labelKeys(state!);
+    const before = zoomKey(state!);
     state!.zoom = map.getZoom();
-    if (labelKeys(state!) !== before) updateLayers(state!);
+    if (zoomKey(state!) !== before) updateLayers(state!);
   });
   map.on('rotateend', () => {
     const bearing = map.getBearing();
@@ -254,7 +266,11 @@ function hitAt(map: MapLibreMap, state: DeckState, point: Point): { group: GaDec
       if (bounds && (item.coord[0] < bounds.w || item.coord[0] > bounds.e || item.coord[1] < bounds.s || item.coord[1] > bounds.n)) continue;
       const projected = map.project(item.coord);
       const distance = Math.hypot(projected.x - point.x, projected.y - point.y);
-      const reach = item.icon ? (item.iconPx ?? 0) * GA_MARKER_SCALE / 2 : item.radiusPx * GA_MARKER_SCALE + item.strokePx;
+      const iconReach = item.icon ? (item.iconPx ?? 0) * GA_MARKER_SCALE / 2 : item.radiusPx * GA_MARKER_SCALE + item.strokePx;
+      const scale = item.model && !item.model.elevM ? modelScale(state.zoom) : 0;
+      const reach = scale
+        ? Math.max(iconReach, (GA_MODEL_REACH_M[item.model!.kind] * Math.max(...(item.model!.scale ?? [1, 1, 1]).slice(0, 2)) * scale) / metresPerPixel(item.coord[1], state.zoom))
+        : iconReach;
       if (distance <= Math.max(reach, 8) && distance < closestDistance) {
         closest = item;
         closestDistance = distance;
@@ -307,8 +323,17 @@ function groupViews(group: GaDeckGroup): GroupViews {
       pulse: group.items.filter((item) => !!item.pulse),
       dots: group.items.filter((item) => !item.icon),
       icons: group.items.filter((item) => !!item.icon),
+      streetIcons: group.items.filter((item) => !!item.icon && (!item.model || !!item.model.elevM)),
       labels: group.items.filter((item) => !!item.label),
+      models: new Map(),
+      elevated: group.items.filter((item) => !!item.model?.elevM),
     };
+    for (const item of group.items) {
+      if (!item.model) continue;
+      const list = views.models.get(item.model.kind);
+      if (list) list.push(item);
+      else views.models.set(item.model.kind, [item]);
+    }
     viewsByGroup.set(group, views);
   }
   return views;
@@ -316,15 +341,19 @@ function groupViews(group: GaDeckGroup): GroupViews {
 
 const showsLabels = (state: DeckState, group: GaDeckGroup) => group.labelMinZoom !== undefined && state.zoom >= group.labelMinZoom;
 const labelKeys = (state: DeckState) => [...state.groups.entries()].filter(([, g]) => showsLabels(state, g)).map(([k]) => k).join(',');
+const zoomKey = (state: DeckState) => `${labelKeys(state)}|${modelScale(state.zoom)}`;
 const LABEL_FONT = '"JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace';
 
 function createLayers(state: DeckState): Layer[] {
   if (!state.modules) return [];
-  const { ScatterplotLayer, IconLayer, TextLayer } = state.modules;
+  const { ScatterplotLayer, IconLayer, TextLayer, LineLayer, SimpleMeshLayer } = state.modules;
+  const scale = modelScale(state.zoom);
   const layers: Layer[] = [];
   const labelLayers: Layer[] = [];
   for (const [key, group] of [...state.groups.entries()].sort((a, b) => a[1].z - b[1].z)) {
-    const { glow, pulse, dots, icons, labels } = groupViews(group);
+    const views = groupViews(group);
+    const { glow, pulse, dots, labels } = views;
+    const icons = scale && views.models.size ? views.streetIcons : views.icons;
     if (glow.length) {
       layers.push(new ScatterplotLayer({
         id: `ga-deck-${key}-bloom`,
@@ -350,6 +379,35 @@ function createLayers(state: DeckState): Layer[] {
         pickable: false,
         parameters: ADDITIVE_PARAMETERS,
       }));
+    }
+    if (scale && views.elevated.length) {
+      layers.push(new LineLayer<GaDeckItem>({
+        id: `ga-deck-${key}-drop`,
+        data: views.elevated,
+        getSourcePosition: (item) => [item.coord[0], item.coord[1], 0],
+        getTargetPosition: (item) => [item.coord[0], item.coord[1], item.model!.elevM!],
+        getColor: (item) => [item.fill[0], item.fill[1], item.fill[2], 150],
+        getWidth: 1,
+        widthUnits: 'pixels',
+        pickable: false,
+        parameters: DEPTH_PARAMETERS,
+      }));
+    }
+    if (scale) {
+      for (const [kind, items] of views.models) {
+        layers.push(new SimpleMeshLayer<GaDeckItem>({
+          id: `ga-deck-${key}-model-${kind}`,
+          data: items,
+          mesh: gaMesh(kind),
+          getPosition: (item) => [item.coord[0], item.coord[1], item.model!.elevM ?? 0],
+          getOrientation: (item) => [0, item.angle === undefined ? 0 : 90 - item.angle, 0],
+          getScale: (item) => item.model!.scale ?? [1, 1, 1],
+          getColor: (item) => [item.fill[0], item.fill[1], item.fill[2], 255],
+          sizeScale: scale,
+          pickable: false,
+          parameters: MESH_PARAMETERS,
+        }));
+      }
     }
     if (icons.length && state.atlas) {
       layers.push(new IconLayer<GaDeckItem>({
@@ -471,8 +529,15 @@ function startPulse(map: MapLibreMap, state: DeckState): void {
 }
 
 async function loadModules(): Promise<DeckModules> {
-  const [maplibre, layers] = await Promise.all([import('@deck.gl/maplibre'), import('@deck.gl/layers')]);
-  return { MapLibreOverlay: maplibre.MapLibreOverlay, ScatterplotLayer: layers.ScatterplotLayer, IconLayer: layers.IconLayer, TextLayer: layers.TextLayer };
+  const [maplibre, layers, meshLayers] = await Promise.all([import('@deck.gl/maplibre'), import('@deck.gl/layers'), import('@deck.gl/mesh-layers')]);
+  return {
+    MapLibreOverlay: maplibre.MapLibreOverlay,
+    ScatterplotLayer: layers.ScatterplotLayer,
+    IconLayer: layers.IconLayer,
+    TextLayer: layers.TextLayer,
+    LineLayer: layers.LineLayer,
+    SimpleMeshLayer: meshLayers.SimpleMeshLayer,
+  };
 }
 
 async function addRenderer(map: MapLibreMap, state: DeckState, renderer: Renderer, modules: DeckModules, deviceProps?: Record<string, unknown>): Promise<void> {

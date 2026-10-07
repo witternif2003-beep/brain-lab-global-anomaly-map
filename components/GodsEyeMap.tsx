@@ -24,6 +24,7 @@ import { addGaLiveMarkerLayers } from '../lib/ga-live-markers-layer';
 import { addGaFbiFeeds } from '../lib/ga-fbi-feed';
 import { glowRadius, scaleMarkersInsideGaWall, type RadiusExpression } from '../lib/ga-marker-scale';
 import { exportMapAt8k } from '../lib/map-8k-export';
+import { AWS_TERRARIUM_TILES, OPENFREEMAP_PLANET } from '../lib/lidar-globe-sources';
 
 const ALLY_STATE_CODES = ['AL', 'FL', 'NC', 'SC', 'TN', 'TX', 'VA'];
 const STARMAP_8K_MIN_DEVICE_PX = 2560;
@@ -131,6 +132,15 @@ function injectStarfieldLayer(map: any) {
 const COMPETITOR_STATES = ['GA', 'NC', 'TN', 'SC', 'FL', 'TX', 'VA', 'AL'] as const;
 type StateCode = (typeof COMPETITOR_STATES)[number];
 
+const TERRAIN_DEM: maplibregl.RasterDEMSourceSpecification = {
+  type: 'raster-dem',
+  tiles: [AWS_TERRARIUM_TILES],
+  encoding: 'terrarium',
+  tileSize: 256,
+  maxzoom: 15,
+  attribution: '<a href="https://registry.opendata.aws/terrain-tiles/" target="_blank" rel="noopener">Terrain Tiles</a> — Mapzen/AWS, USGS 3DEP',
+};
+
 const BASEMAPS = {
   demotiles: 'https://demotiles.maplibre.org/style.json',
   satellite: {
@@ -159,11 +169,7 @@ const BASEMAPS = {
         maxzoom: 21,
         attribution: '© Esri, Maxar, Earthstar Geographics',
       },
-      'terrain-dem': {
-        type: 'raster-dem',
-        url: 'https://demotiles.maplibre.org/terrain-tiles/tiles.json',
-        tileSize: 256,
-      },
+      'terrain-dem': TERRAIN_DEM,
     },
     layers: [{ id: 'sat', type: 'raster', source: 'sat' }],
     terrain: { source: 'terrain-dem', exaggeration: 1.5 },
@@ -776,6 +782,30 @@ export default function GodsEyeMap({
     const patternScale = Math.min(3, Math.ceil(window.devicePixelRatio || 1));
     // ═══ VERIFIED 3D SKYBOX STARFIELD (GeoLibre PR #440 / @geoql/maplibre-gl-starfield) ═══
     injectStarfieldLayer(map);
+
+    if (!map.getSource('ofm-buildings')) {
+      map.addSource('ofm-buildings', {
+        type: 'vector',
+        url: OPENFREEMAP_PLANET,
+        attribution: '3D buildings: <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> footprints and heights',
+      });
+    }
+    if (!map.getLayer('buildings-3d')) {
+      map.addLayer({
+        id: 'buildings-3d',
+        type: 'fill-extrusion',
+        source: 'ofm-buildings',
+        'source-layer': 'building',
+        minzoom: 14,
+        paint: {
+          'fill-extrusion-color': ['interpolate', ['linear'], ['coalesce', ['get', 'render_height'], 5], 0, '#cbd5e1', 40, '#93c5fd', 150, '#3b82f6'],
+          'fill-extrusion-height': ['coalesce', ['get', 'render_height'], 5],
+          'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0],
+          'fill-extrusion-opacity': ['interpolate', ['linear'], ['zoom'], 14, 0, 15, 0.8],
+          'fill-extrusion-vertical-gradient': true,
+        },
+      });
+    }
 
     // ═══ SINGLE SOURCE for all 8 state boundaries ═══
     if (!map.getSource('all-states')) {
@@ -1446,7 +1476,8 @@ export default function GodsEyeMap({
       fitBoundsOptions: { padding: 40 },
       pitch: 60,
       bearing: 0,
-      maxZoom: 21,
+      maxZoom: 22,
+      maxPitch: 85,
       minZoom: 1,
       attributionControl: { compact: true },
       canvasContextAttributes: { antialias: true },
@@ -1771,11 +1802,7 @@ export default function GodsEyeMap({
 
     if (!is3D) {
       if (!map.getSource('terrain-dem')) {
-        map.addSource('terrain-dem', {
-          type: 'raster-dem',
-          url: 'https://demotiles.maplibre.org/terrain-tiles/tiles.json',
-          tileSize: 256,
-        });
+        map.addSource('terrain-dem', TERRAIN_DEM);
       }
       (map as any).setTerrain?.({ source: 'terrain-dem', exaggeration: 1.5 });
       map.easeTo({ pitch: 60, bearing: -15, duration: 800 });
