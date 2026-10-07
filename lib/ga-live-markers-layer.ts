@@ -92,7 +92,7 @@ const SPECS: Record<LiveLayer, Spec> = {
     ],
     detail: (ms) => {
       const n = (s: CameraState) => ms.filter((m) => cameraState(m) === s).length;
-      return `${n('live')} verified live · ${n('offline')} with no live picture (hidden) · ${ms.length - n('live') - n('offline')} not checked yet, zoom in to check`;
+      return `${n('live')} verified live (blue) · ${n('offline')} with no live picture (gray) · ${ms.length - n('live') - n('offline')} not checked yet (amber), zoom in to check`;
     },
   },
   augusta911: {
@@ -296,7 +296,7 @@ function sourceLink(layer: LiveLayer, m: LiveMarker): { href: string; text: stri
 }
 
 const CAMERA_REFRESH_MS = 60_000;
-/** Cameras in view are checked from this zoom (about 2 mi across a phone screen); unchecked ones are hidden from here on. */
+/** Cameras in view are checked from this zoom (about 2 mi across a phone screen). */
 const CAMERA_VERIFY_MIN_ZOOM = 13;
 const CAMERA_VERIFY_MAX = 40;
 const CAMERA_VERIFY_PARALLEL = 6;
@@ -392,18 +392,16 @@ export function addGaLiveMarkerLayers(map: MapLibreMap): void {
     const now = Date.now();
     const fill = hexToRgba(spec.color, 235);
     const stroke = hexToRgba(spec.stroke);
-    const zoomedIn = map.getZoom() >= CAMERA_VERIFY_MIN_ZOOM;
-    const shown = layer === 'gdotcams' ? ms.filter((m) => cameraState(m) === 'live' || (!zoomedIn && cameraState(m) === null)) : ms;
-    const items: GaDeckItem[] = shown.map((m) => {
-      const unchecked = layer === 'gdotcams' && cameraState(m) !== 'live';
+    const items: GaDeckItem[] = ms.map((m) => {
+      const cam = layer === 'gdotcams' ? cameraState(m) : 'live';
       return {
       coord: layer === 'aircraft' ? aircraftCoord(m, now) : [m.lon, m.lat],
       radiusPx: spec.radiusPx,
-      ...(unchecked ? {} : toIcon(spec.icon(m))),
+      ...toIcon(spec.icon(m)),
       iconPx: spec.iconPx,
-      label: unchecked ? undefined : spec.tag?.(m) || undefined,
-      model: unchecked ? undefined : modelFor(layer, m),
-      fill: unchecked || (layer === 'micromobility' && m.props.disabled) ? hexToRgba('#64748b', 200) : layer === 'aircraft' && m.props.emergency ? hexToRgba('#ef4444') : fill,
+      label: spec.tag?.(m) || undefined,
+      model: modelFor(layer, m),
+      fill: cam === 'offline' || (layer === 'micromobility' && m.props.disabled) ? hexToRgba('#64748b', 200) : cam === null ? hexToRgba('#f59e0b', 220) : layer === 'aircraft' && m.props.emergency ? hexToRgba('#ef4444') : fill,
       stroke,
       strokePx: layer === 'micromobility' ? 0.5 : 1,
       pulse: (layer === 'aircraft' && !!m.props.emergency) || (layer === 'tfr' && tfrState(m.props, now) === 'active'),
@@ -419,7 +417,7 @@ export function addGaLiveMarkerLayers(map: MapLibreMap): void {
     reports.gdotcams?.();
   };
   let verifying = false;
-  /** Checks the cameras in view (nearest the centre first) once zoomed in, so only verified-live cameras are drawn. */
+  /** Checks the cameras in view (nearest the centre first) once zoomed in, so each is colored by whether 511GA has a real picture for it. */
   const verifyCamerasInView = async () => {
     if (verifying || map.getZoom() < CAMERA_VERIFY_MIN_ZOOM) return;
     const b = map.getBounds();
@@ -445,15 +443,7 @@ export function addGaLiveMarkerLayers(map: MapLibreMap): void {
       camerasChanged();
     }
   };
-  let wasZoomedIn = map.getZoom() >= CAMERA_VERIFY_MIN_ZOOM;
-  const onMoveEnd = () => {
-    const zoomedIn = map.getZoom() >= CAMERA_VERIFY_MIN_ZOOM;
-    if (zoomedIn !== wasZoomedIn) {
-      wasZoomedIn = zoomedIn;
-      render('gdotcams');
-    }
-    void verifyCamerasInView();
-  };
+  const onMoveEnd = () => void verifyCamerasInView();
   map.on('moveend', onMoveEnd);
 
   const load = async (layer: LiveLayer) => {

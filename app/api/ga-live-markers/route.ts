@@ -230,7 +230,7 @@ async function gdotCamerasMirror(): Promise<LiveMarker[]> {
 const LAYERS: Record<LiveLayer, LayerSpec> = {
   gdotcams: {
     ttlS: 3600,
-    source: "Georgia DOT traffic cameras from the 511GA developer API; each picture is served by 511ga.org and checked by /api/ga-camera against 511GA's “no live feed” placeholders, so only verified-live cameras are drawn (live video needs a 511GA login and is not shown)",
+    source: "Georgia DOT traffic cameras from the 511GA developer API; each picture is served by 511ga.org and checked by /api/ga-camera against 511GA's “no live feed” placeholders, and each camera is colored verified-live or no-picture (live video needs a 511GA login and is not shown)",
     sourceUrl: "https://511ga.org/cctv",
     feeds: [{ id: "511GA cameras", url: GA511_CAMERAS, markers: gdotCameras }],
     fallback: [{ id: "Georgia 511 Cameras (Detailed), public ArcGIS copy", url: GA511_MIRROR, markers: gdotCamerasMirror }],
