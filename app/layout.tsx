@@ -34,7 +34,7 @@ export default function RootLayout({
         <RealTimeStreamProvider>
           <ComplianceNotice />
           <Navbar />
-          <main className="flex-1 pb-12 relative z-10">{children}</main>
+          <main className="flex-1 min-w-0 w-full pb-12 relative z-10">{children}</main>
           <Footer />
           <BuildFreshnessChip buildSha={process.env.VERCEL_GIT_COMMIT_SHA || "local"} />
         </RealTimeStreamProvider>

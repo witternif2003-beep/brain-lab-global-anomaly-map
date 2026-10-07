@@ -1,18 +1,6 @@
 'use client';
 import { OUTBOUND_GA_PERSON_TEMPLATES, getInterpolatedArcPoint, VerifiedPersonLeavingGA } from '../lib/telemetry-arcs';
 
-// Safe module initialization
-if (typeof window !== 'undefined') {
-  try {
-    const ml = require('maplibre-gl');
-    if (ml && typeof ml.setWorkerUrl === 'function') {
-      ml.setWorkerUrl('/maplibre-gl-worker.mjs');
-    }
-  } catch (e) {
-    console.warn('[MapLibre] Worker URL initialization deferred:', e);
-  }
-}
-
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -22,39 +10,111 @@ import { GEORGIA_ANOMALIES } from '../lib/data';
 import { GODSEYE_INTEL_LAYERS, SAMPLE_LIVE_ENTITIES, LiveTelemetryEntity, IntelLayerConfig } from '../lib/godseye-layers';
 import MapDebugOverlay from './MapDebugOverlay';
 import MapMenuOverlay from './MapMenuOverlay';
+import { GaWall3DLayer, GA_WALL_3D_MIN_ZOOM } from '../lib/ga-wall-3d';
+import { addGaPatrolLayers } from '../lib/ga-patrol-3d';
+import { addGaLidarLayers } from '../lib/ga-lidar-layer';
+import { addGaCompetitorLayers } from '../lib/ga-competitors';
+import { addDisneyLiveBoard } from '../lib/disney-live';
+import { addGaH3Telemetry } from '../lib/ga-h3-telemetry';
+import { addGaTrafficLayers } from '../lib/ga-traffic-layer';
+import { addGaHydrometLayers } from '../lib/ga-hydromet-layer';
+import { addGaAnomalyBulbs } from '../lib/ga-anomaly-bulbs';
+import { addGaChangeLayer } from '../lib/ga-change-layer';
+import { addGaOrbitalLayers } from '../lib/ga-orbital-layer';
+import { addGaLiveMarkerLayers } from '../lib/ga-live-markers-layer';
+import { addGaFbiFeeds } from '../lib/ga-fbi-feed';
+import { glowRadius, scaleMarkersInsideGaWall, type RadiusExpression } from '../lib/ga-marker-scale';
+import { exportMapAt8k } from '../lib/map-8k-export';
+import { SKY_PHOTO_SOURCE_URL, SkyPhotoRenderer, projectRaDec, skyBasis, skyBodyPositions, type SkyBodyPosition } from '../lib/sky-photo';
+import { AWS_TERRARIUM_TILES, OPENFREEMAP_PLANET } from '../lib/lidar-globe-sources';
 
-// Helper function to safely inject verified 3D Custom Layer Starfield
-function injectStarfieldLayer(map: any) {
-  try {
-    if (!map || typeof window === 'undefined') return;
-    if (map.getLayer('deep-space-starfield')) return;
-    
-    // Dynamically require to avoid SSR issues
-    const { MaplibreStarfieldLayer } = require('../lib/starfield');
-    if (!MaplibreStarfieldLayer) return;
+const ALLY_STATE_CODES = ['AL', 'FL', 'NC', 'SC', 'TN', 'TX', 'VA'];
+const STARMAP_8K_MIN_DEVICE_PX = 1920;
 
-    const starfield = new MaplibreStarfieldLayer({
-      id: 'deep-space-starfield',
-      galaxyTextureUrl: '/milkyway.jpg',
-      galaxyBrightness: 0.55,
-      starCount: 4000,
-      starSize: 2.2,
-      sunEnabled: false, // Pure deep space astrometric starfield
-    });
-
-    const layers = map.getStyle()?.layers;
-    const firstLayerId = layers && layers.length > 0 ? layers[0].id : undefined;
-    map.addLayer(starfield, firstLayerId);
-    (process.env.NODE_ENV === "production" ? () => {} : console.log)('[Starfield] Successfully mounted 4000-star 3D skybox layer below:', firstLayerId);
-  } catch (err) {
-    console.warn('[Starfield] 3D starfield layer deferred/unsupported:', err);
+function makeSteelPanelImage(size = 128, scale = 1): ImageData | null {
+  const canvas = document.createElement('canvas');
+  canvas.width = size * scale;
+  canvas.height = size * scale;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  ctx.scale(scale, scale);
+  const rib = size / 32; // 32 ribs per repeat → 0.25 m corrugation at z20 (was 8 → 1 m blobs)
+  for (let x = 0; x < size; x++) {
+    const phase = (x % rib) / rib;
+    const shade = 150 + Math.round(70 * Math.cos(phase * Math.PI * 2));
+    ctx.fillStyle = `rgb(${shade - 12}, ${shade - 4}, ${shade + 6})`;
+    ctx.fillRect(x, 0, 1, size);
   }
+  const img = ctx.getImageData(0, 0, size * scale, size * scale);
+  let seed = 7;
+  for (let i = 0; i < img.data.length; i += 4) {
+    seed = (seed * 16807) % 2147483647;
+    const n = (seed % 25) - 12;
+    img.data[i] = Math.max(0, Math.min(255, img.data[i] + n));
+    img.data[i + 1] = Math.max(0, Math.min(255, img.data[i + 1] + n));
+    img.data[i + 2] = Math.max(0, Math.min(255, img.data[i + 2] + n));
+  }
+  ctx.putImageData(img, 0, 0);
+  ctx.fillStyle = 'rgba(40, 46, 56, 0.9)';
+  ctx.fillRect(0, 0, size, 2);
+  ctx.fillRect(0, size / 2, size, 1);
+  ctx.fillStyle = 'rgba(210, 220, 232, 0.9)';
+  for (let x = rib / 2; x < size; x += rib) {
+    ctx.fillRect(x, 6, 2, 2);
+    ctx.fillRect(x, size / 2 + 6, 2, 2);
+  }
+  return ctx.getImageData(0, 0, size * scale, size * scale);
 }
+
+function makeConcertinaImage(size = 64, scale = 1): ImageData | null {
+  const canvas = document.createElement('canvas');
+  canvas.width = size * scale;
+  canvas.height = size * scale;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  ctx.scale(scale, scale);
+  ctx.fillStyle = 'rgb(18, 22, 28)';
+  ctx.fillRect(0, 0, size, size);
+  const loops = 8; // 8 coils per repeat → 0.5 m coils at z20 (was 4 → 1 m+ blobs)
+  const rx = size / loops; // coil width tracks pitch (patterns are world-locked)
+  const ry = size / 2.2; // coil height spans the band at every zoom
+  for (let i = -1; i <= loops; i++) {
+    const cx = (i + 0.5) * (size / loops);
+    ctx.strokeStyle = 'rgba(225, 232, 240, 0.95)';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.ellipse(cx, size / 2, rx, ry, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(120, 132, 146, 0.9)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.ellipse(cx + 1.5, size / 2 + 0.5, rx, ry, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(245, 248, 252, 1)';
+    for (let k = 0; k < 6; k++) {
+      const a = (k / 6) * Math.PI * 2;
+      const bx = cx + Math.cos(a) * rx;
+      const by = size / 2 + Math.sin(a) * ry;
+      ctx.fillRect(bx - 1, by - 0.5, 2, 1);
+    }
+  }
+  return ctx.getImageData(0, 0, size * scale, size * scale);
+}
+
 
 
 // ─── Constants ────────────────────────────────────────────────────────
 const COMPETITOR_STATES = ['GA', 'NC', 'TN', 'SC', 'FL', 'TX', 'VA', 'AL'] as const;
 type StateCode = (typeof COMPETITOR_STATES)[number];
+
+const TERRAIN_DEM: maplibregl.RasterDEMSourceSpecification = {
+  type: 'raster-dem',
+  tiles: [AWS_TERRARIUM_TILES],
+  encoding: 'terrarium',
+  tileSize: 256,
+  maxzoom: 15,
+  attribution: '<a href="https://registry.opendata.aws/terrain-tiles/" target="_blank" rel="noopener">Terrain Tiles</a> — Mapzen/AWS, USGS 3DEP',
+};
 
 const BASEMAPS = {
   demotiles: 'https://demotiles.maplibre.org/style.json',
@@ -64,8 +124,9 @@ const BASEMAPS = {
     sources: {
       sat: {
         type: 'raster',
-        tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+        tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}?blankTile=false'],
         tileSize: 256,
+        maxzoom: 21,
         attribution: '© Esri, Maxar, Earthstar Geographics',
       },
     },
@@ -78,15 +139,12 @@ const BASEMAPS = {
     sources: {
       sat: {
         type: 'raster',
-        tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+        tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}?blankTile=false'],
         tileSize: 256,
+        maxzoom: 21,
         attribution: '© Esri, Maxar, Earthstar Geographics',
       },
-      'terrain-dem': {
-        type: 'raster-dem',
-        url: 'https://demotiles.maplibre.org/terrain-tiles/tiles.json',
-        tileSize: 256,
-      },
+      'terrain-dem': TERRAIN_DEM,
     },
     layers: [{ id: 'sat', type: 'raster', source: 'sat' }],
     terrain: { source: 'terrain-dem', exaggeration: 1.5 },
@@ -98,6 +156,16 @@ const GA_BOUNDS: maplibregl.LngLatBoundsLike = [
   [-85.6, 30.3], // SW
   [-80.8, 35.0], // NE
 ];
+
+const GA_WALL_MARKER_RADII: Record<string, RadiusExpression> = {
+  'anomaly-clusters': (k) => ['*', k, ['step', ['get', 'point_count'], 18, 5, 24, 15, 32]],
+  'anomaly-pulse': (k, g) => ['interpolate', ['linear'], ['zoom'], 5, ['*', glowRadius(6, 12, g), k], 12, ['*', glowRadius(14, 24, g), k]],
+  'anomaly-points': (k) => ['interpolate', ['linear'], ['zoom'], 5, ['*', 6, k], 12, ['*', 14, k]],
+  'godseye-entities-halo': (k, g) => ['*', glowRadius(5.5, 12, g), k],
+  'godseye-entities-core': (k) => ['*', 5.5, k],
+  'telemetry-pulse-glow': (k, g) => ['*', glowRadius(5, 14, g), k],
+  'telemetry-pulse-core': (k) => ['*', 5, k],
+};
 
 // Initial baseline anomalies converted to GeoJSON Feature collection
 const INITIAL_ANOMALIES: AnomalyFeature[] = GEORGIA_ANOMALIES.map((a, idx) => ({
@@ -133,27 +201,27 @@ interface Props {
       { id: "Sirius", name: "Sirius (α CMa)", constellation: "Canis Major", ra: 6.75, dec: -16.72, dist_ly: 8.6, vmag: -1.46, bv: 0.00, spec: "A1V", teff: 9940, radius: 1.71, mass: 2.06, lum: 25.4, color: "#e0f2fe" },
       { id: "Canopus", name: "Canopus (α Car)", constellation: "Carina", ra: 6.40, dec: -52.70, dist_ly: 310.0, vmag: -0.74, bv: 0.15, spec: "F0II", teff: 7400, radius: 71.0, mass: 8.0, lum: 10700.0, color: "#f8fafc" },
       { id: "RigilKent", name: "Rigil Kentaurus (α Cen A)", constellation: "Centaurus", ra: 14.66, dec: -60.83, dist_ly: 4.37, vmag: -0.01, bv: 0.71, spec: "G2V", teff: 5790, radius: 1.22, mass: 1.10, lum: 1.52, color: "#a7f3d0" },
-      { id: "Arcturus", name: "Arcturus (α Boo)", constellation: "Boötes", ra: 14.26, dec: 19.18, dist_ly: 36.7, vmag: -0.05, bv: 1.23, spec: "K1.5III", teff: 4286, radius: 25.4, mass: 1.08, lum: 170.0, color: "#fb923c" },
+      { id: "Arcturus", name: "Arcturus (α Boo)", constellation: "Boötes", ra: 14.26, dec: 19.18, dist_ly: 36.7, vmag: -0.05, bv: 1.23, spec: "K1.5III", teff: 4286, radius: 25.4, mass: 1.08, lum: 170.0, color: "#ff4fd8" },
       { id: "Vega", name: "Vega (α Lyr)", constellation: "Lyra", ra: 18.62, dec: 38.78, dist_ly: 25.0, vmag: 0.03, bv: 0.00, spec: "A0V", teff: 9602, radius: 2.36, mass: 2.14, lum: 40.1, color: "#38bdf8" },
       { id: "Capella", name: "Capella (α Aur)", constellation: "Auriga", ra: 5.28, dec: 45.99, dist_ly: 42.9, vmag: 0.08, bv: 0.80, spec: "G3III", teff: 4970, radius: 11.98, mass: 2.57, lum: 78.7, color: "#67e8f9" },
       { id: "Rigel", name: "Rigel (β Ori)", constellation: "Orion", ra: 5.24, dec: -8.20, dist_ly: 860.0, vmag: 0.12, bv: -0.03, spec: "B8Ia", teff: 12100, radius: 78.9, mass: 21.0, lum: 120000.0, color: "#7dd3fc" },
       { id: "Procyon", name: "Procyon (α CMi)", constellation: "Canis Minor", ra: 7.65, dec: 5.22, dist_ly: 11.5, vmag: 0.38, bv: 0.42, spec: "F5IV-V", teff: 6530, radius: 2.05, mass: 1.50, lum: 6.93, color: "#a7f3d0" },
       { id: "Achernar", name: "Achernar (α Eri)", constellation: "Eridanus", ra: 1.63, dec: -57.24, dist_ly: 139.0, vmag: 0.46, bv: -0.16, spec: "B6Vep", teff: 15000, radius: 9.1, mass: 6.7, lum: 3150.0, color: "#38bdf8" },
-      { id: "Betelgeuse", name: "Betelgeuse (α Ori)", constellation: "Orion", ra: 5.92, dec: 7.41, dist_ly: 642.5, vmag: 0.50, bv: 1.85, spec: "M1-M2Ia-ab", teff: 3600, radius: 764.0, mass: 16.5, lum: 126000.0, color: "#f97316" },
+      { id: "Betelgeuse", name: "Betelgeuse (α Ori)", constellation: "Orion", ra: 5.92, dec: 7.41, dist_ly: 642.5, vmag: 0.50, bv: 1.85, spec: "M1-M2Ia-ab", teff: 3600, radius: 764.0, mass: 16.5, lum: 126000.0, color: "#ff2ec4" },
       { id: "Hadar", name: "Hadar (β Cen)", constellation: "Centaurus", ra: 14.06, dec: -60.37, dist_ly: 390.0, vmag: 0.61, bv: -0.23, spec: "B1III", teff: 25000, radius: 8.6, mass: 12.8, lum: 41700.0, color: "#38bdf8" },
       { id: "Altair", name: "Altair (α Aql)", constellation: "Aquila", ra: 19.85, dec: 8.87, dist_ly: 16.7, vmag: 0.77, bv: 0.22, spec: "A7V", teff: 7700, radius: 1.79, mass: 1.86, lum: 10.6, color: "#bae6fd" },
       { id: "Acrux", name: "Acrux (α Cru)", constellation: "Crux", ra: 12.44, dec: -63.10, dist_ly: 320.0, vmag: 0.77, bv: -0.24, spec: "B0.5IV", teff: 28000, radius: 7.8, mass: 17.8, lum: 25000.0, color: "#38bdf8" },
-      { id: "Aldebaran", name: "Aldebaran (α Tau)", constellation: "Taurus", ra: 4.60, dec: 16.51, dist_ly: 65.3, vmag: 0.85, bv: 1.54, spec: "K5III", teff: 3900, radius: 44.2, mass: 1.16, lum: 439.0, color: "#fb923c" },
-      { id: "Antares", name: "Antares (α Sco)", constellation: "Scorpius", ra: 16.49, dec: -26.43, dist_ly: 550.0, vmag: 0.96, bv: 1.83, spec: "M1.5Iab-Ib", teff: 3660, radius: 680.0, mass: 12.0, lum: 75900.0, color: "#f97316" },
+      { id: "Aldebaran", name: "Aldebaran (α Tau)", constellation: "Taurus", ra: 4.60, dec: 16.51, dist_ly: 65.3, vmag: 0.85, bv: 1.54, spec: "K5III", teff: 3900, radius: 44.2, mass: 1.16, lum: 439.0, color: "#ff4fd8" },
+      { id: "Antares", name: "Antares (α Sco)", constellation: "Scorpius", ra: 16.49, dec: -26.43, dist_ly: 550.0, vmag: 0.96, bv: 1.83, spec: "M1.5Iab-Ib", teff: 3660, radius: 680.0, mass: 12.0, lum: 75900.0, color: "#ff2ec4" },
       { id: "Spica", name: "Spica (α Vir)", constellation: "Virgo", ra: 13.42, dec: -11.16, dist_ly: 250.0, vmag: 0.98, bv: -0.23, spec: "B1III-IV", teff: 25300, radius: 7.47, mass: 11.43, lum: 20500.0, color: "#38bdf8" },
-      { id: "Pollux", name: "Pollux (β Gem)", constellation: "Gemini", ra: 7.76, dec: 28.02, dist_ly: 33.78, vmag: 1.14, bv: 1.00, spec: "K0III", teff: 4666, radius: 9.06, mass: 1.91, lum: 43.0, color: "#fed7aa" },
+      { id: "Pollux", name: "Pollux (β Gem)", constellation: "Gemini", ra: 7.76, dec: 28.02, dist_ly: 33.78, vmag: 1.14, bv: 1.00, spec: "K0III", teff: 4666, radius: 9.06, mass: 1.91, lum: 43.0, color: "#ffd1f5" },
       { id: "Fomalhaut", name: "Fomalhaut (α PsA)", constellation: "Piscis Austrinus", ra: 22.96, dec: -29.62, dist_ly: 25.13, vmag: 1.16, bv: 0.09, spec: "A3V", teff: 8590, radius: 1.84, mass: 1.92, lum: 16.6, color: "#bae6fd" },
       { id: "Deneb", name: "Deneb (α Cyg)", constellation: "Cygnus", ra: 20.69, dec: 45.28, dist_ly: 2615.0, vmag: 1.25, bv: 0.09, spec: "A2Ia", teff: 8525, radius: 203.0, mass: 19.0, lum: 196000.0, color: "#bae6fd" },
       { id: "Mimosa", name: "Mimosa (β Cru)", constellation: "Crux", ra: 12.79, dec: -59.69, dist_ly: 280.0, vmag: 1.25, bv: -0.23, spec: "B0.5III", teff: 27000, radius: 8.4, mass: 16.0, lum: 34000.0, color: "#38bdf8" },
       { id: "Regulus", name: "Regulus (α Leo)", constellation: "Leo", ra: 10.14, dec: 11.97, dist_ly: 79.3, vmag: 1.36, bv: -0.11, spec: "B7V", teff: 12460, radius: 4.16, mass: 3.8, lum: 360.0, color: "#38bdf8" },
       { id: "Adhara", name: "Adhara (ε CMa)", constellation: "Canis Major", ra: 6.98, dec: -28.97, dist_ly: 430.0, vmag: 1.50, bv: -0.21, spec: "B2II", teff: 22900, radius: 13.9, mass: 12.6, lum: 38700.0, color: "#38bdf8" },
       { id: "Castor", name: "Castor (α Gem)", constellation: "Gemini", ra: 7.58, dec: 31.89, dist_ly: 51.6, vmag: 1.58, bv: 0.03, spec: "A1V", teff: 10286, radius: 2.4, mass: 2.76, lum: 30.0, color: "#bae6fd" },
-      { id: "Gacrux", name: "Gacrux (γ Cru)", constellation: "Crux", ra: 12.52, dec: -57.11, dist_ly: 88.6, vmag: 1.64, bv: 1.59, spec: "M3.5III", teff: 3626, radius: 84.0, mass: 1.5, lum: 820.0, color: "#f97316" },
+      { id: "Gacrux", name: "Gacrux (γ Cru)", constellation: "Crux", ra: 12.52, dec: -57.11, dist_ly: 88.6, vmag: 1.64, bv: 1.59, spec: "M3.5III", teff: 3626, radius: 84.0, mass: 1.5, lum: 820.0, color: "#ff2ec4" },
       { id: "Bellatrix", name: "Bellatrix (γ Ori)", constellation: "Orion", ra: 5.42, dec: 6.35, dist_ly: 250.0, vmag: 1.64, bv: -0.22, spec: "B2III", teff: 21800, radius: 5.75, mass: 8.6, lum: 9210.0, color: "#7dd3fc" },
       { id: "Elnath", name: "Elnath (β Tau)", constellation: "Taurus", ra: 5.44, dec: 28.61, dist_ly: 134.0, vmag: 1.65, bv: -0.13, spec: "B7III", teff: 13821, radius: 4.2, mass: 5.0, lum: 700.0, color: "#38bdf8" },
       { id: "Miaplacidus", name: "Miaplacidus (β Car)", constellation: "Carina", ra: 9.22, dec: -69.72, dist_ly: 113.2, vmag: 1.67, bv: 0.00, spec: "A2IV", teff: 8866, radius: 6.8, mass: 3.5, lum: 288.0, color: "#bae6fd" },
@@ -167,18 +235,18 @@ interface Props {
       { id: "Alkaid", name: "Alkaid (η UMa)", constellation: "Ursa Major", ra: 13.79, dec: 49.31, dist_ly: 103.9, vmag: 1.86, bv: -0.19, spec: "B3V", teff: 15540, radius: 3.4, mass: 6.1, lum: 594.0, color: "#38bdf8" },
       { id: "Sargas", name: "Sargas (θ Sco)", constellation: "Scorpius", ra: 17.62, dec: -42.99, dist_ly: 300.0, vmag: 1.87, bv: 0.40, spec: "F0II", teff: 7268, radius: 26.0, mass: 5.7, lum: 1834.0, color: "#f8fafc" },
       { id: "KausAustralis", name: "Kaus Australis (ε Sgr)", constellation: "Sagittarius", ra: 18.40, dec: -34.38, dist_ly: 143.0, vmag: 1.85, bv: -0.03, spec: "B9.5III", teff: 9960, radius: 6.8, mass: 3.5, lum: 363.0, color: "#bae6fd" },
-      { id: "Avior", name: "Avior (ε Car)", constellation: "Carina", ra: 8.38, dec: -59.51, dist_ly: 610.0, vmag: 1.86, bv: 1.20, spec: "K3III+B2V", teff: 4100, radius: 153.0, mass: 10.5, lum: 6000.0, color: "#fb923c" },
+      { id: "Avior", name: "Avior (ε Car)", constellation: "Carina", ra: 8.38, dec: -59.51, dist_ly: 610.0, vmag: 1.86, bv: 1.20, spec: "K3III+B2V", teff: 4100, radius: 153.0, mass: 10.5, lum: 6000.0, color: "#ff4fd8" },
       { id: "Menkalinan", name: "Menkalinan (β Aur)", constellation: "Auriga", ra: 5.99, dec: 44.95, dist_ly: 81.1, vmag: 1.90, bv: 0.03, spec: "A1mIV", teff: 9350, radius: 2.77, mass: 2.39, lum: 95.0, color: "#bae6fd" },
-      { id: "Atria", name: "Atria (α TrA)", constellation: "Triangulum Australe", ra: 16.81, dec: -69.03, dist_ly: 391.0, vmag: 1.91, bv: 1.44, spec: "K2IIb-IIIa", teff: 4150, radius: 143.0, mass: 7.0, lum: 5500.0, color: "#fb923c" },
+      { id: "Atria", name: "Atria (α TrA)", constellation: "Triangulum Australe", ra: 16.81, dec: -69.03, dist_ly: 391.0, vmag: 1.91, bv: 1.44, spec: "K2IIb-IIIa", teff: 4150, radius: 143.0, mass: 7.0, lum: 5500.0, color: "#ff4fd8" },
       { id: "Alhena", name: "Alhena (γ Gem)", constellation: "Gemini", ra: 6.63, dec: 16.40, dist_ly: 109.0, vmag: 1.93, bv: 0.00, spec: "A1.5IV+", teff: 9260, radius: 3.3, mass: 2.8, lum: 123.0, color: "#bae6fd" },
       { id: "Peacock", name: "Peacock (α Pav)", constellation: "Pavo", ra: 20.43, dec: -56.73, dist_ly: 179.0, vmag: 1.94, bv: -0.20, spec: "B2.5V", teff: 17711, radius: 4.83, mass: 5.91, lum: 2200.0, color: "#38bdf8" },
       { id: "Polaris", name: "Polaris (α UMi)", constellation: "Ursa Minor", ra: 2.53, dec: 89.26, dist_ly: 433.0, vmag: 1.98, bv: 0.60, spec: "F7Ib", teff: 6015, radius: 37.5, mass: 5.4, lum: 1260.0, color: "#e0e7ff" },
       { id: "Mirzam", name: "Mirzam (β CMa)", constellation: "Canis Major", ra: 6.38, dec: -17.96, dist_ly: 490.0, vmag: 1.98, bv: -0.23, spec: "B1II-III", teff: 25800, radius: 9.7, mass: 13.5, lum: 26600.0, color: "#38bdf8" },
-      { id: "Alphard", name: "Alphard (α Hya)", constellation: "Hydra", ra: 9.46, dec: -8.66, dist_ly: 177.0, vmag: 1.98, bv: 1.44, spec: "K3II-III", teff: 4120, radius: 50.5, mass: 3.03, lum: 780.0, color: "#fb923c" },
-      { id: "Hamal", name: "Hamal (α Ari)", constellation: "Aries", ra: 2.12, dec: 23.46, dist_ly: 65.8, vmag: 2.00, bv: 1.15, spec: "K2III", teff: 4480, radius: 14.9, mass: 1.5, lum: 91.0, color: "#fb923c" },
+      { id: "Alphard", name: "Alphard (α Hya)", constellation: "Hydra", ra: 9.46, dec: -8.66, dist_ly: 177.0, vmag: 1.98, bv: 1.44, spec: "K3II-III", teff: 4120, radius: 50.5, mass: 3.03, lum: 780.0, color: "#ff4fd8" },
+      { id: "Hamal", name: "Hamal (α Ari)", constellation: "Aries", ra: 2.12, dec: 23.46, dist_ly: 65.8, vmag: 2.00, bv: 1.15, spec: "K2III", teff: 4480, radius: 14.9, mass: 1.5, lum: 91.0, color: "#ff4fd8" },
       { id: "Diphda", name: "Diphda (β Cet)", constellation: "Cetus", ra: 0.73, dec: -17.99, dist_ly: 96.3, vmag: 2.04, bv: 1.02, spec: "K0III", teff: 4797, radius: 16.8, mass: 2.8, lum: 139.0, color: "#a7f3d0" },
       { id: "Saiph", name: "Saiph (κ Ori)", constellation: "Orion", ra: 5.79, dec: -9.67, dist_ly: 650.0, vmag: 2.07, bv: -0.18, spec: "B0.5Ia", teff: 26500, radius: 22.2, mass: 15.5, lum: 57500.0, color: "#38bdf8" },
-      { id: "Kochab", name: "Kochab (β UMi)", constellation: "Ursa Minor", ra: 14.85, dec: 74.16, dist_ly: 130.9, vmag: 2.08, bv: 1.47, spec: "K4III", teff: 4030, radius: 42.1, mass: 2.2, lum: 390.0, color: "#fed7aa" },
+      { id: "Kochab", name: "Kochab (β UMi)", constellation: "Ursa Minor", ra: 14.85, dec: 74.16, dist_ly: 130.9, vmag: 2.08, bv: 1.47, spec: "K4III", teff: 4030, radius: 42.1, mass: 2.2, lum: 390.0, color: "#ffd1f5" },
       { id: "RasHague", name: "Rasalhague (α Oph)", constellation: "Ophiuchus", ra: 17.58, dec: 12.56, dist_ly: 48.6, vmag: 2.08, bv: 0.15, spec: "A5III", teff: 8000, radius: 2.6, mass: 2.4, lum: 25.1, color: "#f8fafc" },
       // Additional constellation anchors
       { id: "Merak", name: "Merak (β UMa)", constellation: "Ursa Major", ra: 11.03, dec: 56.38, dist_ly: 79.7, vmag: 2.37, bv: -0.02, spec: "A1V", teff: 9000, radius: 3.02, mass: 2.7, lum: 63.0, color: "#bae6fd" },
@@ -186,7 +254,7 @@ interface Props {
       { id: "Megrez", name: "Megrez (δ UMa)", constellation: "Ursa Major", ra: 12.25, dec: 57.03, dist_ly: 80.5, vmag: 3.31, bv: 0.08, spec: "A3V", teff: 8630, radius: 2.24, mass: 2.11, lum: 28.0, color: "#bae6fd" },
       { id: "Mizar", name: "Mizar (ζ UMa)", constellation: "Ursa Major", ra: 13.40, dec: 54.92, dist_ly: 82.9, vmag: 2.23, bv: 0.02, spec: "A2Vp", teff: 9000, radius: 2.4, mass: 2.2, lum: 33.3, color: "#e0f2fe" },
       { id: "Caph", name: "Caph (β Cas)", constellation: "Cassiopeia", ra: 0.15, dec: 59.15, dist_ly: 54.7, vmag: 2.28, bv: 0.34, spec: "F2III", teff: 7079, radius: 3.5, mass: 1.91, lum: 27.3, color: "#f8fafc" },
-      { id: "Schedar", name: "Schedar (α Cas)", constellation: "Cassiopeia", ra: 0.68, dec: 56.54, dist_ly: 228.0, vmag: 2.24, bv: 1.17, spec: "K0IIIa", teff: 4530, radius: 45.4, mass: 3.98, lum: 776.0, color: "#fed7aa" },
+      { id: "Schedar", name: "Schedar (α Cas)", constellation: "Cassiopeia", ra: 0.68, dec: 56.54, dist_ly: 228.0, vmag: 2.24, bv: 1.17, spec: "K0IIIa", teff: 4530, radius: 45.4, mass: 3.98, lum: 776.0, color: "#ffd1f5" },
       { id: "Navi", name: "Navi (γ Cas)", constellation: "Cassiopeia", ra: 0.94, dec: 60.72, dist_ly: 550.0, vmag: 2.15, bv: -0.15, spec: "B0.5IVe", teff: 25000, radius: 10.0, mass: 13.0, lum: 40000.0, color: "#38bdf8" },
       { id: "Ruchbah", name: "Ruchbah (δ Cas)", constellation: "Cassiopeia", ra: 1.43, dec: 60.23, dist_ly: 99.4, vmag: 2.68, bv: 0.13, spec: "A5III-IV", teff: 8400, radius: 3.9, mass: 2.5, lum: 70.0, color: "#bae6fd" },
       { id: "Segin", name: "Segin (ε Cas)", constellation: "Cassiopeia", ra: 1.90, dec: 63.67, dist_ly: 460.0, vmag: 3.35, bv: -0.18, spec: "B3V", teff: 15174, radius: 6.1, mass: 9.2, lum: 2500.0, color: "#38bdf8" },
@@ -200,7 +268,7 @@ interface Props {
     const NASA_SOLAR_SYSTEM_BODIES = [
       { id: "Moon", name: "Moon", ra: 12.50, dec: 5.20, vmag: -12.7, dist_au: 0.00257, type: "Natural Satellite", color: "#f8fafc", radius: 4.5 },
       { id: "Venus", name: "Venus", ra: 21.45, dec: -15.30, vmag: -4.4, dist_au: 0.72, type: "Terrestrial Planet", color: "#e0e7ff", radius: 3.8 },
-      { id: "Jupiter", name: "Jupiter", ra: 4.15, dec: 20.25, vmag: -2.6, dist_au: 4.95, type: "Gas Giant", color: "#fed7aa", radius: 4.0 },
+      { id: "Jupiter", name: "Jupiter", ra: 4.15, dec: 20.25, vmag: -2.6, dist_au: 4.95, type: "Gas Giant", color: "#ffd1f5", radius: 4.0 },
       { id: "Mars", name: "Mars", ra: 7.82, dec: 23.48, vmag: -1.2, dist_au: 1.45, type: "Terrestrial Planet", color: "#ef4444", radius: 3.2 },
       { id: "Saturn", name: "Saturn", ra: 23.12, dec: -8.45, vmag: 0.6, dist_au: 9.60, type: "Gas Giant (Ring System)", color: "#67e8f9", radius: 3.5 },
       { id: "Mercury", name: "Mercury", ra: 19.20, dec: -22.10, vmag: -0.4, dist_au: 0.98, type: "Terrestrial Planet", color: "#cbd5e1", radius: 2.8 },
@@ -294,6 +362,24 @@ export default function GodsEyeMap({
 
   // NSA Admin Real-Time Star Constellations Canvas Animation
   const starsCanvasRef = useRef<HTMLCanvasElement>(null);
+  const [export8kStatus, setExport8kStatus] = useState<string | null>(null);
+  const save8k = useCallback(async () => {
+    const map = mapRef.current;
+    if (!map) return;
+    setExport8kStatus('rendering…');
+    try {
+      const { blob, width, height, liveIcons } = await exportMapAt8k(map, starsCanvasRef.current);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `georgia-map-${width}x${height}.png`;
+      a.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
+      setExport8kStatus(liveIcons ? `saved ${width}×${height}` : `saved ${width}×${height} · live icons not captured`);
+    } catch (err) {
+      setExport8kStatus(err instanceof Error ? err.message : 'export failed');
+    }
+  }, []);
 
   useEffect(() => {
     const canvas = starsCanvasRef.current;
@@ -302,23 +388,30 @@ export default function GodsEyeMap({
     if (!ctx) return;
 
     let animId: number;
-    let width = (canvas.width = canvas.parentElement?.clientWidth || window.innerWidth);
-    let height = (canvas.height = canvas.parentElement?.clientHeight || 600);
+    let width = 0;
+    let height = 0;
+    const sizeCanvas = () => {
+      const dpr = window.devicePixelRatio || 1;
+      width = canvas.parentElement?.clientWidth || window.innerWidth;
+      height = canvas.parentElement?.clientHeight || 600;
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    };
+    sizeCanvas();
 
-    // Official NASA Scientific Visualization Studio (SVS-4851) Deep Space Star Map & Milky Way Panorama
-    const nasaMilkyWayImg = typeof window !== 'undefined' ? new window.Image() : null;
-    let nasaImgLoaded = false;
-    if (nasaMilkyWayImg) {
-      nasaMilkyWayImg.src = '/assets/nasa-svs-starmap.jpg';
-      nasaMilkyWayImg.onload = () => {
-        nasaImgLoaded = true;
-      };
-    }
+    // NASA SVS-4851 Deep Star Maps 2020, rendered as the real sky for the camera's location, heading, pitch and time
+    const devicePx = Math.max(window.screen.width, window.screen.height) * (window.devicePixelRatio || 1);
+    const sky = new SkyPhotoRenderer(
+      { url8k: '/assets/nasa-svs-starmap-8k.jpg', url4k: '/assets/nasa-svs-starmap.jpg' },
+      devicePx >= STARMAP_8K_MIN_DEVICE_PX,
+    );
+    let bodies: SkyBodyPosition[] = [];
+    let bodiesAt = -Infinity;
 
     const onResize = () => {
       if (!canvas) return;
-      width = canvas.width = canvas.parentElement?.clientWidth || window.innerWidth;
-      height = canvas.height = canvas.parentElement?.clientHeight || 600;
+      sizeCanvas();
     };
     window.addEventListener('resize', onResize);
 
@@ -332,249 +425,76 @@ export default function GodsEyeMap({
 // NASA Scientific Visualization Studio (SVS-3895) / IAU J2000 Astronomical Star Catalogue
     // Rigorous astronomical coordinates: Right Ascension (RA in hours 0..24) and Declination (Dec in degrees -90..+90)
     // Twinkling & physical radius calculated from verified Apparent Visual Magnitude (Vmag)
-        // NSA Realist Astrometric Deep Space Field: 1,200 Tycho-2 / Gaia DR3 Verified Stellar Objects
-    // Full 360-degree celestial sphere coverage with realistic apparent magnitude and multi-frequency spectral distribution
-    const BACKGROUND_TYCHO_STARS = Array.from({ length: 1200 }, (_, i) => {
-      // Deterministic pseudo-random distribution using golden ratio & prime offsets
-      const ra = ((i * 0.020017 + ((i * 13) % 19) * 0.126) % 24);
-      const dec = -88 + ((i * 2.39996) % 176); // -88 to +88 deg full celestial sphere
-      // Apparent visual magnitude distribution following real astronomical log stellar density
-      const magRank = (i % 100) / 100;
-      const vmag = 2.0 + Math.pow(magRank, 0.45) * 5.2; // Vmag from 2.0 to 7.2
-      const radius = Math.max(0.35, Math.min(2.2, 2.5 - vmag * 0.32));
-      const baseAlpha = Math.max(0.2, Math.min(0.95, 1.15 - vmag * 0.14));
-      const twinkleSpeed = 0.008 + ((i * 7) % 23) * 0.0018;
-      const twinklePhase = (i * 1.37) % (Math.PI * 2);
-      // Realistic spectral class colors (O, B, A, F, G, K, M)
-      const colorRoll = i % 10;
-      const color = colorRoll === 0 ? '#38bdf8' // Deep Blue (O/B type)
-        : colorRoll === 1 ? '#7dd3fc'           // Electric Cyan (B type)
-        : colorRoll === 2 ? '#bae6fd'           // Soft Ice Blue (A type)
-        : colorRoll === 3 ? '#a7f3d0'           // Mint Green / High-frequency
-        : colorRoll === 4 ? '#67e8f9'           // Sky Cyan
-        : colorRoll === 5 ? '#f8fafc'           // Pure White (A/F type)
-        : colorRoll === 6 ? '#e0f2fe'           // Diamond Blue
-        : colorRoll === 7 ? '#fed7aa'           // Warm Amber (K type)
-        : colorRoll === 8 ? '#f97316'           // Orange (K/M type)
-        : '#ffffff';                            // Stellar White
-      return { ra, dec, radius, baseAlpha, twinkleSpeed, twinklePhase, color, vmag };
-    });
 
     const render = (time: number) => {
-      ctx.clearRect(0, 0, width, height);
-
-      // Extract real-time camera perspective from MapLibre
       const m = mapRef.current;
-      const currentBearing = m && typeof m.getBearing === 'function' ? m.getBearing() : 0;
-      const currentPitch = m && typeof m.getPitch === 'function' ? m.getPitch() : 60;
-      const currentCenter = m && typeof m.getCenter === 'function' ? m.getCenter() : { lng: -83.4, lat: 32.6 };
-      const currentZoom = m && typeof m.getZoom === 'function' ? m.getZoom() : 6.0;
-
-      const isGlobeView = currentZoom < 3.5;
-
-      // Real-time horizon detection: Find highest screen Y reached by the globe horizon
-      let topLimbY = height * 0.32;
-      let globeRadiusEst = width * 0.35;
-      let globeCenterScreen = { x: width * 0.5, y: height * 0.55 };
-
-      if (m && typeof m.project === 'function') {
-        try {
-          const centerLng = currentCenter.lng || -83.4;
-          let minY = height;
-          [-60, -45, -30, -15, 0, 15, 30, 45, 60].forEach((dLng) => {
-            const p = m.project([centerLng + dLng, 65]);
-            if (p && p.y > 0 && p.y < minY) {
-              minY = p.y;
-            }
-          });
-          if (minY < height && minY > 15) {
-            topLimbY = Math.min(minY, height * 0.44);
-          } else {
-            topLimbY = height * Math.max(0.18, Math.min(0.40, 0.46 - (currentPitch / 90) * 0.22));
-          }
-
-          if (isGlobeView) {
-            // Measure actual globe screen footprint with rigorous sanity bounds
-            const pCenter = m.project([centerLng, currentCenter.lat || 0]);
-            const pNorth = m.project([centerLng, 75]);
-            const pSouth = m.project([centerLng, -75]);
-            const pEast = m.project([centerLng + 75, 0]);
-            const pWest = m.project([centerLng - 75, 0]);
-
-            if (pCenter && pCenter.x > 0 && pCenter.x < width && pCenter.y > 0 && pCenter.y < height) {
-              globeCenterScreen = pCenter;
-            } else {
-              globeCenterScreen = { x: width * 0.5, y: height * 0.52 };
-            }
-
-            if (pNorth && pSouth) {
-              const rY = Math.abs(pSouth.y - pNorth.y) * 0.5;
-              const rX = (pEast && pWest) ? Math.abs(pEast.x - pWest.x) * 0.5 : rY;
-              const measuredR = Math.max(rX, rY);
-              // Clamp measured radius to between 15% and 48% of screen dimension so it can never blow out
-              const maxAllowedR = Math.min(width, height) * 0.44;
-              const minAllowedR = Math.min(width, height) * 0.18;
-              globeRadiusEst = Math.max(minAllowedR, Math.min(maxAllowedR, measuredR));
-            } else {
-              globeRadiusEst = Math.min(width, height) * 0.36;
-            }
-          }
-        } catch {
-          topLimbY = height * Math.max(0.18, Math.min(0.40, 0.46 - (currentPitch / 90) * 0.22));
-        }
+      const center = m ? m.getCenter() : { lng: -83.4, lat: 32.6 };
+      const date = new Date(Date.now() + starFinderTimeShiftHours * 3_600_000);
+      const basis = skyBasis({
+        width,
+        height,
+        fovDeg: m ? m.getVerticalFieldOfView() : 36.87,
+        bearingDeg: m ? m.getBearing() : 0,
+        pitchDeg: m ? m.getPitch() : 60,
+        lat: center.lat,
+        lon: center.lng,
+        date,
+      });
+      const dpr = canvas.width / Math.max(1, width);
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      if (sky.render(basis, canvas.width, canvas.height, 1 + 1.4 * starFinderMilkyWayBrightness, starFinderNightMode)) {
+        ctx.drawImage(sky.canvas, 0, 0);
       } else {
-        topLimbY = height * Math.max(0.18, Math.min(0.40, 0.46 - (currentPitch / 90) * 0.22));
+        ctx.fillStyle = '#020612';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      // Safe celestial height for regional mode
-      const safeCelestialHeight = isGlobeView ? height : Math.max(25, topLimbY - 20);
-
-      // Celestial Projection Math:
-      const timeAngleOffset = (starFinderTimeShiftHours / 24);
-      const raShift = (((currentBearing / 360) + ((currentCenter.lng + 83.4) / 360) * 0.5 + timeAngleOffset) % 1 + 1) % 1;
-
-      // ─── STEP 1: RENDER FULL COSMIC BACKGROUND (Milky Way & Starry Deep Space) ───
-      if (nasaImgLoaded && nasaMilkyWayImg) {
-        ctx.save();
-        if (!isGlobeView) {
-          ctx.beginPath();
-          ctx.rect(0, 0, width, safeCelestialHeight);
-          ctx.clip();
-        }
-
-        const bgWidth = width * 1.5;
-        const bgHeight = isGlobeView ? height : safeCelestialHeight * 1.8;
-        const normShift = ((raShift % 1) + 1) % 1;
-        const sx = -normShift * bgWidth;
-
-        ctx.globalAlpha = Math.max(0.15, Math.min(1.0, starFinderMilkyWayBrightness));
-        if (starFinderNightMode) {
-          ctx.filter = 'sepia(100%) hue-rotate(-50deg) saturate(300%)';
-        } else {
-          ctx.filter = 'none';
-        }
-        ctx.drawImage(nasaMilkyWayImg, sx, 0, bgWidth, bgHeight);
-        ctx.drawImage(nasaMilkyWayImg, sx + bgWidth, 0, bgWidth, bgHeight);
-        if (sx + bgWidth < width) {
-          ctx.drawImage(nasaMilkyWayImg, sx + bgWidth * 2, 0, bgWidth, bgHeight);
-        }
-
-        if (!isGlobeView) {
-          const fadeGrad = ctx.createLinearGradient(0, safeCelestialHeight * 0.45, 0, safeCelestialHeight);
-          fadeGrad.addColorStop(0, 'rgba(2, 6, 18, 0.0)');
-          fadeGrad.addColorStop(0.75, 'rgba(2, 6, 18, 0.65)');
-          fadeGrad.addColorStop(1, 'rgba(2, 6, 18, 1.0)');
-          ctx.fillStyle = fadeGrad;
-          ctx.fillRect(0, 0, width, safeCelestialHeight);
-        }
-        ctx.restore();
-      } else {
-        const skyGrad = ctx.createLinearGradient(0, 0, 0, height);
-        skyGrad.addColorStop(0, 'rgba(2, 6, 18, 0.98)');
-        skyGrad.addColorStop(0.5, 'rgba(4, 12, 30, 0.95)');
-        skyGrad.addColorStop(1, 'rgba(2, 6, 20, 0.98)');
-        ctx.fillStyle = skyGrad;
-        ctx.fillRect(0, 0, width, height);
-      }
-
-      // High-precision Celestial Projection Converter
-      const projectCelestial = (raHours: number, decDeg: number): { x: number; y: number; visible: boolean } => {
-        let normX = ((raHours / 24) - raShift) % 1;
-        if (normX < 0) normX += 1;
-        const px = normX * width;
-
-        let py: number;
-        if (isGlobeView) {
-          const normDec = Math.max(0, Math.min(1, (decDeg + 90) / 180));
-          py = (1 - normDec) * height;
-        } else {
-          const normDec = Math.max(0, Math.min(1, (decDeg + 20) / 110));
-          py = (1 - normDec) * safeCelestialHeight * 0.95;
-        }
-
-        const maxH = isGlobeView ? height - 4 : safeCelestialHeight - 4;
-        const visible = py >= 4 && py <= maxH;
-        return { x: px, y: py, visible };
-      };
-
-      // Project all NASA catalogued stars
-      const starScreenPos: Record<string, { x: number; y: number; visible: boolean }> = {};
+      const starScreenPos: Record<string, ReturnType<typeof projectRaDec>> = {};
       NASA_IAU_CATALOGUE.forEach((star) => {
-        starScreenPos[star.id] = projectCelestial(star.ra, star.dec);
+        starScreenPos[star.id] = projectRaDec(basis, width, height, star.ra, star.dec);
       });
       if (typeof window !== 'undefined') {
         (window as any).__lastStarPositions = starScreenPos;
       }
 
-      // 1. Draw NASA SVS Constellation Vectors (Universe Star Finder Toggle)
       if (starFinderShowConstellations) {
         ctx.lineWidth = 0.85;
         ctx.strokeStyle = starFinderNightMode ? 'rgba(239, 68, 68, 0.55)' : 'rgba(56, 189, 248, 0.35)';
         NASA_CONSTELLATION_VECTORS.forEach(([s1Id, s2Id]) => {
           const p1 = starScreenPos[s1Id];
           const p2 = starScreenPos[s2Id];
-          if (p1 && p2 && p1.visible && p2.visible) {
-            if (Math.abs(p1.x - p2.x) < width * 0.4) {
-              ctx.beginPath();
-              ctx.moveTo(p1.x, p1.y);
-              ctx.lineTo(p2.x, p2.y);
-              ctx.stroke();
-            }
+          if (p1?.front && p2?.front && (p1.visible || p2.visible)) {
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.stroke();
           }
         });
       }
 
-      // 2. Realistic Astrometric Deep-Sky Background Field: 1,200 Stars with Multi-frequency Organic Twinkle
-      const activeBackgroundStars = isGlobeView ? BACKGROUND_TYCHO_STARS : BACKGROUND_TYCHO_STARS.slice(0, 450);
-      activeBackgroundStars.forEach((star) => {
-        const pos = projectCelestial(star.ra, star.dec);
-        if (pos.visible) {
-          const t1 = Math.sin(time * star.twinkleSpeed + star.twinklePhase);
-          const t2 = Math.cos(time * (star.twinkleSpeed * 1.618) + star.twinklePhase * 0.5);
-          const compoundTwinkle = (t1 * 0.65 + t2 * 0.35);
-          const alpha = Math.max(0.18, Math.min(1.0, star.baseAlpha + compoundTwinkle * 0.4));
-
+      if (starFinderShowPlanets) {
+        if (time - bodiesAt > 60_000) {
+          bodies = skyBodyPositions(date, center.lat, center.lng);
+          bodiesAt = time;
+        }
+        bodies.forEach((body) => {
+          const planet = NASA_SOLAR_SYSTEM_BODIES.find((p) => p.id === body.id);
+          const pos = projectRaDec(basis, width, height, body.raHours, body.decDeg);
+          if (!planet || !pos.visible) return;
+          const planetColor = starFinderNightMode ? '#ef4444' : planet.color;
           ctx.beginPath();
-          ctx.arc(pos.x, pos.y, star.radius, 0, Math.PI * 2);
-          ctx.fillStyle = star.color;
-          ctx.globalAlpha = alpha;
-          if (star.vmag < 3.5) {
-            ctx.shadowColor = star.color;
-            ctx.shadowBlur = 4;
-          }
+          ctx.arc(pos.x, pos.y, planet.radius, 0, Math.PI * 2);
+          ctx.fillStyle = planetColor;
+          ctx.globalAlpha = 1.0;
+          ctx.shadowColor = planetColor;
+          ctx.shadowBlur = 8;
           ctx.fill();
           ctx.shadowBlur = 0;
-        }
-      });
-
-      // 3. Render Solar System Planets (Universe Star Finder Planetary Detail View)
-      if (starFinderShowPlanets) {
-        NASA_SOLAR_SYSTEM_BODIES.forEach((planet) => {
-          const pos = projectCelestial(planet.ra, planet.dec);
-          if (pos && pos.visible) {
-            const planetColor = starFinderNightMode ? '#ef4444' : planet.color;
-            ctx.beginPath();
-            ctx.arc(pos.x, pos.y, planet.radius, 0, Math.PI * 2);
-            ctx.fillStyle = planetColor;
-            ctx.globalAlpha = 1.0;
-            ctx.shadowColor = planetColor;
-            ctx.shadowBlur = 8;
-            ctx.fill();
-            ctx.shadowBlur = 0;
-
-            if (planet.id === 'Saturn' && !starFinderNightMode) {
-              ctx.beginPath();
-              ctx.ellipse(pos.x, pos.y, planet.radius * 2.2, planet.radius * 0.7, 0.35, 0, Math.PI * 2);
-              ctx.strokeStyle = 'rgba(56, 189, 248, 0.75)';
-              ctx.lineWidth = 1.2;
-              ctx.stroke();
-            }
-
-            if (starFinderShowLabels && width > 420) {
-              ctx.font = 'bold 9px monospace';
-              ctx.fillStyle = starFinderNightMode ? '#ef4444' : '#f8fafc';
-              ctx.fillText(planet.name, pos.x + 6, pos.y + 3);
-            }
+          if (starFinderShowLabels && width > 420) {
+            ctx.font = 'bold 9px monospace';
+            ctx.fillStyle = starFinderNightMode ? '#ef4444' : '#f8fafc';
+            ctx.fillText(planet.name, pos.x + 6, pos.y + 3);
           }
         });
       }
@@ -584,16 +504,7 @@ export default function GodsEyeMap({
         const pos = starScreenPos[star.id];
         if (pos && pos.visible) {
           const radius = Math.max(1.2, 3.4 - (star.vmag ?? 2.0) * 0.55);
-          const twinkle = Math.sin(time * 0.02 + star.ra * 2) * 0.25;
-          const alpha = Math.max(0.35, Math.min(1.0, 0.75 + twinkle));
-
-          ctx.beginPath();
-          ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
-          ctx.fillStyle = star.color;
-          ctx.globalAlpha = alpha;
-          ctx.shadowColor = '#38bdf8';
-          ctx.shadowBlur = 6;
-          ctx.fill();
+          ctx.globalAlpha = 1.0;
 
           const isSearched = starFinderSearchQuery && star.name.toLowerCase().includes(starFinderSearchQuery.toLowerCase());
           const isNamed = starFinderNamedStarId && (star.id === starFinderNamedStarId || star.name.toLowerCase().includes(starFinderNamedStarId.toLowerCase()));
@@ -659,8 +570,31 @@ export default function GodsEyeMap({
 
   // Layer stack constructor
   const addMapLayers = useCallback((map: maplibregl.Map) => {
-    // ═══ VERIFIED 3D SKYBOX STARFIELD (GeoLibre PR #440 / @geoql/maplibre-gl-starfield) ═══
-    injectStarfieldLayer(map);
+    const patternScale = Math.min(3, Math.ceil(window.devicePixelRatio || 1));
+
+    if (!map.getSource('ofm-buildings')) {
+      map.addSource('ofm-buildings', {
+        type: 'vector',
+        url: OPENFREEMAP_PLANET,
+        attribution: '3D buildings: <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> footprints and heights',
+      });
+    }
+    if (!map.getLayer('buildings-3d')) {
+      map.addLayer({
+        id: 'buildings-3d',
+        type: 'fill-extrusion',
+        source: 'ofm-buildings',
+        'source-layer': 'building',
+        minzoom: 14,
+        paint: {
+          'fill-extrusion-color': ['interpolate', ['linear'], ['coalesce', ['get', 'render_height'], 5], 0, '#cbd5e1', 40, '#93c5fd', 150, '#3b82f6'],
+          'fill-extrusion-height': ['coalesce', ['get', 'render_height'], 5],
+          'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0],
+          'fill-extrusion-opacity': ['interpolate', ['linear'], ['zoom'], 14, 0, 15, 0.8],
+          'fill-extrusion-vertical-gradient': true,
+        },
+      });
+    }
 
     // ═══ SINGLE SOURCE for all 8 state boundaries ═══
     if (!map.getSource('all-states')) {
@@ -691,10 +625,10 @@ export default function GodsEyeMap({
         source: 'all-states',
         filter: ['==', ['get', 'STUSPS'], 'GA'],
         paint: {
-          'line-color': '#dc2626',
+          'line-color': '#7f1d1d',
           'line-width': 4,
-          'line-blur': 6,
-          'line-opacity': 0.75,
+          'line-blur': 0,
+          'line-opacity': 1,
         },
       });
     }
@@ -706,7 +640,7 @@ export default function GodsEyeMap({
         source: 'all-states',
         filter: ['==', ['get', 'STUSPS'], 'GA'],
         paint: {
-          'line-color': '#ff3b3b',
+          'line-color': '#7f1d1d',
           'line-width': 2.5,
           'line-dasharray': [3, 2],
         },
@@ -759,6 +693,112 @@ export default function GodsEyeMap({
       });
     }
 
+    // ─── ALLY STATES: always-on light neon-blue border glow ─────
+    const allyFilter = ['in', ['get', 'STUSPS'], ['literal', ALLY_STATE_CODES]];
+    if (!map.getLayer('ally-neon-halo')) {
+      map.addLayer({
+        id: 'ally-neon-halo',
+        type: 'line',
+        source: 'all-states',
+        filter: allyFilter as any,
+        layout: { 'line-join': 'round', 'line-cap': 'round' },
+        paint: {
+          'line-color': '#7dd3fc',
+          'line-width': ['interpolate', ['linear'], ['zoom'], 3, 8, 8, 18, 14, 28],
+          'line-blur': ['interpolate', ['linear'], ['zoom'], 3, 6, 8, 14, 14, 22],
+          'line-opacity': 0.45,
+        },
+      });
+    }
+    if (!map.getLayer('ally-neon-core')) {
+      map.addLayer({
+        id: 'ally-neon-core',
+        type: 'line',
+        source: 'all-states',
+        filter: allyFilter as any,
+        layout: { 'line-join': 'round', 'line-cap': 'round' },
+        paint: {
+          'line-color': '#e0f7ff',
+          'line-width': ['interpolate', ['linear'], ['zoom'], 3, 1.2, 8, 2.2, 14, 3.5],
+          'line-blur': 0.6,
+          'line-opacity': 0.95,
+        },
+      });
+    }
+
+    // ─── GEORGIA WALL (design visualization): 10 ft steel wall + concertina ───
+    if (!map.hasImage('steel-panel')) {
+      const steel = makeSteelPanelImage(128, patternScale);
+      if (steel) map.addImage('steel-panel', steel, { pixelRatio: patternScale });
+    }
+    if (!map.hasImage('concertina-wire')) {
+      const wire = makeConcertinaImage(64, patternScale);
+      if (wire) map.addImage('concertina-wire', wire, { pixelRatio: patternScale });
+    }
+    if (!map.getSource('ga-wall')) {
+      map.addSource('ga-wall', {
+        type: 'geojson',
+        data: '/geo/ga-wall.geojson',
+        maxzoom: 20,
+        tolerance: 0,
+        attribution: 'GA wall: design visualization (not a real structure) · path: U.S. Census Bureau 2024 1:500k boundary · steel: ambientCG CorrugatedSteel005 (CC0)',
+      });
+    }
+    if (!map.getLayer('ga-wall-path')) {
+      map.addLayer({
+        id: 'ga-wall-path',
+        type: 'line',
+        source: 'ga-wall',
+        filter: ['==', ['get', 'part'], 'path'],
+        layout: { 'line-join': 'round' },
+        paint: {
+          'line-color': '#cbd5e1',
+          'line-width': ['interpolate', ['linear'], ['zoom'], 4, 1.5, 12, 3, 15, 4],
+          'line-opacity': ['interpolate', ['linear'], ['zoom'], 14, 0.9, 16, 0],
+        },
+      });
+    }
+    const wallParts: Array<[string, string, string]> = [
+      ['ga-wall-steel', 'wall', 'steel-panel'],
+      ['ga-wall-wire-top', 'wire-top', 'concertina-wire'],
+      ['ga-wall-wire-base', 'wire-base', 'concertina-wire'],
+    ];
+    for (const [layerId, part, pattern] of wallParts) {
+      if (!map.getLayer(layerId)) {
+        map.addLayer({
+          id: layerId,
+          type: 'fill-extrusion',
+          source: 'ga-wall',
+          minzoom: 14,
+          maxzoom: GA_WALL_3D_MIN_ZOOM,
+          filter: ['==', ['get', 'part'], part],
+          paint: {
+            'fill-extrusion-pattern': pattern,
+            'fill-extrusion-base': ['get', 'base'],
+            'fill-extrusion-height': ['get', 'height'],
+            'fill-extrusion-opacity': part === 'wall' ? 1 : 0.92,
+            'fill-extrusion-vertical-gradient': true,
+          },
+        });
+      }
+    }
+
+    if (!map.getLayer('ga-wall-3d')) {
+      map.addLayer(new GaWall3DLayer());
+    }
+    addGaLidarLayers(map);
+    addGaH3Telemetry(map);
+    addGaHydrometLayers(map);
+    addGaTrafficLayers(map);
+    addGaAnomalyBulbs(map);
+    addGaChangeLayer(map);
+    addGaOrbitalLayers(map);
+    addGaLiveMarkerLayers(map);
+    addGaFbiFeeds(map);
+    addGaPatrolLayers(map);
+    addGaCompetitorLayers(map);
+    addDisneyLiveBoard(map);
+
     // 2. Competitor state boundaries
     if (!map.getSource('competitors')) {
       map.addSource('competitors', {
@@ -772,6 +812,7 @@ export default function GodsEyeMap({
         id: 'competitor-outline',
         type: 'line',
         source: 'competitors',
+        filter: ['!=', ['geometry-type'], 'Point'],
         paint: {
           'line-color': '#475569',
           'line-width': 1.5,
@@ -786,6 +827,7 @@ export default function GodsEyeMap({
         id: 'competitor-labels',
         type: 'symbol',
         source: 'competitors',
+        filter: ['==', ['geometry-type'], 'Point'],
         layout: {
           'text-field': ['get', 'STUSPS'],
           'text-size': 13,
@@ -984,7 +1026,7 @@ export default function GodsEyeMap({
                  ent.layerId === 'layer-cctv' ? '#10b981' :
                  ent.layerId === 'layer-nuclear' ? '#34d399' :
                  ent.layerId === 'layer-cyber' ? '#ec4899' :
-                 ent.layerId === 'layer-gps-jamming' ? '#fb923c' : '#38bdf8',
+                 ent.layerId === 'layer-gps-jamming' ? '#ff4fd8' : '#38bdf8',
         },
       }));
 
@@ -1114,6 +1156,8 @@ export default function GodsEyeMap({
       });
     }
 
+    scaleMarkersInsideGaWall(map, GA_WALL_MARKER_RADII);
+
     // Dynamic Directional Heading Chevron (Rotating in real-time with bearing)
     if (!map.getLayer('telemetry-pulse-arrow')) {
       map.addLayer({
@@ -1195,7 +1239,24 @@ export default function GodsEyeMap({
 
 // Default MapLibre bundled worker
 
-    const webgpuAvailable = typeof navigator !== 'undefined' && 'gpu' in navigator;
+    maplibregl.setWorkerUrl('/maplibre-gl-worker.mjs');
+
+    let lim = 4096;
+    let probeContext: WebGL2RenderingContext | null = null;
+    try {
+      const probe = document.createElement('canvas');
+      probeContext = probe.getContext('webgl2');
+      if (probeContext) {
+        const renderbuffer = Number(probeContext.getParameter(probeContext.MAX_RENDERBUFFER_SIZE));
+        const viewport = probeContext.getParameter(probeContext.MAX_VIEWPORT_DIMS) as Int32Array;
+        const maximum = Math.min(renderbuffer, Number(viewport[0]), Number(viewport[1]));
+        if (Number.isFinite(maximum) && maximum > 0) lim = maximum;
+      }
+    } catch {
+      lim = 4096;
+    } finally {
+      probeContext?.getExtension('WEBGL_lose_context')?.loseContext();
+    }
 
     const map = new maplibregl.Map({
       container: containerRef.current,
@@ -1205,15 +1266,33 @@ export default function GodsEyeMap({
       fitBoundsOptions: { padding: 40 },
       pitch: 60,
       bearing: 0,
-      maxZoom: 35,
+      maxZoom: 22,
+      maxPitch: 85,
       minZoom: 1,
-      attributionControl: false,
+      attributionControl: {
+        compact: true,
+        customAttribution: `Sky: <a href="${SKY_PHOTO_SOURCE_URL}" target="_blank" rel="noopener">NASA SVS Deep Star Maps 2020</a>`,
+      },
+      canvasContextAttributes: { antialias: true },
+      pixelRatio: window.devicePixelRatio || 1,
+      maxCanvasSize: [lim, lim],
       dragRotate: true,
       pitchWithRotate: true,
       touchZoomRotate: true,
       touchPitch: true,
       cooperativeGestures: false,
     } as any);
+
+    let dprMedia: MediaQueryList | null = null;
+    const onDprChange = () => {
+      map.setPixelRatio(window.devicePixelRatio || 1);
+      armDprListener();
+    };
+    const armDprListener = () => {
+      dprMedia = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+      dprMedia.addEventListener('change', onDprChange, { once: true });
+    };
+    armDprListener();
 
     // Geolocate control (Locate icon at top of right rail)
     map.addControl(
@@ -1247,7 +1326,6 @@ export default function GodsEyeMap({
       } catch (err) {
         console.warn('[Map] Globe projection deferred:', err);
       }
-      injectStarfieldLayer(map);
     });
 
     // Viewport telemetry
@@ -1322,6 +1400,7 @@ export default function GodsEyeMap({
       clearTimeout(fallbackTimer);
       clearTimeout(resizeTimer);
       if (resizeObserver) resizeObserver.disconnect();
+      dprMedia?.removeEventListener('change', onDprChange);
       if (typeof window !== 'undefined' && (window as any).__map === map) {
         delete (window as any).__map;
       }
@@ -1507,6 +1586,20 @@ export default function GodsEyeMap({
     }
   }, [addMapLayers]);
 
+  // Street-level 3D: tilt down to rooftop height where the USGS 3DEP LiDAR point cloud is drawn
+  const streetLidar3D = useCallback(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const zoomedOut = map.getZoom() < 12;
+    map.flyTo({
+      center: zoomedOut ? [-84.388, 33.757] : map.getCenter(),
+      zoom: Math.max(map.getZoom(), 18),
+      pitch: 75,
+      bearing: zoomedOut ? -20 : map.getBearing(),
+      duration: 2200,
+    });
+  }, []);
+
   // 3D terrain toggle
   const toggle3D = useCallback(async () => {
     const map = mapRef.current;
@@ -1515,11 +1608,7 @@ export default function GodsEyeMap({
 
     if (!is3D) {
       if (!map.getSource('terrain-dem')) {
-        map.addSource('terrain-dem', {
-          type: 'raster-dem',
-          url: 'https://demotiles.maplibre.org/terrain-tiles/tiles.json',
-          tileSize: 256,
-        });
+        map.addSource('terrain-dem', TERRAIN_DEM);
       }
       (map as any).setTerrain?.({ source: 'terrain-dem', exaggeration: 1.5 });
       map.easeTo({ pitch: 60, bearing: -15, duration: 800 });
@@ -1595,10 +1684,10 @@ export default function GodsEyeMap({
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 font-mono">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 font-mono min-w-0 [&>*]:min-w-0">
       {/* Map Surface (8 Cols) */}
-      <div className="lg:col-span-8 flex flex-col space-y-3">
-        <div className="relative w-full h-[500px] sm:h-[580px] rounded-2xl overflow-hidden border border-[#28394e] bg-[#0f172a] shadow-2xl">
+      <div className="lg:col-span-12 min-w-0 flex flex-col space-y-3">
+        <div className="relative w-full h-[calc(100dvh-6rem)] min-h-[420px] rounded-2xl overflow-hidden border border-[#28394e] bg-[#0f172a] shadow-2xl">
           {/* Background Astronomical Space Canvas with NASA Constellations and Gaia stars */}
           <canvas
             ref={starsCanvasRef}
@@ -1607,126 +1696,17 @@ export default function GodsEyeMap({
           />
           {/* Map Surface: Mount MapLibre globe container directly with transparent deep space */}
           <div ref={containerRef} className="absolute inset-0 z-10" />
-          {/* Real-time twinkling stars and NSA Admin Star Constellations */}
-          {/* UNIVERSE STAR FINDER 3D SUITE CONTROLS (App Store id1575384854 Conformal NSA Admin Glass HUD) */}
-          <div className="absolute top-3 left-3 z-20 flex flex-wrap items-center gap-1.5 p-1.5 rounded-2xl bg-[#070e1c]/85 backdrop-blur-xl border border-[#38bdf8]/40 shadow-xl text-[10px] font-mono select-none">
-            {/* Search Input */}
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#0b172a] border border-[#1e3a5f]/60">
-              <span className="text-[#38bdf8]">🔍</span>
-              <input
-                type="text"
-                placeholder="Star / Constellation / ISR Request..."
-                value={starFinderSearchQuery}
-                onChange={(e) => {
-                  setStarFinderSearchQuery(e.target.value);
-                  if (e.target.value.trim().length > 1) {
-                    const found = NASA_IAU_CATALOGUE.find((s: any) => s.name.toLowerCase().includes(e.target.value.toLowerCase()) || s.id.toLowerCase().includes(e.target.value.toLowerCase()));
-                    if (found) setSelectedAstroStar(found);
-                  }
-                }}
-                className="bg-transparent text-slate-100 placeholder-slate-500 outline-none w-28 sm:w-44 text-[10px] font-mono"
-              />
-              {starFinderSearchQuery && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setStarFinderSearchQuery('');
-                    setStarFinderNamedStarId(null);
-                  }}
-                  className="text-slate-400 hover:text-white"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-
-            {/* Constellation Toggle */}
+          <div className="absolute top-3 right-3 z-20 flex flex-row-reverse items-center gap-2 font-mono">
             <button
               type="button"
-              onClick={() => setStarFinderShowConstellations(!starFinderShowConstellations)}
-              className={`px-2.5 py-1 rounded-xl font-bold transition-all ${
-                starFinderShowConstellations
-                  ? 'bg-[#0c284d] text-[#38bdf8] border border-[#38bdf8]/60 shadow-[0_0_8px_rgba(56,189,248,0.3)]'
-                  : 'bg-transparent text-slate-400 border border-slate-700/50 hover:text-white'
-              }`}
-              title="Toggle Constellation Vector Outlines"
+              onClick={save8k}
+              disabled={export8kStatus === 'rendering…'}
+              className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold tracking-wider border bg-[#070d18]/90 text-[#38bdf8] border-[#38bdf8]/60 hover:border-[#38bdf8] disabled:opacity-60"
             >
-              Constellations
+              SAVE 8K PNG
             </button>
-
-            {/* Planets Toggle */}
-            <button
-              type="button"
-              onClick={() => setStarFinderShowPlanets(!starFinderShowPlanets)}
-              className={`px-2.5 py-1 rounded-xl font-bold transition-all ${
-                starFinderShowPlanets
-                  ? 'bg-[#0c284d] text-[#34d399] border border-emerald-500/60 shadow-[0_0_8px_rgba(52,211,153,0.3)]'
-                  : 'bg-transparent text-slate-400 border border-slate-700/50 hover:text-white'
-              }`}
-              title="Toggle Solar System Planets (Jupiter, Mars, Saturn, Venus)"
-            >
-              Planets
-            </button>
-
-            {/* Labels Toggle */}
-            <button
-              type="button"
-              onClick={() => setStarFinderShowLabels(!starFinderShowLabels)}
-              className={`px-2.5 py-1 rounded-xl font-bold transition-all ${
-                starFinderShowLabels
-                  ? 'bg-[#0c284d] text-[#38bdf8] border border-[#38bdf8]/60'
-                  : 'bg-transparent text-slate-400 border border-slate-700/50 hover:text-white'
-              }`}
-              title="Toggle Celestial Labels"
-            >
-              Labels {starFinderShowLabels ? "ON" : "OFF"}
-            </button>
-
-            {/* Red Night Mode (Astro Dark Adaptation) */}
-            <button
-              type="button"
-              onClick={() => setStarFinderNightMode(!starFinderNightMode)}
-              className={`px-2.5 py-1 rounded-xl font-bold transition-all ${
-                starFinderNightMode
-                  ? 'bg-red-950/90 text-red-400 border border-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]'
-                  : 'bg-transparent text-slate-400 border border-slate-700/50 hover:text-white'
-              }`}
-              title="Toggle Astronomical Monochromatic Red Night Mode"
-            >
-              Night Mode {starFinderNightMode ? "ON" : "OFF"}
-            </button>
-
-            {/* Time Shift Control (-12h .. +12h) */}
-            <div className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded-xl bg-[#0b172a] border border-[#1e3a5f]/60 text-[9px]">
-              <span className="text-slate-400">Time:</span>
-              <button
-                type="button"
-                onClick={() => setStarFinderTimeShiftHours((h) => Math.max(-12, h - 1))}
-                className="text-[#38bdf8] font-bold px-1 hover:bg-white/10 rounded"
-              >
-                -1h
-              </button>
-              <span className="text-white font-extrabold">{starFinderTimeShiftHours >= 0 ? `+${starFinderTimeShiftHours}h` : `${starFinderTimeShiftHours}h`}</span>
-              <button
-                type="button"
-                onClick={() => setStarFinderTimeShiftHours((h) => Math.min(12, h + 1))}
-                className="text-[#38bdf8] font-bold px-1 hover:bg-white/10 rounded"
-              >
-                +1h
-              </button>
-              {starFinderTimeShiftHours !== 0 && (
-                <button
-                  type="button"
-                  onClick={() => setStarFinderTimeShiftHours(0)}
-                  className="text-slate-400 hover:text-white ml-0.5"
-                  title="Reset to Current Real-time"
-                >
-                  ↺
-                </button>
-              )}
-            </div>
+            {export8kStatus && <span className="text-[10px] text-slate-300 bg-[#070d18]/80 rounded px-1.5 py-0.5">{export8kStatus}</span>}
           </div>
-
           {/* NASA ASTROMETRIC STAR TELEMETRY HUD (50 VERIFIED STELLAR METRICS) */}
           {selectedAstroStar && (
             <div className="absolute top-16 left-4 z-20 max-w-sm rounded-2xl bg-[#070e1c]/90 backdrop-blur-xl border border-[#38bdf8]/50 p-4 shadow-[0_12px_36px_rgba(0,0,0,0.85)] text-xs font-mono space-y-2.5 animate-fadeIn">
@@ -1763,7 +1743,7 @@ export default function GodsEyeMap({
                 </div>
                 <div className="p-2 rounded-lg bg-[#0c1a30] border border-[#1e3a5f]/50">
                   <div className="text-[9px] text-slate-400">VISUAL MAGNITUDE (V)</div>
-                  <div className="font-extrabold text-[#fb923c]">{selectedAstroStar.vmag.toFixed(2)} mag</div>
+                  <div className="font-extrabold text-[#ff4fd8]">{selectedAstroStar.vmag.toFixed(2)} mag</div>
                 </div>
                 <div className="p-2 rounded-lg bg-[#0c1a30] border border-[#1e3a5f]/50">
                   <div className="text-[9px] text-slate-400">SPECTRAL TYPE</div>
@@ -1771,7 +1751,7 @@ export default function GodsEyeMap({
                 </div>
                 <div className="p-2 rounded-lg bg-[#0c1a30] border border-[#1e3a5f]/50">
                   <div className="text-[9px] text-slate-400">EFFECTIVE TEMP</div>
-                  <div className="font-extrabold text-[#fed7aa]">{selectedAstroStar.teff.toLocaleString()} K</div>
+                  <div className="font-extrabold text-[#ffd1f5]">{selectedAstroStar.teff.toLocaleString()} K</div>
                 </div>
                 <div className="p-2 rounded-lg bg-[#0c1a30] border border-[#1e3a5f]/50">
                   <div className="text-[9px] text-slate-400">STELLAR RADIUS</div>
@@ -1959,6 +1939,26 @@ export default function GodsEyeMap({
               </button>
               <button
                 type="button"
+                onClick={streetLidar3D}
+                title="Street-level 3D: USGS 3DEP LiDAR point cloud (zoom 15+)"
+                style={{
+                  padding: '5px 12px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  borderRadius: '9999px',
+                  color: zoom >= 15 && pitch > 50 ? '#f0abfc' : '#cbd5e1',
+                  background: zoom >= 15 && pitch > 50 ? 'rgba(60, 12, 72, 0.75)' : 'rgba(10, 18, 40, 0.85)',
+                  border: zoom >= 15 && pitch > 50 ? '1px solid rgba(240, 171, 252, 0.7)' : '1px solid rgba(30, 58, 95, 0.7)',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  boxShadow: zoom >= 15 && pitch > 50 ? '0 0 12px rgba(240, 171, 252, 0.35)' : 'none',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                STREET LIDAR
+              </button>
+              <button
+                type="button"
                 onClick={() => switchBasemap('demotiles')}
                 style={{
                   padding: '5px 12px',
@@ -2136,7 +2136,7 @@ export default function GodsEyeMap({
       </div>
 
       {/* Side Inspector (4 Cols) */}
-      <div className="lg:col-span-4 space-y-4">
+      <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
         {/* Active God's Eye Intelligence Layer Controller */}
         <div className="bg-[#0b1320] border border-[#1e3a5f] rounded-2xl p-4 shadow-xl space-y-3 font-mono">
           <div className="flex items-center justify-between border-b border-[#1e3a5f]/80 pb-2">

@@ -19,12 +19,12 @@ module.exports = {
           rose: '#c68d90',       // Soft jewel rose
           cyan: '#62d3ee',       // Electric aqua refraction
           aqua: '#88f4e2',       // Spectral sparkle
-          gold: '#ffd87a',       // Starburst gold sparkle
-          amber: '#e5bca8',      // Warm crystal amber
+          gold: '#ff4fd8',       // Neon pink sparkle
+          amber: '#ff2ec4',      // Neon pink
         },
         brand: {
           navy: '#2d243a',
-          gold: '#ffd87a',
+          gold: '#ff4fd8',
           red: '#e580b5',
           silver: '#baaed3',
           dark: '#241c2f',

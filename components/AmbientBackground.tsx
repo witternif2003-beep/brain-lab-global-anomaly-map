@@ -128,7 +128,7 @@ export default function AmbientBackground({ className = "" }: { className?: stri
           background:
             "radial-gradient(65% 55% at 20% 25%, rgba(56,189,248,0.12), transparent 70%)," +
             "radial-gradient(60% 60% at 80% 30%, rgba(16,185,129,0.10), transparent 65%)," +
-            "radial-gradient(75% 65% at 50% 95%, rgba(251,146,60,0.06), transparent 70%)",
+            "radial-gradient(75% 65% at 50% 95%, rgba(255,46,196,0.06), transparent 70%)",
         }}
       />
       

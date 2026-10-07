@@ -18,9 +18,12 @@ import {
   Eye,
   Zap,
   Compass,
+  LayoutGrid,
+  ListOrdered,
   Target,
   Radar,
   Award,
+  Landmark,
   Menu,
   X
 } from "lucide-react";
@@ -39,6 +42,9 @@ export default function Navbar() {
     { href: "/threat-globe", label: "3D Globe", icon: Globe },
     { href: "/benchmarks", label: "ML Telemetry", icon: Zap },
     { href: "/county-matrix", label: "159 Counties", icon: Compass },
+    { href: "/jurisdiction-cards", label: "56 Cards", icon: LayoutGrid },
+    { href: "/jurisdiction-records", label: "56 Records", icon: ListOrdered },
+    { href: "/election-sources", label: "Election Sources", icon: Landmark },
     { href: "/anomalies", label: "Anomalies", icon: ShieldAlert },
     { href: "/insider-intel", label: "Insider Intel", icon: Cpu },
     { href: "/alerts", label: "Alerts", icon: Bell },

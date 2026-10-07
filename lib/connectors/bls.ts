@@ -81,3 +81,59 @@ export async function fetchBlsLaus(a: {
   }));
   return { records, provenance: prov, note: `${records.length} observations.` };
 }
+
+export interface BlsLatest {
+  value: string;
+  year: string;
+  period_name: string;
+  provenance: Provenance;
+}
+
+/**
+ * Latest LAUS unemployment rate for many state FIPS codes, batched 25 series
+ * per request (the unregistered v2 limit). Optional BLS_API_KEY raises limits.
+ */
+export async function fetchBlsLausLatestBatch(fipsList: string[]): Promise<Map<string, BlsLatest>> {
+  const out = new Map<string, BlsLatest>();
+  const end = new Date().getFullYear();
+  const key = process.env.BLS_API_KEY;
+  for (let i = 0; i < fipsList.length; i += 25) {
+    const chunk = fipsList.slice(i, i + 25);
+    const payload: Record<string, unknown> = {
+      seriesid: chunk.map((f) => `LASST${f}0000000000003`),
+      startyear: String(end - 1),
+      endyear: String(end)
+    };
+    if (key) payload.registrationkey = key;
+    const res = await fetch(BLS_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "User-Agent": "brain-lab-ingest/1.0" },
+      body: JSON.stringify(payload),
+      cache: "no-store"
+    });
+    const raw = await res.text();
+    let parsed: any = null;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      /* non-JSON body -> no values for this chunk */
+    }
+    const series: any[] = parsed?.status === "REQUEST_SUCCEEDED" ? parsed?.Results?.series ?? [] : [];
+    const prov = makeProvenance({
+      source_id: "BLS-LAUS",
+      jurisdiction: chunk.join(","),
+      source_url: BLS_ENDPOINT,
+      body: raw,
+      http_status: res.status,
+      record_count: series.length,
+      access_note: "BLS v2 public API, batched LAUS unemployment-rate series (seasonally adjusted)."
+    });
+    for (const s of series) {
+      const latest = s?.data?.[0];
+      const fips = String(s?.seriesID ?? "").slice(5, 7);
+      if (!latest || !fips) continue;
+      out.set(fips, { value: latest.value, year: latest.year, period_name: latest.periodName, provenance: prov });
+    }
+  }
+  return out;
+}
