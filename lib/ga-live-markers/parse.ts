@@ -555,3 +555,37 @@ export function parse511Cameras(json: Ga511Camera[] | null | undefined): LiveMar
     })
     .filter(keep);
 }
+
+export interface Ga511ViewRow {
+  attributes?: {
+    Id?: number | null;
+    Source?: string | null;
+    Roadway?: string | null;
+    Direction?: string | null;
+    Latitude?: number | null;
+    Longitude?: number | null;
+    Location?: string | null;
+    Name?: string | null;
+    View_Id?: number | null;
+    View_Url?: string | null;
+    View_Status?: string | null;
+    View_Description?: string | null;
+  };
+}
+
+/** Regroups the flattened one-row-per-view Georgia511Cameras_Detailed_ ArcGIS mirror back into the 511GA camera schema. */
+export function ga511CamerasFromViewRows(json: { features?: Ga511ViewRow[] }): Ga511Camera[] {
+  const byId = new Map<number, Ga511Camera>();
+  for (const f of json.features ?? []) {
+    const a = f.attributes ?? {};
+    const id = num(a.Id);
+    if (id === null) continue;
+    let cam = byId.get(id);
+    if (!cam) {
+      cam = { Id: id, Source: a.Source, Roadway: a.Roadway, Direction: a.Direction, Latitude: a.Latitude, Longitude: a.Longitude, Location: a.Location, Name: a.Name, Views: [] };
+      byId.set(id, cam);
+    }
+    cam.Views!.push({ Id: a.View_Id, Url: a.View_Url, Status: a.View_Status, Description: a.View_Description });
+  }
+  return [...byId.values()];
+}

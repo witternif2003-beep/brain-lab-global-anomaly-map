@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parse511Cameras } from "../../lib/ga-live-markers/parse";
+import { ga511CamerasFromViewRows, parse511Cameras } from "../../lib/ga-live-markers/parse";
 
 const cam = (over: Record<string, unknown> = {}) => ({
   Id: 186,
@@ -46,4 +46,16 @@ test("parse511Cameras only uses enabled 511ga.org snapshot views", () => {
 test("parse511Cameras drops cameras without coordinates or outside Georgia and tolerates non-array input", () => {
   assert.equal(parse511Cameras([cam({ Latitude: null }), cam({ Latitude: 40.7, Longitude: -74 })]).length, 0);
   assert.deepEqual(parse511Cameras(null), []);
+});
+
+test("ga511CamerasFromViewRows regroups the flattened ArcGIS view rows by camera", () => {
+  const row = (Id: number, View_Id: number, View_Status = "Enabled") => ({
+    attributes: { Id, Source: "SKYLINE", Roadway: "SR 211", Direction: "Eastbound", Latitude: 33.995518, Longitude: -83.733475, Location: "BARR-0003: SR 211 at Horton St (Barrow)", Name: "BARR-CCTV-0003", View_Id, View_Url: `https://511ga.org/map/Cctv/${View_Id}`, View_Status, View_Description: "BARR-0003" },
+  });
+  const cams = ga511CamerasFromViewRows({ features: [row(11139, 18549, "Disabled"), row(11139, 18560), row(11140, 18550), { attributes: { Id: null } }] });
+  assert.equal(cams.length, 2);
+  assert.equal(cams[0].Views?.length, 2);
+  const [m] = parse511Cameras(cams);
+  assert.equal(m.props.imageUrl, "https://511ga.org/map/Cctv/18560");
+  assert.equal(m.props.views, 2);
 });

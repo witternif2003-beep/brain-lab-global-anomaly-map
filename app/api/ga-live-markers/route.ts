@@ -4,6 +4,7 @@ import {
   augustaGeocodeQuery,
   decodeGtfsRtVehicles,
   GA_BBOX,
+  ga511CamerasFromViewRows,
   parse511Cameras,
   parseAccpdIncidents,
   parseAdsbLol,
@@ -20,6 +21,7 @@ import {
   type AccpdFeature,
   type BskyFeedItem,
   type Ga511Camera,
+  type Ga511ViewRow,
   type GeocodeHit,
   type LiveLayer,
   type LiveMarker,
@@ -206,12 +208,32 @@ async function gdotCameras(): Promise<LiveMarker[]> {
   return parse511Cameras((await r.json()) as Ga511Camera[]);
 }
 
+const GA511_MIRROR = "https://services1.arcgis.com/2iUE8l8JKrP2tygQ/arcgis/rest/services/Georgia511Cameras_Detailed_/FeatureServer/0";
+const GA511_MIRROR_PAGE = 2000;
+const GA511_MIRROR_MAX = 10_000;
+const GA511_MIRROR_FIELDS = "Id,Source,Roadway,Direction,Latitude,Longitude,Location,Name,View_Id,View_Url,View_Status,View_Description";
+
+/** Keyless fallback: public ArcGIS copy of the 511GA camera list ("Georgia 511 Cameras (Detailed)"), paginated. */
+async function gdotCamerasMirror(): Promise<LiveMarker[]> {
+  const rows: Ga511ViewRow[] = [];
+  for (let offset = 0; offset < GA511_MIRROR_MAX; offset += GA511_MIRROR_PAGE) {
+    const d = await getJson<{ features?: Ga511ViewRow[]; exceededTransferLimit?: boolean }>(
+      `${GA511_MIRROR}/query?where=1%3D1&outFields=${GA511_MIRROR_FIELDS}&returnGeometry=false&orderByFields=OBJECTID&resultOffset=${offset}&resultRecordCount=${GA511_MIRROR_PAGE}&f=json`,
+      30_000,
+    );
+    rows.push(...(d.features ?? []));
+    if (!d.exceededTransferLimit) break;
+  }
+  return parse511Cameras(ga511CamerasFromViewRows({ features: rows }));
+}
+
 const LAYERS: Record<LiveLayer, LayerSpec> = {
   gdotcams: {
     ttlS: 3600,
     source: "Georgia DOT traffic cameras from the 511GA developer API; snapshot images are served by 511ga.org and refresh about every 60 s (live video needs a 511GA login and is not shown)",
     sourceUrl: "https://511ga.org/cctv",
     feeds: [{ id: "511GA cameras", url: GA511_CAMERAS, markers: gdotCameras }],
+    fallback: [{ id: "Georgia 511 Cameras (Detailed), public ArcGIS copy", url: GA511_MIRROR, markers: gdotCamerasMirror }],
   },
   augusta911: {
     ttlS: 120,
