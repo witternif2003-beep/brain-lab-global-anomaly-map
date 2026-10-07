@@ -27,6 +27,7 @@
     "@luma.gl/webgl": "9.4.2",
     "@luma.gl/webgpu": "9.4.2",
     "@maplibre/vt-pbf": "^4.3.2",
+    "astronomy-engine": "2.1.19",
     "autoprefixer": "^10.6.1",
     "clsx": "^2.1.1",
     "d3-delaunay": "6.0.4",

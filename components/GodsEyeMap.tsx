@@ -24,10 +24,11 @@ import { addGaLiveMarkerLayers } from '../lib/ga-live-markers-layer';
 import { addGaFbiFeeds } from '../lib/ga-fbi-feed';
 import { glowRadius, scaleMarkersInsideGaWall, type RadiusExpression } from '../lib/ga-marker-scale';
 import { exportMapAt8k } from '../lib/map-8k-export';
+import { SKY_PHOTO_SOURCE_URL, SkyPhotoRenderer, projectRaDec, skyBasis, skyBodyPositions, type SkyBodyPosition } from '../lib/sky-photo';
 import { AWS_TERRARIUM_TILES, OPENFREEMAP_PLANET } from '../lib/lidar-globe-sources';
 
 const ALLY_STATE_CODES = ['AL', 'FL', 'NC', 'SC', 'TN', 'TX', 'VA'];
-const STARMAP_8K_MIN_DEVICE_PX = 2560;
+const STARMAP_8K_MIN_DEVICE_PX = 1920;
 
 function makeSteelPanelImage(size = 128, scale = 1): ImageData | null {
   const canvas = document.createElement('canvas');
@@ -99,33 +100,6 @@ function makeConcertinaImage(size = 64, scale = 1): ImageData | null {
   return ctx.getImageData(0, 0, size * scale, size * scale);
 }
 
-// Helper function to safely inject verified 3D Custom Layer Starfield
-function injectStarfieldLayer(map: any) {
-  try {
-    if (!map || typeof window === 'undefined') return;
-    if (map.getLayer('deep-space-starfield')) return;
-    
-    // Dynamically require to avoid SSR issues
-    const { MaplibreStarfieldLayer } = require('../lib/starfield');
-    if (!MaplibreStarfieldLayer) return;
-
-    const starfield = new MaplibreStarfieldLayer({
-      id: 'deep-space-starfield',
-      galaxyTextureUrl: '/milkyway.jpg',
-      galaxyBrightness: 0.55,
-      starCount: 4000,
-      starSize: 2.2,
-      sunEnabled: false, // Pure deep space astrometric starfield
-    });
-
-    const layers = map.getStyle()?.layers;
-    const firstLayerId = layers && layers.length > 0 ? layers[0].id : undefined;
-    map.addLayer(starfield, firstLayerId);
-    (process.env.NODE_ENV === "production" ? () => {} : console.log)('[Starfield] Successfully mounted 4000-star 3D skybox layer below:', firstLayerId);
-  } catch (err) {
-    console.warn('[Starfield] 3D starfield layer deferred/unsupported:', err);
-  }
-}
 
 
 // ─── Constants ────────────────────────────────────────────────────────
@@ -425,16 +399,14 @@ export default function GodsEyeMap({
     };
     sizeCanvas();
 
-    // Official NASA Scientific Visualization Studio (SVS-4851) Deep Space Star Map & Milky Way Panorama
-    const nasaMilkyWayImg = typeof window !== 'undefined' ? new window.Image() : null;
-    let nasaImgLoaded = false;
-    if (nasaMilkyWayImg) {
-      const devicePx = Math.max(window.screen.width, window.screen.height) * (window.devicePixelRatio || 1);
-      nasaMilkyWayImg.src = devicePx >= STARMAP_8K_MIN_DEVICE_PX ? '/assets/nasa-svs-starmap-8k.jpg' : '/assets/nasa-svs-starmap.jpg';
-      nasaMilkyWayImg.onload = () => {
-        nasaImgLoaded = true;
-      };
-    }
+    // NASA SVS-4851 Deep Star Maps 2020, rendered as the real sky for the camera's location, heading, pitch and time
+    const devicePx = Math.max(window.screen.width, window.screen.height) * (window.devicePixelRatio || 1);
+    const sky = new SkyPhotoRenderer(
+      { url8k: '/assets/nasa-svs-starmap-8k.jpg', url4k: '/assets/nasa-svs-starmap.jpg' },
+      devicePx >= STARMAP_8K_MIN_DEVICE_PX,
+    );
+    let bodies: SkyBodyPosition[] = [];
+    let bodiesAt = -Infinity;
 
     const onResize = () => {
       if (!canvas) return;
@@ -452,249 +424,76 @@ export default function GodsEyeMap({
 // NASA Scientific Visualization Studio (SVS-3895) / IAU J2000 Astronomical Star Catalogue
     // Rigorous astronomical coordinates: Right Ascension (RA in hours 0..24) and Declination (Dec in degrees -90..+90)
     // Twinkling & physical radius calculated from verified Apparent Visual Magnitude (Vmag)
-        // NSA Realist Astrometric Deep Space Field: 1,200 Tycho-2 / Gaia DR3 Verified Stellar Objects
-    // Full 360-degree celestial sphere coverage with realistic apparent magnitude and multi-frequency spectral distribution
-    const BACKGROUND_TYCHO_STARS = Array.from({ length: 1200 }, (_, i) => {
-      // Deterministic pseudo-random distribution using golden ratio & prime offsets
-      const ra = ((i * 0.020017 + ((i * 13) % 19) * 0.126) % 24);
-      const dec = -88 + ((i * 2.39996) % 176); // -88 to +88 deg full celestial sphere
-      // Apparent visual magnitude distribution following real astronomical log stellar density
-      const magRank = (i % 100) / 100;
-      const vmag = 2.0 + Math.pow(magRank, 0.45) * 5.2; // Vmag from 2.0 to 7.2
-      const radius = Math.max(0.35, Math.min(2.2, 2.5 - vmag * 0.32));
-      const baseAlpha = Math.max(0.2, Math.min(0.95, 1.15 - vmag * 0.14));
-      const twinkleSpeed = 0.008 + ((i * 7) % 23) * 0.0018;
-      const twinklePhase = (i * 1.37) % (Math.PI * 2);
-      // Realistic spectral class colors (O, B, A, F, G, K, M)
-      const colorRoll = i % 10;
-      const color = colorRoll === 0 ? '#38bdf8' // Deep Blue (O/B type)
-        : colorRoll === 1 ? '#7dd3fc'           // Electric Cyan (B type)
-        : colorRoll === 2 ? '#bae6fd'           // Soft Ice Blue (A type)
-        : colorRoll === 3 ? '#a7f3d0'           // Mint Green / High-frequency
-        : colorRoll === 4 ? '#67e8f9'           // Sky Cyan
-        : colorRoll === 5 ? '#f8fafc'           // Pure White (A/F type)
-        : colorRoll === 6 ? '#e0f2fe'           // Diamond Blue
-        : colorRoll === 7 ? '#ffd1f5'           // Warm Amber (K type)
-        : colorRoll === 8 ? '#ff2ec4'           // Orange (K/M type)
-        : '#ffffff';                            // Stellar White
-      return { ra, dec, radius, baseAlpha, twinkleSpeed, twinklePhase, color, vmag };
-    });
 
     const render = (time: number) => {
-      ctx.clearRect(0, 0, width, height);
-
-      // Extract real-time camera perspective from MapLibre
       const m = mapRef.current;
-      const currentBearing = m && typeof m.getBearing === 'function' ? m.getBearing() : 0;
-      const currentPitch = m && typeof m.getPitch === 'function' ? m.getPitch() : 60;
-      const currentCenter = m && typeof m.getCenter === 'function' ? m.getCenter() : { lng: -83.4, lat: 32.6 };
-      const currentZoom = m && typeof m.getZoom === 'function' ? m.getZoom() : 6.0;
-
-      const isGlobeView = currentZoom < 3.5;
-
-      // Real-time horizon detection: Find highest screen Y reached by the globe horizon
-      let topLimbY = height * 0.32;
-      let globeRadiusEst = width * 0.35;
-      let globeCenterScreen = { x: width * 0.5, y: height * 0.55 };
-
-      if (m && typeof m.project === 'function') {
-        try {
-          const centerLng = currentCenter.lng || -83.4;
-          let minY = height;
-          [-60, -45, -30, -15, 0, 15, 30, 45, 60].forEach((dLng) => {
-            const p = m.project([centerLng + dLng, 65]);
-            if (p && p.y > 0 && p.y < minY) {
-              minY = p.y;
-            }
-          });
-          if (minY < height && minY > 15) {
-            topLimbY = Math.min(minY, height * 0.44);
-          } else {
-            topLimbY = height * Math.max(0.18, Math.min(0.40, 0.46 - (currentPitch / 90) * 0.22));
-          }
-
-          if (isGlobeView) {
-            // Measure actual globe screen footprint with rigorous sanity bounds
-            const pCenter = m.project([centerLng, currentCenter.lat || 0]);
-            const pNorth = m.project([centerLng, 75]);
-            const pSouth = m.project([centerLng, -75]);
-            const pEast = m.project([centerLng + 75, 0]);
-            const pWest = m.project([centerLng - 75, 0]);
-
-            if (pCenter && pCenter.x > 0 && pCenter.x < width && pCenter.y > 0 && pCenter.y < height) {
-              globeCenterScreen = pCenter;
-            } else {
-              globeCenterScreen = { x: width * 0.5, y: height * 0.52 };
-            }
-
-            if (pNorth && pSouth) {
-              const rY = Math.abs(pSouth.y - pNorth.y) * 0.5;
-              const rX = (pEast && pWest) ? Math.abs(pEast.x - pWest.x) * 0.5 : rY;
-              const measuredR = Math.max(rX, rY);
-              // Clamp measured radius to between 15% and 48% of screen dimension so it can never blow out
-              const maxAllowedR = Math.min(width, height) * 0.44;
-              const minAllowedR = Math.min(width, height) * 0.18;
-              globeRadiusEst = Math.max(minAllowedR, Math.min(maxAllowedR, measuredR));
-            } else {
-              globeRadiusEst = Math.min(width, height) * 0.36;
-            }
-          }
-        } catch {
-          topLimbY = height * Math.max(0.18, Math.min(0.40, 0.46 - (currentPitch / 90) * 0.22));
-        }
+      const center = m ? m.getCenter() : { lng: -83.4, lat: 32.6 };
+      const date = new Date(Date.now() + starFinderTimeShiftHours * 3_600_000);
+      const basis = skyBasis({
+        width,
+        height,
+        fovDeg: m ? m.getVerticalFieldOfView() : 36.87,
+        bearingDeg: m ? m.getBearing() : 0,
+        pitchDeg: m ? m.getPitch() : 60,
+        lat: center.lat,
+        lon: center.lng,
+        date,
+      });
+      const dpr = canvas.width / Math.max(1, width);
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      if (sky.render(basis, canvas.width, canvas.height, 1 + 1.4 * starFinderMilkyWayBrightness, starFinderNightMode)) {
+        ctx.drawImage(sky.canvas, 0, 0);
       } else {
-        topLimbY = height * Math.max(0.18, Math.min(0.40, 0.46 - (currentPitch / 90) * 0.22));
+        ctx.fillStyle = '#020612';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      // Safe celestial height for regional mode
-      const safeCelestialHeight = isGlobeView ? height : Math.max(25, topLimbY - 20);
-
-      // Celestial Projection Math:
-      const timeAngleOffset = (starFinderTimeShiftHours / 24);
-      const raShift = (((currentBearing / 360) + ((currentCenter.lng + 83.4) / 360) * 0.5 + timeAngleOffset) % 1 + 1) % 1;
-
-      // ─── STEP 1: RENDER FULL COSMIC BACKGROUND (Milky Way & Starry Deep Space) ───
-      if (nasaImgLoaded && nasaMilkyWayImg) {
-        ctx.save();
-        if (!isGlobeView) {
-          ctx.beginPath();
-          ctx.rect(0, 0, width, safeCelestialHeight);
-          ctx.clip();
-        }
-
-        const bgWidth = width * 1.5;
-        const bgHeight = isGlobeView ? height : safeCelestialHeight * 1.8;
-        const normShift = ((raShift % 1) + 1) % 1;
-        const sx = -normShift * bgWidth;
-
-        ctx.globalAlpha = Math.max(0.15, Math.min(1.0, starFinderMilkyWayBrightness));
-        if (starFinderNightMode) {
-          ctx.filter = 'sepia(100%) hue-rotate(-50deg) saturate(300%)';
-        } else {
-          ctx.filter = 'none';
-        }
-        ctx.drawImage(nasaMilkyWayImg, sx, 0, bgWidth, bgHeight);
-        ctx.drawImage(nasaMilkyWayImg, sx + bgWidth, 0, bgWidth, bgHeight);
-        if (sx + bgWidth < width) {
-          ctx.drawImage(nasaMilkyWayImg, sx + bgWidth * 2, 0, bgWidth, bgHeight);
-        }
-
-        if (!isGlobeView) {
-          const fadeGrad = ctx.createLinearGradient(0, safeCelestialHeight * 0.45, 0, safeCelestialHeight);
-          fadeGrad.addColorStop(0, 'rgba(2, 6, 18, 0.0)');
-          fadeGrad.addColorStop(0.75, 'rgba(2, 6, 18, 0.65)');
-          fadeGrad.addColorStop(1, 'rgba(2, 6, 18, 1.0)');
-          ctx.fillStyle = fadeGrad;
-          ctx.fillRect(0, 0, width, safeCelestialHeight);
-        }
-        ctx.restore();
-      } else {
-        const skyGrad = ctx.createLinearGradient(0, 0, 0, height);
-        skyGrad.addColorStop(0, 'rgba(2, 6, 18, 0.98)');
-        skyGrad.addColorStop(0.5, 'rgba(4, 12, 30, 0.95)');
-        skyGrad.addColorStop(1, 'rgba(2, 6, 20, 0.98)');
-        ctx.fillStyle = skyGrad;
-        ctx.fillRect(0, 0, width, height);
-      }
-
-      // High-precision Celestial Projection Converter
-      const projectCelestial = (raHours: number, decDeg: number): { x: number; y: number; visible: boolean } => {
-        let normX = ((raHours / 24) - raShift) % 1;
-        if (normX < 0) normX += 1;
-        const px = normX * width;
-
-        let py: number;
-        if (isGlobeView) {
-          const normDec = Math.max(0, Math.min(1, (decDeg + 90) / 180));
-          py = (1 - normDec) * height;
-        } else {
-          const normDec = Math.max(0, Math.min(1, (decDeg + 20) / 110));
-          py = (1 - normDec) * safeCelestialHeight * 0.95;
-        }
-
-        const maxH = isGlobeView ? height - 4 : safeCelestialHeight - 4;
-        const visible = py >= 4 && py <= maxH;
-        return { x: px, y: py, visible };
-      };
-
-      // Project all NASA catalogued stars
-      const starScreenPos: Record<string, { x: number; y: number; visible: boolean }> = {};
+      const starScreenPos: Record<string, ReturnType<typeof projectRaDec>> = {};
       NASA_IAU_CATALOGUE.forEach((star) => {
-        starScreenPos[star.id] = projectCelestial(star.ra, star.dec);
+        starScreenPos[star.id] = projectRaDec(basis, width, height, star.ra, star.dec);
       });
       if (typeof window !== 'undefined') {
         (window as any).__lastStarPositions = starScreenPos;
       }
 
-      // 1. Draw NASA SVS Constellation Vectors (Universe Star Finder Toggle)
       if (starFinderShowConstellations) {
         ctx.lineWidth = 0.85;
         ctx.strokeStyle = starFinderNightMode ? 'rgba(239, 68, 68, 0.55)' : 'rgba(56, 189, 248, 0.35)';
         NASA_CONSTELLATION_VECTORS.forEach(([s1Id, s2Id]) => {
           const p1 = starScreenPos[s1Id];
           const p2 = starScreenPos[s2Id];
-          if (p1 && p2 && p1.visible && p2.visible) {
-            if (Math.abs(p1.x - p2.x) < width * 0.4) {
-              ctx.beginPath();
-              ctx.moveTo(p1.x, p1.y);
-              ctx.lineTo(p2.x, p2.y);
-              ctx.stroke();
-            }
+          if (p1?.front && p2?.front && (p1.visible || p2.visible)) {
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.stroke();
           }
         });
       }
 
-      // 2. Realistic Astrometric Deep-Sky Background Field: 1,200 Stars with Multi-frequency Organic Twinkle
-      const activeBackgroundStars = isGlobeView ? BACKGROUND_TYCHO_STARS : BACKGROUND_TYCHO_STARS.slice(0, 450);
-      activeBackgroundStars.forEach((star) => {
-        const pos = projectCelestial(star.ra, star.dec);
-        if (pos.visible) {
-          const t1 = Math.sin(time * star.twinkleSpeed + star.twinklePhase);
-          const t2 = Math.cos(time * (star.twinkleSpeed * 1.618) + star.twinklePhase * 0.5);
-          const compoundTwinkle = (t1 * 0.65 + t2 * 0.35);
-          const alpha = Math.max(0.18, Math.min(1.0, star.baseAlpha + compoundTwinkle * 0.4));
-
+      if (starFinderShowPlanets) {
+        if (time - bodiesAt > 60_000) {
+          bodies = skyBodyPositions(date, center.lat, center.lng);
+          bodiesAt = time;
+        }
+        bodies.forEach((body) => {
+          const planet = NASA_SOLAR_SYSTEM_BODIES.find((p) => p.id === body.id);
+          const pos = projectRaDec(basis, width, height, body.raHours, body.decDeg);
+          if (!planet || !pos.visible) return;
+          const planetColor = starFinderNightMode ? '#ef4444' : planet.color;
           ctx.beginPath();
-          ctx.arc(pos.x, pos.y, star.radius, 0, Math.PI * 2);
-          ctx.fillStyle = star.color;
-          ctx.globalAlpha = alpha;
-          if (star.vmag < 3.5) {
-            ctx.shadowColor = star.color;
-            ctx.shadowBlur = 4;
-          }
+          ctx.arc(pos.x, pos.y, planet.radius, 0, Math.PI * 2);
+          ctx.fillStyle = planetColor;
+          ctx.globalAlpha = 1.0;
+          ctx.shadowColor = planetColor;
+          ctx.shadowBlur = 8;
           ctx.fill();
           ctx.shadowBlur = 0;
-        }
-      });
-
-      // 3. Render Solar System Planets (Universe Star Finder Planetary Detail View)
-      if (starFinderShowPlanets) {
-        NASA_SOLAR_SYSTEM_BODIES.forEach((planet) => {
-          const pos = projectCelestial(planet.ra, planet.dec);
-          if (pos && pos.visible) {
-            const planetColor = starFinderNightMode ? '#ef4444' : planet.color;
-            ctx.beginPath();
-            ctx.arc(pos.x, pos.y, planet.radius, 0, Math.PI * 2);
-            ctx.fillStyle = planetColor;
-            ctx.globalAlpha = 1.0;
-            ctx.shadowColor = planetColor;
-            ctx.shadowBlur = 8;
-            ctx.fill();
-            ctx.shadowBlur = 0;
-
-            if (planet.id === 'Saturn' && !starFinderNightMode) {
-              ctx.beginPath();
-              ctx.ellipse(pos.x, pos.y, planet.radius * 2.2, planet.radius * 0.7, 0.35, 0, Math.PI * 2);
-              ctx.strokeStyle = 'rgba(56, 189, 248, 0.75)';
-              ctx.lineWidth = 1.2;
-              ctx.stroke();
-            }
-
-            if (starFinderShowLabels && width > 420) {
-              ctx.font = 'bold 9px monospace';
-              ctx.fillStyle = starFinderNightMode ? '#ef4444' : '#f8fafc';
-              ctx.fillText(planet.name, pos.x + 6, pos.y + 3);
-            }
+          if (starFinderShowLabels && width > 420) {
+            ctx.font = 'bold 9px monospace';
+            ctx.fillStyle = starFinderNightMode ? '#ef4444' : '#f8fafc';
+            ctx.fillText(planet.name, pos.x + 6, pos.y + 3);
           }
         });
       }
@@ -704,16 +503,7 @@ export default function GodsEyeMap({
         const pos = starScreenPos[star.id];
         if (pos && pos.visible) {
           const radius = Math.max(1.2, 3.4 - (star.vmag ?? 2.0) * 0.55);
-          const twinkle = Math.sin(time * 0.02 + star.ra * 2) * 0.25;
-          const alpha = Math.max(0.35, Math.min(1.0, 0.75 + twinkle));
-
-          ctx.beginPath();
-          ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
-          ctx.fillStyle = star.color;
-          ctx.globalAlpha = alpha;
-          ctx.shadowColor = '#38bdf8';
-          ctx.shadowBlur = 6;
-          ctx.fill();
+          ctx.globalAlpha = 1.0;
 
           const isSearched = starFinderSearchQuery && star.name.toLowerCase().includes(starFinderSearchQuery.toLowerCase());
           const isNamed = starFinderNamedStarId && (star.id === starFinderNamedStarId || star.name.toLowerCase().includes(starFinderNamedStarId.toLowerCase()));
@@ -780,8 +570,6 @@ export default function GodsEyeMap({
   // Layer stack constructor
   const addMapLayers = useCallback((map: maplibregl.Map) => {
     const patternScale = Math.min(3, Math.ceil(window.devicePixelRatio || 1));
-    // ═══ VERIFIED 3D SKYBOX STARFIELD (GeoLibre PR #440 / @geoql/maplibre-gl-starfield) ═══
-    injectStarfieldLayer(map);
 
     if (!map.getSource('ofm-buildings')) {
       map.addSource('ofm-buildings', {
@@ -1479,7 +1267,10 @@ export default function GodsEyeMap({
       maxZoom: 22,
       maxPitch: 85,
       minZoom: 1,
-      attributionControl: { compact: true },
+      attributionControl: {
+        compact: true,
+        customAttribution: `Sky: <a href="${SKY_PHOTO_SOURCE_URL}" target="_blank" rel="noopener">NASA SVS Deep Star Maps 2020</a>`,
+      },
       canvasContextAttributes: { antialias: true },
       pixelRatio: window.devicePixelRatio || 1,
       maxCanvasSize: [lim, lim],
@@ -1533,7 +1324,6 @@ export default function GodsEyeMap({
       } catch (err) {
         console.warn('[Map] Globe projection deferred:', err);
       }
-      injectStarfieldLayer(map);
     });
 
     // Viewport telemetry
