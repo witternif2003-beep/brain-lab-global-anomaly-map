@@ -22,6 +22,7 @@ import {
 import { useTelemetryStore } from "../lib/telemetry-store";
 import styles from "./LidarGlobe.module.css";
 import { GaWall3DLayer } from "../lib/ga-wall-3d";
+import { addGaLidarLayers } from "../lib/ga-lidar-layer";
 import { addGaPatrolLayers } from "../lib/ga-patrol-3d";
 import { addGaCompetitorLayers } from "../lib/ga-competitors";
 import {
@@ -50,6 +51,7 @@ const PRESETS: CameraPreset[] = [
   { id: "globe", label: "GLOBE", center: [-77, 28], zoom: 1.7, pitch: 0, bearing: 0 },
   { id: "conus", label: "CONUS", center: [-97, 38.5], zoom: 3.4, pitch: 0, bearing: 0 },
   { id: "dc", label: "DC LIDAR", center: [-77.0365, 38.8977], zoom: 15.6, pitch: 62, bearing: -18 },
+  { id: "atl", label: "ATL STREET LIDAR", center: [-84.388, 33.757], zoom: 18, pitch: 75, bearing: -20 },
   { id: "sav", label: "SAVANNAH PORT", center: [-81.1, 32.08], zoom: 11.8, pitch: 55, bearing: 20 }
 ];
 
@@ -347,6 +349,7 @@ export default function LidarGlobe() {
         }
       });
       map.addLayer(new GaWall3DLayer());
+      addGaLidarLayers(map);
       addGaPatrolLayers(map);
       addGaCompetitorLayers(map);
       setIsReady(true);

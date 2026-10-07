@@ -12,6 +12,7 @@ import MapDebugOverlay from './MapDebugOverlay';
 import MapMenuOverlay from './MapMenuOverlay';
 import { GaWall3DLayer, GA_WALL_3D_MIN_ZOOM } from '../lib/ga-wall-3d';
 import { addGaPatrolLayers } from '../lib/ga-patrol-3d';
+import { addGaLidarLayers } from '../lib/ga-lidar-layer';
 import { addGaCompetitorLayers } from '../lib/ga-competitors';
 import { addDisneyLiveBoard } from '../lib/disney-live';
 import { addGaH3Telemetry } from '../lib/ga-h3-telemetry';
@@ -785,6 +786,7 @@ export default function GodsEyeMap({
     if (!map.getLayer('ga-wall-3d')) {
       map.addLayer(new GaWall3DLayer());
     }
+    addGaLidarLayers(map);
     addGaH3Telemetry(map);
     addGaHydrometLayers(map);
     addGaTrafficLayers(map);
@@ -1584,6 +1586,20 @@ export default function GodsEyeMap({
     }
   }, [addMapLayers]);
 
+  // Street-level 3D: tilt down to rooftop height where the USGS 3DEP LiDAR point cloud is drawn
+  const streetLidar3D = useCallback(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const zoomedOut = map.getZoom() < 12;
+    map.flyTo({
+      center: zoomedOut ? [-84.388, 33.757] : map.getCenter(),
+      zoom: Math.max(map.getZoom(), 18),
+      pitch: 75,
+      bearing: zoomedOut ? -20 : map.getBearing(),
+      duration: 2200,
+    });
+  }, []);
+
   // 3D terrain toggle
   const toggle3D = useCallback(async () => {
     const map = mapRef.current;
@@ -1920,6 +1936,26 @@ export default function GodsEyeMap({
                 }}
               >
                 2D
+              </button>
+              <button
+                type="button"
+                onClick={streetLidar3D}
+                title="Street-level 3D: USGS 3DEP LiDAR point cloud (zoom 15+)"
+                style={{
+                  padding: '5px 12px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  borderRadius: '9999px',
+                  color: zoom >= 15 && pitch > 50 ? '#f0abfc' : '#cbd5e1',
+                  background: zoom >= 15 && pitch > 50 ? 'rgba(60, 12, 72, 0.75)' : 'rgba(10, 18, 40, 0.85)',
+                  border: zoom >= 15 && pitch > 50 ? '1px solid rgba(240, 171, 252, 0.7)' : '1px solid rgba(30, 58, 95, 0.7)',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  boxShadow: zoom >= 15 && pitch > 50 ? '0 0 12px rgba(240, 171, 252, 0.35)' : 'none',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                STREET LIDAR
               </button>
               <button
                 type="button"

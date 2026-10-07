@@ -33,6 +33,7 @@
     "d3-delaunay": "6.0.4",
     "geojson-vt": "^5.0.2",
     "h3-js": "4.4.0",
+    "laz-perf": "0.0.7",
     "lucide-react": "^1.48.0",
     "maplibre-gl": "^6.11.2",
     "next": "^16.3.6",

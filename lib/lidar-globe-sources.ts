@@ -56,6 +56,14 @@ export const GLOBE_SOURCES: GlobeSource[] = [
       "Returns inside the U.S. Secret Service redaction boundary (White House area) were removed by the publisher except ground/water classes."
   },
   {
+    id: "usgs-3dep-ept-ga",
+    label: "Georgia USGS 3DEP LiDAR point clouds (35 surveys, 2009–2018)",
+    provider: "U.S. Geological Survey 3D Elevation Program — Entwine Point Tiles on AWS Open Data (Hobu)",
+    url: "https://registry.opendata.aws/usgs-lidar/",
+    detail:
+      "Classified airborne laser returns streamed from zoom 15 (full survey density, about 2–4 points per m², near the view centre) and drawn at measured height above ground. Survey dates vary by area; newer construction may be missing."
+  },
+  {
     id: "openfreemap-buildings",
     label: "Building footprints & heights",
     provider: "OpenFreeMap / OpenMapTiles, © OpenStreetMap contributors",
