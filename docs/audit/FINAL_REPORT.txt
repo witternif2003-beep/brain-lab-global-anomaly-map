@@ -1,0 +1,94 @@
+MISSION STATUS: INCOMPLETE
+PERFORMANCE CEILING: NOT MET (NOT MEASURABLE ON GPU HARDWARE FROM THIS VM)
+
+1. EXECUTIVE SUMMARY
+286 tracked source, config and document files were scanned (docs/audit/scan.mjs) and triaged;
+bundled data (public/data, models, images) and the lockfile were not reviewed line by line.
+15 confirmed issues were recorded (docs/audit/2026-10-12-technical-audit.md); 12 are fixed,
+3 are documented with the reason they were not changed. OpenTelemetry tracing, browser RUM
+metrics, a self-hosted observability stack and Kubernetes manifests were added and run locally.
+Production: https://brain-lab-six.vercel.app at commit 1cf70b6 (PR #4).
+
+2. CONFIRMED ISSUES & CORRECTIONS
+· File: lib/ga-lidar-layer.ts
+  · Issue: LiDAR layer lost permanently after a WebGL context loss.
+  · Correction: layer re-created on 'webglcontextrestored'.
+· File: lib/ga-lidar-layer.ts
+  · Issue: touch devices drew points up to 10 CSS px.
+  · Correction: 4 CSS px cap on touch devices.
+· File: 16 server routes/connectors (app/api/fbi/*, ga-hydromet, ga-telemetry, ga-traffic, public-live, tiles, lib/connectors/*)
+  · Issue: upstream fetch with no timeout.
+  · Correction: AbortSignal.timeout(15_000) on each call.
+· File: app/api/petitions/sign/route.ts
+  · Issue: returned a fabricated VERIFIED signature count.
+  · Correction: 501, nothing recorded.
+· File: app/api/health/route.ts, components/LucidMethodologyTrace.tsx
+  · Issue: hard-coded commit SHA fallback; constants (clearanceLevel, directivesAvailable) served as live values.
+  · Correction: health returns status, real commit or null, VERCEL_ENV, timestamp. Theme figures labelled "not measured".
+· File: app/api/system-scan/route.ts, app/api/lucid1/route.ts
+  · Issue: fabricated classification marking in public API output.
+  · Correction: removed.
+· File: components/LidarGlobe.tsx
+  · Issue: synthetic vessels shown like real AIS.
+  · Correction: popup says "simulated demo track, not live AIS".
+· File: app/api/cron/ingest/route.ts
+  · Issue: bad CRON_SECRET answered 503.
+  · Correction: 401.
+· File: app/api/tiles/[...path]/route.ts
+  · Issue: invented contact address in OSM User-Agent.
+  · Correction: repository URL.
+· File: k8s/keda-redis-scaler.yaml
+  · Issue: referenced an image, Redis stream and secrets that do not exist.
+  · Correction: deleted; replaced by deploy/k8s/brain-lab.yaml.
+· File: app/api/metrics/rum/route.ts
+  · Issue: one log line per visitor report.
+  · Correction: log removed.
+· Not changed: CORS wildcard in production (policy decision needed), ESLint (typescript-eslint
+  does not support the repo's TypeScript 7), /api/telemetry stream still synthetic.
+
+3. LIDAR RENDERING UPGRADE
+· 3DGS Migration: NOT DONE. USGS 3DEP point clouds carry x/y/z/class/intensity, not Gaussian
+  covariance or opacity; producing splats would invent geometry. Renderer remains WebGL GL_POINTS
+  over Entwine EPT with depth-limited octree LOD, 2.5 M (touch) / 5 M (desktop) point budgets.
+· Performance Impact: NOT MEASURED ON A GPU. This VM renders with SwiftShader (CPU): 3.7 FPS mean,
+  p95 frame 483 ms on /godseye-telemetry at 1600x1000. No before/after GPU numbers exist.
+· Memory Reduction: none claimed. JS heap measured 104 MB used during the VM run.
+· Latency Reduction: none claimed; not measured.
+
+4. OBSERVABILITY METRICS IMPLEMENTED
+· /api/metrics (Prometheus text): ga_feed_up, ga_feed_request_duration_ms, ga_feed_markers,
+  ga_feed_source_errors, ga_feed_data_age_seconds, aircraft_ingest_latency_ms,
+  transit_gtfs_staleness_seconds, usgs_seismic_events_30d, usgs_seismic_event_delta (1 h count),
+  usgs_seismic_latest_event_age_seconds, faa_restriction_active_count, nodejs_heap_used_bytes.
+· Browser RUM via /api/metrics/rum (5-min window, per instance): map_render_fps,
+  map_render_frame_ms_p95, memory_heap_usage_bytes, network_io_throughput_mbps, lidar_points_drawn,
+  web_vitals_lcp_ms_p75, web_vitals_inp_ms_p75, web_vitals_cls_p75, rum_reports.
+· Tracing: instrumentation.ts (@vercel/otel); one span per layer probe. Verified locally: the
+  OTel Collector (OTLP 4317/4318) received 125 spans.
+· Prometheus rules: deploy/prometheus/rules.yml (99% feed SLO, 14.4x/6x burn-rate alerts, FeedDown,
+  TransitStale, FeedSlow, RenderBelow30Fps, MobileHeapOver512MB) — all 8 loaded with health ok.
+· Grafana: deploy/grafana/brain-lab-dashboard.json (14 panels).
+· GPU timestamp queries / per-pass timing: NONE. The renderer is WebGL; no WebGPU passes exist.
+
+5. UNCERTAINTIES & RESIDUAL RISKS
+· RUM values live in one serverless instance's memory; a report and a scrape can hit different
+  instances (seen on production: rum_reports absent after a 204). Fleet-wide numbers need OTLP
+  metrics export or a shared store.
+· /api/metrics/rum is public; bounded and validated but not rate-limited.
+· Production traces need a Vercel tracing integration or OTEL_EXPORTER_OTLP_ENDPOINT; not configured.
+· First production scrape after deploy showed ga_feed_up{layer="aircraft"} 0; a direct request a
+  minute later returned 408 aircraft. The FeedDown alert waits 10 min for this reason.
+· Mobile 60 FPS, 16 ms frame and 512 MB targets: unmeasured (no physical phone or GPU here).
+· 10,000-user test not run: it would load the public agencies behind each layer. Local bounded test:
+  200 concurrent -> 914 req/s, p95 342 ms, 0 errors (pages + health); 50 concurrent cached layer
+  API -> 1,673 req/s, p95 52 ms, 0 errors. The 50 ms API ceiling is met only for cached layers.
+· npm audit reports advisories in the dependency tree; no forced fix was applied.
+· No Kafka/Flink: the app is stateless serverless functions with no consumer to attach them to.
+
+6. DEPLOYMENT ARTIFACTS
+· Dockerfile, .dockerignore (non-root, healthcheck) — built and run.
+· deploy/docker-compose.yml — app + OTel Collector + Prometheus, run locally.
+· deploy/otel-collector.yaml, deploy/prometheus/{prometheus.yml,rules.yml}, deploy/grafana/brain-lab-dashboard.json.
+· deploy/k8s/brain-lab.yaml — Deployment, Service, HPA, Collector. Not applied to a cluster.
+· scripts/perf/load.mjs — bounded load test.
+· CI/CD: existing .github/workflows/deploy.yml; production deployed with the Vercel CLI.
