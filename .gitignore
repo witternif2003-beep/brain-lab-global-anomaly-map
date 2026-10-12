@@ -13,3 +13,4 @@ tsconfig.tsbuildinfo
 .roster-state/
 scripts/ga_change/__pycache__/
 *.pyc
+.perf-fixtures/

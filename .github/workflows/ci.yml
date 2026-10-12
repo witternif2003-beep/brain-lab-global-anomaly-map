@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  app:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Typecheck
+        run: npx tsc --noEmit -p .
+      - name: Tests
+        run: node --import tsx --test $(git ls-files 'tests/**/*.test.ts')
+      - name: Build
+        run: npx next build
+
+  container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Docker build
+        run: docker build -t brain-lab:ci .
+      - name: Container health check
+        run: |
+          docker run -d --name bl -p 3000:3000 brain-lab:ci
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:3000/api/health && exit 0; sleep 2; done
+          docker logs bl; exit 1
+
+  deploy-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.17.2
+      - name: Helm lint
+        run: |
+          helm lint deploy/helm/brain-lab -f deploy/helm/brain-lab/values-dev.yaml
+          helm lint deploy/helm/brain-lab -f deploy/helm/brain-lab/values-production.yaml
+          helm template bl deploy/helm/brain-lab -f deploy/helm/brain-lab/values-production.yaml > /dev/null
+      - name: Prometheus rules
+        run: docker run --rm -v "$PWD/deploy/prometheus:/p" --entrypoint promtool prom/prometheus:v3.0.1 check rules /p/rules.yml

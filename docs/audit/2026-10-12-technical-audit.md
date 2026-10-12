@@ -63,6 +63,26 @@ All numbers below were measured on this VM; none come from production users.
 - 10,000-concurrent-user test against production: every live-marker request fans out to third-party public APIs (ADS-B, GDOT, USGS, FAA, Bluesky, county ArcGIS). That load would hit those agencies, not just this app. A bounded local test was run instead.
 - E911 queue depth, WebSocket reconnect rate: no Georgia agency publishes a dispatch queue; the app uses no WebSockets.
 
+## RUNBOOK v2 FOLLOW-UP (2026-10-12)
+
+Input: a second brief proposing WebGPU 3DGS (PlayCanvas 2.19.0, Streamed SOG), Vercel Drains, GPU timestamp queries, 99.9% SLOs, Kubernetes/Helm validation, mocked load tests and CI.
+
+Confirmed issue found during Kubernetes validation:
+- C16 `Dockerfile` — `USER app` (non-numeric) made the pod fail with `CreateContainerConfigError: container has runAsNonRoot and image has non-numeric user`. Fixed: user/group 10001, `USER 10001:10001`; `runAsUser`/`runAsGroup: 10001` set in deploy/k8s/brain-lab.yaml and the Helm chart.
+
+Done and verified on this VM:
+- SLO: deploy/prometheus/rules.yml now targets 99.9% with multi-window burn-rate alerts (1h&5m at 14.4x page, 6h&30m at 6x page, 3d&6h at 1x ticket) plus FeedDown, TransitStale, FeedSlow, RenderBelow30Fps, FrameOver16ms, LidarGpuPassOver8ms, MobileHeapOver512MB. `promtool check rules`: 16 rules, SUCCESS.
+- Helm: deploy/helm/brain-lab (app Deployment/Service/HPA, OTel Collector with optional extra exporters). `helm lint` passes for values-dev and values-production.
+- Kubernetes (kind v0.27.0, Kubernetes node image from kind, local only): Helm release installed with the locally built image; app pod Ready, securityContext `runAsNonRoot/runAsUser 10001/RuntimeDefault seccomp`; `/api/health` 200 through the Service; `/api/metrics` 200 in 3.4 s with 9/9 `ga_feed_up` = 1; the in-cluster Collector logged a 125-span batch. deploy/k8s/brain-lab.yaml passes `kubectl apply --dry-run=server`.
+- Mocked upstream load test: scripts/perf/mock-fetch.mjs replaces `fetch` in the server process. One record pass saved 61 upstream responses; the replay run served only saved responses (unknown URLs get 503) with 150 ms added latency. 200 concurrent, 30 s, all 9 layer APIs + health: 24,100 requests, 803 req/s, 0 errors, p50 219 ms, p95 257 ms, p99 457 ms, max 18.4 s. 273 replayed upstream calls, 0 unrecorded. No request reached a public agency during the run.
+- GPU timing: lib/ga-lidar/gpu-timer.ts wraps the LiDAR draw in `EXT_disjoint_timer_query_webgl2` queries; p95 over the last 120 passes goes to `window.__gaLidar.gpuMsP95`, the RUM report and `lidar_gpu_ms_p95`. This is WebGL GPU timing, not WebGPU timestamps. On this VM (ANGLE/SwiftShader, Chrome 137) the extension is absent and `navigator.gpu` is undefined, so no value was produced; the metric is omitted rather than reported as 0. Browsers that hide GPU timers for privacy (Safari, Firefox) will also report nothing.
+- CI: .github/workflows/ci.yml runs typecheck, all tests, `next build`, Docker build + container health check, Helm lint/template and promtool.
+
+Checked against sources, not built:
+- Vercel Drains (https://vercel.com/docs/drains): Pro/Enterprise only; trace drains accept OTLP/HTTP only (no gRPC). The linked Vercel team `nicks-projects-128db960` is on the Hobby plan, so no drain can be configured. No Snowflake/Elastic/OTLP endpoint exists for this project.
+- PlayCanvas 2.19.0 (https://blog.playcanvas.com/new-in-supersplat-webgpu-and-streaming-bring-huge-performance-wins): the brief's FPS figures match that post (M4 Max 35 M splats 13.3 -> 75.8 FPS; iPhone 13 Pro Max 4 M splats 20.4 -> 42.4 FPS). They are PlayCanvas's numbers on a photogrammetry splat scene, not this app. The 1,557 MB -> 105 MB heap figure is not in that post and is unverified.
+- 3DGS from 3DEP: still not done. Splats would have to be trained from imagery or synthesised from points (isotropic splats with guessed scale/opacity), and the result would be a stylised rendering of the survey, not new detail. A splat renderer would also add PlayCanvas as a second WebGL/WebGPU engine beside MapLibre.
+
 ## APPENDIX — automated scan of every file
 
 Columns are pattern counts (scan before fixes). `post` = POST/PUT/DELETE handlers; `secret` = key-shaped literals (0 everywhere).

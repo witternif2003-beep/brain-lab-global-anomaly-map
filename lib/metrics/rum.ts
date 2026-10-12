@@ -8,6 +8,8 @@ export interface RumSample {
   heapBytes: number | null;
   netMbps: number | null;
   lidarPoints: number | null;
+  /** p95 GPU time of the LiDAR draw (EXT_disjoint_timer_query_webgl2), ms. */
+  lidarGpuMsP95: number | null;
   lcpMs: number | null;
   inpMs: number | null;
   cls: number | null;
@@ -37,6 +39,7 @@ export function parseRumSample(raw: unknown): RumSample | null {
     heapBytes: num(r.heapBytes, 64 * 2 ** 30),
     netMbps: num(r.netMbps, 100_000),
     lidarPoints: num(r.lidarPoints, 1e9),
+    lidarGpuMsP95: num(r.lidarGpuMsP95, 60_000),
     lcpMs: num(r.lcpMs, 600_000),
     inpMs: num(r.inpMs, 600_000),
     cls: num(r.cls, 100),
@@ -75,6 +78,7 @@ export class RumWindow {
       { name: 'memory_heap_usage_bytes', help: 'Median browser JS heap (performance.memory, Chromium only) over the last 5 min.', values: series(pct((s) => s.heapBytes, 0.5)) },
       { name: 'network_io_throughput_mbps', help: 'Median browser download throughput from Resource Timing over the last 5 min.', values: series(pct((s) => s.netMbps, 0.5)) },
       { name: 'lidar_points_drawn', help: 'Median LiDAR points on screen when the layer is active.', values: series(pct((s) => s.lidarPoints, 0.5)) },
+      { name: 'lidar_gpu_ms_p95', help: 'p95 of per-report p95 GPU time of the LiDAR draw (WebGL2 timer query; absent where the browser hides GPU timers).', values: series(pct((s) => s.lidarGpuMsP95, 0.95)) },
       { name: 'web_vitals_lcp_ms_p75', help: 'p75 Largest Contentful Paint.', values: series(pct((s) => s.lcpMs, 0.75)) },
       { name: 'web_vitals_inp_ms_p75', help: 'p75 Interaction to Next Paint.', values: series(pct((s) => s.inpMs, 0.75)) },
       { name: 'web_vitals_cls_p75', help: 'p75 Cumulative Layout Shift.', values: series(pct((s) => s.cls, 0.75)) },

@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  labels: {{- include "brain-lab.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicas }}
+  {{- end }}
+  selector:
+    matchLabels: { app.kubernetes.io/instance: {{ .Release.Name }}, app.kubernetes.io/component: app }
+  template:
+    metadata:
+      labels:
+        {{- include "brain-lab.labels" . | nindent 8 }}
+        app.kubernetes.io/component: app
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: /api/metrics
+        prometheus.io/port: "3000"
+    spec:
+      securityContext: { runAsNonRoot: true, runAsUser: 10001, runAsGroup: 10001, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: app
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports: [{ name: http, containerPort: 3000 }]
+          securityContext: { allowPrivilegeEscalation: false, capabilities: { drop: [ALL] } }
+          env:
+            {{- if .Values.collector.enabled }}
+            - { name: OTEL_EXPORTER_OTLP_ENDPOINT, value: "http://{{ include "brain-lab.collector" . }}:4318" }
+            {{- end }}
+            - { name: OTEL_SERVICE_NAME, value: {{ .Release.Name | quote }} }
+            {{- range $k, $v := .Values.env }}
+            - { name: {{ $k }}, value: {{ $v | quote }} }
+            {{- end }}
+          resources: {{- toYaml .Values.resources | nindent 12 }}
+          startupProbe: { httpGet: { path: /api/health, port: http }, periodSeconds: 5, failureThreshold: 24 }
+          readinessProbe: { httpGet: { path: /api/health, port: http }, periodSeconds: 10 }
+          livenessProbe: { httpGet: { path: /api/health, port: http }, periodSeconds: 30, failureThreshold: 3 }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}
+  labels: {{- include "brain-lab.labels" . | nindent 4 }}
+spec:
+  selector: { app.kubernetes.io/instance: {{ .Release.Name }}, app.kubernetes.io/component: app }
+  ports: [{ name: http, port: {{ .Values.service.port }}, targetPort: http }]
+{{- if .Values.autoscaling.enabled }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ .Release.Name }}
+  labels: {{- include "brain-lab.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: {{ .Release.Name }} }
+  minReplicas: {{ .Values.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource: { name: cpu, target: { type: Utilization, averageUtilization: {{ .Values.autoscaling.cpuUtilization }} } }
+{{- end }}

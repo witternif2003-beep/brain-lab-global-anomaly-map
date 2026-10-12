@@ -41,7 +41,7 @@ export default function RenderMetricsProbe() {
       if (f.length < 10) return;
       const mean = f.reduce((a, b) => a + b, 0) / f.length;
       const path = location.pathname;
-      const lidar = (window as unknown as { __gaLidar?: { pointsDrawn?: number; status?: string } }).__gaLidar;
+      const lidar = (window as unknown as { __gaLidar?: { pointsDrawn?: number; status?: string; gpuMsP95?: number | null } }).__gaLidar;
       const s: RumSample = {
         page: path === "/godseye-telemetry" || path === "/threat-globe" ? path : "/other",
         fps: Math.round(1_000 / mean),
@@ -49,6 +49,7 @@ export default function RenderMetricsProbe() {
         heapBytes: (performance as Perf).memory?.usedJSHeapSize ?? null,
         netMbps: busyMs > 0 ? Math.round(((bytes * 8) / 1e6 / (busyMs / 1_000)) * 10) / 10 : null,
         lidarPoints: lidar?.status === "ready" ? lidar.pointsDrawn ?? null : null,
+        lidarGpuMsP95: lidar?.status === "ready" ? lidar.gpuMsP95 ?? null : null,
         ...vitals,
         touch: navigator.maxTouchPoints > 0,
       };

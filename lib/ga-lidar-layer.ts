@@ -28,6 +28,7 @@ import {
   targetDepthFor,
 } from './ga-lidar/ept';
 import type { EptProject, Hierarchy, LidarNodeData } from './ga-lidar/ept';
+import { GpuPassTimer } from './ga-lidar/gpu-timer';
 
 export const GA_LIDAR_MIN_ZOOM = 15;
 const VIEW_TILES = 3.5;
@@ -55,6 +56,9 @@ export interface GaLidarStats {
   loading: number;
   errors: number;
   status: string;
+  /** p95 GPU time of the LiDAR draw (ms); null when EXT_disjoint_timer_query_webgl2 is unavailable. */
+  gpuMsP95: number | null;
+  gpuTimer: 'unsupported' | 'active';
 }
 
 const VERTEX = /* glsl */ `
@@ -140,7 +144,10 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     loading: 0,
     errors: 0,
     status: 'idle',
+    gpuMsP95: null,
+    gpuTimer: 'unsupported',
   };
+  private gpuTimer: GpuPassTimer | null = null;
   private readonly onMoveEnd = () => {
     if (this.timer) clearTimeout(this.timer);
     this.timer = setTimeout(() => void this.update(), 150);
@@ -157,6 +164,8 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     this.map = map;
     this.renderer = new WebGLRenderer({ canvas: map.getCanvas(), context: gl, antialias: true });
     this.renderer.autoClear = false;
+    this.gpuTimer = GpuPassTimer.create(gl);
+    this.stats.gpuTimer = this.gpuTimer ? 'active' : 'unsupported';
     this.camera.matrixAutoUpdate = false;
     this.camera.matrixWorldAutoUpdate = false;
     map.on('moveend', this.onMoveEnd);
@@ -454,7 +463,10 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     this.material.uniforms.uMaxPx.value = (isTouch() ? POINT_MAX_CSS_PX_TOUCH : POINT_MAX_CSS_PX) * Math.min(3, window.devicePixelRatio || 1);
     renderer.resetState();
     renderer.setViewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+    this.gpuTimer?.begin();
     renderer.render(this.scene, this.camera);
+    this.gpuTimer?.end();
+    if (this.gpuTimer) this.stats.gpuMsP95 = this.gpuTimer.poll();
   }
 }
 

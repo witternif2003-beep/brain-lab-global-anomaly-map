@@ -1,19 +1,41 @@
+# SLO: 99.9% of live-layer probes succeed over 30 days (error budget 0.1%).
+# Multi-window, multi-burn-rate alerts (Google SRE Workbook, ch. 5):
+#   2% of budget in 1h  -> burn 14.4 (1h and 5m windows)  -> page
+#   5% of budget in 6h  -> burn 6    (6h and 30m windows) -> page
+#   10% of budget in 3d -> burn 1    (3d and 6h windows)  -> ticket
 groups:
+  - name: brain-lab-slo-recording
+    interval: 1m
+    rules:
+      - record: ga:feed_errors:ratio_rate5m
+        expr: 1 - avg(avg_over_time(ga_feed_up[5m]))
+      - record: ga:feed_errors:ratio_rate30m
+        expr: 1 - avg(avg_over_time(ga_feed_up[30m]))
+      - record: ga:feed_errors:ratio_rate1h
+        expr: 1 - avg(avg_over_time(ga_feed_up[1h]))
+      - record: ga:feed_errors:ratio_rate6h
+        expr: 1 - avg(avg_over_time(ga_feed_up[6h]))
+      - record: ga:feed_errors:ratio_rate3d
+        expr: 1 - avg(avg_over_time(ga_feed_up[3d]))
+      - record: ga:feed_availability:ratio_30d
+        expr: avg(avg_over_time(ga_feed_up[30d]))
   - name: brain-lab-slo
     rules:
-      - record: ga:feed_availability:ratio_1h
-        expr: avg_over_time(avg(ga_feed_up)[1h:1m])
-      # SLO: 99% of layer probes up over 30 days (error budget 1%).
-      - alert: FeedErrorBudgetFastBurn
-        expr: (1 - avg_over_time(avg(ga_feed_up)[1h:1m])) > 14.4 * 0.01
-        for: 5m
+      - alert: FeedErrorBudgetBurn1h
+        expr: ga:feed_errors:ratio_rate1h > (14.4 * 0.001) and ga:feed_errors:ratio_rate5m > (14.4 * 0.001)
+        for: 2m
         labels: { severity: page }
-        annotations: { summary: 'Live layers burning the 30-day error budget 14.4x faster than allowed (1h window)' }
-      - alert: FeedErrorBudgetSlowBurn
-        expr: (1 - avg_over_time(avg(ga_feed_up)[6h:1m])) > 6 * 0.01
-        for: 30m
+        annotations: { summary: 'Live layers spent 2% of the 30-day error budget in 1 h (burn rate 14.4)' }
+      - alert: FeedErrorBudgetBurn6h
+        expr: ga:feed_errors:ratio_rate6h > (6 * 0.001) and ga:feed_errors:ratio_rate30m > (6 * 0.001)
+        for: 15m
+        labels: { severity: page }
+        annotations: { summary: 'Live layers spent 5% of the 30-day error budget in 6 h (burn rate 6)' }
+      - alert: FeedErrorBudgetBurn3d
+        expr: ga:feed_errors:ratio_rate3d > (1 * 0.001) and ga:feed_errors:ratio_rate6h > (1 * 0.001)
+        for: 1h
         labels: { severity: ticket }
-        annotations: { summary: 'Live layers burning the error budget 6x faster than allowed (6h window)' }
+        annotations: { summary: 'Live layers spent 10% of the 30-day error budget in 3 d (burn rate 1)' }
       - alert: FeedDown
         expr: ga_feed_up == 0
         for: 10m
@@ -34,6 +56,16 @@ groups:
         for: 15m
         labels: { severity: ticket }
         annotations: { summary: 'Median frame rate on {{ $labels.page }} ({{ $labels.device }}) below 30 FPS' }
+      - alert: FrameOver16ms
+        expr: map_render_frame_ms_p95 > 16.7 and rum_reports >= 5
+        for: 15m
+        labels: { severity: ticket }
+        annotations: { summary: 'p95 frame time on {{ $labels.page }} ({{ $labels.device }}) above the 16 ms ceiling' }
+      - alert: LidarGpuPassOver8ms
+        expr: lidar_gpu_ms_p95 > 8 and rum_reports >= 5
+        for: 15m
+        labels: { severity: ticket }
+        annotations: { summary: 'p95 LiDAR GPU draw time on {{ $labels.page }} ({{ $labels.device }}) above 8 ms (half the frame budget)' }
       - alert: MobileHeapOver512MB
         expr: memory_heap_usage_bytes{device="touch"} > 512 * 1024 * 1024
         for: 15m
