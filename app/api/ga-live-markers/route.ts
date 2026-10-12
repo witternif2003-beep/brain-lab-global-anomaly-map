@@ -95,11 +95,21 @@ function osmSnapshot() {
   return osmSnapshotMemo;
 }
 
+const OSM_WAIT_MS = 8_000;
+const FALLBACK_TTL_S = 300;
+/** Rejects after `ms` without cancelling `p`, so a slow Overpass query still fills the memo for later requests. */
+function withDeadline<T>(p: Promise<T>, ms: number): Promise<T> {
+  const late = new Promise<never>((_, reject) => {
+    setTimeout(() => reject(new Error(`no answer within ${ms / 1000} s (still loading)`)), ms);
+  });
+  return Promise.race([p, late]);
+}
+
 const osm = (kind: OsmInfraKind, source: string): LayerSpec => ({
   ttlS: OSM_TTL_S,
   source: `${source} mapped in OpenStreetMap (ODbL), Overpass API; locations only, re-queried every 6 h`,
   sourceUrl: "https://www.openstreetmap.org/copyright",
-  feeds: [{ id: "OSM Overpass", url: OVERPASS[0].url, markers: async () => (await osmInfra())[kind] }],
+  feeds: [{ id: "OSM Overpass", url: OVERPASS[0].url, markers: async () => (await withDeadline(osmInfra(), OSM_WAIT_MS))[kind] }],
   fallback: [{
     id: "OSM snapshot committed with the app (dated by each marker's OSM base time)",
     url: "https://www.openstreetmap.org/copyright",
@@ -333,7 +343,7 @@ const LAYERS: Record<LiveLayer, LayerSpec> = {
 
 const feedUrl = (f: Feed) => (typeof f.url === "function" ? f.url() : f.url);
 
-const cache = new Map<LiveLayer, { at: number; body: unknown }>();
+const cache = new Map<LiveLayer, { at: number; body: Awaited<ReturnType<typeof build>> }>();
 
 async function run(feeds: Feed[]) {
   const results = await Promise.allSettled(
@@ -358,9 +368,11 @@ async function build(layer: LiveLayer) {
   let feeds = await run(spec.feeds);
   let source = spec.source;
   let sourceUrl = spec.sourceUrl;
+  let ttlS = spec.ttlS;
   if (feeds.every((f) => f.error) && spec.fallback) {
     const fb = await run(spec.fallback);
     if (fb.some((f) => !f.error)) {
+      ttlS = Math.min(ttlS, FALLBACK_TTL_S);
       feeds = [...feeds, ...fb];
       source = `${fb.map((f) => f.id).join(", ")} (fallback; ${spec.feeds.map((f) => f.id).join(", ")} unreachable)`;
       sourceUrl = feedUrl(spec.fallback[0]);
@@ -370,7 +382,7 @@ async function build(layer: LiveLayer) {
   return {
     layer,
     generatedAt: new Date().toISOString(),
-    refreshSeconds: spec.ttlS,
+    refreshSeconds: ttlS,
     source,
     sourceUrl,
     feeds: feeds.map((f) => ({ id: f.id, url: f.url, count: f.error ? null : f.markers.length, unplaced: f.unplaced, error: f.error })),
@@ -383,10 +395,10 @@ export async function GET(request: NextRequest) {
   if (!layer || !(layer in LAYERS)) {
     return NextResponse.json({ error: `layer must be one of: ${Object.keys(LAYERS).join(", ")}` }, { status: 400 });
   }
-  const ttl = LAYERS[layer].ttlS;
   try {
     const hit = cache.get(layer);
-    const body = hit && Date.now() - hit.at < ttl * 1000 ? hit.body : await build(layer);
+    const body = hit && Date.now() - hit.at < hit.body.refreshSeconds * 1000 ? hit.body : await build(layer);
+    const ttl = body.refreshSeconds;
     if (body !== hit?.body) cache.set(layer, { at: Date.now(), body });
     return NextResponse.json(body, { headers: { "Cache-Control": `public, s-maxage=${ttl}, stale-while-revalidate=${ttl}` } });
   } catch (err) {
