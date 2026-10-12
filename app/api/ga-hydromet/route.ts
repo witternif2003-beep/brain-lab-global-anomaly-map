@@ -15,7 +15,7 @@ let cache: { at: number; body: unknown } | null = null;
 const zones = new Map<string, GeoJSON.Geometry>();
 
 async function getJson<T>(url: string): Promise<T> {
-  const r = await fetch(url, { headers: HEADERS, cache: "no-store" });
+  const r = await fetch(url, { signal: AbortSignal.timeout(15_000), headers: HEADERS, cache: "no-store" });
   if (!r.ok) throw new Error(`HTTP ${r.status} (${url})`);
   return (await r.json()) as T;
 }

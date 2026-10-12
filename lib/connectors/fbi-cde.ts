@@ -24,7 +24,7 @@ export async function fetchFbiViolentCrime(a: { code: string; name: string; year
   const key = process.env.FBI_API_KEY;
   const base = key ? CDE_GATEWAY : CDE_PUBLIC;
   const sourceUrl = `${base}/${a.code}/violent-crime?from=01-${a.year}&to=12-${a.year}`;
-  const res = await fetch(key ? `${sourceUrl}&API_KEY=${encodeURIComponent(key)}` : sourceUrl, {
+  const res = await fetch(key ? `${sourceUrl}&API_KEY=${encodeURIComponent(key)}` : sourceUrl, { signal: AbortSignal.timeout(15_000),
     headers: { Accept: "application/json", "User-Agent": "brain-lab-ingest/1.0" },
     cache: "no-store"
   });

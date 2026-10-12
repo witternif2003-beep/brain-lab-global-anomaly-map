@@ -25,9 +25,9 @@ export async function GET(
   const upstreamUrl = `https://tile.openstreetmap.org/${z}/${x}/${y}.png`;
 
   try {
-    const upstreamRes = await fetch(upstreamUrl, {
+    const upstreamRes = await fetch(upstreamUrl, { signal: AbortSignal.timeout(15_000),
       headers: {
-        "User-Agent": "BrainLabGlobalAnomalyMap/2.0 (Post-Doctorate Geospatial Research; contact@brainlab.ai)",
+        "User-Agent": "brain-lab-global-anomaly-map (+https://github.com/witternif2003-beep/brain-lab-global-anomaly-map)",
         "Accept": "image/webp,image/png,image/*;q=0.8",
       },
     });

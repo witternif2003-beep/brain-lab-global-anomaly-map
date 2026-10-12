@@ -21,7 +21,7 @@ export async function GET(request: Request) {
       fbiUrl.searchParams.set('field_offices', fieldOffice);
     }
 
-    const res = await fetch(fbiUrl.toString(), {
+    const res = await fetch(fbiUrl.toString(), { signal: AbortSignal.timeout(15_000),
       headers: {
         'Accept': 'application/json',
         'User-Agent': 'BrainLab-Research-Platform/1.0',

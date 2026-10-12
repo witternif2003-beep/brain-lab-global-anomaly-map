@@ -459,6 +459,8 @@ export class GaLidar3DLayer implements CustomLayerInterface {
 }
 
 const ATTRIBUTION_SOURCE = 'ga-lidar-attribution';
+/** MapLibre cannot restore custom layers after WebGL context loss, so they are re-created on restore. */
+const restoreHooked = new WeakSet<MapLibreMap>();
 
 /** Adds the street-zoom LiDAR point cloud plus its source credit (shown in the attribution line from z15). */
 export function addGaLidarLayers(map: MapLibreMap): void {
@@ -473,4 +475,11 @@ export function addGaLidarLayers(map: MapLibreMap): void {
     map.addLayer({ id: ATTRIBUTION_SOURCE, type: 'circle', source: ATTRIBUTION_SOURCE, minzoom: GA_LIDAR_MIN_ZOOM });
   }
   if (!map.getLayer('ga-lidar-3d')) map.addLayer(new GaLidar3DLayer());
+  if (!restoreHooked.has(map)) {
+    restoreHooked.add(map);
+    map.on('webglcontextrestored', () => {
+      if (map.getLayer('ga-lidar-3d')) map.removeLayer('ga-lidar-3d');
+      map.addLayer(new GaLidar3DLayer());
+    });
+  }
 }

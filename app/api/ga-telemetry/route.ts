@@ -26,7 +26,7 @@ interface ArcFeature<T> { attributes: T }
 interface ArcResponse<T> { features?: ArcFeature<T>[]; count?: number; error?: { message: string } }
 
 async function query<T>(params: Record<string, string>, layer = LAYER): Promise<ArcResponse<T>> {
-  const r = await fetch(`${layer}/query`, {
+  const r = await fetch(`${layer}/query`, { signal: AbortSignal.timeout(15_000),
     method: "POST",
     cache: "no-store",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },

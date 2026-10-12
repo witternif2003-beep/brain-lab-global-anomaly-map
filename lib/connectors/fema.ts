@@ -30,7 +30,7 @@ export interface FemaFeed {
 
 async function fetchPage(skip: number) {
   const url = `${FEMA}?$select=${SELECT}&$orderby=declarationDate%20desc&$top=${FEMA_PAGE}&$skip=${skip}&$inlinecount=allpages`;
-  const res = await fetch(url, { headers: { Accept: "application/json", "User-Agent": "brain-lab-ingest/1.0" }, cache: "no-store" });
+  const res = await fetch(url, { signal: AbortSignal.timeout(15_000), headers: { Accept: "application/json", "User-Agent": "brain-lab-ingest/1.0" }, cache: "no-store" });
   const raw = await res.text();
   let rows: FemaDeclaration[] = [];
   let total = 0;

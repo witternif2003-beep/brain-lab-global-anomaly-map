@@ -38,7 +38,7 @@ const num = (v: unknown): number => {
 export async function fetchEpaEcho(a: { territory: string; rows?: number }) {
   const rows = a.rows ?? 100;
   const url = `${ECHO}?output=JSON&p_st=${encodeURIComponent(a.territory)}&p_act=Y&rows=${rows}`;
-  const res = await fetch(url, {
+  const res = await fetch(url, { signal: AbortSignal.timeout(15_000),
     headers: { Accept: "application/json", "User-Agent": "brain-lab-ingest/1.0" },
     cache: "no-store"
   });

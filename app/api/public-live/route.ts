@@ -36,7 +36,7 @@ async function feed<T>(
 }
 
 async function getJson<T>(url: string): Promise<T> {
-  const r = await fetch(url, { cache: "no-store", headers: { "User-Agent": UA, Accept: "application/json, application/geo+json" } });
+  const r = await fetch(url, { signal: AbortSignal.timeout(15_000), cache: "no-store", headers: { "User-Agent": UA, Accept: "application/json, application/geo+json" } });
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   return (await r.json()) as T;
 }
@@ -177,7 +177,7 @@ let airnowCache: { at: number; lines: string[] } | null = null;
 
 async function airnowLines(): Promise<string[]> {
   if (airnowCache && Date.now() - airnowCache.at < AIRNOW_TTL_MS) return airnowCache.lines;
-  const r = await fetch(AIRNOW_URL, { cache: "no-store", headers: { "User-Agent": UA } });
+  const r = await fetch(AIRNOW_URL, { signal: AbortSignal.timeout(15_000), cache: "no-store", headers: { "User-Agent": UA } });
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   const lines = (await r.text()).split("\n");
   airnowCache = { at: Date.now(), lines };

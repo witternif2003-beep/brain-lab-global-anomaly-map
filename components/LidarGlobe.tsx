@@ -89,7 +89,7 @@ function telemetryGeoJSON(
           title: v.name,
           l1: `MMSI ${v.mmsi} • ${v.status}`,
           l2: `${v.speedKnots.toFixed(1)} kn @ ${v.courseDeg}° → ${v.destination}`,
-          l3: `Dwell ${v.dwellHours.toFixed(1)} h`,
+          l3: `Dwell ${v.dwellHours.toFixed(1)} h · simulated demo track, not live AIS`,
           color: "#00e5ff"
         }
       })),

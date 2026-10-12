@@ -39,7 +39,7 @@ export async function fetchBlsLaus(a: {
     endyear: String(end)
   });
 
-  const res = await fetch(BLS_ENDPOINT, {
+  const res = await fetch(BLS_ENDPOINT, { signal: AbortSignal.timeout(15_000),
     method: "POST",
     headers: { "Content-Type": "application/json", "User-Agent": "brain-lab-ingest/1.0" },
     body,
@@ -105,7 +105,7 @@ export async function fetchBlsLausLatestBatch(fipsList: string[]): Promise<Map<s
       endyear: String(end)
     };
     if (key) payload.registrationkey = key;
-    const res = await fetch(BLS_ENDPOINT, {
+    const res = await fetch(BLS_ENDPOINT, { signal: AbortSignal.timeout(15_000),
       method: "POST",
       headers: { "Content-Type": "application/json", "User-Agent": "brain-lab-ingest/1.0" },
       body: JSON.stringify(payload),

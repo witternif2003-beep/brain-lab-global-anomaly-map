@@ -12,7 +12,7 @@ let cache: { at: number; body: unknown } | null = null;
 const sqlTs = (d: Date) => `TIMESTAMP '${d.toISOString().slice(0, 19).replace("T", " ")}'`;
 
 async function query(params: Record<string, string>): Promise<{ count?: number; features?: { attributes: { mx: number | null } }[] }> {
-  const r = await fetch(`${LAYER}/query`, {
+  const r = await fetch(`${LAYER}/query`, { signal: AbortSignal.timeout(15_000),
     method: "POST",
     cache: "no-store",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },

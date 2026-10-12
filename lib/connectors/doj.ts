@@ -44,7 +44,7 @@ async function fetchPage(term: string, page: number) {
   const url =
     `${DOJ}?pagesize=${PAGE_SIZE}&page=${page}&sort=date&direction=DESC` +
     `&parameters%5Btitle%5D=${encodeURIComponent(term)}`;
-  const res = await fetch(url, {
+  const res = await fetch(url, { signal: AbortSignal.timeout(15_000),
     headers: { Accept: "application/json", "User-Agent": "brain-lab-ingest/1.0" },
     cache: "no-store"
   });

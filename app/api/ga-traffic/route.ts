@@ -14,7 +14,7 @@ const TTL_MS = 5 * 60_000;
 let cache: { at: number; body: unknown } | null = null;
 
 async function build() {
-  const r = await fetch(`${LAYER}/query`, {
+  const r = await fetch(`${LAYER}/query`, { signal: AbortSignal.timeout(15_000),
     method: "POST",
     cache: "no-store",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
