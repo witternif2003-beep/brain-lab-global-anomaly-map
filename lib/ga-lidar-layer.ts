@@ -34,6 +34,9 @@ const VIEW_TILES = 3.5;
 const POINT_BUDGET_TOUCH = 2_500_000;
 const POINT_BUDGET_DESKTOP = 5_000_000;
 const IMAGERY_CACHE_TILES = 96;
+const POINT_MAX_CSS_PX = 10;
+const POINT_MAX_CSS_PX_TOUCH = 4;
+const isTouch = () => typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0;
 const FETCH_PARALLEL = 6;
 const TERRAIN_GRID = 8;
 const SURFACE_LIFT_M = 0.25;
@@ -239,8 +242,7 @@ export class GaLidar3DLayer implements CustomLayerInterface {
 
     const half = (VIEW_TILES * WORLD_3857) / 2 ** zoom;
     const targetDepth = targetDepthFor(project, half);
-    const touch = typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0;
-    const view = { cx, cy, half, targetDepth, pointBudget: touch ? POINT_BUDGET_TOUCH : POINT_BUDGET_DESKTOP };
+    const view = { cx, cy, half, targetDepth, pointBudget: isTouch() ? POINT_BUDGET_TOUCH : POINT_BUDGET_DESKTOP };
     this.stats.targetDepth = targetDepth;
     this.setStatus('loading hierarchy');
 
@@ -449,7 +451,7 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     this.camera.projectionMatrix.copy(mvp);
     this.camera.projectionMatrixInverse.copy(mvp).invert();
     this.material.uniforms.uViewport.value.set(gl.drawingBufferWidth, gl.drawingBufferHeight);
-    this.material.uniforms.uMaxPx.value = 10 * Math.min(3, window.devicePixelRatio || 1);
+    this.material.uniforms.uMaxPx.value = (isTouch() ? POINT_MAX_CSS_PX_TOUCH : POINT_MAX_CSS_PX) * Math.min(3, window.devicePixelRatio || 1);
     renderer.resetState();
     renderer.setViewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
     renderer.render(this.scene, this.camera);
