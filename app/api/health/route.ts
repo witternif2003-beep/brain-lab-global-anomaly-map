@@ -8,16 +8,7 @@ export async function GET() {
   return NextResponse.json({
     status: "HEALTHY",
     commit,
-    deployment: "Vercel Production Edge",
+    deployment: process.env.VERCEL_ENV ?? null,
     timestamp: new Date().toISOString(),
-    engine: "MapLibre-v6-Verified",
-    clearanceLevel: "NSA_ADMIN_MODE_SENIOR_MANAGER_SPECIFIC",
-    directivesAvailable: 3800000,
-    recommendationsScale: "+10,000% P1 Tier-1 Scaled Directives",
-    telemetryUpdatePlan: "+7,000 P1 Tier-1 State-of-the-Art Telemetry Streams",
-    vectorsCovered: 32,
-    honestyProtocol: "AIP-20 ANTI-HALLUCINATION HARDENED",
-    standardRevision: "NSA-ADMIN-MODE-REV4-PERMANENT-REPAIR",
-    hardeningPatches: 6,
   });
 }

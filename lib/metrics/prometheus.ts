@@ -41,6 +41,11 @@ export function newestAgeSeconds(markers: LiveMarker[], now: number): number | n
   return Number.isFinite(newest) ? Math.max(0, Math.round((now - newest) / 1000)) : null;
 }
 
+/** Markers observed at or after `since`. */
+export function eventsSince(markers: LiveMarker[], since: number): number {
+  return markers.filter((m) => m.observedAt !== null && Date.parse(m.observedAt) >= since).length;
+}
+
 /** FAA TFRs whose effective window contains `now` (no expiry = still in force). */
 export function activeTfrCount(markers: LiveMarker[], now: number): number {
   return markers.filter((m) => {
@@ -66,6 +71,7 @@ export function liveFeedGauges(probes: LayerProbe[], now: number): Gauge[] {
     { name: 'aircraft_ingest_latency_ms', help: 'Time to fetch the ADS-B aircraft layer.', values: [{ value: by.get('aircraft')?.body ? Math.round(by.get('aircraft')!.durationMs) : null }] },
     { name: 'transit_gtfs_staleness_seconds', help: 'Age of the newest GTFS-realtime bus position.', values: [{ value: transit ? newestAgeSeconds(transit, now) : null }] },
     { name: 'usgs_seismic_events_30d', help: 'USGS ComCat earthquakes in the Georgia area in the last 30 days.', values: [{ value: quakes?.length ?? null }] },
+    { name: 'usgs_seismic_event_delta', help: 'USGS earthquakes in the Georgia area whose origin time is within the last hour.', values: [{ value: quakes ? eventsSince(quakes, now - 3_600_000) : null }] },
     { name: 'usgs_seismic_latest_event_age_seconds', help: 'Seconds since the most recent USGS earthquake in the Georgia area.', values: [{ value: quakes ? newestAgeSeconds(quakes, now) : null }] },
     { name: 'faa_restriction_active_count', help: 'FAA TFRs in Georgia currently in effect.', values: [{ value: tfr ? activeTfrCount(tfr, now) : null }] },
   ];

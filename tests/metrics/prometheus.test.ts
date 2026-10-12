@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { activeTfrCount, formatPrometheus, liveFeedGauges, newestAgeSeconds } from '../../lib/metrics/prometheus';
+import { activeTfrCount, eventsSince, formatPrometheus, liveFeedGauges, newestAgeSeconds } from '../../lib/metrics/prometheus';
 import type { LiveMarker } from '../../lib/ga-live-markers/parse';
 
 const m = (observedAt: string | null, props: LiveMarker['props'] = {}): LiveMarker => ({ lon: -84, lat: 33, observedAt, label: 'x', props });
@@ -36,4 +36,8 @@ test('liveFeedGauges reports failed layers as down without inventing values', ()
   assert.match(text, /^ga_feed_data_age_seconds\{layer="aircraft"\} 10$/m);
   assert.doesNotMatch(text, /^faa_restriction_active_count /m);
   assert.doesNotMatch(text, /^ga_feed_markers\{layer="tfr"\}/m);
+});
+
+test('eventsSince counts only observations at or after the cut-off', () => {
+  assert.equal(eventsSince([m('2026-10-12T11:30:00Z'), m('2026-10-12T10:00:00Z'), m(null)], NOW - 3_600_000), 1);
 });

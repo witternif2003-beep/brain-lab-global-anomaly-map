@@ -4,6 +4,7 @@ import Footer from "../components/Footer";
 import ComplianceNotice from "../components/ComplianceNotice";
 import AmbientBackground from "../components/AmbientBackground";
 import VitalsProbe from "../components/VitalsProbe";
+import RenderMetricsProbe from "../components/RenderMetricsProbe";
 import { PlatformProbe } from "../components/PlatformProbe";
 import { RealTimeStreamProvider } from "../components/RealTimeStreamProvider";
 import BuildFreshnessChip from "../components/BuildFreshnessChip";
@@ -31,6 +32,7 @@ export default function RootLayout({
         <PlatformProbe />
         <AmbientBackground />
         <VitalsProbe />
+        <RenderMetricsProbe />
         <RealTimeStreamProvider>
           <ComplianceNotice />
           <Navbar />

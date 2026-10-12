@@ -1,0 +1,357 @@
+# Technical audit — 2026-10-12
+
+Scope: all 286 tracked source/config/doc files (`git ls-files`, excluding bundled data, images, models and the lockfile). Every file was scanned by `docs/audit/scan.mjs` (file list: `git ls-files` filtered as above, written to /tmp/audit-files.txt) for the patterns listed in the appendix; files with server-side network I/O, write endpoints, rendering loops or WebGL were then read by hand. Findings are split into CONFIRMED (reproduced or read in code), UNCERTAIN (plausible, not reproduced) and PROPOSED/APPLIED corrections.
+
+## CONFIRMED ISSUES
+
+| # | File | Issue | Evidence | Correction |
+|---|---|---|---|---|
+| C1 | lib/ga-lidar-layer.ts | LiDAR layer disappeared permanently after a WebGL context loss | MapLibre logged "Custom layer with id 'ga-lidar-3d' cannot be restored after WebGL context loss" during repeated phone-size runs on this VM | Re-create the layer on `webglcontextrestored` (applied, d0631aa) |
+| C2 | lib/ga-lidar-layer.ts | Touch devices drew dots up to 10 CSS px, blurring points together | shader cap `uMaxPx = 10 * dpr` for all devices | Touch cap 4 CSS px (applied, ea77c7e) |
+| C3 | 16 server files (app/api/fbi/*, ga-hydromet, ga-telemetry, ga-telemetry/recent, ga-traffic, public-live, tiles, lib/connectors/{bls,doj,epa-echo,fbi-cde,fema,sec-edgar,worldbank}) | Upstream `fetch` had no timeout, so one hung public API holds the function until the platform kills it | 20 fetch calls without `signal` | `signal: AbortSignal.timeout(15_000)` on each (applied, d0631aa) |
+| C4 | app/api/petitions/sign/route.ts | Returned `status: "VERIFIED"`, `signatureCount: 142850`, "FISMA High & Zero Trust WIF Authenticated" for any POST; nothing is stored or authenticated | code read | Returns 501 with a plain explanation (applied) |
+| C5 | app/api/health/route.ts | Fell back to a hard-coded commit SHA when `VERCEL_GIT_COMMIT_SHA` is unset, so BuildFreshnessChip could show a false drift/match | code read | `commit: null` when unknown (applied). Remaining fields (`directivesAvailable`, `clearanceLevel`, etc.) are static strings, not measurements — see U4 |
+| C6 | app/api/system-scan/route.ts, app/api/lucid1/route.ts | Served a fabricated "TOP SECRET//SI//NOFORN…" classification marking on a public site | code read | Line removed (applied) |
+| C7 | app/api/telemetry/route.ts → components/LidarGlobe.tsx | SSE "Real-World Telemetry Pulse" is synthetic: 4 hard-coded vessels with `Math.random()` jitter; LidarGlobe popups showed them with MMSI like real AIS | code read | Popup now says "simulated demo track, not live AIS" (applied). Stream itself left in place (see P2) |
+| C8 | app/api/cron/ingest/route.ts | Missing/invalid CRON_SECRET answered 503 (service unavailable) instead of 401 | `curl` → 503 | 401 (applied) |
+| C9 | app/api/tiles/[...path]/route.ts | OSM tile proxy sent an invented contact address (contact@brainlab.ai) in User-Agent; OSM tile policy requires a real contact | code read | UA now points at the repo URL (applied) |
+| C10 | next.config.js vs vercel.json | `/api/*` CORS restricted to brain-lab-six.vercel.app in next.config.js is overridden: production answers `access-control-allow-origin: *` | `curl -D -` on /api/health and /api/ga-live-markers | Not changed — decide which policy is intended (P3) |
+| C11 | k8s/keda-redis-scaler.yaml | References image `brain-lab/sse-consumer:latest`, a Redis stream and secrets that exist nowhere in the repo; cannot be applied | repo search | Superseded by deploy/k8s (P4) |
+| C12 | app/api/metrics/route.ts | Metric names differed from the brief (`nodejs_heap_used_bytes`, `usgs_seismic_events_30d`) | code read | see metrics section of the final report |
+| C13 | eslint | `npx eslint` fails: ESLint 10 with no `eslint.config.*` in the repo, and no `lint` script | tool output | Not changed: the repo uses TypeScript 7, and typescript-eslint (needed by eslint-config-next/typescript) declares `typescript >=4.8.4 <6.1.0`. `tsc --noEmit` is the type gate (P5) |
+| C14 | app/api/health/route.ts, components/LucidMethodologyTrace.tsx | /api/health served constants (`clearanceLevel: NSA_ADMIN_MODE_SENIOR_MANAGER_SPECIFIC`, `directivesAvailable: 3800000`, `deployment: "Vercel Production Edge"`) as if measured; the threat-globe strip showed them as "LIVE FROM /api/health" | `curl /api/health` | Health returns status, commit, `VERCEL_ENV`, timestamp only. The strip keeps the theme figures as constants labelled "THEME FIGURES, NOT MEASURED" (applied) |
+| C15 | app/api/metrics/rum/route.ts | Logged every browser report, one log line per visitor per 30 s | code read | Log removed; values go to the span and the metrics window only (applied) |
+
+## UNCERTAINTIES
+
+| # | Area | Uncertainty |
+|---|---|---|
+| U1 | app/api/metrics | Probes 9 layers through the deployment's own origin; a cold start can take 20–45 s. Scrape interval should be ≥ 60 s with a 55 s timeout. |
+| U2 | module-level `new Map` caches (ga-live-markers, ga-hydromet, geojson-vt-protocol, jurisdiction-cards, marker icons, mesh models) | Bounded by layer/feed count in the code read; not load-tested for growth across long-lived instances. |
+| U3 | Client fetches without timeout (ga-lidar-layer, ga-orbital-layer, ga-patrol-3d, ga-wall-3d, ga-traffic-layer, …) | Browser fetches are cancelled on navigation; a stalled one only delays that layer. Not changed. |
+| U4 | /api/health, /api/system-scan, /api/spark, BUILD_REPORT.md, FULL_SYSTEM_AUDIT*.md | Contain static claims ("VERIFIED / LIVE", "3,800,000 directives", "±2.0cm grounding", "subSecondLatencyMs: 42", Spark "1,000,000 tokens") that are constants, not measurements. Only the commit SHA and classification marking were corrected. |
+| U5 | `any` usage (GodsEyeMap ×28, StateMap ×18, …) | Type holes; no runtime bug traced to them. |
+| U6 | Math.random in ga-patrol-3d, ga-competitors, ga-deck-overlay, AmbientBackground, isolation-forest | Used for simulations, visual effects or model sampling; whether every simulated layer is labelled on screen was not checked. county-matrix and reports pages jitter displayed confidence values — not labelled as simulated. |
+| U7 | Mobile 60 FPS / 16 ms frame budget | Not measurable on this VM (software WebGL, frequent context loss). Desktop frame timings are reported separately. |
+
+## PROPOSED CORRECTIONS (not applied)
+
+- P1: county-matrix and reports pages: stop jittering confidence values with Math.random or label them simulated.
+- P2: /api/telemetry SSE: mark payloads `simulated: true` or replace with a real public AIS source (none keyless found for Georgia).
+- P3: pick one CORS policy: drop `Access-Control-Allow-Origin: *` from vercel.json for `/api/*`, or drop the dead next.config.js header.
+- P4: done — k8s/keda-redis-scaler.yaml deleted, replaced by deploy/k8s/brain-lab.yaml.
+- P5: add an `eslint.config.mjs` (next/core-web-vitals) and a `lint` script.
+- P6: /api/health done (C14). /api/system-scan and /api/spark still return constants.
+- P7: RUM aggregation is per instance and in memory; for fleet-wide numbers export the browser values as OTLP metrics or into a shared store (Redis/Prometheus remote-write).
+- P8: /api/metrics/rum is public and unauthenticated (bounded to 4 KB, validated); add per-IP rate limiting (e.g. Vercel firewall rule) before relying on it.
+
+## MEASUREMENTS (this VM)
+
+All numbers below were measured on this VM; none come from production users.
+
+- Container stack (`deploy/docker-compose.yml`): image built, `/api/health` 200, `/api/metrics` 200 in 1.83 s with all 9 `ga_feed_up` = 1. OTel Collector received 125 spans from 2 resources. Prometheus scraped both targets (`up`), `count(ga_feed_up==1)` = 9, all 8 rules loaded with health `ok`.
+- RUM round trip: POST of a valid report → 204, malformed → 400, values appear in `/api/metrics` as `map_render_fps{page,device}` etc.
+- Load test (`scripts/perf/load.mjs`, one container, localhost):
+  - 200 concurrent, 20 s, `/api/health` + both map pages: 18,283 requests, 914 req/s, 0 errors, p50 211 ms, p95 342 ms, p99 464 ms.
+  - 50 concurrent, 20 s, `/api/ga-live-markers?layer=quakes|tfr` (served from the module cache after the first upstream call): 33,456 requests, 1,673 req/s, 0 errors, p50 27 ms, p95 52 ms, p99 62 ms.
+- Browser frame profile (`/godseye-telemetry`, 1600×1000, street LiDAR over downtown Atlanta): renderer is SwiftShader (CPU software WebGL), 3.7 FPS mean, p95 frame 483 ms, JS heap 104 MB used. LiDAR was still loading after 90 s. This measures the VM's software renderer, not a GPU; it cannot confirm or refute the 16 ms / 60 FPS target.
+
+## NOT DONE, AND WHY
+
+- WebGPU 3D Gaussian Splatting: splats are fitted from many overlapping photographs; USGS LiDAR provides points with x/y/z/class/intensity, no per-point covariance or opacity. Converting points to "splats" would invent geometry rather than render the survey.
+- Kafka/Flink event bus: the app runs as stateless Vercel functions with no long-lived consumer to attach them to.
+- 10,000-concurrent-user test against production: every live-marker request fans out to third-party public APIs (ADS-B, GDOT, USGS, FAA, Bluesky, county ArcGIS). That load would hit those agencies, not just this app. A bounded local test was run instead.
+- E911 queue depth, WebSocket reconnect rate: no Georgia agency publishes a dispatch queue; the app uses no WebSockets.
+
+## APPENDIX — automated scan of every file
+
+Columns are pattern counts (scan before fixes). `post` = POST/PUT/DELETE handlers; `secret` = key-shaped literals (0 everywhere).
+
+| file | lines | fetch | timeout | setInterval | clearInterval | addEL | rmEL | raf | caf | any | random | consoleLog | post | dangerHTML | secret |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| .github/workflows/deploy.yml | 35 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| .github/workflows/roster-health.yml | 67 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| .gitignore | 16 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| BUILD_REPORT.md | 509 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| EVENT_DRIVEN_SELF_HEALING_BLUEPRINT.md | 115 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| FULL_SYSTEM_AUDIT.md | 102 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| FULL_SYSTEM_AUDIT_REPORT.md | 103 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| LUCID1_HONESTY_PROTOCOL_PLAN.md | 104 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| README.md | 47 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| RESEARCH_IMPLEMENTATION_PLAN.md | 61 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/alerts/page.tsx | 174 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/anomalies/page.tsx | 212 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/api/anomalies/route.ts | 20 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/api/benchmarks/amc-gpu/route.ts | 40 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/api/benchmarks/siforest/route.ts | 107 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/api/competitor-pipelines/route.ts | 60 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/api/cron/ingest/route.ts | 55 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 |
+| app/api/cron/process/route.ts | 53 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 |
+| app/api/elections/ops/route.ts | 22 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/api/fbi/crime/route.ts | 113 | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 0 | 0 | 0 | 0 | 0 |
+| app/api/fbi/stream/route.ts | 133 | 1 | 0 | 1 | 1 | 1 | 0 | 0 | 0 | 3 | 0 | 0 | 0 | 0 | 0 |
+| app/api/fbi/wanted/route.ts | 57 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 0 |
+| app/api/feeds/count/route.ts | 38 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/api/ga-camera/route.ts | 32 | 1 | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/api/ga-fires/route.ts | 49 | 1 | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/api/ga-hydromet/route.ts | 70 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/api/ga-lidar/route.ts | 33 | 1 | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/api/ga-live-markers/route.ts | 379 | 6 | 12 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/api/ga-satellites/route.ts | 52 | 1 | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/api/ga-telemetry/recent/route.ts | 57 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/api/ga-telemetry/route.ts | 265 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/api/ga-traffic/route.ts | 45 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/api/health/route.ts | 24 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/api/ingest/cards/route.ts | 26 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/api/ingest/probe/route.ts | 216 | 2 | 4 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/api/ingest/records/route.ts | 31 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/api/ingest/states/records/route.ts | 116 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/api/ingest/territories/probe/route.ts | 31 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/api/ingest/territories/records/route.ts | 52 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/api/lucid1/route.ts | 33 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/api/manifest/discover/route.ts | 57 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/api/manifest/queue/route.ts | 16 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/api/manifest/route.ts | 32 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/api/manifest/transitions/route.ts | 17 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/api/metrics/route.ts | 32 | 1 | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/api/petitions/sign/route.ts | 25 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 1 | 0 | 0 |
+| app/api/public-live/route.ts | 242 | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/api/recommendations/route.ts | 41 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/api/spark/route.ts | 37 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 1 | 0 | 0 |
+| app/api/super-agents/route.ts | 23 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/api/system-scan/route.ts | 44 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/api/telemetry/amc/route.ts | 47 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/api/telemetry/route.ts | 288 | 0 | 0 | 1 | 2 | 1 | 0 | 0 | 0 | 0 | 8 | 0 | 0 | 0 | 0 |
+| app/api/telemetry/stream/route.ts | 91 | 0 | 0 | 2 | 2 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/api/tiles/[...path]/route.ts | 53 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 0 |
+| app/benchmarks/page.tsx | 135 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/bot-pipeline/page.tsx | 456 | 0 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/county-matrix/page.tsx | 118 | 0 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | 0 |
+| app/election-sources/page.tsx | 48 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/evidence/page.tsx | 111 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/forensic-telemetry/page.tsx | 244 | 1 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/globals.css | 663 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/godseye-telemetry/page.tsx | 138 | 0 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/insider-intel/page.tsx | 160 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 0 | 0 | 0 | 0 | 0 |
+| app/jurisdiction-cards/page.tsx | 45 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/jurisdiction-records/page.tsx | 27 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/layout.tsx | 45 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/methodology/page.tsx | 103 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/page.tsx | 430 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/recommendations-hub/page.tsx | 201 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/reports/page.tsx | 194 | 0 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | 0 |
+| app/sitemap.ts | 31 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/sources/page.tsx | 376 | 4 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/telemetry.ts | 21 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 1 | 0 | 0 | 0 |
+| app/test-map/page.tsx | 136 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 5 | 0 | 0 | 0 | 0 | 0 |
+| app/threat-globe/page.tsx | 136 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| app/three-pillars/page.tsx | 159 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| bots/discovery-bot.ts | 98 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| components/AmbientBackground.tsx | 225 | 0 | 0 | 0 | 0 | 5 | 5 | 3 | 2 | 2 | 8 | 0 | 0 | 0 | 0 |
+| components/BuildFreshnessChip.tsx | 63 | 1 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| components/ComplianceNotice.tsx | 31 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| components/Footer.tsx | 117 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| components/GeorgiaAggregateTelemetry.tsx | 430 | 3 | 0 | 4 | 4 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| components/GeorgiaUcrStatewide.tsx | 137 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| components/GodsEyeMap.tsx | 2295 | 0 | 0 | 0 | 0 | 2 | 2 | 4 | 2 | 28 | 0 | 0 | 0 | 0 | 0 |
+| components/LidarGlobe.module.css | 434 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| components/LidarGlobe.tsx | 635 | 0 | 0 | 0 | 0 | 1 | 1 | 3 | 1 | 0 | 0 | 0 | 0 | 0 | 0 |
+| components/LucidMethodologyTrace.tsx | 141 | 1 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| components/MapDebugOverlay.tsx | 318 | 0 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 2 | 0 | 0 | 0 | 0 | 0 |
+| components/MapMenuOverlay.tsx | 12 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 0 |
+| components/Navbar.tsx | 192 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| components/PageEmblemHeader.tsx | 94 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| components/PlatformProbe.tsx | 25 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| components/PublicAdvisoryStream.tsx | 189 | 2 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| components/PublicLivePanel.tsx | 191 | 1 | 0 | 2 | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| components/RealTimeSparkline.tsx | 38 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| components/RealTimeStreamProvider.tsx | 16 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| components/RotatingHeroEmblem.tsx | 26 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| components/StateMap.tsx | 970 | 1 | 0 | 0 | 0 | 0 | 0 | 2 | 1 | 18 | 0 | 5 | 0 | 0 | 0 |
+| components/StatewideAnomalyDashboard.tsx | 772 | 0 | 0 | 2 | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| components/TerritoryCatalogPanel.tsx | 975 | 5 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| components/ThreatGlobe3D.tsx | 463 | 0 | 0 | 0 | 0 | 1 | 1 | 4 | 1 | 0 | 0 | 0 | 0 | 0 | 0 |
+| components/VitalsProbe.tsx | 11 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| components/WhiteHouseDigitalTwin3D.tsx | 670 | 0 | 0 | 1 | 1 | 0 | 0 | 5 | 1 | 0 | 1 | 0 | 0 | 0 | 0 |
+| components/WhiteHouseReal3DViewer.tsx | 84 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| components/ambient-store.ts | 19 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| components/election-sources/ElectionSourcesPanel.tsx | 320 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| components/fbi/FbiDataSection.tsx | 967 | 2 | 0 | 3 | 3 | 0 | 0 | 0 | 0 | 5 | 0 | 0 | 0 | 0 | 0 |
+| components/jurisdiction-cards/JurisdictionCardGrid.tsx | 209 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| components/jurisdiction-records/JurisdictionRecordList.tsx | 143 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| hooks/useAnomalyStream.ts | 99 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 2 | 1 | 0 | 0 | 0 | 0 |
+| hooks/useSSE.ts | 81 | 1 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| hooks/useTelemetryCanvas.ts | 36 | 0 | 0 | 0 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| hooks/useTelemetryStream.ts | 73 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 0 | 0 | 0 | 0 | 0 |
+| k8s/keda-redis-scaler.yaml | 65 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/adapters/jurisdictions.ts | 167 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/adapters/state-datasets.ts | 423 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/adapters/territories.ts | 27 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/adaptive-telemetry-encoder.ts | 123 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/adapts.ts | 130 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/addaeil.ts | 94 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/anomaly-detector.ts | 84 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/anomaly-surfaces.ts | 49 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/arcus.ts | 108 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/autonomous-agents.ts | 106 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/autosad.ts | 96 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/competitor-pipeline.ts | 96 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 0 |
+| lib/competitor-pipelines.ts | 385 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/connectors/arcgis.ts | 87 | 1 | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/connectors/bls.ts | 140 | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 | 0 | 0 | 0 | 0 |
+| lib/connectors/ckan.ts | 84 | 1 | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/connectors/csv.ts | 150 | 2 | 4 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/connectors/doj.ts | 138 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/connectors/epa-echo.ts | 100 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 0 |
+| lib/connectors/fbi-cde.ts | 68 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/connectors/fema.ts | 71 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/connectors/index.ts | 54 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/connectors/sec-edgar.ts | 80 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/connectors/socrata.ts | 91 | 1 | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/connectors/worldbank.ts | 61 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 0 | 0 | 0 | 0 | 0 |
+| lib/cron-auth.ts | 15 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/data.ts | 585 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/dess.ts | 68 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/deterministic-telemetry.ts | 40 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/disney-live.ts | 259 | 1 | 0 | 2 | 2 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/elections/change-store.ts | 125 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/elections/directory-drift.ts | 77 | 0 | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/elections/eavs-2024-registration.ts | 408 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/elections/election-offices.ts | 86 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/elections/entity-name-verifier.ts | 74 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/elections/myers-diff.ts | 114 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/elections/noncitizen-voting-cases.ts | 146 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/elections/ops.ts | 158 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/elections/page-fingerprint.ts | 65 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/elections/probe-runner.ts | 144 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/elections/probe-telemetry.ts | 65 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/elections/registration-2026.ts | 62 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/elections/registration.ts | 68 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/elections/source-health-store.ts | 75 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/elections/source-health.ts | 196 | 0 | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/elections/source-probe-policy.ts | 45 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/elections/source-reliability.ts | 69 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/elections/types.ts | 57 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/executive-pillar-intel.ts | 195 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/fbi-skills-catalog.ts | 175 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/ga-anomaly-bulbs.ts | 331 | 1 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/ga-beacon-categories.ts | 45 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/ga-change-layer.ts | 243 | 1 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/ga-company-profiles.json | 1598 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/ga-competitors.ts | 556 | 0 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 2 | 0 | 0 | 0 | 0 |
+| lib/ga-deck-overlay.ts | 844 | 0 | 0 | 0 | 0 | 0 | 0 | 6 | 2 | 0 | 2 | 0 | 0 | 0 | 0 |
+| lib/ga-fbi-feed.ts | 69 | 2 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/ga-fires/parse.ts | 84 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/ga-h3-telemetry.ts | 173 | 1 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/ga-hydromet-layer.ts | 181 | 1 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/ga-hydromet/normalize.ts | 112 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/ga-lidar-layer.ts | 477 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/ga-lidar/ept.ts | 350 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/ga-lidar/laz.ts | 49 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/ga-lidar/projects.json | 777 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/ga-live-markers-layer.ts | 496 | 2 | 2 | 3 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/ga-live-markers/parse.ts | 592 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/ga-live-markers/snapshot.ts | 16 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/ga-live-status.ts | 150 | 0 | 0 | 1 | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/ga-marker-icons.ts | 129 | 0 | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/ga-marker-scale.ts | 41 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/ga-mesh-models.ts | 236 | 0 | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/ga-orbital-layer.ts | 306 | 2 | 0 | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/ga-patrol-3d.ts | 614 | 2 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 5 | 0 | 0 | 0 | 0 |
+| lib/ga-point-colors.ts | 45 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/ga-satellites/tle.ts | 87 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/ga-telemetry/aggregate.ts | 117 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/ga-telemetry/models.ts | 207 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/ga-traffic-layer.ts | 162 | 1 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/ga-traffic/normalize.ts | 99 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/ga-ucr/summarize.ts | 120 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/ga-wall-3d.ts | 517 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/geojson-vt-protocol.ts | 99 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 8 | 0 | 0 | 0 | 0 | 0 |
+| lib/godseye-layers.ts | 396 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/gpu-privacy.ts | 58 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/isolation-forest.ts | 55 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 5 | 0 | 0 | 0 | 0 |
+| lib/isolation-tree.ts | 68 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 0 | 0 | 0 | 0 |
+| lib/jurisdiction-cards/outliers.ts | 65 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/jurisdiction-cards/pipeline.ts | 333 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/jurisdiction-cards/reference.ts | 62 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/jurisdiction-cards/types.ts | 88 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/jurisdiction-records/records.ts | 88 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/kafka-partition-router.ts | 52 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/lidar-globe-sources.ts | 88 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/lucid1-honesty-protocol.ts | 65 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/manifest/store.ts | 490 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/manifest/types.ts | 186 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 3 | 0 | 0 | 0 | 0 | 0 |
+| lib/map-8k-export.ts | 82 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/metrics/prometheus.ts | 73 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/nsa-super-agent-protocol.ts | 94 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/page-hinckley.ts | 71 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/provenance-norm.ts | 38 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/provenance.ts | 41 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/public-live/jurisdictions.ts | 70 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/public-live/laus-latest.json | 3232 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/recommendation-engine.ts | 161 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/recommendation-matrix.ts | 847 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/recommendations-catalog.ts | 39129 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/schema.ts | 81 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/siforest.ts | 130 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/sky-photo.ts | 187 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/sources/expanded-p1-sources.ts | 62 | 5 | 10 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/spark-llm.ts | 74 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 | 0 |
+| lib/starfield/index.js | 348 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 | 0 | 0 | 0 |
+| lib/statewide-anomalies.ts | 135221 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/streaming-isolation-forest.ts | 161 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 | 0 | 0 | 0 |
+| lib/telemetry-arcs.ts | 182 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/telemetry-catalog.ts | 308 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/telemetry-renderer.ts | 121 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 1 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/telemetry-ring-buffer.ts | 41 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/telemetry-store.ts | 171 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/telemetry-stream-engine.ts | 268 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/telemetry-upgrade-models.ts | 197 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/territory-catalog.ts | 139 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/webgpu-amc-compute.ts | 62 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| lib/whitehouse-digital-twin.ts | 288 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| next-env.d.ts | 8 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| next.config.js | 21 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| package.json | 63 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| postcss.config.mjs | 6 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| public/maplibre-gl-shared.mjs | 6 | 1 | 3 | 0 | 0 | 2 | 1 | 1 | 0 | 0 | 1 | 9 | 0 | 0 | 0 |
+| public/maplibre-gl-starfield.mjs | 348 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 | 0 | 0 | 0 |
+| public/maplibre-gl-worker.mjs | 9 | 2 | 10 | 0 | 0 | 2 | 1 | 0 | 0 | 0 | 1 | 9 | 0 | 0 | 0 |
+| public/workers/ambient.worker.js | 159 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 8 | 0 | 0 | 0 | 0 |
+| scripts/build-company-profiles.py | 269 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| scripts/build-eavs-registration.py | 53 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| scripts/build-ga-lidar-index.mjs | 29 | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |
+| scripts/build-ga-roads.py | 98 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| scripts/build-ga-ucr-snapshot.ts | 99 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 3 | 0 | 0 | 0 |
+| scripts/build-ga-wall.py | 152 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| scripts/build-infra-advisories.mjs | 215 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 6 | 0 | 0 | 0 |
+| scripts/build-laus-snapshot.mjs | 55 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |
+| scripts/ga_change/README.md | 18 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| scripts/ga_change/detect.py | 439 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| scripts/ga_change/prithvi_mae.py | 767 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| scripts/ga_change/requirements.txt | 11 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| scripts/probe-elections.ts | 104 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 0 | 0 | 0 |
+| scripts/verify-cards.mjs | 75 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 5 | 0 | 0 | 0 |
+| tailwind.config.js | 38 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| tests/elections/myers-diff.test.ts | 80 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| tests/elections/probe.test.ts | 162 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| tests/elections/registration-cases.test.ts | 95 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| tests/ga-fires/parse.test.ts | 43 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| tests/ga-hydromet/normalize.test.ts | 48 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| tests/ga-lidar/ept.test.ts | 129 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| tests/ga-live-markers/cameras.test.ts | 62 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| tests/ga-live-markers/e911.test.ts | 75 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| tests/ga-live-markers/infra.test.ts | 59 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| tests/ga-live-markers/parse.test.ts | 140 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| tests/ga-live-markers/snapshot.test.ts | 21 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| tests/ga-satellites/tle.test.ts | 50 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| tests/ga-telemetry/aggregate.test.ts | 44 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| tests/ga-telemetry/models.test.ts | 53 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| tests/ga-traffic/normalize.test.ts | 30 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| tests/ga-ucr/summarize.test.ts | 54 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| tests/map/sky-photo.test.ts | 55 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| tests/map/static-assets.test.ts | 38 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| tests/metrics/prometheus.test.ts | 40 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| tests/public-live/coverage.test.ts | 30 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| tsconfig.json | 42 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| vercel.json | 39 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |

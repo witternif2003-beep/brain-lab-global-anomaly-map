@@ -1,0 +1,41 @@
+groups:
+  - name: brain-lab-slo
+    rules:
+      - record: ga:feed_availability:ratio_1h
+        expr: avg_over_time(avg(ga_feed_up)[1h:1m])
+      # SLO: 99% of layer probes up over 30 days (error budget 1%).
+      - alert: FeedErrorBudgetFastBurn
+        expr: (1 - avg_over_time(avg(ga_feed_up)[1h:1m])) > 14.4 * 0.01
+        for: 5m
+        labels: { severity: page }
+        annotations: { summary: 'Live layers burning the 30-day error budget 14.4x faster than allowed (1h window)' }
+      - alert: FeedErrorBudgetSlowBurn
+        expr: (1 - avg_over_time(avg(ga_feed_up)[6h:1m])) > 6 * 0.01
+        for: 30m
+        labels: { severity: ticket }
+        annotations: { summary: 'Live layers burning the error budget 6x faster than allowed (6h window)' }
+      - alert: FeedDown
+        expr: ga_feed_up == 0
+        for: 10m
+        labels: { severity: ticket }
+        annotations: { summary: 'Layer {{ $labels.layer }} has failed for 10 min' }
+      - alert: TransitStale
+        expr: transit_gtfs_staleness_seconds > 300
+        for: 10m
+        labels: { severity: ticket }
+        annotations: { summary: 'Newest GTFS-realtime bus position is older than 5 min' }
+      - alert: FeedSlow
+        expr: ga_feed_request_duration_ms > 10000
+        for: 15m
+        labels: { severity: ticket }
+        annotations: { summary: 'Layer {{ $labels.layer }} takes over 10 s to load' }
+      - alert: RenderBelow30Fps
+        expr: map_render_fps < 30 and rum_reports >= 5
+        for: 15m
+        labels: { severity: ticket }
+        annotations: { summary: 'Median frame rate on {{ $labels.page }} ({{ $labels.device }}) below 30 FPS' }
+      - alert: MobileHeapOver512MB
+        expr: memory_heap_usage_bytes{device="touch"} > 512 * 1024 * 1024
+        for: 15m
+        labels: { severity: ticket }
+        annotations: { summary: 'Median touch-device JS heap above 512 MB on {{ $labels.page }}' }
