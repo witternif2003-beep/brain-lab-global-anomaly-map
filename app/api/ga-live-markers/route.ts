@@ -1,3 +1,6 @@
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+import { gunzipSync } from "node:zlib";
 import { NextResponse, type NextRequest } from "next/server";
 import {
   augusta911Markers,
@@ -52,8 +55,8 @@ const gtfsRt = (agency: string, url: string): Feed => ({
 
 const OSM_TTL_S = 6 * 3600;
 const OVERPASS = [
-  { url: "https://overpass-api.de/api/interpreter", timeoutMs: 65_000 },
-  { url: "https://overpass.private.coffee/api/interpreter", timeoutMs: 45_000 },
+  { url: "https://overpass-api.de/api/interpreter", timeoutMs: 50_000 },
+  { url: "https://overpass.private.coffee/api/interpreter", timeoutMs: 30_000 },
 ];
 const OSM_QUERY = `[out:json][timeout:60][bbox:${GA_BBOX.south},${GA_BBOX.west},${GA_BBOX.north},${GA_BBOX.east}];node["highway"="traffic_signals"];out skel qt;(nwr["amenity"~"^(police|fire_station)$"];nwr["emergency"="siren"];nwr["man_made"~"^(mast|tower)$"]["tower:type"="communication"];node["highway"="speed_camera"];nwr["man_made"="surveillance"]["surveillance:type"~"^alpr$",i];);out center tags qt;`;
 let osmMemo: { at: number; data: Promise<Record<OsmInfraKind, LiveMarker[]>> } | null = null;
@@ -83,11 +86,25 @@ function osmInfra() {
   return osmMemo.data;
 }
 
+const OSM_SNAPSHOT = path.join(process.cwd(), "data/osm/ga-infra-snapshot.json.gz");
+let osmSnapshotMemo: Promise<Record<OsmInfraKind, LiveMarker[]>> | null = null;
+
+/** Committed copy of the same Overpass query (scripts/build-ga-osm-snapshot.mjs); markers carry the snapshot's OSM base time. */
+function osmSnapshot() {
+  osmSnapshotMemo ??= readFile(OSM_SNAPSHOT).then((b) => parseOverpassInfra(JSON.parse(gunzipSync(b).toString("utf8"))));
+  return osmSnapshotMemo;
+}
+
 const osm = (kind: OsmInfraKind, source: string): LayerSpec => ({
   ttlS: OSM_TTL_S,
   source: `${source} mapped in OpenStreetMap (ODbL), Overpass API; locations only, re-queried every 6 h`,
   sourceUrl: "https://www.openstreetmap.org/copyright",
   feeds: [{ id: "OSM Overpass", url: OVERPASS[0].url, markers: async () => (await osmInfra())[kind] }],
+  fallback: [{
+    id: "OSM snapshot committed with the app (dated by each marker's OSM base time)",
+    url: "https://www.openstreetmap.org/copyright",
+    markers: async () => (await osmSnapshot())[kind],
+  }],
 });
 
 const TFR_LIST = "https://tfr.faa.gov/tfrapi/exportTfrList";

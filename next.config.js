@@ -2,6 +2,9 @@
 const nextConfig = {
   poweredByHeader: false,
   serverExternalPackages: ['laz-perf'],
+  outputFileTracingIncludes: {
+    '/api/ga-live-markers': ['./data/osm/ga-infra-snapshot.json.gz'],
+  },
   productionBrowserSourceMaps: false,
   async headers() {
     return [
