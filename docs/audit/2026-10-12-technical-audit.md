@@ -387,3 +387,12 @@ Columns are pattern counts (scan before fixes). `post` = POST/PUT/DELETE handler
 | RUM: `gaussian_splats_drawn`, `gaussian_splat_webgpu_ratio` | Added | `tests/metrics/rum.test.ts` |
 | "7,000 metrics" | Not done. 24 metric families; 52 production series before change | `curl /api/metrics` |
 | Runbook claims (PlayCanvas FPS table, 1,557 MB -> 105 MB heap, wall-widening spec) | Not adopted; third-party or out of scope | see FINAL_REPORT section 3 |
+
+## Addendum: smaller LiDAR points
+
+| Item | Change | Evidence |
+| --- | --- | --- |
+| Map LiDAR point diameter (`lib/ga-lidar-layer.ts`) | 0.7x -> 0.45x projected node spacing; min 1.5 -> 1 CSS px; caps 10 -> 6 (desktop), 4 -> 3 (touch) | CDP before/after on /threat-globe ATL STREET LIDAR |
+| Map LiDAR depth | +1 octree level on desktop only; 5 M desktop / 2.5 M touch budgets unchanged | `window.__gaLidar.targetDepth` |
+| Splat sigma (`components/LidarSplatViewer.tsx`, `lib/ga-lidar/gaussian.ts` `sizeFactor`) | 1.0x -> 0.4x mean 3-NN distance, clamp 0.08-1.5 m -> 0.03-0.6 m | `tests/ga-lidar/gaussian.test.ts` |
+| Attachment claims (SHARP-GS 8K 250 FPS, 562 MB -> 13.6 MB, StreamingGS 45.7x, wall widening) | Not adopted: third-party results on other scenes/hardware, or out of scope | FINAL_REPORT section 3 |

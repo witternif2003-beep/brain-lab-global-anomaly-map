@@ -67,6 +67,14 @@ validated on local kind, CI workflow, mocked-upstream load test, WebGL GPU pass 
 · Metrics: 24 metric families defined (22 server/RUM + gaussian_splats_drawn,
   gaussian_splat_webgpu_ratio). Production /api/metrics returned 52 series before this change.
   Not padded to 7,000; series exist only where something is measured.
+· Point size (map LiDAR, lib/ga-lidar-layer.ts): diameter cut from 0.7x to 0.45x the projected node
+  point spacing, minimum 1 CSS px (was 1.5), caps 6 CSS px desktop (was 10) / 3 touch (was 4).
+  Desktop requests one extra octree level (point budget unchanged at 5 M) so the smaller points close up.
+· Splat size (/lidar-splat): Gaussian sigma = 0.4x the mean 3-neighbour distance, clamped 0.03-0.6 m
+  (was 1.0x, 0.08-1.5 m).
+· Not adopted from the two new attachments: SHARP-GS 8K binning, GPU tile radix sort (PlayCanvas
+  already sorts internally), StreamingGS/MobileSplat, Flink+PDAL, WebGPU Inspector, the 562 MB -> 13.6 MB
+  memory figure (other scenes), and the wall-widening / concrete-curing spec (not software in this repo).
 · Performance Impact: NOT MEASURED ON A GPU. This VM renders with SwiftShader (CPU): 3.7 FPS mean,
   p95 frame 483 ms on /godseye-telemetry at 1600x1000. No before/after GPU numbers exist.
 · Memory Reduction: none claimed. JS heap measured 104 MB used during the VM run.

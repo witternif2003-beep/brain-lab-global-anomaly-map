@@ -25,6 +25,8 @@ const HALF_3857 = 350;
 const SPLAT_BUDGET_DESKTOP = 1_200_000;
 const SPLAT_BUDGET_TOUCH = 400_000;
 const FETCH_PARALLEL = 6;
+/** Gaussian sigma as a fraction of the mean 3-neighbour distance. */
+const SPLAT_SIZE_FACTOR = 0.4;
 
 export interface SplatStats {
   status: string;
@@ -227,7 +229,7 @@ export default function LidarSplatViewer() {
       s.status = 'building Gaussians (3-nearest-neighbour scales)';
       publish();
       await new Promise((r) => setTimeout(r, 0));
-      const set = gaussianize(pts.position, pts.rgb, { minScale: 0.08, maxScale: 1.5 });
+      const set = gaussianize(pts.position, pts.rgb, { minScale: 0.03, maxScale: 0.6, sizeFactor: SPLAT_SIZE_FACTOR });
       const cols = toPlyColumns(set, 0.92);
       const n = set.count;
       for (let i = 0; i < n; i++) {
@@ -298,7 +300,7 @@ export default function LidarSplatViewer() {
         </div>
       </div>
       <p className="text-[11px] text-slate-500">
-        One isotropic Gaussian per USGS 3DEP laser return (noise classes dropped), sized by the mean distance to its 3 nearest
+        One isotropic Gaussian per USGS 3DEP laser return (noise classes dropped), sized at 0.4× the mean distance to its 3 nearest
         neighbours and coloured by ASPRS class, the same initialisation 3D Gaussian Splatting uses before training. No photo
         training or optimisation is done, so this is a splat rendering of measured points, not a photoreal radiance field.
         Rendered by PlayCanvas Engine 2.23.0 (WebGPU, falling back to WebGL2). Source:{' '}

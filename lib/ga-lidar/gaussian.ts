@@ -22,6 +22,8 @@ export interface GaussianSet {
 export interface GaussianOptions {
   minScale?: number;
   maxScale?: number;
+  /** Multiplier on the neighbour distance before clamping; below 1 shrinks each splat. */
+  sizeFactor?: number;
   opacity?: number;
 }
 
@@ -86,7 +88,10 @@ export function neighbourScales(position: Float32Array, minScale = 0.05, maxScal
 }
 
 export function gaussianize(position: Float32Array, rgb: Uint8Array, opts: GaussianOptions = {}): GaussianSet {
-  return { count: position.length / 3, position, scale: neighbourScales(position, opts.minScale, opts.maxScale), rgb };
+  const k = opts.sizeFactor ?? 1;
+  const scale = neighbourScales(position, (opts.minScale ?? 0.05) / k, (opts.maxScale ?? 2) / k);
+  for (let i = 0; i < scale.length; i++) scale[i] *= k;
+  return { count: position.length / 3, position, scale, rgb };
 }
 
 const logit = (p: number) => Math.log(p / (1 - p));

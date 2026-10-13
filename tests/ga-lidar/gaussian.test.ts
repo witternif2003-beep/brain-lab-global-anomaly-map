@@ -25,3 +25,12 @@ test('ply columns encode log scale, identity rotation, SH DC colour and logit op
   assert.ok(Math.abs(c.f_dc_1[0] * SH_C0 + 0.5) < 1e-6);
   assert.ok(Math.abs(c.opacity[0]) < 1e-6);
 });
+
+test('sizeFactor shrinks neighbour scales and clamps after scaling', () => {
+  const pts: number[] = [];
+  for (let x = 0; x < 10; x++) for (let y = 0; y < 10; y++) pts.push(x, y, 0);
+  const set = gaussianize(new Float32Array(pts), new Uint8Array(300), { minScale: 0.01, maxScale: 0.3, sizeFactor: 0.4 });
+  assert.ok(Math.abs(set.scale[55] - 0.3) < 1e-6);
+  const loose = gaussianize(new Float32Array(pts), new Uint8Array(300), { minScale: 0.01, maxScale: 5, sizeFactor: 0.4 });
+  assert.ok(Math.abs(loose.scale[55] - 0.4) < 1e-6);
+});
