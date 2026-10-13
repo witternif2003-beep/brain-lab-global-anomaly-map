@@ -413,3 +413,16 @@ Columns are pattern counts (scan before fixes). `post` = POST/PUT/DELETE handler
 | Phase 4: Core Web Vitals | LCP, INP, CLS present; TTFB and FID not collected | FID is deprecated in favour of INP. TTFB can be added to RUM if wanted. |
 | Phase 5: RED metrics, mock-only load test, Kubernetes | Already present | ga_feed_up / duration / source_errors; scripts/perf/mock-fetch.mjs; Helm chart on local kind. Queue depth / consumer lag: no queue exists. |
 | Phase 5: Gatling simulation | Not added | Equivalent bounded Node load test already in repo; the "914 req/s, p95 342 ms" target is this app's own earlier local result, not an external benchmark. |
+
+## Addendum: satellite imagery with 3D terrain everywhere on /godseye-telemetry
+
+| Item | Decision | Evidence / reason |
+| --- | --- | --- |
+| Satellite + 3D terrain by default | Done: `BASEMAPS.satellite` (the initial style) now carries the AWS Terrarium `terrain-dem` source and `terrain: { exaggeration: 1.5 }` | Before, the default SATELLITE view was a flat draped image (user screenshots, build 73730d1). Local CDP, 390x844 touch viewport: `getTerrain()` = `{source:'terrain-dem', exaggeration:1.5}` on load; `queryTerrainElevation` at 34.74N, -84.11W (Blue Ridge) = 1128 m (exaggerated). |
+| SATELLITE and TOPO switching | Done: `switchBasemap` no longer calls `setTerrain(null)` for these; it re-applies terrain after `setStyle` | CDP: TOPO -> terrain on, 53 layers; SATELLITE -> terrain on, 52 layers (same layer counts as before the change, so no overlay lost). |
+| Existing controls | Kept | TERRAIN, MAP, 2D and STREET LIDAR unchanged. 2D still turns terrain off on request (user-initiated). |
+| Street LiDAR on terrain | Verified | `lib/ga-lidar-layer.ts` already lifts points onto `queryTerrainElevation` + height above ground. CDP downtown Atlanta z18 pitch 75 with terrain: status ready, 2,485,759 points, 0 errors (touch budget 2.5 M). |
+| U: scale bar reads "NaN ft" at street zoom + steep pitch with terrain | Not fixed | MapLibre 6 `ScaleControl` unprojects the bottom of the canvas; with terrain at pitch 75 that point can miss the surface. Upstream behaviour; cosmetic. |
+| U: blur near the horizon on phones | Not fixed | Steep-pitch texture stretch is inherent to draped raster imagery; terrain does not add imagery resolution. Esri World Imagery is the source (z21 max). |
+| Mapbox Standard Satellite / Cesium World Terrain / Google Photorealistic 3D Tiles | Not added | All need a provider account key and billing; not available. |
+| "+7000 telemetry" | Not added | No new measured quantity came with this change; metric families stay at the finite measured set. |

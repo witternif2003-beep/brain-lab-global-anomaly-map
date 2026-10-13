@@ -129,8 +129,10 @@ const BASEMAPS = {
         maxzoom: 21,
         attribution: '© Esri, Maxar, Earthstar Geographics',
       },
+      'terrain-dem': TERRAIN_DEM,
     },
     layers: [{ id: 'sat', type: 'raster', source: 'sat' }],
+    terrain: { source: 'terrain-dem', exaggeration: 1.5 },
   },
   dark: 'https://demotiles.maplibre.org/style.json',
   terrain: {
@@ -173,6 +175,7 @@ const BASEMAPS = {
       { id: 'usgstopo', type: 'raster', source: 'usgstopo' },
       { id: 'trails', type: 'raster', source: 'trails', paint: { 'raster-opacity': 0.9 } },
     ],
+    terrain: { source: 'terrain-dem', exaggeration: 1.5 },
   },
 };
 
@@ -1597,11 +1600,13 @@ export default function GodsEyeMap({
       });
       map.easeTo({ pitch: 60, bearing: -12, duration: 800 });
     } else if (next === 'satellite' || next === 'topo') {
-      try {
-        (map as any).setTerrain?.(null);
-      } catch {}
       map.setStyle(BASEMAPS[next] as any);
-      map.once('styledata', () => addMapLayers(map));
+      map.once('styledata', () => {
+        try {
+          (map as any).setTerrain?.({ source: 'terrain-dem', exaggeration: 1.5 });
+        } catch {}
+        addMapLayers(map);
+      });
     } else {
       try {
         (map as any).setTerrain?.(null);

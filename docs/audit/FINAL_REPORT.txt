@@ -147,3 +147,11 @@ validated on local kind, CI workflow, mocked-upstream load test, WebGL GPU pass 
   3D terrain already in place), Vercel Drains (Hobby plan), WebGPU timestamp queries (no GPU here),
   gen_ai.* attributes (/api/spark makes no model call), Gatling, offline maps, accounts, subscriptions.
 · Not claimed: Mapbox "60 FPS desktop and mobile" (vendor statement, not this app).
+
+9. SATELLITE + 3D TERRAIN EVERYWHERE (/godseye-telemetry)
+· Done: default SATELLITE style and TOPO now load with AWS Terrarium 3D terrain (1.5x); switching
+  to either keeps terrain on. TERRAIN, MAP, 2D, STREET LIDAR and all live layers unchanged.
+· Measured (local, phone-sized touch viewport): terrain on at load; Blue Ridge elevation sampled;
+  street LiDAR over downtown Atlanta on terrain: 2,485,759 points, 0 errors.
+· Not fixed: MapLibre scale bar shows "NaN ft" at steep pitch on terrain; horizon blur on phones
+  (draped imagery). Not added: Mapbox / Cesium / Google 3D Tiles (need provider keys).
