@@ -4,7 +4,7 @@ import * as maplibregl from "maplibre-gl";
 import { setWorkerUrl } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 
-setWorkerUrl("/maplibre-gl-worker.mjs");
+setWorkerUrl(`/maplibre-gl-worker.mjs?v=${maplibregl.getVersion()}`);
 
 export default function TestMap() {
   const ref = useRef<HTMLDivElement>(null);

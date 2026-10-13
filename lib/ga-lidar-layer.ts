@@ -501,8 +501,9 @@ export function addGaLidarLayers(map: MapLibreMap): void {
   if (!restoreHooked.has(map)) {
     restoreHooked.add(map);
     map.on('webglcontextrestored', () => {
-      if (map.getLayer('ga-lidar-3d')) map.removeLayer('ga-lidar-3d');
-      map.addLayer(new GaLidar3DLayer());
+      map.once('style.load', () => {
+        if (!map.getLayer('ga-lidar-3d')) map.addLayer(new GaLidar3DLayer());
+      });
     });
   }
 }

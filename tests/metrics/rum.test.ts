@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { formatPrometheus } from '../../lib/metrics/prometheus';
 import { RumWindow, parseRumSample } from '../../lib/metrics/rum';
 
-const base = { page: '/godseye-telemetry', fps: 58, frameMsP95: 21, heapBytes: 2e8, netMbps: 12, lidarPoints: null, lidarGpuMsP95: null, splats: null, splatRenderer: null, lcpMs: 900, inpMs: 80, cls: 0.01, touch: true };
+const base = { page: '/godseye-telemetry', fps: 58, frameMsP95: 21, heapBytes: 2e8, netMbps: 12, lidarPoints: null, lidarGpuMsP95: null, splats: null, splatRenderer: null, webglContextLosses: null, lcpMs: 900, inpMs: 80, cls: 0.01, touch: true };
 
 test('parseRumSample rejects missing or out-of-range frame data and buckets unknown pages', () => {
   assert.equal(parseRumSample({ ...base, fps: -1 }), null);
@@ -45,4 +45,16 @@ test('splat viewer fields: renderer whitelist and WebGPU share', () => {
   assert.deepEqual(ratio.labels, { page: '/lidar-splat', device: 'desktop' });
   assert.equal(ratio.value, 0.5);
   assert.equal(g.find((x) => x.name === 'gaussian_splats_drawn')!.values[0].value, 900_000);
+});
+
+test('webgl_context_losses sums per-report losses and is absent without a map', () => {
+  const now = Date.now();
+  const w = new RumWindow();
+  w.add(parseRumSample({ ...base, webglContextLosses: 1 })!, now);
+  w.add(parseRumSample({ ...base, webglContextLosses: 2 })!, now);
+  w.add(parseRumSample({ ...base, page: '/lidar-splat' })!, now);
+  const text = formatPrometheus(w.gauges(now));
+  assert.match(text, /webgl_context_losses\{page="\/godseye-telemetry",device="touch"\} 3/);
+  assert.doesNotMatch(text, /webgl_context_losses\{page="\/lidar-splat"/);
+  assert.equal(parseRumSample({ ...base, webglContextLosses: -1 })?.webglContextLosses, null);
 });

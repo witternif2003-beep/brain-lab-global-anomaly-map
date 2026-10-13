@@ -14,6 +14,8 @@ export interface RumSample {
   splats: number | null;
   /** Graphics API the splat viewer got (WebGPU, else WebGL2). */
   splatRenderer: 'webgpu' | 'webgl2' | null;
+  /** WebGL context losses on the main map since the previous report. */
+  webglContextLosses: number | null;
   lcpMs: number | null;
   inpMs: number | null;
   cls: number | null;
@@ -46,6 +48,7 @@ export function parseRumSample(raw: unknown): RumSample | null {
     lidarGpuMsP95: num(r.lidarGpuMsP95, 60_000),
     splats: num(r.splats, 1e9),
     splatRenderer: r.splatRenderer === 'webgpu' || r.splatRenderer === 'webgl2' ? r.splatRenderer : null,
+    webglContextLosses: num(r.webglContextLosses, 1_000),
     lcpMs: num(r.lcpMs, 600_000),
     inpMs: num(r.inpMs, 600_000),
     cls: num(r.cls, 100),
@@ -92,6 +95,14 @@ export class RumWindow {
         values: series((xs) => {
           const r = xs.filter((s) => s.splatRenderer !== null);
           return r.length ? r.filter((s) => s.splatRenderer === 'webgpu').length / r.length : null;
+        }),
+      },
+      {
+        name: 'webgl_context_losses',
+        help: 'WebGL context losses on the main map reported in the last 5 min (GPU memory exhaustion or GPU reset).',
+        values: series((xs) => {
+          const v = xs.map((s) => s.webglContextLosses).filter((x): x is number => x !== null);
+          return v.length ? v.reduce((a, b) => a + b, 0) : null;
         }),
       },
       { name: 'web_vitals_lcp_ms_p75', help: 'p75 Largest Contentful Paint.', values: series(pct((s) => s.lcpMs, 0.75)) },

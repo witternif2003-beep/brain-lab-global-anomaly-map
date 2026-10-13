@@ -581,7 +581,7 @@ export default function StateMap({
     const webgpuAvailable = typeof navigator !== 'undefined' && 'gpu' in navigator;
 
     // Initialize MapLibre Map with dark satellite style by default
-    maplibregl.setWorkerUrl('/maplibre-gl-worker.mjs');
+    maplibregl.setWorkerUrl(`/maplibre-gl-worker.mjs?v=${maplibregl.getVersion()}`);
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: BASEMAPS.satellite as any,

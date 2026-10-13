@@ -35,6 +35,7 @@ export default function RenderMetricsProbe() {
     });
     po.observe({ type: "resource", buffered: false });
 
+    let lossesSeen = 0;
     const report = () => {
       const f = frames.filter((d) => d > 0 && d < 1_000).sort((a, b) => a - b);
       frames = [];
@@ -52,9 +53,15 @@ export default function RenderMetricsProbe() {
         lidarGpuMsP95: lidar?.status === "ready" ? lidar.gpuMsP95 ?? null : null,
         splats: window.__gaSplat?.status === "ready" ? window.__gaSplat.splats : null,
         splatRenderer: window.__gaSplat?.device ?? null,
+        webglContextLosses: null,
         ...vitals,
         touch: navigator.maxTouchPoints > 0,
       };
+      const gpu = (window as unknown as { __gaGpu?: { contextLost: number } }).__gaGpu;
+      if (gpu) {
+        s.webglContextLosses = gpu.contextLost - lossesSeen;
+        lossesSeen = gpu.contextLost;
+      }
       bytes = 0;
       busyMs = 0;
       (window as unknown as { __gaPerf?: RumSample }).__gaPerf = s;

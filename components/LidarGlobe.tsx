@@ -147,7 +147,7 @@ export default function LidarGlobe() {
 
   useEffect(() => {
     if (!mapElRef.current) return;
-    maplibregl.setWorkerUrl("/maplibre-gl-worker.mjs");
+    maplibregl.setWorkerUrl(`/maplibre-gl-worker.mjs?v=${maplibregl.getVersion()}`);
 
     const initial = useTelemetryStore.getState();
     const map = new maplibregl.Map({

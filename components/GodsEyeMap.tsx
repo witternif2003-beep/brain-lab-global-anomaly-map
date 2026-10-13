@@ -32,6 +32,8 @@ const ALLY_STATE_CODES = ['AL', 'FL', 'NC', 'SC', 'TN', 'TX', 'VA'];
 const STARMAP_8K_MIN_DEVICE_PX = 1920;
 /** Phone/tablet GPU memory guard: device pixel ratio cap for the WebGL map canvas on touch devices. */
 const TOUCH_MAX_PIXEL_RATIO = 2;
+/** Zoom levels of off-screen tiles kept in MapLibre's tile cache on touch devices (MapLibre default 5). */
+const TOUCH_TILE_CACHE_ZOOM_LEVELS = 3;
 const isTouchDevice = () => typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0;
 const mapPixelRatio = () => {
   const dpr = window.devicePixelRatio || 1;
@@ -366,6 +368,7 @@ export default function GodsEyeMap({
   const mapRef = useRef<maplibregl.Map | null>(null);
   const [ready, setReady] = useState(false);
   const [basemap, setBasemap] = useState<keyof typeof BASEMAPS>('satellite');
+  const [gpuLost, setGpuLost] = useState(false);
   const [pitch, setPitch] = useState(60);
   const [zoom, setZoom] = useState(6.0);
   const [activeFocus, setActiveFocus] = useState<StateCode | 'ALL'>(focusState);
@@ -1274,7 +1277,7 @@ export default function GodsEyeMap({
 
 // Default MapLibre bundled worker
 
-    maplibregl.setWorkerUrl('/maplibre-gl-worker.mjs');
+    maplibregl.setWorkerUrl(`/maplibre-gl-worker.mjs?v=${maplibregl.getVersion()}`);
 
     let lim = 4096;
     let probeContext: WebGL2RenderingContext | null = null;
@@ -1311,6 +1314,7 @@ export default function GodsEyeMap({
       canvasContextAttributes: { antialias: !isTouchDevice() },
       pixelRatio: mapPixelRatio(),
       maxCanvasSize: [lim, lim],
+      maxTileCacheZoomLevels: isTouchDevice() ? TOUCH_TILE_CACHE_ZOOM_LEVELS : 5,
       dragRotate: true,
       pitchWithRotate: true,
       touchZoomRotate: true,
@@ -1369,6 +1373,18 @@ export default function GodsEyeMap({
 
     map.on('error', (e) => {
       console.error('[maplibre]', e?.error?.message ?? e);
+    });
+
+    const gpu = { contextLost: 0, contextRestored: 0 };
+    (window as unknown as { __gaGpu?: typeof gpu }).__gaGpu = gpu;
+    map.on('webglcontextlost', () => {
+      gpu.contextLost++;
+      setGpuLost(true);
+    });
+    map.on('webglcontextrestored', () => {
+      gpu.contextRestored++;
+      setGpuLost(false);
+      map.once('style.load', () => addMapLayers(map));
     });
 
     map.on('load', async () => {
@@ -1718,6 +1734,11 @@ export default function GodsEyeMap({
           />
           {/* Map Surface: Mount MapLibre globe container directly with transparent deep space */}
           <div ref={containerRef} className="absolute inset-0 z-10" />
+          {gpuLost && (
+            <div className="absolute inset-0 z-30 flex items-center justify-center bg-[#05070f]/85 font-mono text-xs text-[#38bdf8]" role="status">
+              Graphics memory ran out. Restoring the map…
+            </div>
+          )}
           <div className="absolute top-3 right-3 z-20 flex flex-row-reverse items-center gap-2 font-mono">
             <button
               type="button"

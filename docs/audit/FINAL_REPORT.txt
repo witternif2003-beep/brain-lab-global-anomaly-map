@@ -163,3 +163,14 @@ validated on local kind, CI workflow, mocked-upstream load test, WebGL GPU pass 
 · Removed on user instruction: the 2D button (GodsEYE), the 2D/3D toggle (home map) and the
   3D TERRAIN toggle (/threat-globe). All maps now always show 3D terrain; LIGHT basemap too.
 · Not verified on a real phone or GPU.
+
+11. OPERATION MAP HARDEN (MapLibre memory + context loss)
+· Done: maplibre-gl 6.11.2 -> 6.13.0 (upstream fixes for GeoJSON memory growth to crash, camera
+  under terrain on zoom, stale cached workers). Worker URL versioned. Touch tile cache 3 zoom levels.
+· Done: GodsEYE recovers from WebGL context loss: notice shown, all overlays + 3D custom layers
+  re-added. Forced loss on the VM: 52 layers and 3 custom layers back, 0 errors. New metric:
+  webgl_context_losses.
+· Already in place: no DOM markers (deck.gl icon atlas), probe context released, rAF pauses when
+  hidden. Not applicable: Mapbox, Supercluster, video sources.
+· Not done: single WebGL context per page, VRAM/tile-byte metrics (no browser API), MapLibre 6.14.0
+  (2 days old), real-phone test.
