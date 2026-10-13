@@ -469,7 +469,7 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     this.camera.projectionMatrix.copy(mvp);
     this.camera.projectionMatrixInverse.copy(mvp).invert();
     this.material.uniforms.uViewport.value.set(gl.drawingBufferWidth, gl.drawingBufferHeight);
-    const dpr = Math.min(3, window.devicePixelRatio || 1);
+    const dpr = Math.min(3, this.map?.getPixelRatio() ?? (window.devicePixelRatio || 1));
     this.material.uniforms.uMaxPx.value = (isTouch() ? POINT_MAX_CSS_PX_TOUCH : POINT_MAX_CSS_PX) * dpr;
     this.material.uniforms.uMinPx.value = POINT_MIN_PX * dpr;
     renderer.resetState();

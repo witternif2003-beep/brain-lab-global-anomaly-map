@@ -30,6 +30,13 @@ import { AWS_TERRARIUM_TILES, OPENFREEMAP_PLANET } from '../lib/lidar-globe-sour
 
 const ALLY_STATE_CODES = ['AL', 'FL', 'NC', 'SC', 'TN', 'TX', 'VA'];
 const STARMAP_8K_MIN_DEVICE_PX = 1920;
+/** Phone/tablet GPU memory guard: device pixel ratio cap for the WebGL map canvas on touch devices. */
+const TOUCH_MAX_PIXEL_RATIO = 2;
+const isTouchDevice = () => typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0;
+const mapPixelRatio = () => {
+  const dpr = window.devicePixelRatio || 1;
+  return isTouchDevice() ? Math.min(TOUCH_MAX_PIXEL_RATIO, dpr) : dpr;
+};
 
 function makeSteelPanelImage(size = 128, scale = 1): ImageData | null {
   const canvas = document.createElement('canvas');
@@ -419,7 +426,7 @@ export default function GodsEyeMap({
     let width = 0;
     let height = 0;
     const sizeCanvas = () => {
-      const dpr = window.devicePixelRatio || 1;
+      const dpr = mapPixelRatio();
       width = canvas.parentElement?.clientWidth || window.innerWidth;
       height = canvas.parentElement?.clientHeight || 600;
       canvas.width = Math.round(width * dpr);
@@ -432,7 +439,7 @@ export default function GodsEyeMap({
     const devicePx = Math.max(window.screen.width, window.screen.height) * (window.devicePixelRatio || 1);
     const sky = new SkyPhotoRenderer(
       { url8k: '/assets/nasa-svs-starmap-8k.jpg', url4k: '/assets/nasa-svs-starmap.jpg' },
-      devicePx >= STARMAP_8K_MIN_DEVICE_PX,
+      devicePx >= STARMAP_8K_MIN_DEVICE_PX && !isTouchDevice(),
     );
     let bodies: SkyBodyPosition[] = [];
     let bodiesAt = -Infinity;
@@ -1301,8 +1308,8 @@ export default function GodsEyeMap({
         compact: true,
         customAttribution: `Sky: <a href="${SKY_PHOTO_SOURCE_URL}" target="_blank" rel="noopener">NASA SVS Deep Star Maps 2020</a>`,
       },
-      canvasContextAttributes: { antialias: true },
-      pixelRatio: window.devicePixelRatio || 1,
+      canvasContextAttributes: { antialias: !isTouchDevice() },
+      pixelRatio: mapPixelRatio(),
       maxCanvasSize: [lim, lim],
       dragRotate: true,
       pitchWithRotate: true,
@@ -1313,7 +1320,7 @@ export default function GodsEyeMap({
 
     let dprMedia: MediaQueryList | null = null;
     const onDprChange = () => {
-      map.setPixelRatio(window.devicePixelRatio || 1);
+      map.setPixelRatio(mapPixelRatio());
       armDprListener();
     };
     const armDprListener = () => {
@@ -1608,11 +1615,14 @@ export default function GodsEyeMap({
         addMapLayers(map);
       });
     } else {
-      try {
-        (map as any).setTerrain?.(null);
-      } catch {}
       map.setStyle(BASEMAPS[next] as string);
-      map.once('styledata', () => addMapLayers(map));
+      map.once('styledata', () => {
+        try {
+          if (!map.getSource('terrain-dem')) map.addSource('terrain-dem', TERRAIN_DEM);
+          (map as any).setTerrain?.({ source: 'terrain-dem', exaggeration: 1.5 });
+        } catch {}
+        addMapLayers(map);
+      });
     }
   }, [addMapLayers]);
 
@@ -1628,24 +1638,6 @@ export default function GodsEyeMap({
       bearing: zoomedOut ? -20 : map.getBearing(),
       duration: 2200,
     });
-  }, []);
-
-  // 3D terrain toggle
-  const toggle3D = useCallback(async () => {
-    const map = mapRef.current;
-    if (!map) return;
-    const is3D = map.getPitch() > 20;
-
-    if (!is3D) {
-      if (!map.getSource('terrain-dem')) {
-        map.addSource('terrain-dem', TERRAIN_DEM);
-      }
-      (map as any).setTerrain?.({ source: 'terrain-dem', exaggeration: 1.5 });
-      map.easeTo({ pitch: 60, bearing: -15, duration: 800 });
-    } else {
-      (map as any).setTerrain?.(null);
-      map.easeTo({ pitch: 60, bearing: 0, duration: 800 });
-    }
   }, []);
 
   // Update anomalies dataset dynamically without reconstructing map
@@ -1948,25 +1940,6 @@ export default function GodsEyeMap({
 
             {/* Row 1: Projection & Basemap Modes - NSA Standard Spacing */}
             <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 scrollbar-none">
-              <button
-                type="button"
-                onClick={toggle3D}
-                style={{
-                  padding: '5px 12px',
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  borderRadius: '9999px',
-                  color: pitch <= 20 ? '#34d399' : '#cbd5e1',
-                  background: pitch <= 20 ? 'rgba(6, 44, 32, 0.75)' : 'rgba(10, 18, 40, 0.85)',
-                  border: pitch <= 20 ? '1px solid rgba(52, 211, 153, 0.65)' : '1px solid rgba(30, 58, 95, 0.7)',
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                  boxShadow: pitch <= 20 ? '0 0 12px rgba(52, 211, 153, 0.35)' : 'none',
-                  transition: 'all 0.15s ease',
-                }}
-              >
-                2D
-              </button>
               <button
                 type="button"
                 onClick={streetLidar3D}

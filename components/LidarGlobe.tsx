@@ -12,7 +12,6 @@ import {
   Minimize2,
   Crosshair,
   Radio,
-  Mountain,
   Building2,
   Eye,
   ExternalLink,
@@ -125,7 +124,6 @@ export default function LidarGlobe() {
   const [lidarMode, setLidarMode] = useState<LidarMode>("Intensity_2024");
   const [lidarOpacity, setLidarOpacity] = useState(85);
   const [glassOpacity, setGlassOpacity] = useState(55);
-  const [showTerrain, setShowTerrain] = useState(true);
   const [showHillshade, setShowHillshade] = useState(true);
   const [showBuildings, setShowBuildings] = useState(true);
   const [showTelemetry, setShowTelemetry] = useState(true);
@@ -418,13 +416,13 @@ export default function LidarGlobe() {
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !isReady) return;
-    map.setTerrain(showTerrain ? { source: "terrain", exaggeration: 1.2 } : null);
+    map.setTerrain({ source: "terrain", exaggeration: 1.2 });
     map.setLayoutProperty("hillshade", "visibility", showHillshade ? "visible" : "none");
     map.setLayoutProperty("buildings-3d", "visibility", showBuildings ? "visible" : "none");
     const telemetryVisibility = showTelemetry ? "visible" : "none";
     map.setLayoutProperty("telemetry-pins", "visibility", telemetryVisibility);
     map.setLayoutProperty("telemetry-halo", "visibility", telemetryVisibility);
-  }, [showTerrain, showHillshade, showBuildings, showTelemetry, isReady]);
+  }, [showHillshade, showBuildings, showTelemetry, isReady]);
 
   useEffect(() => {
     const onChange = () => {
@@ -597,9 +595,6 @@ export default function LidarGlobe() {
             <input type="range" min={10} max={95} value={glassOpacity} onChange={(e) => setGlassOpacity(Number(e.target.value))} />
           </label>
           <div className={styles.pillRow}>
-            <button onClick={() => setShowTerrain((v) => !v)} className={pill(showTerrain)}>
-              <Mountain className={styles.iconSm} /> 3D TERRAIN
-            </button>
             <button onClick={() => setShowHillshade((v) => !v)} className={pill(showHillshade)}>
               HILLSHADE
             </button>

@@ -426,3 +426,15 @@ Columns are pattern counts (scan before fixes). `post` = POST/PUT/DELETE handler
 | U: blur near the horizon on phones | Not fixed | Steep-pitch texture stretch is inherent to draped raster imagery; terrain does not add imagery resolution. Esri World Imagery is the source (z21 max). |
 | Mapbox Standard Satellite / Cesium World Terrain / Google Photorealistic 3D Tiles | Not added | All need a provider account key and billing; not available. |
 | "+7000 telemetry" | Not added | No new measured quantity came with this change; metric families stay at the finite measured set. |
+
+## Addendum: zoom-in crash on phones, and 3D-only maps
+
+| Item | Decision | Evidence / reason |
+| --- | --- | --- |
+| C: map crashes after zooming in on a phone (user report) | Mitigated, not reproduced | The VM's software Chrome did not crash at z18 pitch 75 with terrain + 2.49 M LiDAR points. Likely cause on phones: GPU memory. At DPR 3 the WebGL map canvas was full device resolution with MSAA, plus a second WebGL context holding the 8K (8192x4096) star map, plus LiDAR buffers. |
+| Touch canvas pixel ratio | `mapPixelRatio()` caps the map and sky canvases at 2x on touch devices; desktop unchanged | CDP, 390x844 viewport at DPR 3, touch: canvas 740x1492 (pixel ratio 2) instead of 1110x2238, about 56% fewer pixels per frame buffer. |
+| Touch antialiasing | `antialias: !isTouchDevice()` | MSAA multiplies the framebuffer memory; off on touch only. |
+| Touch star map | 4K star map on touch devices, 8K on desktop | 8K RGBA texture is about 128 MB of GPU memory before mipmaps. |
+| LiDAR point size | `uMaxPx`/`uMinPx` now scale by `map.getPixelRatio()` instead of `window.devicePixelRatio` | Keeps dot size in CSS px the same when the canvas pixel ratio is capped. CDP after change: 2,007,635 points loading, 0 errors. |
+| 2D button (GodsEYE), 2D/3D toggle (home map), 3D TERRAIN toggle (/threat-globe) | Removed at the user's explicit instruction ("remove 2d layer only show new 3d for all mapps") | Terrain is now always on. LIGHT basemap on GodsEYE re-adds `terrain-dem` after its style loads (CDP: terrain on, 59 layers). Home `StateMap` satellite style now has AWS Terrarium terrain and opens at pitch 55 (CDP: terrain on). HILLSHADE, buildings and all live layers are unchanged. |
+| U: real-phone verification | Not done | No physical phone or GPU on this VM. |

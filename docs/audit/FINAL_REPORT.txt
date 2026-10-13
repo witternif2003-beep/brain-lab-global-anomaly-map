@@ -155,3 +155,11 @@ validated on local kind, CI workflow, mocked-upstream load test, WebGL GPU pass 
   street LiDAR over downtown Atlanta on terrain: 2,485,759 points, 0 errors.
 · Not fixed: MapLibre scale bar shows "NaN ft" at steep pitch on terrain; horizon blur on phones
   (draped imagery). Not added: Mapbox / Cesium / Google 3D Tiles (need provider keys).
+
+10. PHONE ZOOM CRASH + 3D-ONLY MAPS
+· Mitigated (not reproduced on the VM): touch devices now cap the map and sky canvas pixel ratio
+  at 2x, turn off antialiasing and use the 4K star map instead of 8K. LiDAR dot size follows the
+  capped ratio. Measured at DPR 3 phone viewport: canvas 740x1492 instead of 1110x2238.
+· Removed on user instruction: the 2D button (GodsEYE), the 2D/3D toggle (home map) and the
+  3D TERRAIN toggle (/threat-globe). All maps now always show 3D terrain; LIGHT basemap too.
+· Not verified on a real phone or GPU.
