@@ -137,3 +137,13 @@ validated on local kind, CI workflow, mocked-upstream load test, WebGL GPU pass 
   figure was not found in that source.
 · Vercel Drains to OTLP/Snowflake/Elastic: needs a Pro plan and a real endpoint.
 · Durable fleet-wide RUM, physical-phone and GPU benchmarks, production Kubernetes.
+
+8. GAIA GPS EXTRACT / "GAIA MIRROR" RUNBOOK
+· Added: TOPO basemap on /godseye-telemetry: USGS The National Map topo tiles (public domain)
+  with the Waymarked Trails hiking overlay (OpenStreetMap, CC BY-SA). Other basemaps unchanged.
+· Not done: copying the Gaia GPS App Store listing (name, text, screenshots, reviews, prices);
+  it is Trailbehind's trademark and copyrighted content.
+· Not done: Mapbox GL JS / Cesium World Terrain (need provider tokens; MapLibre + AWS Terrarium
+  3D terrain already in place), Vercel Drains (Hobby plan), WebGPU timestamp queries (no GPU here),
+  gen_ai.* attributes (/api/spark makes no model call), Gatling, offline maps, accounts, subscriptions.
+· Not claimed: Mapbox "60 FPS desktop and mobile" (vendor statement, not this app).

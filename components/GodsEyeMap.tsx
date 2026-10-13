@@ -149,6 +149,31 @@ const BASEMAPS = {
     layers: [{ id: 'sat', type: 'raster', source: 'sat' }],
     terrain: { source: 'terrain-dem', exaggeration: 1.5 },
   },
+  topo: {
+    version: 8,
+    projection: { type: 'globe' },
+    sources: {
+      usgstopo: {
+        type: 'raster',
+        tiles: ['https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}'],
+        tileSize: 256,
+        maxzoom: 16,
+        attribution: '<a href="https://www.usgs.gov/programs/national-geospatial-program/national-map" target="_blank" rel="noopener">USGS The National Map</a> (public domain)',
+      },
+      trails: {
+        type: 'raster',
+        tiles: ['https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png'],
+        tileSize: 256,
+        maxzoom: 18,
+        attribution: 'Trails: <a href="https://hiking.waymarkedtrails.org" target="_blank" rel="noopener">Waymarked Trails</a> (CC BY-SA), data © OpenStreetMap contributors',
+      },
+      'terrain-dem': TERRAIN_DEM,
+    },
+    layers: [
+      { id: 'usgstopo', type: 'raster', source: 'usgstopo' },
+      { id: 'trails', type: 'raster', source: 'trails', paint: { 'raster-opacity': 0.9 } },
+    ],
+  },
 };
 
 // Georgia viewport bounds — auto-fit on load
@@ -1571,11 +1596,11 @@ export default function GodsEyeMap({
         addMapLayers(map);
       });
       map.easeTo({ pitch: 60, bearing: -12, duration: 800 });
-    } else if (next === 'satellite') {
+    } else if (next === 'satellite' || next === 'topo') {
       try {
         (map as any).setTerrain?.(null);
       } catch {}
-      map.setStyle(BASEMAPS.satellite as any);
+      map.setStyle(BASEMAPS[next] as any);
       map.once('styledata', () => addMapLayers(map));
     } else {
       try {
@@ -2013,6 +2038,26 @@ export default function GodsEyeMap({
                 }}
               >
                 TERRAIN
+              </button>
+              <button
+                type="button"
+                title="USGS topographic map with OpenStreetMap hiking trails"
+                onClick={() => switchBasemap('topo')}
+                style={{
+                  padding: '5px 12px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  borderRadius: '9999px',
+                  color: basemap === 'topo' ? '#38bdf8' : '#cbd5e1',
+                  background: basemap === 'topo' ? 'rgba(12, 36, 68, 0.85)' : 'rgba(10, 18, 40, 0.85)',
+                  border: basemap === 'topo' ? '1px solid rgba(56, 189, 248, 0.75)' : '1px solid rgba(30, 58, 95, 0.7)',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  boxShadow: basemap === 'topo' ? '0 0 12px rgba(56, 189, 248, 0.4)' : 'none',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                TOPO
               </button>
             </div>
 

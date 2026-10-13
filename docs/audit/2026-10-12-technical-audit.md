@@ -396,3 +396,20 @@ Columns are pattern counts (scan before fixes). `post` = POST/PUT/DELETE handler
 | Map LiDAR depth | +1 octree level on desktop only; 5 M desktop / 2.5 M touch budgets unchanged | `window.__gaLidar.targetDepth` |
 | Splat sigma (`components/LidarSplatViewer.tsx`, `lib/ga-lidar/gaussian.ts` `sizeFactor`) | 1.0x -> 0.4x mean 3-NN distance, clamp 0.08-1.5 m -> 0.03-0.6 m | `tests/ga-lidar/gaussian.test.ts` |
 | Attachment claims (SHARP-GS 8K 250 FPS, 562 MB -> 13.6 MB, StreamingGS 45.7x, wall widening) | Not adopted: third-party results on other scenes/hardware, or out of scope | FINAL_REPORT section 3 |
+
+## Addendum: Gaia GPS App Store extract and "Gaia Mirror" runbook
+
+| Runbook item | Decision | Evidence / reason |
+| --- | --- | --- |
+| Phase 2: mirror the Gaia GPS App Store page (name, copy, screenshots, reviews, subscription tiers) | Not done | Third-party trademark and copyrighted listing text; reviews are other users' content. Copying them would misrepresent this site as Gaia GPS. |
+| Phase 2 functional equivalent: topographic map with trails | Added: TOPO basemap on /godseye-telemetry (`components/GodsEyeMap.tsx` `BASEMAPS.topo`) | USGS The National Map USGSTopo tiles (public domain, cached to z16; z17 returns 404, MapLibre overzooms) + Waymarked Trails hiking overlay (OSM data, CC BY-SA). Existing SATELLITE / TERRAIN / MAP basemaps unchanged. |
+| Offline maps, route/waypoint editing, accounts, subscriptions | Not built | Would need storage, auth and a service worker tile cache; no requirement beyond the extract. |
+| Phase 3: Mapbox GL JS v3 Standard Satellite, Cesium World Terrain | Not added | Both need a provider access token (Mapbox account / Cesium ion). Existing MapLibre + AWS Terrarium DEM (`setTerrain`, 1.5x) + Esri imagery already provides 3D terrain; not replaced (no-removal rule). |
+| "60 FPS desktop and mobile" | Not claimed | Vendor statement about Mapbox, not a measurement of this app. VM renders in software. |
+| Phase 4: Vercel Drains (OTLP, Elastic, Snowflake) | Not configured | Drains need Pro/Enterprise; team is on Hobby. |
+| Phase 4: WebGPU timestamp queries | Not added | WebGPU path only in /lidar-splat via PlayCanvas; VM has no GPU adapter to verify. WebGL timer (EXT_disjoint_timer_query_webgl2) already covers the map LiDAR pass. |
+| Phase 4: gen_ai.* attributes | Not added | `lib/spark-llm.ts` / `app/api/spark` make no model call; they return constants (see U4). There are no LLM spans to annotate. |
+| Phase 4: 99.9% multi-window burn rate (1h/5m, 6h/30m, 3d/6h) | Already present | `deploy/prometheus/rules.yml`, promtool OK |
+| Phase 4: Core Web Vitals | LCP, INP, CLS present; TTFB and FID not collected | FID is deprecated in favour of INP. TTFB can be added to RUM if wanted. |
+| Phase 5: RED metrics, mock-only load test, Kubernetes | Already present | ga_feed_up / duration / source_errors; scripts/perf/mock-fetch.mjs; Helm chart on local kind. Queue depth / consumer lag: no queue exists. |
+| Phase 5: Gatling simulation | Not added | Equivalent bounded Node load test already in repo; the "914 req/s, p95 342 ms" target is this app's own earlier local result, not an external benchmark. |
