@@ -51,9 +51,22 @@ validated on local kind, CI workflow, mocked-upstream load test, WebGL GPU pass 
   does not support the repo's TypeScript 7), /api/telemetry stream still synthetic.
 
 3. LIDAR RENDERING UPGRADE
-· 3DGS Migration: NOT DONE. USGS 3DEP point clouds carry x/y/z/class/intensity, not Gaussian
-  covariance or opacity; producing splats would invent geometry. Renderer remains WebGL GL_POINTS
-  over Entwine EPT with depth-limited octree LOD, 2.5 M (touch) / 5 M (desktop) point budgets.
+· 3DGS: ADDED AS A SEPARATE VIEWER (/lidar-splat), existing GL_POINTS LiDAR kept unchanged.
+  USGS 3DEP points are turned into one isotropic Gaussian each (scale = mean distance to the
+  3 nearest neighbours, colour = SH degree-0 from ASPRS class, opacity 0.92), the 3DGS
+  initialisation step. No training/optimisation, so it is not a photoreal radiance field.
+  Renderer: PlayCanvas Engine 2.23.0, device order WebGPU then WebGL2. WebXR immersive-vr
+  "Enter VR" button, enabled only when the browser reports immersive-vr available.
+  Local production build on this VM: 1,188,568 Gaussians (downtown Atlanta, GA_Statewide_B2_2018),
+  WebGPU adapter refused -> WebGL2 fallback, ~10 FPS in SwiftShader, 0 errors, VR not available.
+  NOT VERIFIED: the WebGPU path and the VR session (no GPU or headset on this VM).
+· Not adopted from the attached runbooks: Gameleon/MCMC training (needs photos + GPU training),
+  Streamed SOG LOD bundles, WebGPU timestamp queries, Vercel Drains (Hobby plan), gen_ai.*
+  conventions (no LLM in this app), and the "Georgia Perimeter Wall" construction section
+  (physical civil-engineering spec, not software in this repo).
+· Metrics: 24 metric families defined (22 server/RUM + gaussian_splats_drawn,
+  gaussian_splat_webgpu_ratio). Production /api/metrics returned 52 series before this change.
+  Not padded to 7,000; series exist only where something is measured.
 · Performance Impact: NOT MEASURED ON A GPU. This VM renders with SwiftShader (CPU): 3.7 FPS mean,
   p95 frame 483 ms on /godseye-telemetry at 1600x1000. No before/after GPU numbers exist.
 · Memory Reduction: none claimed. JS heap measured 104 MB used during the VM run.

@@ -10,6 +10,10 @@ export interface RumSample {
   lidarPoints: number | null;
   /** p95 GPU time of the LiDAR draw (EXT_disjoint_timer_query_webgl2), ms. */
   lidarGpuMsP95: number | null;
+  /** Gaussians drawn by /lidar-splat once ready. */
+  splats: number | null;
+  /** Graphics API the splat viewer got (WebGPU, else WebGL2). */
+  splatRenderer: 'webgpu' | 'webgl2' | null;
   lcpMs: number | null;
   inpMs: number | null;
   cls: number | null;
@@ -17,7 +21,7 @@ export interface RumSample {
 }
 
 export const RUM_INTERVAL_MS = 30_000;
-const PAGES = new Set(['/godseye-telemetry', '/threat-globe', '/other']);
+const PAGES = new Set(['/godseye-telemetry', '/threat-globe', '/lidar-splat', '/other']);
 const WINDOW_MS = 5 * 60_000;
 const MAX_SAMPLES = 2_000;
 
@@ -40,6 +44,8 @@ export function parseRumSample(raw: unknown): RumSample | null {
     netMbps: num(r.netMbps, 100_000),
     lidarPoints: num(r.lidarPoints, 1e9),
     lidarGpuMsP95: num(r.lidarGpuMsP95, 60_000),
+    splats: num(r.splats, 1e9),
+    splatRenderer: r.splatRenderer === 'webgpu' || r.splatRenderer === 'webgl2' ? r.splatRenderer : null,
     lcpMs: num(r.lcpMs, 600_000),
     inpMs: num(r.inpMs, 600_000),
     cls: num(r.cls, 100),
@@ -79,6 +85,15 @@ export class RumWindow {
       { name: 'network_io_throughput_mbps', help: 'Median browser download throughput from Resource Timing over the last 5 min.', values: series(pct((s) => s.netMbps, 0.5)) },
       { name: 'lidar_points_drawn', help: 'Median LiDAR points on screen when the layer is active.', values: series(pct((s) => s.lidarPoints, 0.5)) },
       { name: 'lidar_gpu_ms_p95', help: 'p95 of per-report p95 GPU time of the LiDAR draw (WebGL2 timer query; absent where the browser hides GPU timers).', values: series(pct((s) => s.lidarGpuMsP95, 0.95)) },
+      { name: 'gaussian_splats_drawn', help: 'Median Gaussians drawn by the /lidar-splat viewer once ready.', values: series(pct((s) => s.splats, 0.5)) },
+      {
+        name: 'gaussian_splat_webgpu_ratio',
+        help: 'Share of splat-viewer reports rendered with WebGPU (the rest fell back to WebGL2).',
+        values: series((xs) => {
+          const r = xs.filter((s) => s.splatRenderer !== null);
+          return r.length ? r.filter((s) => s.splatRenderer === 'webgpu').length / r.length : null;
+        }),
+      },
       { name: 'web_vitals_lcp_ms_p75', help: 'p75 Largest Contentful Paint.', values: series(pct((s) => s.lcpMs, 0.75)) },
       { name: 'web_vitals_inp_ms_p75', help: 'p75 Interaction to Next Paint.', values: series(pct((s) => s.inpMs, 0.75)) },
       { name: 'web_vitals_cls_p75', help: 'p75 Cumulative Layout Shift.', values: series(pct((s) => s.cls, 0.75)) },

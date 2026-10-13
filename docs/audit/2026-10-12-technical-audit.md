@@ -375,3 +375,15 @@ Columns are pattern counts (scan before fixes). `post` = POST/PUT/DELETE handler
 | tests/public-live/coverage.test.ts | 30 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | tsconfig.json | 42 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | vercel.json | 39 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+
+## Addendum: Gaussian splats, WebGPU, WebXR, metric count
+
+| Item | Status | Evidence |
+| --- | --- | --- |
+| LiDAR -> Gaussian conversion (`lib/ga-lidar/gaussian.ts`) | Added. One isotropic Gaussian per point, kNN(3) scale, SH DC colour. Not trained. | `tests/ga-lidar/gaussian.test.ts` (3 tests) |
+| `/lidar-splat` viewer (`components/LidarSplatViewer.tsx`) | Added; PlayCanvas 2.23.0, WebGPU then WebGL2 | Local prod build: 1,188,568 Gaussians, renderer webgl2 (WebGPU adapter refused), ~10 FPS SwiftShader, 0 errors |
+| WebXR immersive-vr | Button wired to `CameraComponent.startXr`, gated on `XrManager.isAvailable` | VM browser: not available. Headset path unverified |
+| WebGPU rendering | Requested first by `createGraphicsDevice` | Not exercised: VM has no GPU adapter |
+| RUM: `gaussian_splats_drawn`, `gaussian_splat_webgpu_ratio` | Added | `tests/metrics/rum.test.ts` |
+| "7,000 metrics" | Not done. 24 metric families; 52 production series before change | `curl /api/metrics` |
+| Runbook claims (PlayCanvas FPS table, 1,557 MB -> 105 MB heap, wall-widening spec) | Not adopted; third-party or out of scope | see FINAL_REPORT section 3 |

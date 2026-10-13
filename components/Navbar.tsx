@@ -40,6 +40,7 @@ export default function Navbar() {
     { href: "/godseye-telemetry", label: "GodsEYE Map", icon: Eye },
     { href: "/godseye-telemetry#fbi-capabilities", label: "FBI Feeds", icon: Shield },
     { href: "/threat-globe", label: "3D Globe", icon: Globe },
+    { href: "/lidar-splat", label: "LiDAR Splats", icon: Globe },
     { href: "/benchmarks", label: "ML Telemetry", icon: Zap },
     { href: "/county-matrix", label: "159 Counties", icon: Compass },
     { href: "/jurisdiction-cards", label: "56 Cards", icon: LayoutGrid },

@@ -43,13 +43,15 @@ export default function RenderMetricsProbe() {
       const path = location.pathname;
       const lidar = (window as unknown as { __gaLidar?: { pointsDrawn?: number; status?: string; gpuMsP95?: number | null } }).__gaLidar;
       const s: RumSample = {
-        page: path === "/godseye-telemetry" || path === "/threat-globe" ? path : "/other",
+        page: path === "/godseye-telemetry" || path === "/threat-globe" || path === "/lidar-splat" ? path : "/other",
         fps: Math.round(1_000 / mean),
         frameMsP95: Math.round(f[Math.floor(0.95 * (f.length - 1))] * 10) / 10,
         heapBytes: (performance as Perf).memory?.usedJSHeapSize ?? null,
         netMbps: busyMs > 0 ? Math.round(((bytes * 8) / 1e6 / (busyMs / 1_000)) * 10) / 10 : null,
         lidarPoints: lidar?.status === "ready" ? lidar.pointsDrawn ?? null : null,
         lidarGpuMsP95: lidar?.status === "ready" ? lidar.gpuMsP95 ?? null : null,
+        splats: window.__gaSplat?.status === "ready" ? window.__gaSplat.splats : null,
+        splatRenderer: window.__gaSplat?.device ?? null,
         ...vitals,
         touch: navigator.maxTouchPoints > 0,
       };

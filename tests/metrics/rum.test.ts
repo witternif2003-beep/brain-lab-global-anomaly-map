@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { formatPrometheus } from '../../lib/metrics/prometheus';
 import { RumWindow, parseRumSample } from '../../lib/metrics/rum';
 
-const base = { page: '/godseye-telemetry', fps: 58, frameMsP95: 21, heapBytes: 2e8, netMbps: 12, lidarPoints: null, lidarGpuMsP95: null, lcpMs: 900, inpMs: 80, cls: 0.01, touch: true };
+const base = { page: '/godseye-telemetry', fps: 58, frameMsP95: 21, heapBytes: 2e8, netMbps: 12, lidarPoints: null, lidarGpuMsP95: null, splats: null, splatRenderer: null, lcpMs: 900, inpMs: 80, cls: 0.01, touch: true };
 
 test('parseRumSample rejects missing or out-of-range frame data and buckets unknown pages', () => {
   assert.equal(parseRumSample({ ...base, fps: -1 }), null);
@@ -31,4 +31,18 @@ test('lidar_gpu_ms_p95 is reported only from samples that carry a GPU timer valu
   const text = formatPrometheus(w.gauges(now));
   assert.match(text, /lidar_gpu_ms_p95\{page="\/godseye-telemetry",device="desktop"\} 4.2/);
   assert.equal(parseRumSample({ ...base, lidarGpuMsP95: -3 })?.lidarGpuMsP95, null);
+});
+
+test('splat viewer fields: renderer whitelist and WebGPU share', () => {
+  const now = Date.now();
+  const w = new RumWindow();
+  const splat = { ...base, page: '/lidar-splat', touch: false, splats: 900_000 };
+  w.add(parseRumSample({ ...splat, splatRenderer: 'webgpu' })!, now);
+  w.add(parseRumSample({ ...splat, splatRenderer: 'webgl2' })!, now);
+  assert.equal(parseRumSample({ ...splat, splatRenderer: 'metal' })?.splatRenderer, null);
+  const g = w.gauges(now);
+  const ratio = g.find((x) => x.name === 'gaussian_splat_webgpu_ratio')!.values[0];
+  assert.deepEqual(ratio.labels, { page: '/lidar-splat', device: 'desktop' });
+  assert.equal(ratio.value, 0.5);
+  assert.equal(g.find((x) => x.name === 'gaussian_splats_drawn')!.values[0].value, 900_000);
 });
