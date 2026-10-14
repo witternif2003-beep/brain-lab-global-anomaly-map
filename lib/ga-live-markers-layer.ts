@@ -246,6 +246,24 @@ const SPECS: Record<LiveLayer, Spec> = {
     rows: (p) => [['Magnitude', fmt(p.mag)], ['Depth', fmt(p.depthKm, ' km')], ['Event type', fmt(p.eventType)], ['Review status', fmt(p.status)]],
     detail: (ms) => (ms.length ? `largest M${Math.max(...ms.map((m) => Number(m.props.mag) || 0)).toFixed(1)} · USGS ComCat` : 'none recorded in the last 30 days · USGS ComCat'),
   },
+  pireps: {
+    label: 'Pilot reports, last 6 h (NOAA AWC)', color: '#fbbf24', stroke: '#78350f', radiusPx: 4, z: 31, refreshMs: 5 * 60_000,
+    iconPx: 20, labelMinZoom: 7,
+    icon: () => ({ shape: 'alert' }),
+    tag: (m) => [m.props.urgent ? 'URGENT' : '', m.props.turbulence ? `TB ${m.props.turbulence}` : '', m.props.icing ? `ICE ${m.props.icing}` : ''].filter(Boolean).join(' · '),
+    title: (m) => `${m.props.urgent ? 'URGENT ' : ''}PILOT REPORT · ${m.label}`,
+    rows: (p) => [
+      ['Aircraft type', fmt(p.aircraftType)],
+      ['Altitude', fmt(p.altFt, ' ft')],
+      ['Turbulence', fmt(p.turbulence)],
+      ['Icing', fmt(p.icing)],
+      ['Sky', fmt(p.sky)],
+      ['Temperature', fmt(p.tempC, ' °C')],
+      ['Wind', p.windKt === null || p.windKt === undefined ? '' : `${p.windKt} kt${p.windDir === null || p.windDir === undefined ? '' : ` from ${p.windDir}°`}`],
+      ['Report', fmt(p.raw)],
+    ],
+    detail: (ms) => `${ms.filter((m) => m.props.urgent).length} urgent · ${ms.filter((m) => m.props.turbulence && !/^NEG/.test(String(m.props.turbulence))).length} with turbulence · ${ms.filter((m) => m.props.icing && !/^NEG/.test(String(m.props.icing))).length} with icing · crew reports, not measurements`,
+  },
   streamgauges: {
     label: 'USGS stream gauges', color: '#2dd4bf', stroke: '#134e4a', radiusPx: 3.2, z: 18, refreshMs: 5 * 60_000,
     iconPx: 14, icon: () => ({ shape: 'gauge' }),
@@ -286,6 +304,7 @@ function sourceLink(layer: LiveLayer, m: LiveMarker): { href: string; text: stri
   if (layer === 'tfr' && m.props.notam) return { href: `https://tfr.faa.gov/tfr3/?page=detail_${String(m.props.notam).replace('/', '_')}`, text: 'FAA TFR page ↗' };
   if (layer === 'streamgauges') return { href: `https://waterdata.usgs.gov/monitoring-location/${encodeURIComponent(String(m.props.site))}/`, text: 'USGS site page ↗' };
   if (layer === 'stations') return { href: `https://mesonet.agron.iastate.edu/sites/site.php?station=${encodeURIComponent(String(m.props.station))}&network=${encodeURIComponent(String(m.props.network))}`, text: 'IEM station page ↗' };
+  if (layer === 'pireps') return { href: 'https://aviationweather.gov/gfa/#pirep', text: 'NOAA AWC PIREP map ↗' };
   if (layer === 'quakes' && m.props.url) return { href: String(m.props.url), text: 'USGS event page ↗' };
   if (layer === 'gdotcams') return { href: 'https://511ga.org/cctv', text: '511GA cameras ↗' };
   if (layer === 'augusta911') return m.props.postUrl ? { href: String(m.props.postUrl), text: 'Augusta E911 post ↗' } : { href: 'https://www.augustaga.gov/66/E911-Emergency-Services', text: 'Augusta E911 ↗' };

@@ -49,6 +49,14 @@ export default function FbiOsintBrowser({ compact = false, onMeta, country = nul
   useEffect(() => setPage(0), [country]);
 
   useEffect(() => {
+    const t = setTimeout(() => {
+      const next = q.trim();
+      if (next !== query) { setQuery(next); setPage(0); }
+    }, 400);
+    return () => clearTimeout(t);
+  }, [q, query]);
+
+  useEffect(() => {
     void load();
     const t = setInterval(() => void load(), REFRESH_MS);
     return () => clearInterval(t);
@@ -91,17 +99,24 @@ export default function FbiOsintBrowser({ compact = false, onMeta, country = nul
           ))}
         </div>
         <form
+          role="search"
           className="mt-3 flex flex-wrap gap-2"
           onSubmit={(e) => { e.preventDefault(); setQuery(q.trim()); setPage(0); }}
         >
           <input
+            type="search"
+            enterKeyHint="search"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            aria-label="Filter indicators"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="filter: malware family, CVE, group, keyword…"
-            className="flex-1 min-w-[10rem] bg-[#020b18] border border-white/15 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-[#38bdf8]"
+            placeholder="Search malware, CVE, group, source…"
+            className="w-full sm:w-auto sm:flex-1 min-w-0 bg-[#020b18] border border-white/15 rounded-lg px-3 py-1.5 text-base sm:text-xs text-white placeholder:text-[#64748b] outline-none focus:border-[#38bdf8]"
           />
-          <button className="px-3 py-1.5 rounded-lg bg-[#38bdf8] text-[#0b1320] text-xs font-bold">FILTER</button>
-          <button type="button" onClick={() => void load()} className="px-3 py-1.5 rounded-lg border border-white/15 text-xs text-white flex items-center gap-1">
+          <button className="flex-1 sm:flex-none px-3 py-1.5 rounded-lg bg-[#38bdf8] text-[#0b1320] text-xs font-bold">FILTER</button>
+          <button type="button" onClick={() => void load()} className="flex-1 sm:flex-none justify-center px-3 py-1.5 rounded-lg border border-white/15 text-xs text-white flex items-center gap-1">
             <RefreshCw className={`w-3 h-3 ${loading ? "animate-spin" : ""}`} /> REFRESH
           </button>
         </form>
@@ -127,7 +142,7 @@ export default function FbiOsintBrowser({ compact = false, onMeta, country = nul
             <button disabled={page + 1 >= pages} onClick={() => setPage(page + 1)} className="px-2 py-0.5 rounded border border-white/15 disabled:opacity-30">NEXT</button>
           </span>
         </div>
-        {compact && (
+        {(
           <ul className="sm:hidden list-none m-0 p-0 divide-y divide-white/5 text-[11px]">
             {(data?.items ?? []).map((i) => (
               <li key={i.id} className="px-3 py-1.5">
@@ -146,7 +161,7 @@ export default function FbiOsintBrowser({ compact = false, onMeta, country = nul
             ))}
           </ul>
         )}
-        <div className={compact ? "hidden sm:block overflow-auto max-h-[45vh]" : "overflow-x-auto"}>
+        <div className={compact ? "hidden sm:block overflow-auto max-h-[45vh]" : "hidden sm:block overflow-x-auto"}>
           <table className="w-full text-[11px]">
             <thead className={`text-[#64748b] text-left ${compact ? "sticky top-0 bg-[#070e1c]/90" : ""}`}>
               <tr>

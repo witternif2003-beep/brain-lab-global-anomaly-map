@@ -174,3 +174,28 @@ validated on local kind, CI workflow, mocked-upstream load test, WebGL GPU pass 
   hidden. Not applicable: Mapbox, Supercluster, video sources.
 · Not done: single WebGL context per page, VRAM/tile-byte metrics (no browser API), MapLibre 6.14.0
   (2 days old), real-phone test.
+
+12. OSINT4ALL (start.me/p/L1rEYQ) + SEARCH BAR
+· Source review: the live start.me page answered with a Cloudflare challenge (not bypassed).
+  Used the Wayback copy of start.me/p/L1rEYQ.json (2026-07-21): 79 widgets, 1,456 links. The
+  attachment says 77 bookmark groups / 1,446 canonical resources; the difference is not reconciled.
+· Triage: most links are person-search, phone, email, username and social-media lookup tools
+  (not used: person-level), commercial flight/ship trackers needing paid keys (ADS-B is already
+  on the map from adsb.lol), or directories and static maps (no machine feed).
+· Added: map layer "pireps", NOAA Aviation Weather Center pilot reports for the Georgia area,
+  last 6 h, refresh 5 min, aircraft type only. Verified endpoint: HTTP 200, 18 reports.
+  Added to /api/metrics layer probes and the GodsEYE feed list. Nothing removed.
+· Not added: OSM generic surveillance cameras (Overpass timed out on both public servers: 504
+  and no answer in 90-100 s); NHC active storms (verified endpoint, but the map keeps only
+  markers inside the Georgia wall, so storms offshore would never show); NOAA METAR (same
+  airports as the existing IEM ASOS stations).
+· "20,000 more real-time tracking": not met. One verified real-time feed was added; the number
+  was not padded with duplicates or static links.
+· Search bar (/fbi-osint and the GodsEYE popup): on phones the field now takes the full row,
+  uses a 16 px font (iOS no longer zooms the page on tap), filters as you type (0.4 s) and
+  matches source names (e.g. "threatfox"). Phones get the card list instead of a 7-column
+  table that hid the indicator column off-screen.
+· Not done: the "Georgia Statewide Anomaly Report" format and the 53,000-record generator.
+  They describe invented espionage cases with named institutions, ethnic labels, phone, bank
+  and location records, NSA validation and federal charges. That is fabricated intelligence
+  about identifiable people and places; it is not generated.

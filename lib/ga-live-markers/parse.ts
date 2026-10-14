@@ -1,7 +1,7 @@
 export const GA_BBOX = { west: -85.7, south: 30.3, east: -80.8, north: 35.1 };
 
 export type OsmInfraKind = "signals" | "towers" | "police" | "firestations" | "sirens" | "speedcams" | "alpr";
-export type LiveLayer = "aircraft" | "transit" | "micromobility" | "stations" | "streamgauges" | "quakes" | "tfr" | "augusta911" | "athens911" | "gdotcams" | OsmInfraKind;
+export type LiveLayer = "aircraft" | "transit" | "micromobility" | "stations" | "streamgauges" | "quakes" | "tfr" | "augusta911" | "athens911" | "gdotcams" | "pireps" | OsmInfraKind;
 export type LiveValue = string | number | boolean | null;
 
 export interface LiveMarker {
@@ -588,4 +588,43 @@ export function ga511CamerasFromViewRows(json: { features?: Ga511ViewRow[] }): G
     cam.Views!.push({ Id: a.View_Id, Url: a.View_Url, Status: a.View_Status, Description: a.View_Description });
   }
   return [...byId.values()];
+}
+
+export interface AwcPirepFeature {
+  properties?: {
+    rawOb?: string; airepType?: string; acType?: string; aircraft?: string; obsTime?: string; receiptTime?: string;
+    fltlvl?: number | string; fltlvlType?: string; tbInt1?: string; tbType1?: string; tbFreq1?: string; icgInt1?: string; icgType1?: string;
+    temp?: number; wdir?: number; wspd?: number; clouds?: { cover?: string; base?: number | null; top?: number | null }[];
+  };
+  geometry?: { type?: string; coordinates?: number[] };
+}
+
+/** Pilot reports (PIREP/AIREP) from the NOAA Aviation Weather Center data API (GeoJSON), observed within maxAgeH. */
+export function parseAwcPireps(json: { features?: AwcPirepFeature[] }, nowMs = Date.now(), maxAgeH = 6): LiveMarker[] {
+  return (json.features ?? [])
+    .filter((f) => f.geometry?.type === "Point" && f.properties?.obsTime && nowMs - Date.parse(f.properties.obsTime) <= maxAgeH * 3_600_000)
+    .map((f) => {
+      const p = f.properties ?? {};
+      const [lon, lat] = f.geometry?.coordinates ?? [];
+      const fl = num(p.fltlvl);
+      const raw = p.rawOb?.trim() ?? "";
+      const clouds = (p.clouds ?? []).map((c) => [c.cover, c.base ? `${c.base} ft` : "", c.top && c.top < 60_000 ? `top ${c.top} ft` : ""].filter(Boolean).join(" ")).join("; ");
+      const turb = [p.tbInt1, p.tbType1, p.tbFreq1].filter(Boolean).join(" ");
+      const ice = [p.icgInt1, p.icgType1].filter(Boolean).join(" ");
+      return marker(num(lon), num(lat), new Date(Date.parse(String(p.obsTime))).toISOString(), `${p.airepType ?? "PIREP"} ${p.acType ?? ""}`.trim(), {
+        reportType: p.airepType ?? null,
+        urgent: / UUA /.test(` ${raw} `),
+        aircraftType: p.aircraft ?? p.acType ?? null,
+        altFt: fl === null || p.fltlvlType === "GRND" ? null : fl * 100,
+        turbulence: turb || null,
+        icing: ice || null,
+        sky: clouds || null,
+        tempC: num(p.temp),
+        windKt: num(p.wspd),
+        windDir: num(p.wdir),
+        receivedAt: p.receiptTime ?? null,
+        raw: raw || null,
+      });
+    })
+    .filter(keep);
 }

@@ -16,7 +16,10 @@ export async function GET(req: NextRequest) {
     let items = snap.items;
     if (source && source !== 'all') items = items.filter((i) => i.source === source);
     if (cc) items = items.filter((i) => i.cc === cc);
-    if (q) items = items.filter((i) => i.value.toLowerCase().includes(q) || i.threat.toLowerCase().includes(q) || i.kind.toLowerCase().includes(q));
+    if (q) {
+      const sourceHit = new Set(snap.sources.filter((s) => `${s.id} ${s.label} ${s.publisher}`.toLowerCase().includes(q)).map((s) => s.id));
+      items = items.filter((i) => sourceHit.has(i.source) || i.value.toLowerCase().includes(q) || i.threat.toLowerCase().includes(q) || i.kind.toLowerCase().includes(q) || i.cc?.toLowerCase() === q);
+    }
     const offset = Math.max(0, parseInt(sp.get('offset') ?? '0', 10) || 0);
     const limit = Math.min(MAX_PAGE, Math.max(0, parseInt(sp.get('limit') ?? '200', 10) || 0));
     const res = NextResponse.json({

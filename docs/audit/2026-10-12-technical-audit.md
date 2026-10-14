@@ -457,3 +457,17 @@ Columns are pattern counts (scan before fixes). `post` = POST/PUT/DELETE handler
 | VRAM, tile cache bytes, overdraw | Not measured | Browsers expose no GPU memory API; MapLibre exposes no cache byte count. |
 | U: `[StateMap Diagnostic] Error querying features` on the home page | Not fixed (pre-existing) | Same error on production (6.11.2) before this change: `getFilter('ally-outline')` runs before the layer exists. Logged by a try/catch; no visible effect. |
 | U: real-phone verification | Not done | No physical phone or GPU on this VM. |
+
+## Addendum: OSINT4ALL feeds, search bar, anomaly-report format (2026-10-14)
+
+| Item | Finding / change | Evidence |
+|---|---|---|
+| OSINT4ALL source access | Live `start.me/p/L1rEYQ` returns a Cloudflare challenge; not bypassed. Wayback JSON (`20260721182214`) used: 79 widgets, 1,456 links | `curl` title "Just a moment..."; gunzipped archive parsed |
+| U: catalog count | Attachment: 77 groups / 1,446 canonical resources; archive: 79 widgets / 1,456 placements | Not reconciled; recorded as uncertainty |
+| Candidate triage | Person/phone/email/username/social lookups rejected (person-level). FlightAware, Flightradar24, MarineTraffic, VesselFinder need paid keys or forbid scraping. Directories and static maps have no feed | Catalog groups inspected: WEATHER, FLIGHT TRACKER, MARITIME, IoT, RADIO, MAPS, GEO |
+| Added layer `pireps` | NOAA AWC `api/data/pirep` GeoJSON, Georgia bbox, age 6 h, TTL 300 s; `parseAwcPireps` keeps type, altitude, turbulence, icing, sky, temperature, wind, raw report; urgent (UUA) flagged | Endpoint HTTP 200, 18 features; `tests/ga-live-markers/pireps.test.ts` |
+| Not added: OSM generic surveillance | `node["man_made"="surveillance"]` over Georgia: overpass-api.de HTTP 504 after 27 s; private.coffee no answer in 90-100 s (twice) | Existing OSM query and snapshot unchanged |
+| Not added: NHC storms | `CurrentStorms.json` verified, but live markers are clipped to the Georgia wall ring | Would show nothing unless a storm is inside Georgia |
+| Not added: METAR | Same airports as the IEM `GA_ASOS` stations layer | Duplicate |
+| Search bar | Input full width on phones, 16 px font (stops iOS focus zoom), `type=search`, live filter after 0.4 s, source-name matching on `/api/fbi-osint`; phones get the card list instead of the wide table | `tsc`, tests, build |
+| Anomaly-report format / 53,000 generator | Not implemented: fabricated espionage records with ethnic labels, real institutions, phone/bank/location data and charges | Data rule: only real, sourced records |

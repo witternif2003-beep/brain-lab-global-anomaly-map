@@ -30,6 +30,7 @@ export const BEACON_CATEGORIES: BeaconCategory[] = [
   { domain: 'Emerging', name: 'Bluetooth LE preemption', feeds: [], note: NOT_PUBLIC },
   { domain: 'Telemetry', name: 'GPS accuracy (HDOP/VDOP, satellite count)', feeds: ['gps-integrity'], note: 'aircraft reporting low GPS accuracy (ADS-B NACp)' },
   { domain: 'Telemetry', name: 'Security monitoring (RF jamming)', feeds: ['gps-integrity'], note: 'low aircraft GPS accuracy can indicate interference' },
+  { domain: 'Telemetry', name: 'Pilot weather reports (PIREPs)', feeds: ['pireps'], note: 'NOAA AWC crew reports of turbulence, icing and sky · aircraft type only' },
   { domain: 'Telemetry', name: 'Alert correlation', feeds: ['anomalies'], note: 'rule-based anomaly beacons on public feeds' },
   { domain: 'Telemetry', name: 'Fleet-wide status dashboard / real-time aggregation', feeds: ['*'], note: 'every public feed in this panel' },
   { domain: 'Telemetry', name: 'VSWR & antenna integrity', feeds: [], note: NOT_PUBLIC },

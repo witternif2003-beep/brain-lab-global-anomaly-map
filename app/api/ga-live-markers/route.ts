@@ -12,6 +12,7 @@ import {
   parseAccpdIncidents,
   parseAdsbLol,
   parseAugusta911Feed,
+  parseAwcPireps,
   parseGbfsFreeBikes,
   parseIemCurrents,
   parseOpenSky,
@@ -331,6 +332,16 @@ const LAYERS: Record<LiveLayer, LayerSpec> = {
       id: "USGS ComCat",
       url: () => `https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&orderby=time&minlatitude=30.3&maxlatitude=35.1&minlongitude=-85.7&maxlongitude=-80.8&starttime=${new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10)}`,
       load: json((j) => parseUsgsQuakes(j)),
+    }],
+  },
+  pireps: {
+    ttlS: 300,
+    source: "Pilot reports (PIREPs: turbulence, icing, sky and weather as reported by flight crews) from the NOAA Aviation Weather Center data API, Georgia area, observed in the last 6 h; aircraft type only, no registration or callsign",
+    sourceUrl: "https://aviationweather.gov/data/api/",
+    feeds: [{
+      id: "NOAA AWC PIREP",
+      url: `https://aviationweather.gov/api/data/pirep?bbox=${GA_BBOX.south},${GA_BBOX.west},${GA_BBOX.north},${GA_BBOX.east}&format=geojson&age=6`,
+      load: async (r) => (r.status === 204 ? [] : parseAwcPireps((await r.json()) as never)),
     }],
   },
   streamgauges: {
