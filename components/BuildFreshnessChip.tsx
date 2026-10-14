@@ -32,6 +32,19 @@ export default function BuildFreshnessChip({ buildSha }: { buildSha: string }) {
   }, []);
 
   const short = (buildSha || "local").slice(0, 7);
+  const stale = short !== "local" && liveSha !== null && liveSha !== short;
+
+  useEffect(() => {
+    if (!stale || !liveSha) return;
+    const key = `brainlab-auto-reload-${liveSha}`;
+    try {
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, "1");
+    } catch {
+      return;
+    }
+    window.location.reload();
+  }, [stale, liveSha]);
   if (short === "local") {
     return (
       <div className="fixed bottom-3 right-3 z-[60] font-mono text-[9px] font-bold px-2.5 py-1 rounded-full bg-[#020b18]/90 text-slate-400 border border-slate-600/60 pointer-events-none">
@@ -39,7 +52,6 @@ export default function BuildFreshnessChip({ buildSha }: { buildSha: string }) {
       </div>
     );
   }
-  const stale = liveSha !== null && liveSha !== short;
 
   if (stale) {
     return (

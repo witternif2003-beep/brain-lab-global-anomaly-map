@@ -23,6 +23,7 @@ import { addGaChangeLayer } from '../lib/ga-change-layer';
 import { addGaOrbitalLayers } from '../lib/ga-orbital-layer';
 import { addGaLiveMarkerLayers } from '../lib/ga-live-markers-layer';
 import { addGaFbiFeeds } from '../lib/ga-fbi-feed';
+import FbiOsintPopup from './FbiOsintPopup';
 import { glowRadius, scaleMarkersInsideGaWall, type RadiusExpression } from '../lib/ga-marker-scale';
 import { exportMapAt8k } from '../lib/map-8k-export';
 import { SKY_PHOTO_SOURCE_URL, SkyPhotoRenderer, projectRaDec, skyBasis, skyBodyPositions, type SkyBodyPosition } from '../lib/sky-photo';
@@ -1748,6 +1749,7 @@ export default function GodsEyeMap({
             >
               SAVE 8K PNG
             </button>
+            <FbiOsintPopup />
             {export8kStatus && <span className="text-[10px] text-slate-300 bg-[#070d18]/80 rounded px-1.5 py-0.5">{export8kStatus}</span>}
           </div>
           {/* NASA ASTROMETRIC STAR TELEMETRY HUD (50 VERIFIED STELLAR METRICS) */}

@@ -39,6 +39,7 @@ export default function Navbar() {
     { href: "/three-pillars", label: "3 Pillars", icon: Target },
     { href: "/godseye-telemetry", label: "GodsEYE Map", icon: Eye },
     { href: "/godseye-telemetry#fbi-capabilities", label: "FBI Feeds", icon: Shield },
+    { href: "/fbi-osint", label: "FBI OSINT", icon: Radar },
     { href: "/threat-globe", label: "3D Globe", icon: Globe },
     { href: "/lidar-splat", label: "LiDAR Splats", icon: Globe },
     { href: "/benchmarks", label: "ML Telemetry", icon: Zap },
