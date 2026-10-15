@@ -21,7 +21,6 @@ import { addGaHydrometLayers } from '../lib/ga-hydromet-layer';
 import { addGaAnomalyBulbs } from '../lib/ga-anomaly-bulbs';
 import { addGaChangeLayer } from '../lib/ga-change-layer';
 import { addGaOrbitalLayers } from '../lib/ga-orbital-layer';
-import { addSpaceWeatherLayers } from '../lib/space-weather-layer';
 import { addGaCloudLayers } from '../lib/ga-clouds-layer';
 import { addGaLiveMarkerLayers } from '../lib/ga-live-markers-layer';
 import { addGaFbiFeeds } from '../lib/ga-fbi-feed';
@@ -30,23 +29,18 @@ import { glowRadius, scaleMarkersInsideGaWall, type RadiusExpression } from '../
 import { exportMapAt8k } from '../lib/map-8k-export';
 import { SKY_PHOTO_SOURCE_URL, SkyPhotoRenderer, projectRaDec, skyBasis, skyBodyPositions, type SkyBodyPosition } from '../lib/sky-photo';
 import { AWS_TERRARIUM_TILES, OPENFREEMAP_PLANET } from '../lib/lidar-globe-sources';
-import { cappedPixelRatio, isTouchDevice } from '../lib/map/touch-gpu-budget';
-import { CreditsControl } from '../lib/map/credits-control';
 
 const ALLY_STATE_CODES = ['AL', 'FL', 'NC', 'SC', 'TN', 'TX', 'VA'];
 const STARMAP_8K_MIN_DEVICE_PX = 1920;
+/** Phone/tablet GPU memory guard: device pixel ratio cap for the WebGL map canvas on touch devices. */
+const TOUCH_MAX_PIXEL_RATIO = 2;
 /** Zoom levels of off-screen tiles kept in MapLibre's tile cache on touch devices (MapLibre default 5). */
 const TOUCH_TILE_CACHE_ZOOM_LEVELS = 3;
-const mapPixelRatio = () => cappedPixelRatio(window.devicePixelRatio || 1, isTouchDevice());
-const MAP_CREDITS = [
-  'Imagery © Esri, Maxar, Earthstar Geographics',
-  '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors (OpenFreeMap, Waymarked Trails CC BY-SA)',
-  'Terrain: Mapzen/AWS, USGS 3DEP',
-  'USGS · NOAA · NWS · NASA',
-  `Sky: <a href="${SKY_PHOTO_SOURCE_URL}" target="_blank" rel="noopener">NASA SVS</a>`,
-  'IP geolocation: DB-IP (CC BY 4.0)',
-  'Cesium Man © Cesium (CC BY 4.0)',
-].join(' | ');
+const isTouchDevice = () => typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0;
+const mapPixelRatio = () => {
+  const dpr = window.devicePixelRatio || 1;
+  return isTouchDevice() ? Math.min(TOUCH_MAX_PIXEL_RATIO, dpr) : dpr;
+};
 
 function makeSteelPanelImage(size = 128, scale = 1): ImageData | null {
   const canvas = document.createElement('canvas');
@@ -839,7 +833,6 @@ export default function GodsEyeMap({
     addGaAnomalyBulbs(map);
     addGaChangeLayer(map);
     addGaOrbitalLayers(map);
-    addSpaceWeatherLayers(map);
     addGaCloudLayers(map);
     addGaLiveMarkerLayers(map);
     addGaFbiFeeds(map);
@@ -1317,7 +1310,10 @@ export default function GodsEyeMap({
       maxZoom: 22,
       maxPitch: 85,
       minZoom: 1,
-      attributionControl: false,
+      attributionControl: {
+        compact: true,
+        customAttribution: `Sky: <a href="${SKY_PHOTO_SOURCE_URL}" target="_blank" rel="noopener">NASA SVS Deep Star Maps 2020</a>`,
+      },
       canvasContextAttributes: { antialias: !isTouchDevice() },
       pixelRatio: mapPixelRatio(),
       maxCanvasSize: [lim, lim],
@@ -1358,8 +1354,6 @@ export default function GodsEyeMap({
       }),
       'bottom-right'
     );
-
-    map.addControl(new CreditsControl(MAP_CREDITS), 'bottom-right');
 
     // Scale bar (imperial, 50 mi)
     map.addControl(
