@@ -9,6 +9,7 @@ import type { GaModelKind } from './ga-mesh-models';
 import { box } from './ga-orbital-layer';
 import type { LiveLayer, LiveMarker, LiveValue } from './ga-live-markers/parse';
 import type { CameraState } from './ga-live-markers/snapshot';
+import { markerKey, STROBE_MS, strobeSince } from './ga-live-markers/strobe';
 
 interface Payload {
   generatedAt?: string;
@@ -35,6 +36,7 @@ interface Spec {
   rows: (p: Record<string, LiveValue>) => [string, string][];
   detail: (ms: LiveMarker[]) => string;
   dateOnly?: boolean;
+  colorOf?: (m: LiveMarker) => string;
 }
 
 const KT_TO_MS = 0.514444;
@@ -47,6 +49,8 @@ const altTag = (p: Record<string, LiveValue>) => {
   return ft >= 18_000 ? `FL${Math.round(ft / 100)}` : `${(Math.round(ft / 100) * 100).toLocaleString('en-US')} ft`;
 };
 const DEAD_RECKON_MAX_S = 30;
+const STROBE_LAYERS = new Set<LiveLayer>(['augusta911', 'athens911', 'policereports', 'pireps']);
+const STROBE_RECHECK_MS = 60_000;
 const TICK_MS = 1_000;
 const fmt = (v: LiveValue, unit = '') => (v === null || v === undefined || v === '' ? '' : `${v}${unit}`);
 const countBy = (ms: LiveMarker[], key: string) => {
@@ -77,7 +81,73 @@ const tfrState = (p: Record<string, LiveValue>, now = Date.now()) => {
 const when = (v: LiveValue) => (typeof v === 'string' && v ? new Date(v).toLocaleString() : '');
 const topCounts = (ms: LiveMarker[], key: string, n: number) => countBy(ms, key).split(', ').slice(0, n).join(', ');
 
+const EQUIPMENT_COLOR: Record<string, string> = {
+  'Vehicles & charging': '#22d3ee', 'Bikes & scooters': '#a3e635', 'Buses & trains': '#facc15', 'Aviation & water': '#93c5fd',
+  'Emergency equipment': '#f87171', Health: '#f472b6', 'Money & mail': '#fb923c', 'Public facilities': '#c4b5fd', 'Parks & recreation': '#4ade80',
+};
+const EQUIPMENT_ICON: Record<string, GaIconShape> = {
+  'Vehicles & charging': 'vehicle', 'Bikes & scooters': 'scooter', 'Buses & trains': 'station', 'Aviation & water': 'airspace',
+  'Emergency equipment': 'beacon', Health: 'shield', 'Money & mail': 'house', 'Public facilities': 'house', 'Parks & recreation': 'signal',
+};
+const PLACED_BY: Record<string, string> = { osm: "agency facility mapped in OpenStreetMap", city: "centre of the agency's city (Census)", county: "centre of the agency's county (Census)" };
+
 const SPECS: Record<LiveLayer, Spec> = {
+  equipment: {
+    label: 'Public equipment people use (OSM, 51 categories)', color: '#22d3ee', stroke: '#0f172a', radiusPx: 2.2, z: 13, refreshMs: OSM_REFRESH_MS,
+    iconPx: 12, labelMinZoom: 15, dateOnly: true,
+    icon: (m) => ({ shape: EQUIPMENT_ICON[String(m.props.group)] ?? 'station' }),
+    colorOf: (m) => EQUIPMENT_COLOR[String(m.props.group)] ?? '#22d3ee',
+    tag: osmTag,
+    title: (m) => `${String(m.props.kind ?? 'EQUIPMENT').toUpperCase()} · ${m.label}`,
+    rows: (p) => [
+      ['Category', `${fmt(p.kind)} · ${fmt(p.group)}`],
+      ['Operator', fmt(p.operator)],
+      ['Connectors', fmt(p.sockets)],
+      ['Capacity', fmt(p.capacity)],
+      ['Fee', fmt(p.fee)],
+      ['Hours', fmt(p.hours)],
+      ['Wheelchair', fmt(p.wheelchair)],
+      ['Status', 'fixed location as mapped, not a live reading'],
+      ['OSM', fmt(p.osm)],
+    ],
+    detail: (ms) => `${new Set(ms.map((m) => m.props.category)).size} categories · ${topCounts(ms, 'kind', 4)} · fixed locations`,
+  },
+  policereports: {
+    label: 'Police-reported offences, last 20 days (Atlanta PD, Doraville PD)', color: '#e11d48', stroke: '#1e3a8a', radiusPx: 2.6, z: 27, refreshMs: 30 * 60_000,
+    iconPx: 12, labelMinZoom: 16,
+    icon: () => ({ shape: 'alert' }),
+    tag: (m) => m.label,
+    title: (m) => `${String(m.props.agency ?? 'POLICE').toUpperCase()} · ${m.label}`,
+    rows: (p) => [
+      ['Offence', fmt(p.offense)],
+      ['Group', [p.bucket, p.against ? `against ${String(p.against).toLowerCase()}` : ''].filter(Boolean).join(' · ')],
+      ['Firearm', p.firearm === null || p.firearm === undefined ? '' : p.firearm ? 'involved' : 'not involved'],
+      ['Where', fmt(p.block)],
+      ['Premise', fmt(p.premise)],
+      ['Area / status', fmt(p.area)],
+      ['Occurred', when(p.occurredAt)],
+      ['Position', 'block level, rounded to about 110 m'],
+    ],
+    detail: (ms) => (ms.length ? `${countBy(ms, 'agency')} · top: ${topCounts(ms, 'offense', 3)}` : 'no reports in the last 20 days'),
+  },
+  policetech: {
+    label: 'Police surveillance tech by agency (EFF Atlas of Surveillance)', color: '#f97316', stroke: '#1e3a8a', radiusPx: 4.5, z: 33, refreshMs: 24 * 3600_000,
+    iconPx: 18, labelMinZoom: 10, dateOnly: true,
+    icon: () => ({ shape: 'scan' }),
+    tag: (m) => `${m.props.techCount}`,
+    title: (m) => `SURVEILLANCE TECH · ${m.label}`,
+    rows: (p) => [
+      ['Technologies', fmt(p.technologies)],
+      ['Records', fmt(p.techCount)],
+      ['Vendors', fmt(p.vendors)],
+      ['Agency', `${fmt(p.agencyType)} · ${fmt(p.jurisdiction)}`],
+      ['Place', fmt(p.place)],
+      ['Newest source', fmt(p.newestSource)],
+      ['Position', PLACED_BY[String(p.placedBy)] ?? ''],
+      ['Note', 'agency-level record from news and public documents · no device or vehicle positions'],
+    ],
+    detail: (ms) => `${ms.length} agencies · ${ms.reduce((n, m) => n + (Number(m.props.techCount) || 0), 0)} technology records`,
+  },
   gdotcams: {
     label: 'GDOT traffic cameras (511GA)', color: '#1d4ed8', stroke: '#ef4444', radiusPx: 3.5, z: 24, refreshMs: 60 * 60_000,
     iconPx: 16, labelMinZoom: 15, dateOnly: true,
@@ -96,7 +166,7 @@ const SPECS: Record<LiveLayer, Spec> = {
     },
   },
   augusta911: {
-    label: 'Augusta E911 calls, last 24 h', color: '#ef4444', stroke: '#1d4ed8', radiusPx: 4.5, z: 29, refreshMs: 2 * 60_000,
+    label: 'Augusta E911 calls, last 20 days', color: '#ef4444', stroke: '#1d4ed8', radiusPx: 4.5, z: 29, refreshMs: 2 * 60_000,
     iconPx: 20, labelMinZoom: 12,
     icon: () => ({ shape: 'alert' }),
     tag: (m) => m.label,
@@ -109,10 +179,10 @@ const SPECS: Record<LiveLayer, Spec> = {
       ['Matched', fmt(p.matched)],
       ['Match score', fmt(p.matchScore)],
     ],
-    detail: (ms) => (ms.length ? `${topCounts(ms, 'callType', 3)} · ${ms.filter((m) => m.props.approximate).length} approximate` : 'no calls posted in the last 24 h'),
+    detail: (ms) => (ms.length ? `${topCounts(ms, 'callType', 3)} · ${ms.filter((m) => m.props.approximate).length} approximate` : 'no calls posted in the last 20 days'),
   },
   athens911: {
-    label: 'Athens-Clarke PD calls, last 7 days', color: '#2563eb', stroke: '#ef4444', radiusPx: 3, z: 28, refreshMs: 30 * 60_000,
+    label: 'Athens-Clarke PD calls, last 20 days', color: '#2563eb', stroke: '#ef4444', radiusPx: 3, z: 28, refreshMs: 30 * 60_000,
     iconPx: 14, labelMinZoom: 15, dateOnly: true,
     icon: () => ({ shape: 'beacon' }),
     tag: (m) => m.label,
@@ -126,7 +196,7 @@ const SPECS: Record<LiveLayer, Spec> = {
     ],
     detail: (ms) => {
       const newest = ms.reduce((a, m) => (String(m.props.date ?? '') > a ? String(m.props.date) : a), '');
-      return ms.length ? `${ms.filter((m) => m.props.callSource === '911').length} via 911 · newest date ${newest} · unfiltered` : 'no calls dated in the last 7 days';
+      return ms.length ? `${ms.filter((m) => m.props.callSource === '911').length} via 911 · newest date ${newest} · unfiltered` : 'no calls dated in the last 20 days';
     },
   },
   tfr: {
@@ -300,6 +370,8 @@ function modelFor(layer: LiveLayer, m: LiveMarker): GaDeckItem['model'] {
 }
 
 function sourceLink(layer: LiveLayer, m: LiveMarker): { href: string; text: string } {
+  if (layer === 'policetech') return m.props.sourceLink ? { href: String(m.props.sourceLink), text: 'Atlas source document ↗' } : { href: 'https://atlasofsurveillance.org/', text: 'Atlas of Surveillance ↗' };
+  if (layer === 'policereports') return m.props.agency === 'Doraville Police Department' ? { href: 'https://services5.arcgis.com/HPK9d3vzjakSFUjJ/arcgis/rest/services/Daily_Incidents_WFL1/FeatureServer/0', text: 'Doraville PD ArcGIS layer ↗' } : { href: 'https://opendata.atlantapd.org/', text: 'Atlanta PD open data ↗' };
   if (m.props.osm) return { href: `https://www.openstreetmap.org/${m.props.osm}`, text: 'OpenStreetMap ↗' };
   if (layer === 'tfr' && m.props.notam) return { href: `https://tfr.faa.gov/tfr3/?page=detail_${String(m.props.notam).replace('/', '_')}`, text: 'FAA TFR page ↗' };
   if (layer === 'streamgauges') return { href: `https://waterdata.usgs.gov/monitoring-location/${encodeURIComponent(String(m.props.site))}/`, text: 'USGS site page ↗' };
@@ -404,12 +476,14 @@ export function addGaLiveMarkerLayers(map: MapLibreMap): void {
   bound.add(map);
   const wallP = loadGaWallRing().catch(() => [] as LngLat[]);
   const current: Partial<Record<LiveLayer, LiveMarker[]>> = {};
+  const firstSeen: Partial<Record<LiveLayer, Map<string, number>>> = {};
 
   const render = (layer: LiveLayer) => {
     const spec = SPECS[layer];
     const ms = current[layer] ?? [];
     const now = Date.now();
     const fill = hexToRgba(spec.color, 235);
+    const fillOf = spec.colorOf;
     const stroke = hexToRgba(spec.stroke);
     const items: GaDeckItem[] = ms.map((m) => {
       const cam = layer === 'gdotcams' ? cameraState(m) : 'live';
@@ -420,10 +494,10 @@ export function addGaLiveMarkerLayers(map: MapLibreMap): void {
       iconPx: spec.iconPx,
       label: spec.tag?.(m) || undefined,
       model: modelFor(layer, m),
-      fill: cam === 'offline' || (layer === 'micromobility' && m.props.disabled) ? hexToRgba('#64748b', 200) : cam === null ? hexToRgba('#f59e0b', 220) : layer === 'aircraft' && m.props.emergency ? hexToRgba('#ef4444') : fill,
+      fill: cam === 'offline' || (layer === 'micromobility' && m.props.disabled) ? hexToRgba('#64748b', 200) : cam === null ? hexToRgba('#f59e0b', 220) : layer === 'aircraft' && m.props.emergency ? hexToRgba('#ef4444') : fillOf ? hexToRgba(fillOf(m), 235) : fill,
       stroke,
       strokePx: layer === 'micromobility' ? 0.5 : 1,
-      pulse: (layer === 'aircraft' && !!m.props.emergency) || (layer === 'tfr' && tfrState(m.props, now) === 'active'),
+      pulse: (layer === 'aircraft' && !!m.props.emergency) || (layer === 'tfr' && tfrState(m.props, now) === 'active') || now - (firstSeen[layer]?.get(markerKey(m)) ?? 0) < STROBE_MS,
       props: { marker: m },
       };
     });
@@ -473,6 +547,7 @@ export function addGaLiveMarkerLayers(map: MapLibreMap): void {
       if (!r.ok) throw new Error(d.error ?? `HTTP ${r.status}`);
       const ms = (d.markers ?? []).filter((m) => !wall.length || insideRing(wall, [m.lon, m.lat]));
       current[layer] = ms;
+      if (STROBE_LAYERS.has(layer)) firstSeen[layer] = strobeSince(ms, firstSeen[layer], Date.now());
       render(layer);
       const failed = (d.feeds ?? []).filter((f) => f.error);
       const unplaced = (d.feeds ?? []).reduce((a, f) => a + (f.unplaced ?? 0), 0);
@@ -505,6 +580,7 @@ export function addGaLiveMarkerLayers(map: MapLibreMap): void {
   const timers = [
     ...layers.map((l) => setInterval(() => void load(l), SPECS[l].refreshMs)),
     setInterval(() => current.aircraft && render('aircraft'), TICK_MS),
+    setInterval(() => STROBE_LAYERS.forEach((l) => current[l] && render(l)), STROBE_RECHECK_MS),
   ];
   map.once('remove', () => {
     timers.forEach(clearInterval);

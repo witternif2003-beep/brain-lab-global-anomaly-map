@@ -199,3 +199,17 @@ validated on local kind, CI workflow, mocked-upstream load test, WebGL GPU pass 
   They describe invented espionage cases with named institutions, ethnic labels, phone, bank
   and location records, NSA validation and federal charges. That is fabricated intelligence
   about identifiable people and places; it is not generated.
+
+13. PUBLIC EQUIPMENT, POLICE TECHNOLOGY, POLICE REPORTS, INCIDENT STROBE, 20-DAY 911 WINDOW
+· equipment: 25,851 OSM-mapped public items in 51 categories (Geofabrik extract, OSM base
+  2026-10-14T20:21:12Z). Fixed locations, not live. Private-access items excluded.
+· policetech: 306 Georgia agencies, 532 technology records from EFF's Atlas of Surveillance
+  (ALPR 230, body cameras 139, drones 51, camera registry 41, RTCC 22, gunshot detection 19,
+  predictive policing 11, face recognition 7, video analytics 5, investigative platforms 5,
+  cell-site simulator 1, fusion center 1). 1 agency not placed. Agency level only.
+· policereports: 2,845 reports in the last 20 days (Atlanta PD 2,703, Doraville PD 142),
+  block level, ~110 m rounding, sensitive fields dropped.
+· 911 calls: Augusta and Athens windows set to the last 20 days (1,701 and 5,056 placed).
+· Strobe: new incidents pulse for 15 min after first received, then go steady.
+· "30,000 more": 29,002 new markers from real sources; not padded.
+· Not built: tracking equipment on police vehicles (equals tracking vehicles and officers).

@@ -34,7 +34,7 @@ export interface GaDeckGroup {
   onClick: (map: MapLibreMap, lngLat: LngLat, props: Record<string, unknown>) => void;
 }
 
-type GroupKey = 'bulbs' | 'traffic' | 'gauges' | 'imagery' | 'fires' | 'aircraft' | 'transit' | 'micromobility' | 'stations' | 'streamgauges' | 'quakes' | 'tfr' | 'signals' | 'towers' | 'police' | 'firestations' | 'sirens' | 'speedcams' | 'alpr' | 'augusta911' | 'athens911' | 'gdotcams' | 'pireps';
+type GroupKey = 'bulbs' | 'traffic' | 'gauges' | 'imagery' | 'fires' | 'aircraft' | 'transit' | 'micromobility' | 'stations' | 'streamgauges' | 'quakes' | 'tfr' | 'signals' | 'towers' | 'police' | 'firestations' | 'sirens' | 'speedcams' | 'alpr' | 'augusta911' | 'athens911' | 'gdotcams' | 'pireps' | 'equipment' | 'policereports' | 'policetech';
 type Renderer = 'webgl2' | 'webgpu';
 type Point = { x: number; y: number };
 type DeckModules = {
@@ -237,6 +237,9 @@ function snapshot(state: DeckState): DeckSnapshot {
       athens911: state.groups.get('athens911')?.items.length ?? 0,
       gdotcams: state.groups.get('gdotcams')?.items.length ?? 0,
       pireps: state.groups.get('pireps')?.items.length ?? 0,
+      equipment: state.groups.get('equipment')?.items.length ?? 0,
+      policereports: state.groups.get('policereports')?.items.length ?? 0,
+      policetech: state.groups.get('policetech')?.items.length ?? 0,
     },
     pulse: { radiusScale: state.pulseRadiusScale, opacity: state.pulseOpacity },
   };

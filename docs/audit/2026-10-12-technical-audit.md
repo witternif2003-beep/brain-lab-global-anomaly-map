@@ -471,3 +471,25 @@ Columns are pattern counts (scan before fixes). `post` = POST/PUT/DELETE handler
 | Not added: METAR | Same airports as the IEM `GA_ASOS` stations layer | Duplicate |
 | Search bar | Input full width on phones, 16 px font (stops iOS focus zoom), `type=search`, live filter after 0.4 s, source-name matching on `/api/fbi-osint`; phones get the card list instead of the wide table | `tsc`, tests, build |
 | Anomaly-report format / 53,000 generator | Not implemented: fabricated espionage records with ethnic labels, real institutions, phone/bank/location data and charges | Data rule: only real, sourced records |
+
+## Addendum: public equipment, police technology, police reports, incident strobe, 20-day 911 window (2026-10-15)
+
+Requests: "items individuals use" (shared/public equipment, 50 more categories), "max ceiling to 30,000 more live track on map in Georgia state only", "tracking the equipment on police cars or closest alternative", "new incident strobes for a set of time", "911 calls only last 20 days".
+
+| Layer | Source | Markers (local `next start`, 2026-10-15) | Refresh | Nature |
+|---|---|---:|---|---|
+| `equipment` | OSM via Geofabrik Georgia extract, processed offline with pyosmium (`scripts/build-ga-osm-equipment.py`), committed `data/osm/ga-equipment-snapshot.json.gz` | 25,851 in 51 categories (OSM base 2026-10-14T20:21:12Z) | 24 h cache of the committed copy | fixed locations, not live; `access=private/no` excluded |
+| `policetech` | EFF Atlas of Surveillance CSV (CC BY 4.0), `scripts/build-ga-atlas-of-surveillance.py`, committed `data/aos/ga-atlas-of-surveillance.json` | 306 agencies / 532 technology records (1 of 307 agencies not placed) | 24 h | agency level: OSM police facility (68), Census city point (230), county point (8) |
+| `policereports` | Atlanta PD NIBRS ArcGIS + Doraville PD daily incidents ArcGIS | 2,845 (APD 2,703, Doraville 142), last 20 days | 30 min | block-level address, coordinates rounded to 3 dp (~110 m); victim counts, family-violence, bias, gang flags, officer names, case numbers dropped; future-dated rows dropped |
+| `augusta911` | Augusta E911 Bluesky feed + Augusta GIS locator | 1,701 placed, 12 unplaced (window raised 24 h → 20 days; up to 40 pages; cold fetch 22 s) | 2 min | unchanged fields |
+| `athens911` | ACCPD ArcGIS | 5,056 placed, 25 unplaced (window raised 7 → 20 days; cap 10,000) | 30 min | unchanged fields |
+
+New markers added by the three new layers: 29,002, under the 30,000 ceiling; no padding.
+
+Incident strobe (`lib/ga-live-markers/strobe.ts`): markers in `augusta911`, `athens911`, `policereports` and `pireps` pulse for 15 min after the map first receives them. On a layer's first load only records whose source timestamp is within the last 15 min pulse, so opening the page does not strobe the whole backlog. Layers re-render every 60 s to stop expired strobes. Athens records carry a date only and are published with a delay, so after first load they strobe only when a new refresh brings them in.
+
+Not built: positions of equipment mounted on police vehicles (radios, plate readers, light bars, dash cameras). That equals tracking the vehicles and officers; no public source exists and no covert or signal-based method was attempted. The Atlas layer is the agreed closest alternative. FCC radio-license sites were offered but not added in this change.
+
+Rejected/failed sources: Overpass mirrors (406/500/504/timeouts), replaced by the Geofabrik extract; ZEUS Augusta GBFS (2 stale non-Georgia records), Veo Athens/Statesboro `free_bike_status` (404), Relay Bike Share guessed endpoint (404); NREL AFDC with DEMO_KEY (no usable response).
+
+Tests: `tests/ga-live-markers/public-use.test.ts`, `tests/ga-live-markers/strobe.test.ts`.

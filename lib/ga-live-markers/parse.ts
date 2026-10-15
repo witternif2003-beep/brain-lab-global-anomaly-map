@@ -1,7 +1,7 @@
 export const GA_BBOX = { west: -85.7, south: 30.3, east: -80.8, north: 35.1 };
 
 export type OsmInfraKind = "signals" | "towers" | "police" | "firestations" | "sirens" | "speedcams" | "alpr";
-export type LiveLayer = "aircraft" | "transit" | "micromobility" | "stations" | "streamgauges" | "quakes" | "tfr" | "augusta911" | "athens911" | "gdotcams" | "pireps" | OsmInfraKind;
+export type LiveLayer = "aircraft" | "transit" | "micromobility" | "stations" | "streamgauges" | "quakes" | "tfr" | "augusta911" | "athens911" | "gdotcams" | "pireps" | "equipment" | "policereports" | "policetech" | OsmInfraKind;
 export type LiveValue = string | number | boolean | null;
 
 export interface LiveMarker {
@@ -624,6 +624,131 @@ export function parseAwcPireps(json: { features?: AwcPirepFeature[] }, nowMs = D
         windDir: num(p.wdir),
         receivedAt: p.receiptTime ?? null,
         raw: raw || null,
+      });
+    })
+    .filter(keep);
+}
+
+export interface EquipmentCategory { id: string; key: string; value: string; label: string; group: string }
+
+const SOCKETS: [string, string][] = [["socket:type1_combo", "CCS1"], ["socket:chademo", "CHAdeMO"], ["socket:nacs", "NACS"], ["socket:tesla_supercharger", "Tesla"], ["socket:type1", "J1772"], ["socket:type2", "Type 2"]];
+
+/** Publicly usable equipment mapped in OpenStreetMap (one marker per element, by category); `observedAt` is the OSM base time of the extract. */
+export function parseOsmEquipment(json: { osm3s?: { timestamp_osm_base?: string | null }; elements?: OsmElement[] }, cats: EquipmentCategory[]): LiveMarker[] {
+  const asOf = json.osm3s?.timestamp_osm_base ?? null;
+  const byTag = new Map(cats.map((c) => [`${c.key}=${c.value}`, c]));
+  const out: LiveMarker[] = [];
+  for (const e of json.elements ?? []) {
+    const t = e.tags ?? {};
+    if (!e.type || e.id === undefined || t.access === "private" || t.access === "no") continue;
+    const cat = cats.map((c) => byTag.get(`${c.key}=${t[c.key]}`)).find((c) => c);
+    if (!cat) continue;
+    const name = tagOr(t, "name", "brand");
+    const sockets = SOCKETS.filter(([k]) => t[k] && t[k] !== "no").map(([k, l]) => (num(t[k]) === null ? l : `${l} ×${t[k]}`)).join(", ") || null;
+    const m = marker(num(e.lon ?? e.center?.lon), num(e.lat ?? e.center?.lat), asOf, name ?? cat.label, {
+      osm: `${e.type}/${e.id}`,
+      category: cat.id,
+      kind: cat.label,
+      group: cat.group,
+      named: name !== null,
+      operator: tagOr(t, "operator", "network"),
+      capacity: num(t.capacity),
+      fee: tagOr(t, "fee"),
+      hours: tagOr(t, "opening_hours"),
+      wheelchair: tagOr(t, "wheelchair"),
+      sockets,
+    });
+    if (m) out.push(m);
+  }
+  return out;
+}
+
+/** "1195 WOODLAND AVE NE" → "1100 block WOODLAND AVE NE"; intersections and unnumbered streets are kept as published. */
+export function toBlockAddress(addr: string | null | undefined): string | null {
+  const a = addr?.replace(/\s+/g, " ").trim();
+  if (!a) return null;
+  const m = a.match(/^(\d+)[A-Z]?\s+(.+)$/i);
+  return m ? `${Math.floor(Number(m[1]) / 100) * 100} block ${m[2]}` : a;
+}
+
+const GENERALIZE_DP = 3;
+const generalize = (v: number | null) => (v === null ? null : round(v, GENERALIZE_DP));
+const inWindow = (t: number | null, sinceMs: number, nowMs: number) => t !== null && t >= sinceMs && t <= nowMs;
+
+export interface ApdCrimeFeature {
+  attributes?: { ReportNumber?: string | null; ReportDate?: number | null; OccurredFromDate?: number | null; NIBRS_Offense?: string | null; NIBRS_Bucket?: string | null; Crime_Against?: string | null; Part?: string | null; FireArmInvolved?: string | null; StreetAddress?: string | null; LocationType?: string | null; NhoodName?: string | null; Zone?: string | null; Longitude?: number | null; Latitude?: number | null };
+}
+
+/** Atlanta PD NIBRS offences from the city's OpenDataWebsite_Crime_view layer, reported in [sinceMs, nowMs]: block-level address and position rounded to ~110 m; victim, family-violence, bias and gang flags are not carried. */
+export function parseApdCrime(json: { features?: ApdCrimeFeature[] }, sinceMs: number, nowMs = Date.now()): LiveMarker[] {
+  return (json.features ?? [])
+    .map((f) => {
+      const a = f.attributes ?? {};
+      const t = num(a.ReportDate);
+      if (!inWindow(t, sinceMs, nowMs)) return null;
+      return marker(generalize(num(a.Longitude)), generalize(num(a.Latitude)), new Date(t!).toISOString(), a.NIBRS_Offense?.trim() || "Reported offence", {
+        agency: "Atlanta Police Department",
+        offense: a.NIBRS_Offense?.trim() || null,
+        bucket: a.NIBRS_Bucket?.trim() || null,
+        against: a.Crime_Against?.trim() || null,
+        firearm: a.FireArmInvolved ? a.FireArmInvolved.toLowerCase() === "yes" : null,
+        block: toBlockAddress(a.StreetAddress),
+        premise: a.LocationType?.replace(/_/g, " ").toLowerCase() || null,
+        area: [a.NhoodName, a.Zone].filter(Boolean).join(" · ") || null,
+        occurredAt: num(a.OccurredFromDate) === null ? null : new Date(num(a.OccurredFromDate)!).toISOString(),
+      });
+    })
+    .filter(keep);
+}
+
+export interface DoravilleFeature {
+  attributes?: { USER_AGENCY?: string | null; USER_NIBR_DESC?: string | null; USER_BLOCK_ADDRESS?: string | null; USER_PREMISE_DESC?: string | null; USER_CASE_STATUS_DESC?: string | null; USER_INC_REPORT_DATE?: number | null; USER_FROM_DATE?: number | null };
+  geometry?: { x?: number; y?: number };
+}
+
+/** Doraville PD incidents from the city's Daily_Incidents_WFL1 dashboard layer, reported in [sinceMs, nowMs] (future-dated rows are dropped); block address as published and position rounded to ~110 m; officer names and case numbers are not carried. */
+export function parseDoravilleIncidents(json: { features?: DoravilleFeature[] }, sinceMs: number, nowMs = Date.now()): LiveMarker[] {
+  return (json.features ?? [])
+    .map((f) => {
+      const a = f.attributes ?? {};
+      const t = num(a.USER_INC_REPORT_DATE);
+      if (!inWindow(t, sinceMs, nowMs)) return null;
+      return marker(generalize(num(f.geometry?.x)), generalize(num(f.geometry?.y)), new Date(t!).toISOString(), a.USER_NIBR_DESC?.trim() || "Reported incident", {
+        agency: "Doraville Police Department",
+        offense: a.USER_NIBR_DESC?.trim() || null,
+        bucket: null,
+        against: null,
+        firearm: null,
+        block: a.USER_BLOCK_ADDRESS?.replace(/\s+/g, " ").trim() || null,
+        premise: a.USER_PREMISE_DESC?.trim().toLowerCase() || null,
+        area: a.USER_CASE_STATUS_DESC?.trim().toLowerCase() || null,
+        occurredAt: num(a.USER_FROM_DATE) === null ? null : new Date(num(a.USER_FROM_DATE)!).toISOString(),
+      });
+    })
+    .filter(keep);
+}
+
+export interface AtlasAgency { agency: string; city: string; county: string; type: string; juris: string; lon: number; lat: number; placedBy: "osm" | "city" | "county"; osm: string | null; tech: { technology: string; vendor: string | null; link: string | null; linkDate: string | null; aos: string }[] }
+
+/** One marker per Georgia agency in EFF's Atlas of Surveillance, listing the technologies documented for it; the point is the agency's facility or its city/county, never a device or vehicle. */
+export function atlasMarkers(json: { retrievedAt?: string; agencies?: AtlasAgency[] }): LiveMarker[] {
+  return (json.agencies ?? [])
+    .map((a) => {
+      const techs = [...new Set(a.tech.map((t) => t.technology))];
+      const vendors = [...new Set(a.tech.map((t) => t.vendor).filter((v): v is string => !!v))];
+      const newest = a.tech.map((t) => (t.linkDate ? Date.parse(t.linkDate) : NaN)).filter(Number.isFinite).sort((x, y) => y - x)[0];
+      return marker(a.lon, a.lat, json.retrievedAt ?? null, a.agency, {
+        agency: a.agency,
+        agencyType: a.type || null,
+        jurisdiction: a.juris || null,
+        place: [a.city, a.county].filter(Boolean).join(", ") || null,
+        technologies: techs.join(", "),
+        techCount: a.tech.length,
+        vendors: vendors.join(", ") || null,
+        newestSource: newest === undefined ? null : new Date(newest).toISOString().slice(0, 10),
+        sourceLink: a.tech.find((t) => t.link)?.link ?? null,
+        placedBy: a.placedBy,
+        osm: a.osm,
       });
     })
     .filter(keep);

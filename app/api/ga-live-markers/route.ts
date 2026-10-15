@@ -3,6 +3,7 @@ import path from "node:path";
 import { gunzipSync } from "node:zlib";
 import { NextResponse, type NextRequest } from "next/server";
 import {
+  atlasMarkers,
   augusta911Markers,
   augustaGeocodeQuery,
   decodeGtfsRtVehicles,
@@ -12,10 +13,13 @@ import {
   parseAccpdIncidents,
   parseAdsbLol,
   parseAugusta911Feed,
+  parseApdCrime,
   parseAwcPireps,
+  parseDoravilleIncidents,
   parseGbfsFreeBikes,
   parseIemCurrents,
   parseOpenSky,
+  parseOsmEquipment,
   parseOverpassInfra,
   parseTfrXml,
   parseUsgsIv,
@@ -23,6 +27,10 @@ import {
   transitMarkers,
   GEOCODE_MIN_SCORE,
   type AccpdFeature,
+  type ApdCrimeFeature,
+  type AtlasAgency,
+  type DoravilleFeature,
+  type EquipmentCategory,
   type BskyFeedItem,
   type Ga511Camera,
   type Ga511ViewRow,
@@ -32,6 +40,7 @@ import {
   type OsmInfraKind,
   type TfrListItem,
 } from "../../../lib/ga-live-markers/parse";
+import EQUIPMENT_CATEGORIES from "../../../data/osm/ga-equipment-categories.json";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -145,9 +154,10 @@ const getJson = async <T,>(url: string, timeoutMs = 15_000): Promise<T> => {
 const AUG_HANDLE = "auge911feed.bsky.social";
 const AUG_FEED = `https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=${AUG_HANDLE}&filter=posts_no_replies&limit=100`;
 const AUG_LOCATOR = "https://gismap.augustaga.gov/arcgis/rest/services/AGS_AddressComposite/GeocodeServer/findAddressCandidates";
-const AUG_WINDOW_MS = 24 * 3600_000;
-const AUG_MAX_PAGES = 4;
-const AUG_GEOCODE_BATCH = 4;
+const CALLS_WINDOW_D = 20;
+const AUG_WINDOW_MS = CALLS_WINDOW_D * 86_400_000;
+const AUG_MAX_PAGES = 40;
+const AUG_GEOCODE_BATCH = 12;
 const geoMemo = new Map<string, GeocodeHit | null>();
 
 /** Intersections are retried with the locator's other separators ("AND", "/") when "&" finds no candidate. */
@@ -175,7 +185,7 @@ async function augustaLocate(query: string): Promise<GeocodeHit | null> {
   return hit;
 }
 
-/** Augusta E911 calls posted in the last 24 h, placed by coordinates in the post or the Augusta GIS locator. */
+/** Augusta E911 calls posted in the last CALLS_WINDOW_D days, placed by coordinates in the post or the Augusta GIS locator. */
 async function augusta911(): Promise<Placed> {
   const since = Date.now() - AUG_WINDOW_MS;
   const feed: BskyFeedItem[] = [];
@@ -207,15 +217,15 @@ async function augusta911(): Promise<Placed> {
 
 const ACCPD = "https://services2.arcgis.com/xSEULKvB31odt3XQ/arcgis/rest/services/Incidents_accpd_Public/FeatureServer/0";
 const ACCPD_PAGE = 1000;
-const ACCPD_MAX = 6000;
+const ACCPD_MAX = 10_000;
 
-/** Every Athens-Clarke PD call for service dated in the last 7 days, newest first, unfiltered. */
+/** Every Athens-Clarke PD call for service dated in the last CALLS_WINDOW_D days, newest first, unfiltered. */
 async function athens911(): Promise<Placed> {
   const markers: LiveMarker[] = [];
   let total = 0;
   for (let offset = 0; offset < ACCPD_MAX; offset += ACCPD_PAGE) {
     const d = await getJson<{ features?: AccpdFeature[]; exceededTransferLimit?: boolean }>(
-      `${ACCPD}/query?where=${encodeURIComponent("Date >= CURRENT_TIMESTAMP - 7")}&outFields=*&returnGeometry=false&orderByFields=${encodeURIComponent("ObjectId DESC")}&resultOffset=${offset}&resultRecordCount=${ACCPD_PAGE}&f=json`,
+      `${ACCPD}/query?where=${encodeURIComponent(`Date >= CURRENT_TIMESTAMP - ${CALLS_WINDOW_D}`)}&outFields=*&returnGeometry=false&orderByFields=${encodeURIComponent("ObjectId DESC")}&resultOffset=${offset}&resultRecordCount=${ACCPD_PAGE}&f=json`,
       30_000,
     );
     total += d.features?.length ?? 0;
@@ -224,6 +234,53 @@ async function athens911(): Promise<Placed> {
   }
   return { markers, unplaced: total - markers.length };
 }
+
+const EQUIPMENT_SNAPSHOT = path.join(process.cwd(), "data/osm/ga-equipment-snapshot.json.gz");
+let equipmentMemo: Promise<LiveMarker[]> | null = null;
+
+/** Public equipment from the committed Geofabrik OSM extract (scripts/build-ga-osm-equipment.py). */
+function equipment() {
+  equipmentMemo ??= readFile(EQUIPMENT_SNAPSHOT).then((b) => parseOsmEquipment(JSON.parse(gunzipSync(b).toString("utf8")), EQUIPMENT_CATEGORIES as EquipmentCategory[]));
+  return equipmentMemo;
+}
+
+const ATLAS = path.join(process.cwd(), "data/aos/ga-atlas-of-surveillance.json");
+let atlasMemo: Promise<LiveMarker[]> | null = null;
+
+/** Georgia agencies in EFF's Atlas of Surveillance (scripts/build-ga-atlas-of-surveillance.py). */
+function atlas() {
+  atlasMemo ??= readFile(ATLAS, "utf8").then((t) => atlasMarkers(JSON.parse(t) as { retrievedAt?: string; agencies?: AtlasAgency[] }));
+  return atlasMemo;
+}
+
+const REPORTS_WINDOW_D = CALLS_WINDOW_D;
+const ARCGIS_PAGE = 2000;
+const ARCGIS_MAX = 8000;
+const APD_CRIME = "https://services3.arcgis.com/Et5Qfajgiyosiw4d/arcgis/rest/services/OpenDataWebsite_Crime_view/FeatureServer/0";
+const DORAVILLE = "https://services5.arcgis.com/HPK9d3vzjakSFUjJ/arcgis/rest/services/Daily_Incidents_WFL1/FeatureServer/0";
+const arcTs = (ms: number) => new Date(ms).toISOString().slice(0, 19).replace("T", " ");
+
+/** Pages an ArcGIS layer for rows whose `dateField` is in the report window, asking only for `fields`. */
+async function arcgisWindow<F>(base: string, dateField: string, fields: string, parse: (j: { features?: F[] }, since: number, now: number) => LiveMarker[]): Promise<Placed> {
+  const now = Date.now();
+  const since = now - REPORTS_WINDOW_D * 86_400_000;
+  const where = `${dateField} >= TIMESTAMP '${arcTs(since)}' AND ${dateField} <= TIMESTAMP '${arcTs(now)}'`;
+  const markers: LiveMarker[] = [];
+  let total = 0;
+  for (let offset = 0; offset < ARCGIS_MAX; offset += ARCGIS_PAGE) {
+    const d = await getJson<{ features?: F[]; exceededTransferLimit?: boolean }>(
+      `${base}/query?where=${encodeURIComponent(where)}&outFields=${fields}&outSR=4326&orderByFields=${encodeURIComponent(`${dateField} DESC`)}&resultOffset=${offset}&resultRecordCount=${ARCGIS_PAGE}&f=json`,
+      30_000,
+    );
+    total += d.features?.length ?? 0;
+    markers.push(...parse(d, since, now));
+    if (!d.exceededTransferLimit) break;
+  }
+  return { markers, unplaced: total - markers.length };
+}
+
+const apdCrime = () => arcgisWindow<ApdCrimeFeature>(APD_CRIME, "ReportDate", "ReportNumber,ReportDate,OccurredFromDate,NIBRS_Offense,NIBRS_Bucket,Crime_Against,Part,FireArmInvolved,StreetAddress,LocationType,NhoodName,Zone,Longitude,Latitude", parseApdCrime);
+const doravilleIncidents = () => arcgisWindow<DoravilleFeature>(DORAVILLE, "USER_INC_REPORT_DATE", "USER_AGENCY,USER_NIBR_DESC,USER_BLOCK_ADDRESS,USER_PREMISE_DESC,USER_CASE_STATUS_DESC,USER_INC_REPORT_DATE,USER_FROM_DATE", parseDoravilleIncidents);
 
 const GA511_CAMERAS = "https://511ga.org/api/v2/get/cameras";
 
@@ -265,13 +322,34 @@ const LAYERS: Record<LiveLayer, LayerSpec> = {
   },
   augusta911: {
     ttlS: 120,
-    source: "Augusta-Richmond County E911 public incident feed (official Bluesky account linked from augustaga.gov), calls from the last 24 h; call type and location as posted, placed by the Augusta GIS address locator (match score ≥ 60; below 80 flagged approximate) or coordinates in the post",
+    source: `Augusta-Richmond County E911 public incident feed (official Bluesky account linked from augustaga.gov), calls from the last ${CALLS_WINDOW_D} days; call type and location as posted, placed by the Augusta GIS address locator (match score ≥ 60; below 80 flagged approximate) or coordinates in the post`,
     sourceUrl: "https://www.augustaga.gov/66/E911-Emergency-Services",
     feeds: [{ id: "Augusta E911 (Bluesky)", url: AUG_FEED, markers: augusta911 }],
   },
+  policereports: {
+    ttlS: 1800,
+    source: `Police-reported offences, last ${REPORTS_WINDOW_D} days: Atlanta PD NIBRS crime data (city ArcGIS layer OpenDataWebsite_Crime_view) and Doraville PD daily incidents (city ArcGIS layer Daily_Incidents_WFL1); shown at block level with positions rounded to ~110 m; victim counts, family-violence, bias and gang flags, officer names and case numbers are not shown`,
+    sourceUrl: "https://opendata.atlantapd.org/",
+    feeds: [
+      { id: "Atlanta PD NIBRS (ArcGIS)", url: APD_CRIME, markers: apdCrime },
+      { id: "Doraville PD daily incidents (ArcGIS)", url: DORAVILLE, markers: doravilleIncidents },
+    ],
+  },
+  policetech: {
+    ttlS: 86_400,
+    source: "Surveillance technologies documented for each Georgia law-enforcement agency in EFF's Atlas of Surveillance (CC BY 4.0), from news reports and public records; one marker per agency at its OSM-mapped facility or its city/county centre — no device or vehicle positions",
+    sourceUrl: "https://atlasofsurveillance.org/",
+    feeds: [{ id: "Atlas of Surveillance (committed copy)", url: "https://atlasofsurveillance.org/download.csv", markers: atlas }],
+  },
+  equipment: {
+    ttlS: 86_400,
+    source: `Public equipment and facilities people use (${EQUIPMENT_CATEGORIES.length} categories: EV chargers, bike racks and docks, bus stops, rail stations, AEDs, hydrants, ATMs, restrooms and more) mapped in OpenStreetMap (ODbL), from the Geofabrik Georgia extract; fixed locations, not live, dated by the extract's OSM time; private-access items excluded`,
+    sourceUrl: "https://download.geofabrik.de/north-america/us/georgia.html",
+    feeds: [{ id: "OSM Georgia extract (Geofabrik, committed)", url: "https://download.geofabrik.de/north-america/us/georgia-latest.osm.pbf", markers: equipment }],
+  },
   athens911: {
     ttlS: 1800,
-    source: "Athens-Clarke County Police calls for service logged in CAD (county ArcGIS layer Incidents_accpd_Public), dated in the last 7 days; unfiltered, at the exact point the county publishes; date only, published with a delay",
+    source: `Athens-Clarke County Police calls for service logged in CAD (county ArcGIS layer Incidents_accpd_Public), dated in the last ${CALLS_WINDOW_D} days; unfiltered, at the exact point the county publishes; date only, published with a delay`,
     sourceUrl: ACCPD,
     feeds: [{ id: "ACCPD Incidents (ArcGIS)", url: ACCPD, markers: athens911 }],
   },

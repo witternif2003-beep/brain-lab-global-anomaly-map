@@ -8,7 +8,7 @@ const tracer = trace.getTracer('brain-lab-metrics');
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
-const LAYERS = ['aircraft', 'transit', 'quakes', 'tfr', 'augusta911', 'athens911', 'stations', 'streamgauges', 'micromobility', 'pireps'];
+const LAYERS = ['aircraft', 'transit', 'quakes', 'tfr', 'augusta911', 'athens911', 'stations', 'streamgauges', 'micromobility', 'pireps', 'policereports'];
 
 function probe(origin: string, layer: string): Promise<LayerProbe> {
   return tracer.startActiveSpan(`probe ${layer}`, async (span) => {
