@@ -55,6 +55,7 @@ type DeckSnapshot = {
   counts: Record<GroupKey, number>;
   labelsShown: number | null;
   pulse: { radiusScale: number; opacity: number };
+  ground: { terrain: boolean; version: number; anchored: number };
 };
 
 declare global {
@@ -99,6 +100,10 @@ interface DeckState {
   /** Labels kept by the last `declutterLabels` pass; null until the first pass. */
   labelShown: Set<GaDeckItem> | null;
   labelVersion: number;
+  /** Terrain elevation (m, exaggerated as drawn) per coordinate; cleared when DEM tiles change. */
+  ground: Map<string, number>;
+  groundVersion: number;
+  groundTimer: ReturnType<typeof setTimeout> | null;
 }
 
 const states = new WeakMap<MapLibreMap, DeckState>();
@@ -157,12 +162,27 @@ function getState(map: MapLibreMap): DeckState {
     afterRender: new Set(),
     labelShown: null,
     labelVersion: 0,
+    ground: new Map(),
+    groundVersion: 0,
+    groundTimer: null,
   };
   states.set(map, state);
   publishState(map, state);
   map.on('click', (event) => {
     const hit = hitAt(map, state!, event.point);
     if (hit) hit.group.onClick(map, hit.item.coord, hit.item.props);
+  });
+  const regroundSoon = () => {
+    if (state!.groundTimer) return;
+    state!.groundTimer = setTimeout(() => {
+      state!.groundTimer = null;
+      reground(state!);
+    }, 300);
+  };
+  map.on('terrain', regroundSoon);
+  map.on('sourcedata', (e) => {
+    const terrain = map.getTerrain();
+    if (terrain && e.sourceId === terrain.source && e.tile) regroundSoon();
   });
   map.on('zoomend', () => {
     state!.zoom = map.getZoom();
@@ -198,6 +218,7 @@ function getState(map: MapLibreMap): DeckState {
     state!.removed = true;
     cancelAnimationFrame(state!.pulseFrame);
     cancelAnimationFrame(state!.pointerFrame);
+    if (state!.groundTimer) clearTimeout(state!.groundTimer);
     if (state!.cursorSet && map.getCanvas().style.cursor === 'pointer') map.getCanvas().style.cursor = '';
     if (typeof window !== 'undefined' && window.__gaDeck === state!.published) {
       delete window.__gaDeck;
@@ -242,7 +263,30 @@ function snapshot(state: DeckState): DeckSnapshot {
       policetech: state.groups.get('policetech')?.items.length ?? 0,
     },
     pulse: { radiusScale: state.pulseRadiusScale, opacity: state.pulseOpacity },
+    ground: { terrain: !!state.map.getTerrain(), version: state.groundVersion, anchored: state.ground.size },
   };
+}
+
+/** Elevation of the drawn terrain surface under `coord` (0 without terrain or before its DEM tile loads). */
+function groundM(state: DeckState, coord: LngLat): number {
+  if (!state.map.getTerrain()) return 0;
+  const key = `${coord[0]},${coord[1]}`;
+  const cached = state.ground.get(key);
+  if (cached !== undefined) return cached;
+  const elev = state.map.queryTerrainElevation(coord);
+  if (elev === null || !Number.isFinite(elev)) return 0;
+  state.ground.set(key, elev);
+  return elev;
+}
+
+/** Position on the terrain surface, optionally lifted `upM` above it, so markers sit on their exact ground point in 3D. */
+const anchored = (state: DeckState, coord: LngLat, upM = 0): [number, number, number] => [coord[0], coord[1], groundM(state, coord) + upM];
+
+function reground(state: DeckState): void {
+  state.ground.clear();
+  state.groundVersion += 1;
+  updateLayers(state);
+  publishState(state.map, state);
 }
 
 function publishState(map: MapLibreMap, state: DeckState): void {
@@ -430,7 +474,8 @@ function createLayers(state: DeckState): Layer[] {
       layers.push(new ScatterplotLayer({
         id: `ga-deck-${key}-bloom`,
         data: glow,
-        getPosition: (item: GaDeckItem) => item.coord,
+        getPosition: (item: GaDeckItem) => anchored(state, item.coord),
+        updateTriggers: { getPosition: state.groundVersion },
         getRadius: (item: GaDeckItem) => item.radiusPx * GA_MARKER_SCALE * gaGlowMultiplier(3.2),
         getFillColor: (item: GaDeckItem) => [item.stroke[0], item.stroke[1], item.stroke[2], Math.round(255 * 0.18 * Math.max(0, Math.min(1, item.glow ?? 0)))],
         radiusUnits: 'pixels',
@@ -442,7 +487,8 @@ function createLayers(state: DeckState): Layer[] {
       layers.push(new ScatterplotLayer({
         id: `ga-deck-${key}-halo`,
         data: glow,
-        getPosition: (item: GaDeckItem) => item.coord,
+        getPosition: (item: GaDeckItem) => anchored(state, item.coord),
+        updateTriggers: { getPosition: state.groundVersion },
         getRadius: (item: GaDeckItem) => item.radiusPx * GA_MARKER_SCALE * gaGlowMultiplier(2),
         getFillColor: (item: GaDeckItem) => [item.stroke[0], item.stroke[1], item.stroke[2], Math.round(255 * 0.45 * Math.max(0, Math.min(1, item.glow ?? 0)))],
         radiusUnits: 'pixels',
@@ -456,8 +502,9 @@ function createLayers(state: DeckState): Layer[] {
       layers.push(new LineLayer<GaDeckItem>({
         id: `ga-deck-${key}-drop`,
         data: views.elevated,
-        getSourcePosition: (item) => [item.coord[0], item.coord[1], 0],
-        getTargetPosition: (item) => [item.coord[0], item.coord[1], item.model!.elevM!],
+        getSourcePosition: (item) => anchored(state, item.coord),
+        getTargetPosition: (item) => anchored(state, item.coord, item.model!.elevM!),
+        updateTriggers: { getSourcePosition: state.groundVersion, getTargetPosition: state.groundVersion },
         getColor: (item) => [item.fill[0], item.fill[1], item.fill[2], 150],
         getWidth: 1,
         widthUnits: 'pixels',
@@ -471,7 +518,8 @@ function createLayers(state: DeckState): Layer[] {
           id: `ga-deck-${key}-model-${kind}`,
           data: items,
           mesh: gaMesh(kind),
-          getPosition: (item) => [item.coord[0], item.coord[1], item.model!.elevM ?? 0],
+          getPosition: (item) => anchored(state, item.coord, item.model!.elevM ?? 0),
+          updateTriggers: { getPosition: state.groundVersion },
           getOrientation: (item) => [0, item.angle === undefined ? 0 : 90 - item.angle, 0],
           getScale: (item) => item.model!.scale ?? [1, 1, 1],
           getColor: (item) => [item.fill[0], item.fill[1], item.fill[2], 255],
@@ -485,13 +533,13 @@ function createLayers(state: DeckState): Layer[] {
       layers.push(new IconLayer<GaDeckItem>({
         id: `ga-deck-${key}-icon`,
         data: icons,
-        getPosition: (item) => item.coord,
+        getPosition: (item) => anchored(state, item.coord),
         iconAtlas: state.atlas.url,
         iconMapping: state.atlas.mapping,
         getIcon: (item) => gaIconKey(item.icon!, item.fill, item.stroke),
         getSize: (item) => (item.iconPx ?? 12) * GA_MARKER_SCALE * GA_ICON_CELL_SCALE,
         getAngle: (item) => (item.angle === undefined ? 0 : state.bearing - item.angle),
-        updateTriggers: { getAngle: state.bearing },
+        updateTriggers: { getAngle: state.bearing, getPosition: state.groundVersion },
         sizeUnits: 'pixels',
         billboard: true,
         alphaCutoff: 0.02,
@@ -504,8 +552,9 @@ function createLayers(state: DeckState): Layer[] {
       labelLayers.push(new TextLayer<GaDeckItem>({
         id: `ga-deck-${key}-label`,
         data: placed,
-        getPosition: (item) => item.coord,
+        getPosition: (item) => anchored(state, item.coord),
         getText: (item) => item.label!,
+        updateTriggers: { getPosition: state.groundVersion },
         getColor: (item) => [Math.min(255, item.fill[0] + 30), Math.min(255, item.fill[1] + 30), Math.min(255, item.fill[2] + 30), 240],
         getSize: 10,
         getPixelOffset: (item) => [0, labelOffsetPx(item)],
@@ -528,7 +577,8 @@ function createLayers(state: DeckState): Layer[] {
     if (dots.length) layers.push(new ScatterplotLayer({
       id: `ga-deck-${key}-core`,
       data: dots,
-      getPosition: (item: GaDeckItem) => item.coord,
+      getPosition: (item: GaDeckItem) => anchored(state, item.coord),
+        updateTriggers: { getPosition: state.groundVersion },
       getRadius: (item: GaDeckItem) => item.radiusPx * GA_MARKER_SCALE,
       getFillColor: (item: GaDeckItem) => item.fill,
       getLineColor: (item: GaDeckItem) => item.stroke,
@@ -544,7 +594,8 @@ function createLayers(state: DeckState): Layer[] {
       layers.push(new ScatterplotLayer({
         id: `ga-deck-${key}-pulse`,
         data: pulse,
-        getPosition: (item: GaDeckItem) => item.coord,
+        getPosition: (item: GaDeckItem) => anchored(state, item.coord),
+        updateTriggers: { getPosition: state.groundVersion },
         getRadius: (item: GaDeckItem) => item.radiusPx * GA_MARKER_SCALE,
         getFillColor: [0, 0, 0, 0],
         getLineColor: (item: GaDeckItem) => item.stroke,
