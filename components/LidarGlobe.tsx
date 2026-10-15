@@ -24,6 +24,7 @@ import { GaWall3DLayer } from "../lib/ga-wall-3d";
 import { addGaLidarLayers } from "../lib/ga-lidar-layer";
 import { addGaPatrolLayers } from "../lib/ga-patrol-3d";
 import { addGaCompetitorLayers } from "../lib/ga-competitors";
+import { CreditsControl } from "../lib/map/credits-control";
 import {
   AWS_TERRARIUM_TILES,
   DC_LIDAR_BOUNDS,
@@ -158,7 +159,7 @@ export default function LidarGlobe() {
       maxPitch: 85,
       pixelRatio: Math.min(window.devicePixelRatio || 1, 3),
       canvasContextAttributes: { antialias: true },
-      attributionControl: { compact: true },
+      attributionControl: false,
       style: {
         version: 8,
         projection: { type: "globe" },
@@ -304,6 +305,18 @@ export default function LidarGlobe() {
     mapRef.current = map;
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right");
     map.addControl(new maplibregl.ScaleControl({ unit: "imperial" }), "bottom-left");
+    map.addControl(
+      new CreditsControl(
+        [
+          "Imagery © Esri, Maxar, Earthstar Geographics",
+          '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors (OpenFreeMap)',
+          "Terrain: Mapzen/AWS, USGS 3DEP",
+          "LiDAR: USGS 3DEP, DC OCTO",
+          "Cesium Man © Cesium (CC BY 4.0)"
+        ].join(" | ")
+      ),
+      "bottom-right"
+    );
 
     const stopRotation = () => {
       isRotatingRef.current = false;
