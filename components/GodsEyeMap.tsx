@@ -22,6 +22,7 @@ import { addGaAnomalyBulbs } from '../lib/ga-anomaly-bulbs';
 import { addGaChangeLayer } from '../lib/ga-change-layer';
 import { addGaOrbitalLayers } from '../lib/ga-orbital-layer';
 import { addSpaceWeatherLayers } from '../lib/space-weather-layer';
+import { addGaCloudLayers } from '../lib/ga-clouds-layer';
 import { addGaLiveMarkerLayers } from '../lib/ga-live-markers-layer';
 import { addGaFbiFeeds } from '../lib/ga-fbi-feed';
 import FbiOsintPopup from './FbiOsintPopup';
@@ -839,6 +840,7 @@ export default function GodsEyeMap({
     addGaChangeLayer(map);
     addGaOrbitalLayers(map);
     addSpaceWeatherLayers(map);
+    addGaCloudLayers(map);
     addGaLiveMarkerLayers(map);
     addGaFbiFeeds(map);
     addGaPatrolLayers(map);
