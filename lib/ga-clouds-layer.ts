@@ -2,8 +2,8 @@ import { Popup } from 'maplibre-gl';
 import type { GeoJSONSource, MapLayerMouseEvent, Map as MapLibreMap } from 'maplibre-gl';
 import { hitsGaDeck } from './ga-deck-overlay';
 import { reportGaFeed } from './ga-live-status';
-import { isTouchDevice } from './map/touch-gpu-budget';
 
+const isTouch = () => typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0;
 const SOURCE = 'ga-clouds';
 const REFRESH_MS = 5 * 60_000;
 const EMPTY = { type: 'FeatureCollection' as const, features: [] };
@@ -11,24 +11,22 @@ const EMPTY = { type: 'FeatureCollection' as const, features: [] };
 const COVER_OPACITY: [string, number][] = [['FEW', 0.28], ['SCT', 0.42], ['BKN', 0.6], ['OVC', 0.78]];
 const COVER_TEXT: Record<string, string> = { FEW: 'Few (1–2/8 of sky)', SCT: 'Scattered (3–4/8)', BKN: 'Broken (5–7/8)', OVC: 'Overcast (8/8)', VV: 'Sky obscured (vertical visibility)' };
 
-interface Payload { geojson?: GeoJSON.FeatureCollection; stations?: number; latestObservation?: string | null; sourceUrl?: string; generatedAt?: string; error?: string }
+interface ModelPayload { geojson?: GeoJSON.FeatureCollection; validTime?: string | null; gridPoints?: number; sourceUrl?: string; error?: string | null }
+interface Payload { geojson?: GeoJSON.FeatureCollection; model?: ModelPayload; stations?: number; latestObservation?: string | null; sourceUrl?: string; generatedAt?: string; error?: string }
+
+const MODEL_SOURCE = 'ga-clouds-model';
+/** HRRR max cloud cover band → opacity. */
+const MODEL_BANDS: [string, number][] = [['low', 0.22], ['mid', 0.36], ['high', 0.52]];
+const MODEL_DOCS = 'https://open-meteo.com/en/docs/gfs-api';
 
 const bound = new WeakSet<MapLibreMap>();
 const latest = new WeakMap<MapLibreMap, GeoJSON.FeatureCollection>();
+const latestModel = new WeakMap<MapLibreMap, GeoJSON.FeatureCollection>();
+const modelTime = new WeakMap<MapLibreMap, string | null>();
 
-function popup(map: MapLibreMap, e: MapLayerMouseEvent) {
-  const p = e.features?.[0]?.properties as Record<string, unknown> | undefined;
-  if (!p) return;
+function rowsPopup(map: MapLibreMap, e: MapLayerMouseEvent, rows: [string, string][], href: string, linkText: string) {
   const el = document.createElement('div');
   el.style.cssText = 'font:11px ui-monospace,monospace;color:#0f172a;line-height:1.45;max-width:260px';
-  const rows: [string, string][] = [
-    ['Station', `${p.station} ${p.name ?? ''}`.trim()],
-    ['Cover', COVER_TEXT[String(p.reported)] ?? String(p.cover)],
-    ['Cloud base', `${Number(p.baseFt).toLocaleString()} ft (${Number(p.baseM).toLocaleString()} m) above ground`],
-    ['Observed', p.observed ? new Date(String(p.observed)).toLocaleString() : ''],
-    ['METAR', String(p.raw ?? '')],
-    ['Drawn as', '8 km disc over the station, 300 m thick (METARs report base, not tops)'],
-  ];
   for (const [k, v] of rows) {
     if (!v) continue;
     const row = document.createElement('div');
@@ -38,12 +36,41 @@ function popup(map: MapLibreMap, e: MapLayerMouseEvent) {
     el.append(row);
   }
   const a = document.createElement('a');
-  a.href = `https://aviationweather.gov/data/metar/?ids=${encodeURIComponent(String(p.station))}`;
+  a.href = href;
   a.target = '_blank';
   a.rel = 'noreferrer';
-  a.textContent = 'NOAA AWC METAR ↗';
+  a.textContent = linkText;
   el.append(a);
   new Popup({ maxWidth: '280px' }).setLngLat(e.lngLat).setDOMContent(el).addTo(map);
+}
+
+function modelPopup(map: MapLibreMap, e: MapLayerMouseEvent) {
+  const p = e.features?.[0]?.properties as Record<string, unknown> | undefined;
+  if (!p) return;
+  const t = modelTime.get(map);
+  rowsPopup(map, e, [
+    ['Model', 'NOAA HRRR 3 km (forecast, not an observation)'],
+    ['Valid', t ? new Date(t).toLocaleString() : ''],
+    ['Cloud base', `${Number(p.baseM).toLocaleString()} m above ground (${p.baseHpa} hPa)`],
+    ['Cloud top', `${Number(p.topM).toLocaleString()} m above ground (${p.topHpa} hPa)`],
+    ['Max cover', `${p.maxCover}% of the 0.5° cell`],
+    ['Grid point', `${p.lat}, ${p.lng}`],
+  ], MODEL_DOCS, 'Open-Meteo HRRR (CC BY 4.0) ↗');
+}
+
+function popup(map: MapLibreMap, e: MapLayerMouseEvent) {
+  const p = e.features?.[0]?.properties as Record<string, unknown> | undefined;
+  if (!p) return;
+  const fromModel = p.topSource === 'model';
+  rowsPopup(map, e, [
+    ['Station', `${p.station} ${p.name ?? ''}`.trim()],
+    ['Cover', COVER_TEXT[String(p.reported)] ?? String(p.cover)],
+    ['Cloud base', `${Number(p.baseFt).toLocaleString()} ft (${Number(p.baseM).toLocaleString()} m) above ground, measured`],
+    ['Cloud top', fromModel ? `${Number(p.topM).toLocaleString()} m above ground, from the NOAA HRRR model layer containing this base` : 'not reported; drawn 300 m thick'],
+    ['Observed', p.observed ? new Date(String(p.observed)).toLocaleString() : ''],
+    ['METAR', String(p.raw ?? '')],
+    ['Drawn as', '8 km disc over the station (METARs report base, not extent or tops)'],
+  ], `https://aviationweather.gov/data/metar/?ids=${encodeURIComponent(String(p.station))}`, 'NOAA AWC METAR ↗');
 }
 
 /** Live METAR cloud layers over Georgia as 3D slabs at their measured base height above ground (idempotent). */
@@ -67,21 +94,45 @@ export function addGaCloudLayers(map: MapLibreMap): void {
       },
     });
   }
+  if (!map.getSource(MODEL_SOURCE)) map.addSource(MODEL_SOURCE, { type: 'geojson', data: latestModel.get(map) ?? EMPTY });
+  for (const [band, opacity] of MODEL_BANDS) {
+    const id = `${MODEL_SOURCE}-${band}`;
+    if (map.getLayer(id)) continue;
+    map.addLayer({
+      id,
+      type: 'fill-extrusion',
+      source: MODEL_SOURCE,
+      minzoom: 5,
+      filter: ['==', ['get', 'band'], band],
+      paint: {
+        'fill-extrusion-color': ['interpolate', ['linear'], ['get', 'topM'], 0, '#cbd5e1', 3000, '#e2e8f0', 8000, '#f8fafc', 12000, '#ffffff'],
+        'fill-extrusion-base': ['get', 'baseM'],
+        'fill-extrusion-height': ['get', 'topM'],
+        'fill-extrusion-opacity': opacity,
+        'fill-extrusion-vertical-gradient': true,
+      },
+    });
+  }
   if (bound.has(map)) return;
   bound.add(map);
 
   const refresh = async () => {
     try {
-      const r = await fetch(`/api/ga-clouds${isTouchDevice() ? '?lite=1' : ''}`);
+      const r = await fetch(`/api/ga-clouds${isTouch() ? '?lite=1' : ''}`);
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const d = (await r.json()) as Payload;
       const fc = d.geojson ?? EMPTY;
       latest.set(map, fc);
       (map.getSource(SOURCE) as GeoJSONSource | undefined)?.setData(fc);
+      const mfc = d.model?.geojson ?? EMPTY;
+      latestModel.set(map, mfc);
+      modelTime.set(map, d.model?.validTime ?? null);
+      (map.getSource(MODEL_SOURCE) as GeoJSONSource | undefined)?.setData(mfc);
+      const refined = fc.features.filter((f) => f.properties?.topSource === 'model').length;
       const byCover = fc.features.reduce<Record<string, number>>((m, f) => ((m[String(f.properties?.cover)] = (m[String(f.properties?.cover)] ?? 0) + 1), m), {});
       reportGaFeed(map, {
-        id: 'clouds', label: 'Cloud layers (METAR)', color: '#e2e8f0', count: fc.features.length,
-        detail: `${d.stations ?? 0} stations · ${COVER_OPACITY.map(([c]) => `${byCover[c] ?? 0} ${c}`).join(', ')}`,
+        id: 'clouds', label: 'Cloud layers (METAR + HRRR)', color: '#e2e8f0', count: fc.features.length + mfc.features.length,
+        detail: `${d.stations ?? 0} stations · ${COVER_OPACITY.map(([c]) => `${byCover[c] ?? 0} ${c}`).join(', ')} · ${refined} with model tops · ${mfc.features.length} HRRR layers${d.model?.error ? ` (model: ${d.model.error})` : ''}`,
         updatedAt: d.latestObservation ?? d.generatedAt ?? null, sourceUrl: d.sourceUrl ?? 'https://aviationweather.gov/data/api/', error: d.error ?? null,
       });
     } catch (err) {
@@ -98,6 +149,13 @@ export function addGaCloudLayers(map: MapLibreMap): void {
     map.on('click', id, (e) => {
       if (hitsGaDeck(map, e.point)) return;
       popup(map, e);
+    });
+  }
+  for (const [band] of MODEL_BANDS) {
+    map.on('click', `${MODEL_SOURCE}-${band}`, (e) => {
+      if (hitsGaDeck(map, e.point)) return;
+      if (map.queryRenderedFeatures(e.point, { layers: COVER_OPACITY.map(([c]) => `${SOURCE}-${c.toLowerCase()}`) }).length) return;
+      modelPopup(map, e);
     });
   }
 }
