@@ -46,3 +46,25 @@ test("twilight polygons cover each meridian once per night interval and close th
   }
   assert.ok(fc.features.filter((f) => f.properties?.band === "sunset").length >= 180);
 });
+
+test("night shade ramps smoothly and its slices tile each meridian without gaps or overlap", async () => {
+  const { SHADE_EDGES, SHADE_MAX_OPACITY, nightShadeGeoJSON, shadeOpacity, sliceIntervals } = await import("../../lib/terminator/solar");
+  assert.equal(shadeOpacity(5), 0);
+  assert.equal(shadeOpacity(-30), SHADE_MAX_OPACITY);
+  for (let a = 0.8; a > -18; a -= 0.5) assert.ok(shadeOpacity(a - 0.5) >= shadeOpacity(a));
+  const sun = subsolarPoint(new Date("2026-10-16T13:00:00Z"));
+  for (const lng of [-170, -84.4, 0, 69, 150]) {
+    const ivs = sliceIntervals(sun, lng, SHADE_EDGES).flat().sort((x, y) => x[0] - y[0]);
+    for (let i = 1; i < ivs.length; i++) {
+      const gap = ivs[i][0] - ivs[i - 1][1];
+      if (Math.abs(gap) > 1e-9) {
+        const mid = (ivs[i - 1][1] + ivs[i][0]) / 2;
+        assert.ok(sunAltitudeDeg(sun, lng, mid) >= SHADE_EDGES[0] - 1e-6, `lng ${lng}: gap at ${mid}`);
+      }
+      assert.ok(gap > -1e-9, `lng ${lng}: overlap at ${ivs[i][0]}`);
+    }
+  }
+  const fc = nightShadeGeoJSON(new Date("2026-10-16T13:00:00Z"));
+  const ops = new Set(fc.features.map((f) => f.properties?.opacity));
+  assert.ok(ops.size >= 15, `only ${ops.size} shade steps`);
+});

@@ -9,7 +9,7 @@ import type { GaModelKind } from './ga-mesh-models';
 import { box } from './ga-orbital-layer';
 import type { LiveLayer, LiveMarker, LiveValue } from './ga-live-markers/parse';
 import type { CameraState } from './ga-live-markers/snapshot';
-import { markerKey, STROBE_MS, strobeSince } from './ga-live-markers/strobe';
+import { hasActiveStrobe, STROBE_MS, strobeKey, strobeSince } from './ga-live-markers/strobe';
 
 interface Payload {
   generatedAt?: string;
@@ -49,7 +49,6 @@ const altTag = (p: Record<string, LiveValue>) => {
   return ft >= 18_000 ? `FL${Math.round(ft / 100)}` : `${(Math.round(ft / 100) * 100).toLocaleString('en-US')} ft`;
 };
 const DEAD_RECKON_MAX_S = 30;
-const STROBE_LAYERS = new Set<LiveLayer>(['augusta911', 'athens911', 'policereports', 'pireps']);
 const STROBE_RECHECK_MS = 60_000;
 const TICK_MS = 1_000;
 const fmt = (v: LiveValue, unit = '') => (v === null || v === undefined || v === '' ? '' : `${v}${unit}`);
@@ -497,7 +496,7 @@ export function addGaLiveMarkerLayers(map: MapLibreMap): void {
       fill: cam === 'offline' || (layer === 'micromobility' && m.props.disabled) ? hexToRgba('#64748b', 200) : cam === null ? hexToRgba('#f59e0b', 220) : layer === 'aircraft' && m.props.emergency ? hexToRgba('#ef4444') : fillOf ? hexToRgba(fillOf(m), 235) : fill,
       stroke,
       strokePx: layer === 'micromobility' ? 0.5 : 1,
-      pulse: (layer === 'aircraft' && !!m.props.emergency) || (layer === 'tfr' && tfrState(m.props, now) === 'active') || now - (firstSeen[layer]?.get(markerKey(m)) ?? 0) < STROBE_MS,
+      pulse: (layer === 'aircraft' && !!m.props.emergency) || (layer === 'tfr' && tfrState(m.props, now) === 'active') || now - (firstSeen[layer]?.get(strobeKey(layer, m)) ?? 0) < STROBE_MS,
       props: { marker: m },
       };
     });
@@ -547,7 +546,7 @@ export function addGaLiveMarkerLayers(map: MapLibreMap): void {
       if (!r.ok) throw new Error(d.error ?? `HTTP ${r.status}`);
       const ms = (d.markers ?? []).filter((m) => !wall.length || insideRing(wall, [m.lon, m.lat]));
       current[layer] = ms;
-      if (STROBE_LAYERS.has(layer)) firstSeen[layer] = strobeSince(ms, firstSeen[layer], Date.now());
+      firstSeen[layer] = strobeSince(layer, ms, firstSeen[layer], Date.now());
       render(layer);
       const failed = (d.feeds ?? []).filter((f) => f.error);
       const unplaced = (d.feeds ?? []).reduce((a, f) => a + (f.unplaced ?? 0), 0);
@@ -580,7 +579,7 @@ export function addGaLiveMarkerLayers(map: MapLibreMap): void {
   const timers = [
     ...layers.map((l) => setInterval(() => void load(l), SPECS[l].refreshMs)),
     setInterval(() => current.aircraft && render('aircraft'), TICK_MS),
-    setInterval(() => STROBE_LAYERS.forEach((l) => current[l] && render(l)), STROBE_RECHECK_MS),
+    setInterval(() => layers.forEach((l) => current[l] && hasActiveStrobe(firstSeen[l], Date.now(), STROBE_RECHECK_MS) && render(l)), STROBE_RECHECK_MS),
   ];
   map.once('remove', () => {
     timers.forEach(clearInterval);

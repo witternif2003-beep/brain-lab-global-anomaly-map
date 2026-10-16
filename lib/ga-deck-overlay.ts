@@ -123,6 +123,8 @@ const ADDITIVE_PARAMETERS = {
 const BENCH_COLOR: RGBA = [0, 255, 255, 153];
 const SOURCE_URL = 'https://deck.gl/docs/developer-guide/webgpu';
 const HIT_BOX_PX = 24;
+/** Strobe period for new/alerting markers: on for half, off for half (~4 blinks per second). */
+const PULSE_BLINK_MS = 240;
 const MESH_PARAMETERS = { depthCompare: 'less-equal', depthWriteEnabled: true, cullMode: 'none' } as const;
 const EARTH_CIRCUMFERENCE_M = 40_075_016.686;
 /** Zoom from which live markers with a `model` draw as 3D models. */
@@ -597,7 +599,7 @@ function createLayers(state: DeckState): Layer[] {
         getPosition: (item: GaDeckItem) => anchored(state, item.coord),
         updateTriggers: { getPosition: state.groundVersion },
         getRadius: (item: GaDeckItem) => item.radiusPx * GA_MARKER_SCALE,
-        getFillColor: [0, 0, 0, 0],
+        getFillColor: (item: GaDeckItem) => [item.fill[0], item.fill[1], item.fill[2], 120],
         getLineColor: (item: GaDeckItem) => item.stroke,
         getLineWidth: (item: GaDeckItem) => item.strokePx,
         radiusScale: gaGlowMultiplier(state.pulseRadiusScale),
@@ -640,10 +642,9 @@ function startPulse(map: MapLibreMap, state: DeckState): void {
     state.pulseFrame = requestAnimationFrame(animate);
     if (now - state.lastPulse < 50) return;
     state.lastPulse = now;
-    const phase = (now / 1000) * Math.PI;
-    const s = (1 - Math.cos(phase)) / 2;
-    state.pulseRadiusScale = 1.2 + 1.6 * s;
-    state.pulseOpacity = 0.9 * (1 - s);
+    const on = now % PULSE_BLINK_MS < PULSE_BLINK_MS * 0.5;
+    state.pulseRadiusScale = 1.9;
+    state.pulseOpacity = on ? 0.95 : 0;
     if ([...state.groups.values()].some((group) => group.items.some((item) => item.pulse))) {
       updateLayers(state);
     }

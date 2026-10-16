@@ -89,3 +89,68 @@ export function twilightGeoJSON(date: Date, lngStepDeg = 1): GeoJSON.FeatureColl
   }
   return { type: 'FeatureCollection', features };
 }
+
+/** Altitude edges (deg) of the night-shade slices, from just above sunset down to astronomical night. */
+export const SHADE_EDGES = [0.8, ...Array.from({ length: 19 }, (_, i) => -i)];
+export const SHADE_MAX_OPACITY = 0.9;
+
+/** Smooth darkness ramp: 0 above the sunset limit, SHADE_MAX_OPACITY at astronomical night (-18°). */
+export function shadeOpacity(altitudeDeg: number): number {
+  const t = Math.max(0, Math.min(1, (SHADE_EDGES[0] - altitudeDeg) / (SHADE_EDGES[0] + 18)));
+  return SHADE_MAX_OPACITY * t * t * (3 - 2 * t);
+}
+
+/**
+ * Latitude intervals along meridian `lng` for each altitude slice [edges[i+1], edges[i]) plus a final slice below the
+ * last edge. Slices share interpolated boundaries, so adjacent slices meet without gaps or overlap.
+ */
+export function sliceIntervals(sun: SubsolarPoint, lng: number, edges: readonly number[], stepDeg = 0.1): [number, number][][] {
+  const n = Math.round(180 / stepDeg);
+  const lat = (i: number) => -90 + (i * 180) / n;
+  const alt = Array.from({ length: n + 1 }, (_, i) => sunAltitudeDeg(sun, lng, lat(i)));
+  const sliceOf = (a: number) => {
+    let s = 0;
+    while (s < edges.length && a < edges[s]) s++;
+    return s - 1;
+  };
+  const out: [number, number][][] = edges.map(() => []);
+  const cross = (i: number, edge: number) => lat(i - 1) + ((alt[i - 1] - edge) / (alt[i - 1] - alt[i])) * (lat(i) - lat(i - 1));
+  let cur = sliceOf(alt[0]);
+  let start = -90;
+  for (let i = 1; i <= n; i++) {
+    const s = sliceOf(alt[i]);
+    if (s === cur) continue;
+    const edge = s > cur ? edges[s] : edges[cur];
+    const at = cross(i, edge);
+    if (cur >= 0) out[cur].push([start, at]);
+    cur = s;
+    start = at;
+  }
+  if (cur >= 0) out[cur].push([start, 90]);
+  return out;
+}
+
+/** Non-overlapping night-shade strips with an `opacity` property that ramps smoothly from day to full night. */
+export function nightShadeGeoJSON(date: Date, lngStepDeg = 2): GeoJSON.FeatureCollection<GeoJSON.Polygon> {
+  const sun = subsolarPoint(date);
+  const opacity = SHADE_EDGES.map((e, i) => Number(shadeOpacity(i + 1 < SHADE_EDGES.length ? (e + SHADE_EDGES[i + 1]) / 2 : -90).toFixed(3)));
+  const features: GeoJSON.Feature<GeoJSON.Polygon>[] = [];
+  let left = sliceIntervals(sun, -180, SHADE_EDGES);
+  for (let lng0 = -180; lng0 < 180; lng0 += lngStepDeg) {
+    const lng1 = Math.min(180, lng0 + lngStepDeg);
+    const right = sliceIntervals(sun, lng1, SHADE_EDGES);
+    left.forEach((ivs, s) => {
+      const paired = ivs.length === right[s].length;
+      ivs.forEach(([lo0, hi0], i) => {
+        const [lo1, hi1] = paired ? right[s][i] : [lo0, hi0];
+        features.push({
+          type: 'Feature',
+          properties: { slice: s, opacity: opacity[s] },
+          geometry: { type: 'Polygon', coordinates: [[[lng0, lo0], [lng1, lo1], [lng1, hi1], [lng0, hi0], [lng0, lo0]]] },
+        });
+      });
+    });
+    left = right;
+  }
+  return { type: 'FeatureCollection', features };
+}
