@@ -1,4 +1,4 @@
-import { addProtocol, type Map as MapLibreMap, type RasterTileSource } from 'maplibre-gl';
+import { addProtocol, type Map as MapLibreMap, type RasterLayerSpecification, type RasterTileSource } from 'maplibre-gl';
 import { maskTileToNight, type NightMaskMode } from './terminator/night-mask';
 import { subsolarPoint } from './terminator/solar';
 
@@ -12,7 +12,7 @@ interface NightOverlay {
   upstream: string;
   maxzoom: number;
   attribution: string;
-  opacity: number | ['interpolate', ['linear'], ['zoom'], ...number[]];
+  paint: RasterLayerSpecification['paint'];
 }
 
 /** Night-side overlays, each drawn only where the sun is down (same ramp as the night shade). */
@@ -23,7 +23,7 @@ export const NIGHT_OVERLAYS: NightOverlay[] = [
     upstream: 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_Black_Marble/default/2016-01-01/GoogleMapsCompatible_Level8/{z}/{y}/{x}.png',
     maxzoom: 8,
     attribution: 'City lights: NASA Black Marble 2016 (VIIRS, GIBS)',
-    opacity: ['interpolate', ['linear'], ['zoom'], 8, 1, 13, 0.45],
+    paint: { 'raster-opacity': ['interpolate', ['linear'], ['zoom'], 7, 1, 10, 0.5, 12, 0.15, 14, 0] },
   },
   {
     id: 'roads',
@@ -31,7 +31,7 @@ export const NIGHT_OVERLAYS: NightOverlay[] = [
     upstream: 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}',
     maxzoom: 19,
     attribution: 'Night roads: Esri, HERE, Garmin, © OpenStreetMap contributors',
-    opacity: 0.8,
+    paint: { 'raster-opacity': 0.65, 'raster-brightness-max': 0.8 },
   },
   {
     id: 'places',
@@ -39,7 +39,7 @@ export const NIGHT_OVERLAYS: NightOverlay[] = [
     upstream: 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
     maxzoom: 19,
     attribution: 'Night labels: Esri, HERE, Garmin, © OpenStreetMap contributors',
-    opacity: 1,
+    paint: { 'raster-opacity': 1 },
   },
 ];
 
@@ -108,7 +108,7 @@ export function addNightOverlays(map: MapLibreMap, aboveLayer: string): void {
     if (!map.getSource(id)) {
       map.addSource(id, { type: 'raster', tiles: [tileUrl(o, bucket)], tileSize: 256, maxzoom: o.maxzoom, attribution: o.attribution });
     }
-    if (!map.getLayer(id)) map.addLayer({ id, type: 'raster', source: id, paint: { 'raster-opacity': o.opacity } }, nextId);
+    if (!map.getLayer(id)) map.addLayer({ id, type: 'raster', source: id, paint: o.paint }, nextId);
   }
   if (bound.has(map)) return;
   bound.add(map);
