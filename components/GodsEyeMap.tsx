@@ -22,6 +22,7 @@ import { addGaAnomalyBulbs } from '../lib/ga-anomaly-bulbs';
 import { addGaChangeLayer } from '../lib/ga-change-layer';
 import { addGaOrbitalLayers } from '../lib/ga-orbital-layer';
 import { addGaCloudLayers } from '../lib/ga-clouds-layer';
+import { addTerminatorLayers } from '../lib/terminator-layer';
 import { addGaLiveMarkerLayers } from '../lib/ga-live-markers-layer';
 import { addGaFbiFeeds } from '../lib/ga-fbi-feed';
 import FbiOsintPopup from './FbiOsintPopup';
@@ -621,6 +622,7 @@ export default function GodsEyeMap({
   // Layer stack constructor
   const addMapLayers = useCallback((map: maplibregl.Map) => {
     const patternScale = Math.min(3, Math.ceil(window.devicePixelRatio || 1));
+    addTerminatorLayers(map);
 
     if (!map.getSource('ofm-buildings')) {
       map.addSource('ofm-buildings', {
