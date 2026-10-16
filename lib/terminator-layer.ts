@@ -19,11 +19,10 @@ export function addTerminatorLayers(map: MapLibreMap): void {
       id: LAYER,
       type: 'fill',
       source: SOURCE,
-      maxzoom: 8,
       paint: {
         'fill-color': '#000000',
         'fill-antialias': false,
-        'fill-opacity': ['interpolate', ['linear'], ['zoom'], 5, ['get', 'opacity'], 7.5, 0],
+        'fill-opacity': ['get', 'opacity'],
       },
     });
   }
