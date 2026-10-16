@@ -130,26 +130,42 @@ export function sliceIntervals(sun: SubsolarPoint, lng: number, edges: readonly 
   return out;
 }
 
+const SHADE_MIN_STRIP_DEG = 0.125;
+
 /** Non-overlapping night-shade strips with an `opacity` property that ramps smoothly from day to full night. */
 export function nightShadeGeoJSON(date: Date, lngStepDeg = 2): GeoJSON.FeatureCollection<GeoJSON.Polygon> {
   const sun = subsolarPoint(date);
   const opacity = SHADE_EDGES.map((e, i) => Number(shadeOpacity(i + 1 < SHADE_EDGES.length ? (e + SHADE_EDGES[i + 1]) / 2 : -90).toFixed(3)));
   const features: GeoJSON.Feature<GeoJSON.Polygon>[] = [];
+  const quad = (s: number, lng0: number, lng1: number, [lo0, hi0]: [number, number], [lo1, hi1]: [number, number]) =>
+    features.push({
+      type: 'Feature',
+      properties: { slice: s, opacity: opacity[s] },
+      geometry: { type: 'Polygon', coordinates: [[[lng0, lo0], [lng1, lo1], [lng1, hi1], [lng0, hi0], [lng0, lo0]]] },
+    });
+  const strip = (lng0: number, lng1: number, left: [number, number][][], right: [number, number][][]) => {
+    const matched = left.every((ivs, s) => ivs.length === right[s].length);
+    if (!matched && lng1 - lng0 > SHADE_MIN_STRIP_DEG) {
+      const mid = (lng0 + lng1) / 2;
+      const centre = sliceIntervals(sun, mid, SHADE_EDGES);
+      strip(lng0, mid, left, centre);
+      strip(mid, lng1, centre, right);
+      return;
+    }
+    left.forEach((ivs, s) => {
+      if (ivs.length === right[s].length) ivs.forEach((iv, i) => quad(s, lng0, lng1, iv, right[s][i]));
+      else {
+        const mid = (lng0 + lng1) / 2;
+        ivs.forEach((iv) => quad(s, lng0, mid, iv, iv));
+        right[s].forEach((iv) => quad(s, mid, lng1, iv, iv));
+      }
+    });
+  };
   let left = sliceIntervals(sun, -180, SHADE_EDGES);
   for (let lng0 = -180; lng0 < 180; lng0 += lngStepDeg) {
     const lng1 = Math.min(180, lng0 + lngStepDeg);
     const right = sliceIntervals(sun, lng1, SHADE_EDGES);
-    left.forEach((ivs, s) => {
-      const paired = ivs.length === right[s].length;
-      ivs.forEach(([lo0, hi0], i) => {
-        const [lo1, hi1] = paired ? right[s][i] : [lo0, hi0];
-        features.push({
-          type: 'Feature',
-          properties: { slice: s, opacity: opacity[s] },
-          geometry: { type: 'Polygon', coordinates: [[[lng0, lo0], [lng1, lo1], [lng1, hi1], [lng0, hi0], [lng0, lo0]]] },
-        });
-      });
-    });
+    strip(lng0, lng1, left, right);
     left = right;
   }
   return { type: 'FeatureCollection', features };
