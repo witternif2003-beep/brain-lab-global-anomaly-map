@@ -43,6 +43,8 @@ const MAP_CREDITS = [
   '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors (OpenFreeMap, Waymarked Trails CC BY-SA)',
   'Terrain: Mapzen/AWS, USGS 3DEP',
   'USGS · NOAA · NWS · NASA',
+  'City lights: NASA Black Marble 2016 (GIBS)',
+  'Night roads and labels: Esri, HERE, Garmin',
   `Sky: <a href="${SKY_PHOTO_SOURCE_URL}" target="_blank" rel="noopener">NASA SVS</a>`,
   'IP geolocation: DB-IP (CC BY 4.0)',
   'Cesium Man © Cesium (CC BY 4.0)',

@@ -48,3 +48,12 @@ Confirmed issues:
 7. "Night drops out at high zoom": in GodsEYE this was the shade's own zoom 5-7.5 fade, not texture residency. Removed on user request ("the ground should reflect night mode also"): the shade now covers the ground at every zoom and reaches 0.95 black at -18°. Buildings, clouds, LiDAR points and markers draw above it and are not darkened.
 
 Uncertainty: whether a NASA GIBS VIIRS city-lights layer could be limited to the night side inside MapLibre's globe without a custom shader. Not attempted.
+
+## FOLLOW-UP: NIGHT LIGHTS ("GOOGLE EARTH NIGHT MODE" LOOK)
+Google Earth imagery is not used: its terms do not allow its tiles in other map apps. The look is reproduced from public sources instead.
+- Night shade max darkness lowered from 0.95 to 0.8, so the satellite ground stays faintly visible at night.
+- Above the shade, three raster overlays are masked per pixel to the night side with the same sun-altitude ramp as the shade (`lib/terminator/night-mask.ts`), via a `nightmask://` MapLibre protocol (`lib/night-lights-layer.ts`). Masks are recomputed in 5-minute buckets.
+  - City lights: NASA GIBS `VIIRS_Black_Marble` (title "Black Marble (VIIRS, Suomi NPP)"), time dimension values 2012-01-01 and 2016-01-01 (P1Y), default 2016-01-01, `Current` false per the GIBS WMTS capabilities. A yearly composite, not live; native max zoom 8, overzoomed above that. Unlit pixels (max channel < 0.08) are made transparent so only emitted light shows.
+  - Roads: Esri World_Transportation reference tiles. Labels and borders: Esri World_Boundaries_and_Places.
+- Uncertainty: whether Google Earth's own night layer uses the same NASA data was not verified.
+- Observed: from this VM, GIBS tiles sometimes took 4-17 s in Chrome (0.14 s with curl), so city lights can appear after the roads and labels.

@@ -1,5 +1,6 @@
 import type { GeoJSONSource, Map as MapLibreMap } from 'maplibre-gl';
 import { reportGaFeed } from './ga-live-status';
+import { addNightOverlays } from './night-lights-layer';
 import { SHADE_EDGES, nightShadeGeoJSON, subsolarPoint, sunAltitudeDeg } from './terminator/solar';
 
 const SOURCE = 'solar-terminator';
@@ -26,6 +27,7 @@ export function addTerminatorLayers(map: MapLibreMap): void {
       },
     });
   }
+  addNightOverlays(map, LAYER);
   if (bound.has(map)) return;
   bound.add(map);
   const refresh = () => {
@@ -35,7 +37,7 @@ export function addTerminatorLayers(map: MapLibreMap): void {
     const alt = sunAltitudeDeg(sun, ATLANTA[0], ATLANTA[1]);
     reportGaFeed(map, {
       id: 'terminator', label: 'Day/night terminator', color: '#fbbf24', count: SHADE_EDGES.length,
-      detail: `subsolar ${fmt(sun.declinationDeg, 'N', 'S')} ${fmt(sun.longitudeDeg, 'E', 'W')} · sun ${alt.toFixed(1)}° at Atlanta · shade ramps from sunset to black at −18° · computed (Astronomical Almanac low-precision formulae), no refraction model beyond the −0.833° sunset limit`,
+      detail: `subsolar ${fmt(sun.declinationDeg, 'N', 'S')} ${fmt(sun.longitudeDeg, 'E', 'W')} · sun ${alt.toFixed(1)}° at Atlanta · shade ramps from sunset to black at −18° · computed (Astronomical Almanac low-precision formulae), no refraction model beyond the −0.833° sunset limit · night side: NASA Black Marble 2016 city lights (yearly composite, not live), Esri roads and labels`,
       updatedAt: t.toISOString(), sourceUrl: 'https://aa.usno.navy.mil/faq/sun_approx', error: null,
     });
   };

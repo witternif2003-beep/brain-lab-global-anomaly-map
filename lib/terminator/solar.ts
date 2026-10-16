@@ -92,7 +92,7 @@ export function twilightGeoJSON(date: Date, lngStepDeg = 1): GeoJSON.FeatureColl
 
 /** Altitude edges (deg) of the night-shade slices, from just above sunset down to astronomical night. */
 export const SHADE_EDGES = [0.8, ...Array.from({ length: 19 }, (_, i) => -i)];
-export const SHADE_MAX_OPACITY = 0.95;
+export const SHADE_MAX_OPACITY = 0.8;
 
 /** Smooth darkness ramp: 0 above the sunset limit, SHADE_MAX_OPACITY at astronomical night (-18°). */
 export function shadeOpacity(altitudeDeg: number): number {
