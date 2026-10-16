@@ -5,8 +5,8 @@ import { TWILIGHT_BANDS, subsolarPoint, sunAltitudeDeg, twilightGeoJSON } from '
 const SOURCE = 'solar-terminator';
 const REFRESH_MS = 60_000;
 const ATLANTA: [number, number] = [-84.388, 33.749];
-/** Per-band fill opacity; bands nest, so full astronomical night stacks all four. */
-const BAND_OPACITY: Record<string, number> = { sunset: 0.14, civil: 0.1, nautical: 0.1, astronomical: 0.12 };
+/** Per-band fill opacity; bands nest, so full astronomical night stacks all four to ~90% black. */
+const BAND_OPACITY: Record<string, number> = { sunset: 0.3, civil: 0.35, nautical: 0.4, astronomical: 0.65 };
 const bound = new WeakSet<MapLibreMap>();
 
 const fmt = (deg: number, pos: string, neg: string) => `${Math.abs(deg).toFixed(2)}°${deg >= 0 ? pos : neg}`;
@@ -25,7 +25,7 @@ export function addTerminatorLayers(map: MapLibreMap): void {
       maxzoom: 8,
       filter: ['==', ['get', 'band'], band.id],
       paint: {
-        'fill-color': '#020617',
+        'fill-color': '#000000',
         'fill-antialias': false,
         'fill-opacity': ['interpolate', ['linear'], ['zoom'], 5, BAND_OPACITY[band.id], 7.5, 0],
       },
