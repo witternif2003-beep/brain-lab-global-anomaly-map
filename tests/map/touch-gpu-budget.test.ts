@@ -9,21 +9,19 @@ test("touch devices cap the drawing-buffer pixel ratio; desktop keeps the device
   assert.equal(cappedPixelRatio(0, true), 1);
 });
 
-test("touch LiDAR budget is below the desktop budget on every axis", () => {
+test("touch LiDAR budget downloads and caches less than desktop", () => {
   const t = lidarBudget(true);
   const d = lidarBudget(false);
-  assert.ok(t.points < d.points && t.fetchParallel < d.fetchParallel && t.imageryTiles < d.imageryTiles);
-  assert.ok(t.points >= 1_000_000);
+  assert.ok(t.fetchParallel < d.fetchParallel && t.imageryTiles < d.imageryTiles);
 });
 
-test("no device draws more than the 2,000,000-point LiDAR ceiling", () => {
-  assert.equal(LIDAR_POINT_CEILING, 2_000_000);
-  for (const touch of [true, false]) assert.ok(lidarBudget(touch).points <= LIDAR_POINT_CEILING);
+test("every device, including crash safe mode, draws up to the 5,000,000-point LiDAR ceiling", () => {
+  assert.equal(LIDAR_POINT_CEILING, 5_000_000);
+  for (const touch of [true, false]) for (const safe of [false, true]) assert.equal(lidarBudget(touch, safe).points, LIDAR_POINT_CEILING);
 });
 
-test("lidarBudget halves points, downloads and imagery cache in crash safe mode", () => {
+test("lidarBudget halves downloads and imagery cache in crash safe mode", () => {
   const t = lidarBudget(true, true);
-  assert.equal(t.points, lidarBudget(true).points / 2);
   assert.ok(t.fetchParallel >= 1 && t.fetchParallel < lidarBudget(true).fetchParallel);
   assert.equal(t.imageryTiles, lidarBudget(true).imageryTiles / 2);
 });

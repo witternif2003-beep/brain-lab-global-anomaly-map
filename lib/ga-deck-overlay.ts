@@ -6,7 +6,7 @@ import { reportGaFeed } from './ga-live-status';
 import { GA_MARKER_SCALE, gaGlowMultiplier } from './ga-marker-scale';
 import { GA_ICON_CELL_SCALE, gaIconAtlas, gaIconKey, type GaIconAtlas, type GaIconShape } from './ga-marker-icons';
 import { GA_MODEL_REACH_M, gaMesh, type GaModelKind } from './ga-mesh-models';
-import { cappedPixelRatio, isTouchDevice } from './map/touch-gpu-budget';
+import { cappedPixelRatio, isTouchDevice, LIDAR_POINT_CEILING } from './map/touch-gpu-budget';
 import type { CloudPuff } from './ga-clouds/cloud-puffs';
 import { puffAtlas } from './ga-clouds/puff-texture';
 
@@ -780,7 +780,7 @@ function benchmarkCount(): number {
   const value = new URLSearchParams(window.location.search).get('bench');
   if (!value) return 0;
   const count = Math.floor(Number(value));
-  return Number.isFinite(count) && count > 0 ? Math.min(count, 2_000_000) : 0;
+  return Number.isFinite(count) && count > 0 ? Math.min(count, LIDAR_POINT_CEILING) : 0;
 }
 
 async function makeBenchData(count: number): Promise<BenchData> {

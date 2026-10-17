@@ -35,12 +35,11 @@ import { gpuSafeMode } from './map/crash-guard';
 export const GA_LIDAR_MIN_ZOOM = 15;
 const VIEW_TILES = 3.5;
 const POINT_MAX_CSS_PX = 6;
-const POINT_MAX_CSS_PX_TOUCH = 3;
 /** Point diameter as a fraction of the node's point spacing on screen. */
 const POINT_SPACING_FRACTION = 0.45;
 const POINT_MIN_PX = 1;
-/** Extra octree levels on desktop so the smaller points still close up. */
-const DESKTOP_EXTRA_DEPTH = 1;
+/** Extra octree levels so the points still close up at street zoom. */
+const EXTRA_DEPTH = 1;
 const TERRAIN_GRID = 8;
 const SURFACE_LIFT_M = 0.25;
 const ORIGIN_RESET_M = 15_000;
@@ -256,7 +255,7 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     }
 
     const half = (VIEW_TILES * WORLD_3857) / 2 ** zoom;
-    const targetDepth = Math.min(14, targetDepthFor(project, half) + (isTouchDevice() ? 0 : DESKTOP_EXTRA_DEPTH));
+    const targetDepth = Math.min(14, targetDepthFor(project, half) + EXTRA_DEPTH);
     const view = { cx, cy, half, targetDepth, pointBudget: lidarBudget(isTouchDevice(), gpuSafeMode()).points };
     this.stats.targetDepth = targetDepth;
     this.setStatus('loading hierarchy');
@@ -467,7 +466,7 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     this.camera.projectionMatrixInverse.copy(mvp).invert();
     this.material.uniforms.uViewport.value.set(gl.drawingBufferWidth, gl.drawingBufferHeight);
     const dpr = Math.min(3, this.map?.getPixelRatio() ?? (window.devicePixelRatio || 1));
-    this.material.uniforms.uMaxPx.value = (isTouchDevice() ? POINT_MAX_CSS_PX_TOUCH : POINT_MAX_CSS_PX) * dpr;
+    this.material.uniforms.uMaxPx.value = POINT_MAX_CSS_PX * dpr;
     this.material.uniforms.uMinPx.value = POINT_MIN_PX * dpr;
     renderer.resetState();
     renderer.setViewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);

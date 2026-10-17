@@ -67,10 +67,10 @@ groups:
         labels: { severity: ticket }
         annotations: { summary: 'p95 LiDAR GPU draw time on {{ $labels.page }} ({{ $labels.device }}) above 8 ms (half the frame budget)' }
       - alert: LidarPointCeilingExceeded
-        expr: lidar_points_drawn > 2000000
+        expr: lidar_points_drawn > 5000000
         for: 0m
         labels: { severity: page }
-        annotations: { summary: 'Median LiDAR points on {{ $labels.page }} ({{ $labels.device }}) above the 2,000,000-point ceiling' }
+        annotations: { summary: 'Median LiDAR points on {{ $labels.page }} ({{ $labels.device }}) above the 5,000,000-point ceiling' }
       - alert: RepeatedWebglContextLoss
         expr: webgl_context_losses > 2
         for: 10m
