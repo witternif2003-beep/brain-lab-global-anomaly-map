@@ -57,3 +57,23 @@ Google Earth imagery is not used: its terms do not allow its tiles in other map 
   - Roads: Esri World_Transportation reference tiles. Labels and borders: Esri World_Boundaries_and_Places.
 - Uncertainty: whether Google Earth's own night layer uses the same NASA data was not verified.
 - Observed: from this VM, GIBS tiles sometimes took 4-17 s in Chrome (0.14 s with curl), so city lights can appear after the roads and labels.
+
+## SIXTH PROPOSAL SET ("LUMINOUS GRID" ROADS/CLUSTERS, "LIDAR APEX" 2M CEILING, STYLE.JSON + CLUSTER CLICK HANDLER)
+Five files received; files 4 and 5 are byte-identical and contain only directive text, no technical content.
+
+Adopted:
+- LiDAR hard ceiling of 2,000,000 points on any device (`LIDAR_POINT_CEILING` in `lib/map/touch-gpu-budget.ts`; desktop budget was 5,000,000). The touch-device GPU budget from e5b9b80 is restored: 1,500,000 points, 3 parallel node fetches, 48 imagery tiles, deck.gl drawing buffer capped at 2x device pixels. It was lost when the Oct 15 update was rolled back.
+- Prometheus alerts `LidarPointCeilingExceeded` (lidar_points_drawn > 2,000,000) and `RepeatedWebglContextLoss` (webgl_context_losses > 2 for 10 min), on metrics the RUM pipeline already exports.
+
+Confirmed issues / already present:
+1. "Roads are missing at night": stale. Esri World_Transportation roads already draw above the night shade (follow-up above).
+2. `mapbox://mapbox.mapbox-streets-v8` needs a Mapbox access token and Mapbox's own `mapbox://` URL handling; MapLibre does not resolve it. The `DIN Offc Pro Medium` font stack is likewise served only by Mapbox glyph endpoints.
+3. The style.json would replace the whole map style (terrain, globe, sky, every live layer) with 6 layers, which removes existing features.
+4. `getClusterExpansionZoom(clusterId, callback)` is the pre-v3 callback API; in MapLibre 6.13 it returns a Promise. GodsEYE already uses the Promise form for its clustered anomaly source (`anomaly-clusters`, clusterRadius 50, clusterMaxZoom 12, click-to-expand).
+5. WebGL context-loss handling exists (b8e9477): MapLibre itself calls `event.preventDefault()` in `_contextLost`, the map counts losses, shows a GPU-lost state, and re-adds layers including LiDAR on restore; losses are exported as `webgl_context_losses`.
+6. The point cloud source is USGS 3DEP Entwine (EPT) octrees with nearest/shallowest-first node planning under the point budget, not COPC; switching formats is not needed to enforce the cap.
+7. GPU radix sort for 2M points: the LiDAR layer draws opaque points with depth testing, so no depth sort is needed. This VM's browser has no WebGPU to measure it.
+8. `map.gpu.overdraw_ratio`, `map.layer.road.render_time_ms` and the quoted results ("draw calls reduced by >80%", "p95 14 ms desktop / 28 ms mobile", "60 FPS at zoom 8 Tallahassee") have no measurement method in the files. They are not reported. Browsers do not expose per-layer GPU time for MapLibre raster/line layers.
+
+Not adopted:
+- Clustering the deck.gl live-marker layers. It would hide individual markers at low zoom, which conflicts with the standing rule not to hide existing features. Available on request.

@@ -6,6 +6,7 @@ import { reportGaFeed } from './ga-live-status';
 import { GA_MARKER_SCALE, gaGlowMultiplier } from './ga-marker-scale';
 import { GA_ICON_CELL_SCALE, gaIconAtlas, gaIconKey, type GaIconAtlas, type GaIconShape } from './ga-marker-icons';
 import { GA_MODEL_REACH_M, gaMesh, type GaModelKind } from './ga-mesh-models';
+import { cappedPixelRatio, isTouchDevice } from './map/touch-gpu-budget';
 
 export type RGBA = [number, number, number, number];
 export interface GaDeckItem {
@@ -367,9 +368,13 @@ export function onNextGaDeckFrame(map: MapLibreMap, draw: (canvas: HTMLCanvasEle
   });
 }
 
-/** Sets the deck.gl drawing-buffer pixel ratio (`true` restores the device pixel ratio). */
+/** Default deck.gl drawing-buffer pixel ratio: the device ratio, capped on touch devices. */
+const defaultDevicePixels = (): number | true =>
+  isTouchDevice() ? cappedPixelRatio(window.devicePixelRatio || 1, true) : true;
+
+/** Sets the deck.gl drawing-buffer pixel ratio (`true` restores the default ratio). */
 export function setGaDeckPixelRatio(map: MapLibreMap, ratio: number | true): void {
-  states.get(map)?.overlay?.setProps({ useDevicePixels: ratio });
+  states.get(map)?.overlay?.setProps({ useDevicePixels: ratio === true ? defaultDevicePixels() : ratio });
 }
 
 export function hitsGaDeck(map: MapLibreMap, point: { x: number; y: number }): boolean {
@@ -669,6 +674,7 @@ async function addRenderer(map: MapLibreMap, state: DeckState, renderer: Rendere
   const overlay = new modules.MapLibreOverlay({
     interleaved: false,
     layers: [],
+    useDevicePixels: defaultDevicePixels(),
     ...(deviceProps ? { deviceProps } : {}),
     onAfterRender: () => {
       if (state.overlay === overlay) {
