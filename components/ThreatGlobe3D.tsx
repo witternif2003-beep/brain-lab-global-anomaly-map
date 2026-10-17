@@ -292,14 +292,14 @@ export default function ThreatGlobe3D() {
           const y = centerY - radius * Math.sin(phi);
 
           // Anomaly core
-          ctx.fillStyle = anom.severity === "CRITICAL" ? `rgba(244, 63, 94, ${depthAlpha})` : `rgba(251, 146, 60, ${depthAlpha})`;
+          ctx.fillStyle = anom.severity === "CRITICAL" ? `rgba(244, 63, 94, ${depthAlpha})` : `rgba(255, 46, 196, ${depthAlpha})`;
           ctx.beginPath();
           ctx.arc(x, y, 5 * depthAlpha, 0, Math.PI * 2);
           ctx.fill();
 
           // Radar pulse ring
           const pulseR = (6 + (Date.now() / 80 + idx * 8) % 20) * depthAlpha;
-          ctx.strokeStyle = anom.severity === "CRITICAL" ? `rgba(244, 63, 94, ${Math.max(0, 0.9 - pulseR / 20)})` : `rgba(251, 146, 60, ${Math.max(0, 0.9 - pulseR / 20)})`;
+          ctx.strokeStyle = anom.severity === "CRITICAL" ? `rgba(244, 63, 94, ${Math.max(0, 0.9 - pulseR / 20)})` : `rgba(255, 46, 196, ${Math.max(0, 0.9 - pulseR / 20)})`;
           ctx.lineWidth = 1.5;
           ctx.beginPath();
           ctx.arc(x, y, pulseR, 0, Math.PI * 2);

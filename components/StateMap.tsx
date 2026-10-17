@@ -1,18 +1,6 @@
 'use client';
 import { OUTBOUND_GA_PERSON_TEMPLATES, getInterpolatedArcPoint, VerifiedPersonLeavingGA } from '../lib/telemetry-arcs';
 
-// Safe module initialization
-if (typeof window !== 'undefined') {
-  try {
-    const ml = require('maplibre-gl');
-    if (ml && typeof ml.setWorkerUrl === 'function') {
-      ml.setWorkerUrl('/maplibre-gl-worker.mjs');
-    }
-  } catch (e) {
-    console.warn('[MapLibre] Worker URL initialization deferred:', e);
-  }
-}
-
 // FIPS to state abbreviation lookup table
 const FIPS_TO_ABBR: Record<string, string> = {
   '01': 'AL', '12': 'FL', '13': 'GA', '37': 'NC',
@@ -56,6 +44,7 @@ import { AnomalyItem, CompetitorStateIntel } from '../lib/schema';
 import { useAnomalyStream, AnomalyFeature } from '../hooks/useAnomalyStream';
 import { registerGeoJSONVTSource, shouldUseTiledRendering } from '../lib/geojson-vt-protocol';
 import MapDebugOverlay from './MapDebugOverlay';
+import { AWS_TERRARIUM_TILES } from '../lib/lidar-globe-sources';
 
 interface StateMapProps {
   anomalies: AnomalyItem[];
@@ -73,12 +62,22 @@ const BASEMAPS = {
     sources: {
       sat: {
         type: 'raster',
-        tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+        tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}?blankTile=false'],
         tileSize: 256,
+        maxzoom: 21,
         attribution: '© Esri, Maxar, Earthstar Geographics',
+      },
+      'terrain-dem': {
+        type: 'raster-dem',
+        tiles: [AWS_TERRARIUM_TILES],
+        encoding: 'terrarium',
+        tileSize: 256,
+        maxzoom: 15,
+        attribution: '<a href="https://registry.opendata.aws/terrain-tiles/" target="_blank" rel="noopener">Terrain Tiles</a> — Mapzen/AWS, USGS 3DEP',
       },
     },
     layers: [{ id: 'sat-layer', type: 'raster', source: 'sat' }],
+    terrain: { source: 'terrain-dem', exaggeration: 1.5 },
   },
   light: 'https://demotiles.maplibre.org/style.json',
   terrain: 'https://demotiles.maplibre.org/style.json',
@@ -99,7 +98,7 @@ export default function StateMap({
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const [ready, setReady] = useState(false);
-  const [pitch, setPitch] = useState(0);
+  const [pitch, setPitch] = useState(55);
   const [zoom, setZoom] = useState(6.2);
   const [webgpuSupported, setWebgpuSupported] = useState(false);
 
@@ -175,7 +174,7 @@ export default function StateMap({
         source: 'all-states',
         filter: ['==', ['get', 'STUSPS'], 'GA'],
         paint: {
-          'line-color': '#dc2626',
+          'line-color': '#7f1d1d',
           'line-width': [
             'interpolate', ['exponential', 1.5], ['zoom'],
             3, 4,
@@ -183,8 +182,8 @@ export default function StateMap({
             18, 22,
             24, 30,
           ],
-          'line-blur': 6,
-          'line-opacity': 0.75,
+          'line-blur': 0,
+          'line-opacity': 1,
         },
       });
     }
@@ -196,7 +195,7 @@ export default function StateMap({
         source: 'all-states',
         filter: ['==', ['get', 'STUSPS'], 'GA'],
         paint: {
-          'line-color': '#ef4444',
+          'line-color': '#7f1d1d',
           'line-width': [
             'interpolate', ['exponential', 1.5], ['zoom'],
             3, 1.2,
@@ -282,6 +281,7 @@ export default function StateMap({
         id: 'competitor-outline',
         type: 'line',
         source: 'competitors',
+        filter: ['!=', ['geometry-type'], 'Point'],
         paint: {
           'line-color': '#475569',
           'line-width': 1.5,
@@ -296,6 +296,7 @@ export default function StateMap({
         id: 'competitor-labels',
         type: 'symbol',
         source: 'competitors',
+        filter: ['==', ['geometry-type'], 'Point'],
         layout: {
           'text-field': ['get', 'STUSPS'],
           'text-size': 13,
@@ -580,15 +581,16 @@ export default function StateMap({
     const webgpuAvailable = typeof navigator !== 'undefined' && 'gpu' in navigator;
 
     // Initialize MapLibre Map with dark satellite style by default
+    maplibregl.setWorkerUrl(`/maplibre-gl-worker.mjs?v=${maplibregl.getVersion()}`);
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: BASEMAPS.satellite as any,
       bounds: GA_BOUNDS,
       fitBoundsOptions: { padding: 40 },
-      pitch: 0,
-      bearing: 0,
+      pitch: 55,
+      bearing: -10,
       minZoom: 1,
-      maxZoom: 35,
+      maxZoom: 21,
       maxPitch: 85,
       attributionControl: false,
       experimentalZoomLevelsToOverscale: 4,
@@ -871,28 +873,6 @@ export default function StateMap({
     } catch {}
   }, [selectedState, ready]);
 
-  // Toggle 3D Terrain
-  const toggle3D = () => {
-    const map = mapRef.current;
-    if (!map) return;
-    const is3D = map.getPitch() > 20;
-
-    if (!is3D) {
-      if (!map.getSource('terrain-dem')) {
-        map.addSource('terrain-dem', {
-          type: 'raster-dem',
-          url: 'https://demotiles.maplibre.org/terrain-tiles/tiles.json',
-          tileSize: 256,
-        });
-      }
-      (map as any).setTerrain?.({ source: 'terrain-dem', exaggeration: 1.5 });
-      map.easeTo({ pitch: 55, bearing: -10, duration: 800 });
-    } else {
-      (map as any).setTerrain?.(null);
-      map.easeTo({ pitch: 0, bearing: 0, duration: 800 });
-    }
-  };
-
   return (
     <div
       ref={containerRef}
@@ -921,25 +901,6 @@ export default function StateMap({
           border: '1px solid rgba(148, 163, 184, 0.2)',
         }}
       >
-        <button
-          onClick={toggle3D}
-          style={{
-            appearance: 'none',
-            WebkitAppearance: 'none',
-            padding: '4px 10px',
-            fontSize: '10px',
-            fontWeight: 700,
-            letterSpacing: '0.05em',
-            color: pitch <= 20 ? '#34d399' : '#cbd5e1',
-            background: pitch <= 20 ? 'rgba(16, 185, 129, 0.2)' : 'transparent',
-            border: pitch <= 20 ? '1px solid rgba(52, 211, 153, 0.6)' : '1px solid rgba(148, 163, 184, 0.3)',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {pitch > 20 ? '3D' : '2D'}
-        </button>
         <div style={{ fontSize: '10px', fontFamily: 'monospace', color: '#94a3b8', padding: '2px 6px' }}>
           z{mapRef.current && typeof zoom === 'number' && !isNaN(zoom) ? zoom.toFixed(1) : '5.7'} · p{typeof pitch === 'number' && !isNaN(pitch) ? pitch.toFixed(0) : '55'}° · WEBGL2
         </div>

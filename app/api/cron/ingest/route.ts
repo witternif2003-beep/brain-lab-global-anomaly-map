@@ -11,7 +11,7 @@ export async function GET(request: Request) {
   if (!isAuthorized) {
     return NextResponse.json(
       { error: "Unauthorized: Invalid or missing CRON_SECRET" },
-      { status: 503 }
+      { status: 401 }
     );
   }
 
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
   if (!isAuthorized) {
     return NextResponse.json(
       { error: "Unauthorized: Invalid or missing CRON_SECRET" },
-      { status: 503 }
+      { status: 401 }
     );
   }
 
