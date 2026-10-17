@@ -7,6 +7,7 @@ import { GA_MARKER_SCALE, gaGlowMultiplier } from './ga-marker-scale';
 import { GA_ICON_CELL_SCALE, gaIconAtlas, gaIconKey, type GaIconAtlas, type GaIconShape } from './ga-marker-icons';
 import { GA_MODEL_REACH_M, gaMesh, type GaModelKind } from './ga-mesh-models';
 import { cappedPixelRatio, isTouchDevice } from './map/touch-gpu-budget';
+import { puffSphereMesh, type CloudPuff } from './ga-clouds/cloud-puffs';
 
 export type RGBA = [number, number, number, number];
 export interface GaDeckItem {
@@ -57,6 +58,7 @@ type DeckSnapshot = {
   labelsShown: number | null;
   pulse: { radiusScale: number; opacity: number };
   ground: { terrain: boolean; version: number; anchored: number };
+  clouds: number;
 };
 
 declare global {
@@ -105,6 +107,8 @@ interface DeckState {
   ground: Map<string, number>;
   groundVersion: number;
   groundTimer: ReturnType<typeof setTimeout> | null;
+  /** Radar cloud puffs; z in metres above sea level before terrain exaggeration. */
+  clouds: CloudPuff[];
 }
 
 const states = new WeakMap<MapLibreMap, DeckState>();
@@ -128,6 +132,8 @@ const HIT_BOX_PX = 24;
 const PULSE_BLINK_MS = 240;
 const MESH_PARAMETERS = { depthCompare: 'less-equal', depthWriteEnabled: true, cullMode: 'none' } as const;
 const EARTH_CIRCUMFERENCE_M = 40_075_016.686;
+const CLOUD_MATERIAL = { ambient: 0.62, diffuse: 0.5, shininess: 6, specularColor: [36, 36, 40] as [number, number, number] };
+let cloudMesh: ReturnType<typeof puffSphereMesh> | null = null;
 /** Zoom from which live markers with a `model` draw as 3D models. */
 export const GA_MODEL_MIN_ZOOM = 15;
 /** Models are true scale from zoom 19 and enlarged by up to 16× below it so they stay visible. */
@@ -167,6 +173,7 @@ function getState(map: MapLibreMap): DeckState {
     labelVersion: 0,
     ground: new Map(),
     groundVersion: 0,
+    clouds: [],
     groundTimer: null,
   };
   states.set(map, state);
@@ -267,6 +274,7 @@ function snapshot(state: DeckState): DeckSnapshot {
     },
     pulse: { radiusScale: state.pulseRadiusScale, opacity: state.pulseOpacity },
     ground: { terrain: !!state.map.getTerrain(), version: state.groundVersion, anchored: state.ground.size },
+    clouds: state.clouds.length,
   };
 }
 
@@ -473,6 +481,22 @@ function createLayers(state: DeckState): Layer[] {
   const scale = modelScale(state.zoom);
   const layers: Layer[] = [];
   const labelLayers: Layer[] = [];
+  if (state.clouds.length) {
+    const exaggeration = state.map.getTerrain()?.exaggeration ?? 1;
+    cloudMesh ??= puffSphereMesh();
+    layers.push(new SimpleMeshLayer<CloudPuff>({
+      id: 'ga-deck-clouds',
+      data: state.clouds,
+      mesh: cloudMesh,
+      getPosition: (p) => [p.position[0], p.position[1], p.position[2] * exaggeration],
+      getScale: (p) => [p.scale[0], p.scale[1], p.scale[2] * exaggeration],
+      getColor: (p) => p.color,
+      updateTriggers: { getPosition: exaggeration, getScale: exaggeration },
+      material: CLOUD_MATERIAL,
+      pickable: false,
+      parameters: MESH_PARAMETERS,
+    }));
+  }
   for (const [key, group] of [...state.groups.entries()].sort((a, b) => a[1].z - b[1].z)) {
     const views = groupViews(group);
     const { glow, pulse, dots, labels } = views;
@@ -892,6 +916,15 @@ async function initialize(map: MapLibreMap, state: DeckState): Promise<void> {
     console.error('[GaDeck] overlay initialization failed:', error);
     if (!state.renderer && !state.removed) await fallbackToWebGL(map, state, `WebGPU initialization failed: ${error instanceof Error ? error.message : String(error)}`);
   }
+}
+
+/** Replaces the radar cloud puffs (drawn under every marker group). */
+export function setGaDeckClouds(map: MapLibreMap, puffs: CloudPuff[]): void {
+  const state = getState(map);
+  state.clouds = puffs;
+  publishState(map, state);
+  if (state.overlay) updateLayers(state);
+  if (!state.initPromise) state.initPromise = initialize(map, state);
 }
 
 export function setGaDeckGroup(map: MapLibreMap, key: GroupKey, group: GaDeckGroup): void {
