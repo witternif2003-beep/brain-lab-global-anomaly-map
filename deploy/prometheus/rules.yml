@@ -96,6 +96,21 @@ groups:
         for: 15m
         labels: { severity: ticket }
         annotations: { summary: 'Bluetooth vehicle layer changing more than 500 features per flush on {{ $labels.page }} ({{ $labels.device }})' }
+      - alert: MovingTrackSourceOffline
+        expr: moving_tracks_source_up == 0
+        for: 15m
+        labels: { severity: ticket }
+        annotations: { summary: 'Moving-track source {{ $labels.source }} offline for 15 min' }
+      - alert: MovingTrackSourceStale
+        expr: moving_tracks_source_lag_seconds > 1200
+        for: 15m
+        labels: { severity: ticket }
+        annotations: { summary: 'Newest {{ $labels.source }} position fix older than 20 min' }
+      - alert: MovingTracksAtCeiling
+        expr: moving_tracks_truncated > 0
+        for: 30m
+        labels: { severity: info }
+        annotations: { summary: 'Moving tracks exceed the 50,000 ceiling; {{ $value }} dropped' }
       - alert: MobileHeapOver512MB
         expr: memory_heap_usage_bytes{device="touch"} > 512 * 1024 * 1024
         for: 15m

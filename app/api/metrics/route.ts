@@ -3,6 +3,7 @@ import { SpanStatusCode, trace } from '@opentelemetry/api';
 import { formatPrometheus, liveFeedGauges, type LayerProbe } from '../../../lib/metrics/prometheus';
 import { rumWindow } from '../../../lib/metrics/rum';
 import { bleGauges, type BleTrafficPayload } from '../../../lib/ble-traffic/aggregate';
+import { movingGauges, type MovingTracksPayload } from '../../../lib/moving-tracks/parse';
 
 const tracer = trace.getTracer('brain-lab-metrics');
 
@@ -39,8 +40,17 @@ async function probeBle(origin: string): Promise<BleTrafficPayload | null> {
   }
 }
 
+async function probeMoving(origin: string): Promise<MovingTracksPayload | null> {
+  try {
+    const r = await fetch(`${origin}/api/moving-tracks`, { signal: AbortSignal.timeout(30_000) });
+    return r.ok ? ((await r.json()) as MovingTracksPayload) : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(request: NextRequest) {
-  const [probes, ble] = await Promise.all([Promise.all(LAYERS.map((l) => probe(request.nextUrl.origin, l))), probeBle(request.nextUrl.origin)]);
+  const [probes, ble, moving] = await Promise.all([Promise.all(LAYERS.map((l) => probe(request.nextUrl.origin, l))), probeBle(request.nextUrl.origin), probeMoving(request.nextUrl.origin)]);
   const gauges = liveFeedGauges(probes, Date.now());
   gauges.push(
     {
@@ -49,6 +59,7 @@ export async function GET(request: NextRequest) {
       values: [{ value: process.memoryUsage().heapUsed }],
     },
     ...bleGauges(ble),
+    ...movingGauges(moving),
     ...rumWindow.gauges(Date.now()),
   );
   return new Response(formatPrometheus(gauges), {
