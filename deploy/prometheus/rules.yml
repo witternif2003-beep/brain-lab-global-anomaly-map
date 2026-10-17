@@ -81,6 +81,21 @@ groups:
         for: 5m
         labels: { severity: page }
         annotations: { summary: 'Map on {{ $labels.page }} ({{ $labels.device }}) was killed while visible (out-of-memory tab reload)' }
+      - alert: BleSourceOffline
+        expr: ble_source_up == 0
+        for: 10m
+        labels: { severity: ticket }
+        annotations: { summary: 'ACT Bluetooth vehicle feed (Addinsight) offline for 10 min' }
+      - alert: BleSourceStale
+        expr: ble_source_lag_seconds > 600
+        for: 10m
+        labels: { severity: ticket }
+        annotations: { summary: 'Newest ACT Bluetooth interval older than 10 min' }
+      - alert: BleUpdateChurn
+        expr: ble_update_diff_size_p95 > 500
+        for: 15m
+        labels: { severity: ticket }
+        annotations: { summary: 'Bluetooth vehicle layer changing more than 500 features per flush on {{ $labels.page }} ({{ $labels.device }})' }
       - alert: MobileHeapOver512MB
         expr: memory_heap_usage_bytes{device="touch"} > 512 * 1024 * 1024
         for: 15m

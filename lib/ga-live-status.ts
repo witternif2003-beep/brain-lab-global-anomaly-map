@@ -13,7 +13,7 @@ export interface GaFeedStatus {
 }
 
 const STALE_MIN = 90;
-const order = ['anomalies', 'aircraft', 'transit', 'micromobility', 'stations', 'streamgauges', 'quakes', 'tfr', 'pireps', 'augusta911', 'athens911', 'policereports', 'policetech', 'gdotcams', 'police', 'firestations', 'sirens', 'speedcams', 'alpr', 'towers', 'signals', 'equipment', 'gps-integrity', 'satellites', 'radar-clouds', 'clouds', 'terminator', 'fires', 'imagery', 'traffic', 'alerts', 'gauges', 'crime', 'fbi-wanted', 'fbi-cde', 'fbi-osint', 'renderer', 'bench'];
+const order = ['anomalies', 'aircraft', 'transit', 'micromobility', 'stations', 'streamgauges', 'quakes', 'tfr', 'pireps', 'augusta911', 'athens911', 'policereports', 'policetech', 'gdotcams', 'police', 'firestations', 'sirens', 'speedcams', 'alpr', 'towers', 'signals', 'equipment', 'gps-integrity', 'satellites', 'radar-clouds', 'clouds', 'terminator', 'fires', 'imagery', 'traffic', 'ble-vehicles', 'alerts', 'gauges', 'crime', 'fbi-wanted', 'fbi-cde', 'fbi-osint', 'renderer', 'bench'];
 const feeds = new WeakMap<MapLibreMap, Map<string, GaFeedStatus>>();
 const controls = new WeakMap<MapLibreMap, GaLiveLegend>();
 

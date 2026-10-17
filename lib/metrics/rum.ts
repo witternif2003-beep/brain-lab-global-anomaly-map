@@ -20,6 +20,10 @@ export interface RumSample {
   pageCrashes?: number | null;
   /** The map runs with halved GPU budgets after a crash in the last 30 min on this device. */
   gpuSafeMode?: boolean;
+  /** Features added, updated or removed by the last Bluetooth vehicle layer updateData flush. */
+  bleDiffSize?: number | null;
+  /** Time to apply that flush, ms. */
+  bleFlushMs?: number | null;
   lcpMs: number | null;
   inpMs: number | null;
   cls: number | null;
@@ -55,6 +59,8 @@ export function parseRumSample(raw: unknown): RumSample | null {
     webglContextLosses: num(r.webglContextLosses, 1_000),
     pageCrashes: num(r.pageCrashes, 1_000),
     gpuSafeMode: r.gpuSafeMode === true,
+    bleDiffSize: num(r.bleDiffSize, 1e6),
+    bleFlushMs: num(r.bleFlushMs, 600_000),
     lcpMs: num(r.lcpMs, 600_000),
     inpMs: num(r.inpMs, 600_000),
     cls: num(r.cls, 100),
@@ -124,6 +130,8 @@ export class RumWindow {
         help: 'Share of reports from devices running halved GPU budgets after a recent crash.',
         values: series((xs) => xs.filter((s) => s.gpuSafeMode).length / xs.length),
       },
+      { name: 'ble_update_diff_size_p95', help: 'p95 features changed per Bluetooth vehicle layer updateData flush.', values: series(pct((s) => s.bleDiffSize ?? null, 0.95)) },
+      { name: 'ble_flush_ms_p95', help: 'p95 time to apply a Bluetooth vehicle layer updateData flush.', values: series(pct((s) => s.bleFlushMs ?? null, 0.95)) },
       { name: 'web_vitals_lcp_ms_p75', help: 'p75 Largest Contentful Paint.', values: series(pct((s) => s.lcpMs, 0.75)) },
       { name: 'web_vitals_inp_ms_p75', help: 'p75 Interaction to Next Paint.', values: series(pct((s) => s.inpMs, 0.75)) },
       { name: 'web_vitals_cls_p75', help: 'p75 Cumulative Layout Shift.', values: series(pct((s) => s.cls, 0.75)) },

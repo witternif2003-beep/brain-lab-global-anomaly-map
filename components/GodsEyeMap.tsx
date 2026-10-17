@@ -25,6 +25,7 @@ import { addGaCloudLayers } from '../lib/ga-clouds-layer';
 import { addTerminatorLayers } from '../lib/terminator-layer';
 import { addGaLiveMarkerLayers } from '../lib/ga-live-markers-layer';
 import { addGaFbiFeeds } from '../lib/ga-fbi-feed';
+import { addBleVehicleLayers } from '../lib/ble-traffic-layer';
 import FbiOsintPopup from './FbiOsintPopup';
 import { glowRadius, scaleMarkersInsideGaWall, type RadiusExpression } from '../lib/ga-marker-scale';
 import { exportMapAt8k } from '../lib/map-8k-export';
@@ -846,6 +847,7 @@ export default function GodsEyeMap({
     addGaH3Telemetry(map);
     addGaHydrometLayers(map);
     addGaTrafficLayers(map);
+    addBleVehicleLayers(map);
     addGaAnomalyBulbs(map);
     addGaChangeLayer(map);
     addGaOrbitalLayers(map);

@@ -2,6 +2,7 @@ import { type NextRequest } from 'next/server';
 import { SpanStatusCode, trace } from '@opentelemetry/api';
 import { formatPrometheus, liveFeedGauges, type LayerProbe } from '../../../lib/metrics/prometheus';
 import { rumWindow } from '../../../lib/metrics/rum';
+import { bleGauges, type BleTrafficPayload } from '../../../lib/ble-traffic/aggregate';
 
 const tracer = trace.getTracer('brain-lab-metrics');
 
@@ -29,8 +30,17 @@ function probe(origin: string, layer: string): Promise<LayerProbe> {
   });
 }
 
+async function probeBle(origin: string): Promise<BleTrafficPayload | null> {
+  try {
+    const r = await fetch(`${origin}/api/ble-traffic`, { signal: AbortSignal.timeout(30_000) });
+    return r.ok ? ((await r.json()) as BleTrafficPayload) : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(request: NextRequest) {
-  const probes = await Promise.all(LAYERS.map((l) => probe(request.nextUrl.origin, l)));
+  const [probes, ble] = await Promise.all([Promise.all(LAYERS.map((l) => probe(request.nextUrl.origin, l))), probeBle(request.nextUrl.origin)]);
   const gauges = liveFeedGauges(probes, Date.now());
   gauges.push(
     {
@@ -38,6 +48,7 @@ export async function GET(request: NextRequest) {
       help: 'V8 heap in use by the server instance that answered this scrape.',
       values: [{ value: process.memoryUsage().heapUsed }],
     },
+    ...bleGauges(ble),
     ...rumWindow.gauges(Date.now()),
   );
   return new Response(formatPrometheus(gauges), {

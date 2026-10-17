@@ -58,6 +58,8 @@ export default function RenderMetricsProbe() {
         webglContextLosses: null,
         pageCrashes: crashesUnreported,
         gpuSafeMode: gpuSafeMode(),
+        bleDiffSize: window.__gaBle?.diffSize ?? null,
+        bleFlushMs: window.__gaBle?.flushMs ?? null,
         ...vitals,
         touch: navigator.maxTouchPoints > 0,
       };
