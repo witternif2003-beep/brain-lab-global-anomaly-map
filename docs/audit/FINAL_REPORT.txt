@@ -210,6 +210,6 @@ validated on local kind, CI workflow, mocked-upstream load test, WebGL GPU pass 
 · policereports: 2,845 reports in the last 20 days (Atlanta PD 2,703, Doraville PD 142),
   block level, ~110 m rounding, sensitive fields dropped.
 · 911 calls: Augusta and Athens windows set to the last 20 days (1,701 and 5,056 placed).
-· Strobe: new incidents pulse for 15 min after first received, then go steady.
+· Strobe: new incidents pulse for 10 min after first received, then go steady.
 · "30,000 more": 29,002 new markers from real sources; not padded.
 · Not built: tracking equipment on police vehicles (equals tracking vehicles and officers).

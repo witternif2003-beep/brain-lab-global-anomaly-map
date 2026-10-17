@@ -1,6 +1,6 @@
 import type { LiveLayer, LiveMarker } from "./parse";
 
-export const STROBE_MS = 15 * 60_000;
+export const STROBE_MS = 10 * 60_000;
 
 /** Layers whose markers are discrete events: each observation time is a separate indicator. */
 const EVENT_LAYERS = new Set<LiveLayer>(["augusta911", "athens911", "policereports", "pireps", "quakes", "tfr"]);
