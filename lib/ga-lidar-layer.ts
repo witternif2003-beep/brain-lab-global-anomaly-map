@@ -30,6 +30,7 @@ import {
 import type { EptProject, Hierarchy, LidarNodeData } from './ga-lidar/ept';
 import { GpuPassTimer } from './ga-lidar/gpu-timer';
 import { isTouchDevice, lidarBudget } from './map/touch-gpu-budget';
+import { gpuSafeMode } from './map/crash-guard';
 
 export const GA_LIDAR_MIN_ZOOM = 15;
 const VIEW_TILES = 3.5;
@@ -256,7 +257,7 @@ export class GaLidar3DLayer implements CustomLayerInterface {
 
     const half = (VIEW_TILES * WORLD_3857) / 2 ** zoom;
     const targetDepth = Math.min(14, targetDepthFor(project, half) + (isTouchDevice() ? 0 : DESKTOP_EXTRA_DEPTH));
-    const view = { cx, cy, half, targetDepth, pointBudget: lidarBudget(isTouchDevice()).points };
+    const view = { cx, cy, half, targetDepth, pointBudget: lidarBudget(isTouchDevice(), gpuSafeMode()).points };
     this.stats.targetDepth = targetDepth;
     this.setStatus('loading hierarchy');
 
@@ -301,7 +302,7 @@ export class GaLidar3DLayer implements CustomLayerInterface {
         }
       }
     };
-    await Promise.all(Array.from({ length: lidarBudget(isTouchDevice()).fetchParallel }, worker));
+    await Promise.all(Array.from({ length: lidarBudget(isTouchDevice(), gpuSafeMode()).fetchParallel }, worker));
     if (gen === this.generation) this.setStatus('ready');
   }
 
@@ -363,7 +364,7 @@ export class GaLidar3DLayer implements CustomLayerInterface {
       }
     })();
     this.imagery.set(id, load);
-    if (this.imagery.size > lidarBudget(isTouchDevice()).imageryTiles) this.imagery.delete(this.imagery.keys().next().value as string);
+    if (this.imagery.size > lidarBudget(isTouchDevice(), gpuSafeMode()).imageryTiles) this.imagery.delete(this.imagery.keys().next().value as string);
     return load;
   }
 

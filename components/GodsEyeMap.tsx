@@ -31,6 +31,7 @@ import { exportMapAt8k } from '../lib/map-8k-export';
 import { SKY_PHOTO_SOURCE_URL, SkyPhotoRenderer, projectRaDec, skyBasis, skyBodyPositions, type SkyBodyPosition } from '../lib/sky-photo';
 import { AWS_TERRARIUM_TILES, OPENFREEMAP_PLANET } from '../lib/lidar-globe-sources';
 import { CreditsControl } from '../lib/map/credits-control';
+import { noteContextLost } from '../lib/map/crash-guard';
 
 const ALLY_STATE_CODES = ['AL', 'FL', 'NC', 'SC', 'TN', 'TX', 'VA'];
 const STARMAP_8K_MIN_DEVICE_PX = 1920;
@@ -1396,6 +1397,7 @@ export default function GodsEyeMap({
     (window as unknown as { __gaGpu?: typeof gpu }).__gaGpu = gpu;
     map.on('webglcontextlost', () => {
       gpu.contextLost++;
+      noteContextLost();
       setGpuLost(true);
     });
     map.on('webglcontextrestored', () => {

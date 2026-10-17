@@ -20,3 +20,10 @@ test("no device draws more than the 2,000,000-point LiDAR ceiling", () => {
   assert.equal(LIDAR_POINT_CEILING, 2_000_000);
   for (const touch of [true, false]) assert.ok(lidarBudget(touch).points <= LIDAR_POINT_CEILING);
 });
+
+test("lidarBudget halves points, downloads and imagery cache in crash safe mode", () => {
+  const t = lidarBudget(true, true);
+  assert.equal(t.points, lidarBudget(true).points / 2);
+  assert.ok(t.fetchParallel >= 1 && t.fetchParallel < lidarBudget(true).fetchParallel);
+  assert.equal(t.imageryTiles, lidarBudget(true).imageryTiles / 2);
+});

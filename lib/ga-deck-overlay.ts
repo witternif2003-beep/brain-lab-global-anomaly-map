@@ -7,7 +7,8 @@ import { GA_MARKER_SCALE, gaGlowMultiplier } from './ga-marker-scale';
 import { GA_ICON_CELL_SCALE, gaIconAtlas, gaIconKey, type GaIconAtlas, type GaIconShape } from './ga-marker-icons';
 import { GA_MODEL_REACH_M, gaMesh, type GaModelKind } from './ga-mesh-models';
 import { cappedPixelRatio, isTouchDevice } from './map/touch-gpu-budget';
-import { puffSphereMesh, type CloudPuff } from './ga-clouds/cloud-puffs';
+import type { CloudPuff } from './ga-clouds/cloud-puffs';
+import { puffAtlas } from './ga-clouds/puff-texture';
 
 export type RGBA = [number, number, number, number];
 export interface GaDeckItem {
@@ -132,8 +133,8 @@ const HIT_BOX_PX = 24;
 const PULSE_BLINK_MS = 240;
 const MESH_PARAMETERS = { depthCompare: 'less-equal', depthWriteEnabled: true, cullMode: 'none' } as const;
 const EARTH_CIRCUMFERENCE_M = 40_075_016.686;
-const CLOUD_MATERIAL = { ambient: 0.62, diffuse: 0.5, shininess: 6, specularColor: [36, 36, 40] as [number, number, number] };
-let cloudMesh: ReturnType<typeof puffSphereMesh> | null = null;
+/** Cloud sprites test depth against terrain but don't write it, so overlapping puffs blend instead of clipping. */
+const CLOUD_PARAMETERS = { depthCompare: 'less-equal', depthWriteEnabled: false, cullMode: 'none' } as const;
 /** Zoom from which live markers with a `model` draw as 3D models. */
 export const GA_MODEL_MIN_ZOOM = 15;
 /** Models are true scale from zoom 19 and enlarged by up to 16× below it so they stay visible. */
@@ -483,18 +484,22 @@ function createLayers(state: DeckState): Layer[] {
   const labelLayers: Layer[] = [];
   if (state.clouds.length) {
     const exaggeration = state.map.getTerrain()?.exaggeration ?? 1;
-    cloudMesh ??= puffSphereMesh();
-    layers.push(new SimpleMeshLayer<CloudPuff>({
+    const atlas = puffAtlas();
+    layers.push(new IconLayer<CloudPuff>({
       id: 'ga-deck-clouds',
       data: state.clouds,
-      mesh: cloudMesh,
+      iconAtlas: atlas.url,
+      iconMapping: atlas.mapping,
+      getIcon: () => 'puff',
       getPosition: (p) => [p.position[0], p.position[1], p.position[2] * exaggeration],
-      getScale: (p) => [p.scale[0], p.scale[1], p.scale[2] * exaggeration],
+      getSize: (p) => 2.2 * p.scale[0],
       getColor: (p) => p.color,
-      updateTriggers: { getPosition: exaggeration, getScale: exaggeration },
-      material: CLOUD_MATERIAL,
+      updateTriggers: { getPosition: exaggeration },
+      sizeUnits: 'meters',
+      billboard: true,
+      alphaCutoff: 0.01,
       pickable: false,
-      parameters: MESH_PARAMETERS,
+      parameters: CLOUD_PARAMETERS,
     }));
   }
   for (const [key, group] of [...state.groups.entries()].sort((a, b) => a[1].z - b[1].z)) {

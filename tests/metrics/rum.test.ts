@@ -58,3 +58,14 @@ test('webgl_context_losses sums per-report losses and is absent without a map', 
   assert.doesNotMatch(text, /webgl_context_losses\{page="\/lidar-splat"/);
   assert.equal(parseRumSample({ ...base, webglContextLosses: -1 })?.webglContextLosses, null);
 });
+
+test("RUM counts page crashes and safe-mode devices", () => {
+  const w = new RumWindow();
+  const now = 1_000_000;
+  w.add(parseRumSample({ ...base, pageCrashes: 1, gpuSafeMode: true })!, now);
+  w.add(parseRumSample({ ...base, pageCrashes: 0, gpuSafeMode: false })!, now);
+  const g = w.gauges(now);
+  assert.equal(g.find((x) => x.name === "map_page_crashes")?.values[0].value, 1);
+  assert.equal(g.find((x) => x.name === "map_gpu_safe_mode_ratio")?.values[0].value, 0.5);
+  assert.equal(parseRumSample({ ...base, pageCrashes: -2 })?.pageCrashes, null);
+});

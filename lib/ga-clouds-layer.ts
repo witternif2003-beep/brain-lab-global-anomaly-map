@@ -2,6 +2,7 @@ import { Popup } from 'maplibre-gl';
 import type { GeoJSONSource, MapLayerMouseEvent, Map as MapLibreMap } from 'maplibre-gl';
 import { hitsGaDeck, setGaDeckClouds } from './ga-deck-overlay';
 import { radarCloudPuffs } from './ga-clouds/cloud-puffs';
+import { gpuSafeMode } from './map/crash-guard';
 import { reportGaFeed } from './ga-live-status';
 
 const isTouch = () => typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0;
@@ -31,8 +32,8 @@ const RADAR_BANDS: [string, number, string, string][] = [
 ];
 const RADAR_BAND_TEXT: Record<string, string> = { light: '18–29 dBZ (light)', moderate: '30–44 dBZ (moderate)', heavy: '45–54 dBZ (heavy)', intense: '55+ dBZ (intense, likely hail)' };
 const RADAR_DOCS = 'https://www.nssl.noaa.gov/projects/mrms/';
-/** Puff budget: overlapping spheres per radar map (cells merge 2×2 above it). */
-const MAX_PUFFS = { touch: 9_000, desktop: 30_000 };
+/** Puff budget: soft sprites per radar map (cells merge 2×2 above it); halved after a recent crash on the device. */
+const MAX_PUFFS = { touch: 40_000, desktop: 120_000 };
 interface RadarPayload { geojson?: GeoJSON.FeatureCollection; observedAt?: string; generatedAt?: string; sourceUrl?: string; cellDeg?: number; metarStations?: number; error?: string | null }
 
 const bound = new WeakSet<MapLibreMap>();
@@ -53,7 +54,7 @@ function rebuildPuffs(map: MapLibreMap): number {
   const fc = latestRadar.get(map);
   const cellDeg = radarCell.get(map);
   if (!fc || !cellDeg) return 0;
-  const puffs = radarCloudPuffs(fc, { cellDeg, groundM: (lng, lat) => groundM(map, lng, lat), maxPuffs: isTouch() ? MAX_PUFFS.touch : MAX_PUFFS.desktop });
+  const puffs = radarCloudPuffs(fc, { cellDeg, groundM: (lng, lat) => groundM(map, lng, lat), maxPuffs: (isTouch() ? MAX_PUFFS.touch : MAX_PUFFS.desktop) / (gpuSafeMode() ? 2 : 1) });
   setGaDeckClouds(map, puffs);
   return puffs.length;
 }

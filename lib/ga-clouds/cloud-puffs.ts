@@ -1,10 +1,9 @@
-/** Radar cloud blocks (NOAA MRMS cells) → overlapping lit spheres ("puffs") that fill each echo column, drawn as cumulus-like 3D cloud (pure). */
-import type { GaMesh } from '../ga-mesh-models';
+/** Radar cloud blocks (NOAA MRMS cells) → overlapping soft billboard puffs that fill each echo column, drawn as cumulus-like 3D cloud (pure). */
 
 export interface CloudPuff {
   /** lng, lat, metres above sea level (centre). */
   position: [number, number, number];
-  /** Sphere radii in metres (east, north, up). */
+  /** Puff radii in metres (east, north, up). */
   scale: [number, number, number];
   color: [number, number, number, number];
   /** Index of the source radar block in the input collection. */
@@ -18,7 +17,8 @@ export interface CloudPuffOptions {
   maxPuffs: number;
 }
 
-interface Column { lng: number; lat: number; baseMsl: number; topMsl: number; night: number; band: number; block: number }
+/** `measured`: the base comes from a METAR within range; otherwise only the measured echo top is drawn. */
+interface Column { lng: number; lat: number; baseMsl: number; topMsl: number; night: number; band: number; block: number; measured: boolean }
 
 const BANDS = ['light', 'moderate', 'heavy', 'intense'];
 const M_PER_DEG_LAT = 111_320;
@@ -53,14 +53,15 @@ function columns(fc: GeoJSON.FeatureCollection, cell: number, groundM: CloudPuff
     const topM = Number(p.topM);
     if (!Number.isFinite(topM) || topM <= 0) return;
     const baseAgl = Math.max(0, Number(p.baseM) || 0);
+    const measured = typeof p.baseStation === 'string' && p.baseStation.length > 0;
     const night = Math.max(0, Math.min(1, Number(p.night) || 0));
     const band = Math.max(0, BANDS.indexOf(String(p.band)));
     for (let y = Math.round((s - lat0) / cell); y < Math.round((n - lat0) / cell); y++) {
       for (let x = Math.round((w - lng0) / cell); x < Math.round((e - lng0) / cell); x++) {
         const lng = lng0 + (x + 0.5) * cell;
         const lat = lat0 + (y + 0.5) * cell;
-        const baseMsl = groundM(lng, lat) + baseAgl;
-        out.set(`${x},${y}`, { lng, lat, baseMsl, topMsl: topM, night, band, block });
+        const baseMsl = measured ? groundM(lng, lat) + baseAgl : topM;
+        out.set(`${x},${y}`, { lng, lat, baseMsl, topMsl: topM, night, band, block, measured });
       }
     }
   });
@@ -78,8 +79,9 @@ function coarsen(cols: Map<string, Column>, f: number): Map<string, Column> {
     if (!o) out.set(k, { ...c, n: 1 });
     else {
       o.lng += c.lng; o.lat += c.lat; o.n++;
-      o.baseMsl = Math.min(o.baseMsl, c.baseMsl);
-      if (c.topMsl > o.topMsl) { o.topMsl = c.topMsl; o.block = c.block; }
+      if (c.measured) o.baseMsl = o.measured ? Math.min(o.baseMsl, c.baseMsl) : c.baseMsl;
+      o.measured ||= c.measured;
+      if (c.topMsl > o.topMsl) { o.topMsl = c.topMsl; o.block = c.block; if (!o.measured) o.baseMsl = c.topMsl; }
       o.band = Math.max(o.band, c.band);
       o.night = Math.max(o.night, c.night);
     }
@@ -95,13 +97,13 @@ function puffsFor(cols: Map<string, Column>, cell: number): CloudPuff[] {
     const cellNs = cell * M_PER_DEG_LAT;
     const cellEw = cellNs * Math.cos((c.lat * Math.PI) / 180);
     const r = 0.75 * Math.max(cellNs, cellEw);
-    const base = c.baseMsl;
-    const top = Math.max(c.topMsl, base + 1.2 * r);
+    const top = c.measured ? Math.max(c.topMsl, c.baseMsl + 1.2 * r) : c.topMsl;
+    const base = c.measured ? c.baseMsl : top - 1.2 * r;
     const levels = Math.max(1, Math.ceil((top - base) / (0.9 * r)));
     const lo = base + 0.6 * r;
     const hi = top - 0.6 * r;
     const step = levels > 1 ? (hi - lo) / (levels - 1) : 0;
-    const nb = [cols.get(`${x + 1},${y}`), cols.get(`${x - 1},${y}`), cols.get(`${x},${y + 1}`), cols.get(`${x},${y - 1}`)];
+    const nb: (Column | undefined)[] = [cols.get(`${x + 1},${y}`), cols.get(`${x - 1},${y}`), cols.get(`${x},${y + 1}`), cols.get(`${x},${y - 1}`)];
     for (let k = 0; k < levels; k++) {
       const z = levels > 1 ? lo + k * step : (lo + hi) / 2;
       const crown = k === levels - 1;
@@ -142,49 +144,16 @@ function puffsFor(cols: Map<string, Column>, cell: number): CloudPuff[] {
 }
 
 /**
- * Fills every radar echo column (nearest METAR base → MRMS echo top) with overlapping spheres. Only spheres on the
- * cloud's surface are kept; crowns are larger and bottoms greyer, so the echo reads as a cumulus mass. The jitter is
- * deterministic and stays inside each radar cell. Cells merge 2×2 until the count fits `maxPuffs`.
+ * Fills every radar echo column (nearest METAR base → MRMS echo top) with overlapping puffs. Columns without a METAR
+ * base in range get only a cap at the measured echo top instead of reaching the ground. Only puffs on the cloud's
+ * surface are kept; crowns are larger and bottoms greyer. The jitter is deterministic and stays inside each radar cell.
+ * Cells merge 2×2 until the count fits `maxPuffs`. Sorted low → high so brighter crowns blend over darker bases.
  */
 export function radarCloudPuffs(fc: GeoJSON.FeatureCollection, opts: CloudPuffOptions): CloudPuff[] {
   if (!(opts.cellDeg > 0)) return [];
   const cols = columns(fc, opts.cellDeg, opts.groundM);
   for (let f = 1; ; f *= 2) {
     const puffs = puffsFor(coarsen(cols, f), opts.cellDeg * f);
-    if (puffs.length <= opts.maxPuffs || f >= 64) return puffs;
+    if (puffs.length <= opts.maxPuffs || f >= 64) return puffs.sort((a, b) => a.position[2] - b.position[2]);
   }
-}
-
-/** Unit UV sphere; undersides are pre-darkened so each puff reads as self-shadowed. */
-export function puffSphereMesh(rings = 8, segments = 14): GaMesh {
-  const p: number[] = [];
-  const n: number[] = [];
-  const c: number[] = [];
-  const idx: number[] = [];
-  for (let i = 0; i <= rings; i++) {
-    const phi = (i / rings) * Math.PI;
-    for (let j = 0; j <= segments; j++) {
-      const th = (j / segments) * 2 * Math.PI;
-      const v: [number, number, number] = [Math.sin(phi) * Math.cos(th), Math.sin(phi) * Math.sin(th), Math.cos(phi)];
-      p.push(...v);
-      n.push(...v);
-      const s = 0.78 + 0.22 * (v[2] + 1) / 2;
-      c.push(s, s, s);
-    }
-  }
-  for (let i = 0; i < rings; i++) {
-    for (let j = 0; j < segments; j++) {
-      const a = i * (segments + 1) + j;
-      const b = a + segments + 1;
-      idx.push(a, b, a + 1, b, b + 1, a + 1);
-    }
-  }
-  return {
-    attributes: {
-      positions: { value: new Float32Array(p), size: 3 },
-      normals: { value: new Float32Array(n), size: 3 },
-      colors: { value: new Float32Array(c), size: 3 },
-    },
-    indices: { value: new Uint32Array(idx), size: 1 },
-  };
 }

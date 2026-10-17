@@ -16,6 +16,10 @@ export interface RumSample {
   splatRenderer: 'webgpu' | 'webgl2' | null;
   /** WebGL context losses on the main map since the previous report. */
   webglContextLosses: number | null;
+  /** Visible page sessions that ended without pagehide (tab killed, usually out of memory), found on reload. */
+  pageCrashes?: number | null;
+  /** The map runs with halved GPU budgets after a crash in the last 30 min on this device. */
+  gpuSafeMode?: boolean;
   lcpMs: number | null;
   inpMs: number | null;
   cls: number | null;
@@ -49,6 +53,8 @@ export function parseRumSample(raw: unknown): RumSample | null {
     splats: num(r.splats, 1e9),
     splatRenderer: r.splatRenderer === 'webgpu' || r.splatRenderer === 'webgl2' ? r.splatRenderer : null,
     webglContextLosses: num(r.webglContextLosses, 1_000),
+    pageCrashes: num(r.pageCrashes, 1_000),
+    gpuSafeMode: r.gpuSafeMode === true,
     lcpMs: num(r.lcpMs, 600_000),
     inpMs: num(r.inpMs, 600_000),
     cls: num(r.cls, 100),
@@ -104,6 +110,19 @@ export class RumWindow {
           const v = xs.map((s) => s.webglContextLosses).filter((x): x is number => x !== null);
           return v.length ? v.reduce((a, b) => a + b, 0) : null;
         }),
+      },
+      {
+        name: 'map_page_crashes',
+        help: 'Map page sessions killed while visible (no pagehide; iOS Safari out-of-memory reloads), reported in the last 5 min.',
+        values: series((xs) => {
+          const v = xs.map((s) => s.pageCrashes ?? null).filter((x): x is number => x !== null);
+          return v.length ? v.reduce((a, b) => a + b, 0) : null;
+        }),
+      },
+      {
+        name: 'map_gpu_safe_mode_ratio',
+        help: 'Share of reports from devices running halved GPU budgets after a recent crash.',
+        values: series((xs) => xs.filter((s) => s.gpuSafeMode).length / xs.length),
       },
       { name: 'web_vitals_lcp_ms_p75', help: 'p75 Largest Contentful Paint.', values: series(pct((s) => s.lcpMs, 0.75)) },
       { name: 'web_vitals_inp_ms_p75', help: 'p75 Interaction to Next Paint.', values: series(pct((s) => s.inpMs, 0.75)) },

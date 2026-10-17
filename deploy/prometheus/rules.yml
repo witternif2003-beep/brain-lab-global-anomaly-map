@@ -76,6 +76,11 @@ groups:
         for: 10m
         labels: { severity: page }
         annotations: { summary: 'Main map on {{ $labels.page }} ({{ $labels.device }}) losing its WebGL context repeatedly (GPU memory exhaustion or reset)' }
+      - alert: MapPageCrashes
+        expr: map_page_crashes > 0
+        for: 5m
+        labels: { severity: page }
+        annotations: { summary: 'Map on {{ $labels.page }} ({{ $labels.device }}) was killed while visible (out-of-memory tab reload)' }
       - alert: MobileHeapOver512MB
         expr: memory_heap_usage_bytes{device="touch"} > 512 * 1024 * 1024
         for: 15m

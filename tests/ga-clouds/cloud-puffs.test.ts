@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { puffSphereMesh, radarCloudPuffs } from "../../lib/ga-clouds/cloud-puffs";
+import { radarCloudPuffs } from "../../lib/ga-clouds/cloud-puffs";
 
 const block = (w: number, s: number, e: number, n: number, props: Record<string, unknown>): GeoJSON.Feature<GeoJSON.Polygon> => ({
   type: "Feature",
@@ -10,7 +10,7 @@ const block = (w: number, s: number, e: number, n: number, props: Record<string,
 const flat = () => 0;
 
 test("radarCloudPuffs fills each echo column from the base to the echo top", () => {
-  const fc: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [block(-84, 33, -83.99, 33.01, { topM: 6000, baseM: 900, band: "light", night: 0 })] };
+  const fc: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [block(-84, 33, -83.99, 33.01, { topM: 6000, baseM: 900, band: "light", night: 0, baseStation: "KATL" })] };
   const puffs = radarCloudPuffs(fc, { cellDeg: 0.01, groundM: flat, maxPuffs: 1000 });
   assert.ok(puffs.length > 3);
   for (const p of puffs) {
@@ -27,7 +27,7 @@ test("radarCloudPuffs fills each echo column from the base to the echo top", () 
 });
 
 test("radarCloudPuffs adds ground height to the METAR base and keeps only surface puffs", () => {
-  const props = { topM: 6000, baseM: 500, band: "moderate", night: 0 };
+  const props = { topM: 6000, baseM: 500, band: "moderate", night: 0, baseStation: "KATL" };
   const fc: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [block(-84, 33, -83.95, 33.05, props)] };
   const raised = radarCloudPuffs(fc, { cellDeg: 0.01, groundM: () => 400, maxPuffs: 10_000 });
   assert.ok(Math.min(...raised.map((p) => p.position[2])) > 900);
@@ -42,7 +42,7 @@ test("radarCloudPuffs adds ground height to the METAR base and keeps only surfac
 test("radarCloudPuffs tints night cells blue-grey and merges cells to fit the budget", () => {
   const fc: GeoJSON.FeatureCollection = {
     type: "FeatureCollection",
-    features: [block(-84, 33, -83.9, 33.1, { topM: 8000, baseM: 0, band: "heavy", night: 1 })],
+    features: [block(-84, 33, -83.9, 33.1, { topM: 8000, baseM: 0, band: "heavy", night: 1, baseStation: "KATL" })],
   };
   const all = radarCloudPuffs(fc, { cellDeg: 0.01, groundM: flat, maxPuffs: 1e9 });
   const capped = radarCloudPuffs(fc, { cellDeg: 0.01, groundM: flat, maxPuffs: 500 });
@@ -52,11 +52,15 @@ test("radarCloudPuffs tints night cells blue-grey and merges cells to fit the bu
   assert.deepEqual(radarCloudPuffs(fc, { cellDeg: 0.01, groundM: flat, maxPuffs: 1e9 }), all, "deterministic");
 });
 
-test("puffSphereMesh is a closed unit sphere with darker undersides", () => {
-  const m = puffSphereMesh(4, 6);
-  const pos = m.attributes.positions.value;
-  for (let i = 0; i < pos.length; i += 3) assert.ok(Math.abs(Math.hypot(pos[i], pos[i + 1], pos[i + 2]) - 1) < 1e-6);
-  assert.equal(m.indices.value.length, 4 * 6 * 6);
-  const col = m.attributes.colors.value;
-  assert.ok(col[0] > col[col.length - 1]);
+test("radarCloudPuffs draws only a cap at the measured echo top when no METAR base is in range", () => {
+  const fc: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [block(-84, 33, -83.99, 33.01, { topM: 7000, baseM: 0, band: "light", night: 0, baseStation: null })] };
+  const puffs = radarCloudPuffs(fc, { cellDeg: 0.01, groundM: () => 300, maxPuffs: 1000 });
+  assert.ok(puffs.length > 0);
+  for (const p of puffs) assert.ok(p.position[2] > 7000 - 2 * p.scale[0] && p.position[2] <= 7000, "no puff hangs down to the ground");
+});
+
+test("radarCloudPuffs sorts puffs low to high so crowns blend last", () => {
+  const fc: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [block(-84, 33, -83.97, 33.03, { topM: 8000, baseM: 600, band: "moderate", night: 0, baseStation: "KATL" })] };
+  const zs = radarCloudPuffs(fc, { cellDeg: 0.01, groundM: flat, maxPuffs: 1e6 }).map((p) => p.position[2]);
+  assert.deepEqual(zs, [...zs].sort((a, b) => a - b));
 });

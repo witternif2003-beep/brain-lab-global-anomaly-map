@@ -2,6 +2,7 @@
 import { useEffect } from "react";
 import { onCLS, onINP, onLCP } from "web-vitals";
 import { RUM_INTERVAL_MS, type RumSample } from "../lib/metrics/rum";
+import { gpuSafeMode, startCrashTracking } from "../lib/map/crash-guard";
 
 type Perf = Performance & { memory?: { usedJSHeapSize: number } };
 
@@ -36,6 +37,7 @@ export default function RenderMetricsProbe() {
     po.observe({ type: "resource", buffered: false });
 
     let lossesSeen = 0;
+    let crashesUnreported = startCrashTracking();
     const report = () => {
       const f = frames.filter((d) => d > 0 && d < 1_000).sort((a, b) => a - b);
       frames = [];
@@ -54,6 +56,8 @@ export default function RenderMetricsProbe() {
         splats: window.__gaSplat?.status === "ready" ? window.__gaSplat.splats : null,
         splatRenderer: window.__gaSplat?.device ?? null,
         webglContextLosses: null,
+        pageCrashes: crashesUnreported,
+        gpuSafeMode: gpuSafeMode(),
         ...vitals,
         touch: navigator.maxTouchPoints > 0,
       };
@@ -62,6 +66,7 @@ export default function RenderMetricsProbe() {
         s.webglContextLosses = gpu.contextLost - lossesSeen;
         lossesSeen = gpu.contextLost;
       }
+      crashesUnreported = 0;
       bytes = 0;
       busyMs = 0;
       (window as unknown as { __gaPerf?: RumSample }).__gaPerf = s;

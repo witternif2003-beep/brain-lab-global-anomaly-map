@@ -21,4 +21,8 @@ export const LIDAR_POINT_CEILING = 2_000_000;
 const LIDAR_TOUCH: LidarBudget = { points: 1_500_000, fetchParallel: 3, imageryTiles: 48 };
 const LIDAR_DESKTOP: LidarBudget = { points: LIDAR_POINT_CEILING, fetchParallel: 6, imageryTiles: 96 };
 
-export const lidarBudget = (touch: boolean): LidarBudget => (touch ? LIDAR_TOUCH : LIDAR_DESKTOP);
+/** Per-device LiDAR budget; `safe` (a recent crash on this device) halves points, downloads and the imagery cache. */
+export function lidarBudget(touch: boolean, safe = false): LidarBudget {
+  const b = touch ? LIDAR_TOUCH : LIDAR_DESKTOP;
+  return safe ? { points: b.points / 2, fetchParallel: Math.max(1, Math.floor(b.fetchParallel / 2)), imageryTiles: b.imageryTiles / 2 } : b;
+}
