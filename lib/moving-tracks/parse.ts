@@ -45,7 +45,7 @@ export interface MovingTracksPayload {
   total: number;
   truncated: number;
   counts: Record<TrackKind, number>;
-  privacy: { listsLoaded: boolean; note: string };
+  privacy: { listsLoaded: boolean; error: string | null; note: string };
   sources: MovingSourceStatus[];
   tracks: MovingTrack[];
 }

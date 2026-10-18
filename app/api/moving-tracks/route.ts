@@ -25,6 +25,13 @@ interface Cached { at: number; result: ParseResult | null; error: string | null 
 const cache = new Map<string, Cached>();
 let token: { value: string; exp: number } | null = null;
 let privacy: { at: number; lists: PrivacyLists } | null = null;
+let privacyError: string | null = null;
+
+const reason = (err: unknown): string => {
+  if (!(err instanceof Error)) return String(err);
+  const cause = err.cause instanceof Error ? (err.cause as Error & { code?: string }) : null;
+  return cause ? `${err.message} (${cause.code ?? cause.message})` : err.message;
+};
 
 const authed = () => Boolean(process.env.OPENSKY_CLIENT_ID && process.env.OPENSKY_CLIENT_SECRET);
 
@@ -50,8 +57,10 @@ async function privacyLists(): Promise<PrivacyLists> {
     const [ladd, pia] = await Promise.all([getJson(LADD, {}, 8_000), getJson(PIA, {}, 8_000)]);
     const lists = { hexes: new Set([...hexList(ladd as { ac?: { hex?: string }[] }), ...hexList(pia as { ac?: { hex?: string }[] })]) };
     privacy = { at: Date.now(), lists };
+    privacyError = null;
     return lists;
-  } catch {
+  } catch (err) {
+    privacyError = reason(err);
     return privacy?.lists ?? { hexes: null };
   }
 }
@@ -98,7 +107,7 @@ async function load(s: Source): Promise<Cached> {
     cache.set(s.id, next);
     return next;
   } catch (err) {
-    const failed = { at: Date.now(), result: null, error: err instanceof Error ? err.message : String(err) };
+    const failed = { at: Date.now(), result: null, error: reason(err) };
     cache.set(s.id, { ...failed, at: Date.now() - s.ttlMs() + 60_000 });
     return failed;
   }
@@ -136,6 +145,7 @@ export async function GET() {
     counts: countKinds(tracks),
     privacy: {
       listsLoaded,
+      error: privacyError,
       note: listsLoaded
         ? "Aircraft on the FAA LADD/PIA lists (as currently seen by adsb.lol) removed; no ICAO hex, registration or MMSI published; pleasure craft unnamed"
         : "LADD/PIA lists unavailable, so every US-registered aircraft was removed; no ICAO hex, registration or MMSI published; pleasure craft unnamed",
