@@ -52,6 +52,33 @@ export function parseAdsbLol(json: { ac?: AdsbAircraft[]; now?: number }, nowMs 
     .filter(keep);
 }
 
+type AdsbPointResponse = { ac?: (AdsbAircraft & { hex?: string })[]; aircraft?: (AdsbAircraft & { hex?: string })[]; now?: number };
+
+/** Merges adsb.lol (`ac`, `now` in ms) and adsb.fi (`aircraft`, `now` in s) point responses: freshest position per ICAO hex, privacy flags OR-ed across providers, hex dropped. */
+export function mergeAdsbPoints(responses: AdsbPointResponse[], nowMs = Date.now()): { ac: AdsbAircraft[]; now: number } {
+  const stamped = responses.map((r) => ({
+    list: r.ac ?? r.aircraft ?? [],
+    t: typeof r.now === "number" && Number.isFinite(r.now) ? (r.now < 1e11 ? r.now * 1000 : r.now) : nowMs,
+  }));
+  const now = stamped.length ? Math.max(...stamped.map((r) => r.t)) : nowMs;
+  const byHex = new Map<string, AdsbAircraft>();
+  const anon: AdsbAircraft[] = [];
+  for (const { list, t } of stamped) {
+    for (const { hex, ...a } of list) {
+      const cur: AdsbAircraft = { ...a, seen_pos: (a.seen_pos ?? 0) + (now - t) / 1000 };
+      if (!hex) {
+        anon.push(cur);
+        continue;
+      }
+      const prev = byHex.get(hex);
+      const flags = (prev?.dbFlags ?? 0) | (cur.dbFlags ?? 0);
+      const keep = !prev || (cur.seen_pos ?? 0) < (prev.seen_pos ?? 0) ? cur : prev;
+      byHex.set(hex, { ...keep, dbFlags: flags });
+    }
+  }
+  return { ac: [...byHex.values(), ...anon], now };
+}
+
 /** Aircraft from the OpenSky `/states/all` response (fallback source). */
 export function parseOpenSky(json: { time?: number; states?: unknown[][] | null }): LiveMarker[] {
   return (json.states ?? [])

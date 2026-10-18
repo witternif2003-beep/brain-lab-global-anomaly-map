@@ -38,7 +38,7 @@ The procurement work answers "what tracking technology does the FBI buy, from wh
 | Digitraffic rail latest | Finland | 32 trains (night) | 29 | CC BY 4.0, Fintraffic | Built (phase 1) |
 | adsb.fi `/api/v2/lat/../lon/../dist/250` | Regional ADS-B | 515 records within 250 NM of Atlanta (one sample, HTTP 200 from VM) | n/a | Personal non-commercial use only; 1 request/s | Second aircraft rotation since phase 1b |
 | adsb.lol point/area | Regional ADS-B | n/a (HTTP 000 from VM; reachable from Vercel) | n/a | Licence terms not verified here; rate limits are dynamic per adsb.lol's API README | Primary aircraft source since phase 1b: 48 overlapping 250 NM tiles over the contiguous US and Europe; also Georgia aircraft and LADD/PIA lists |
-| adsb.fi | Regional ADS-B | 305 | not measured | Personal/non-commercial terms | Not built |
+| adsb.fi | Regional ADS-B | 305 (earlier sample) | not measured | Personal/non-commercial terms | Superseded by the adsb.fi row above (built) |
 | airplanes.live | Regional ADS-B | HTTP 403 | – | Restricted | Not built |
 | GTFS-RT (OVAPI NL, SEQ, MBTA, HSL, Edmonton, BART) | City buses/trains | 135–631 per feed | 0 with a speed field over 0.5 m/s | Per-agency open licences | Not built: speed is usually absent, so "moving" needs two successive fixes |
 
@@ -73,3 +73,29 @@ Threats to validity: OpenSky coverage is receiver-dependent (dense over Europe/U
 - Phase 3: GTFS-RT feeds with motion inferred from two consecutive fixes (needs per-vehicle state on the server, never published), starting with the Georgia agencies already in `ga-live-markers`.
 - Phase 4: the public FBI procurement/oversight panel in section 2 (SAM.gov key required).
 - Phase 5: global AIS beyond the Baltic only if an openly licensed feed is found; AISHub and similar require data-sharing agreements.
+
+## 7. Georgia: 100,000-track ceiling and measured supply
+
+Request: up to 100,000 more live moving tracks inside the Georgia state boundary. As with the global layer, 100,000 is a ceiling, not a target to fill: no synthetic or projected-only tracks are counted.
+
+Measured supply inside Georgia (2026-10-18 ~00:40 UTC, Saturday evening local time; one sample each):
+
+| Signal | Source | Count | Moving? | Notes |
+| --- | --- | --- | --- | --- |
+| Aircraft | adsb.fi `/api/v2/lat/32.7/lon/-83.25/dist/250` | 462 in the 250 NM circle, 222 in the Georgia bbox | 196 airborne above 10 kt | adsb.lol alone timed out from Vercel, so the Georgia layer showed 0 aircraft; it now queries adsb.lol and adsb.fi in parallel and merges per ICAO hex (`mergeAdsbPoints`), OpenSky stays the fallback |
+| Buses / shuttles | GTFS-RT: MARTA 147, CobbLinc 18, Ride Gwinnett 14, UGA 12, Connect Douglas 1, Athens Transit 0, GT Stinger 0 | 192 | Yes, but most feeds give no speed, so "moving" needs two fixes (phase 3) | Added Kennesaw State, SCAD Atlanta, SCAD Savannah and Valdosta State Passio GO feeds (found by probing all 283 Passio systems; 0–3 vehicles each at the sample time). Chatham Area Transit, Augusta Transit, Macon-Bibb MTA, Columbus METRA, Albany Transit and Xpress have no GTFS-RT feed listed in the Mobility Database catalogue and none was found at the usual vendor URLs |
+| Shared scooters / bikes | Lime and Bird GBFS, Atlanta | 5,155 | No: GBFS publishes parked, available vehicles only | Kept on the map as parked vehicles; not counted as moving |
+| Ships | none | 0 | – | No openly licensed live AIS feed for the Savannah/Brunswick coast was found; NOAA MarineCadastre AIS is historical; AISHub and similar require data-sharing agreements |
+| Rail | none | 0 | – | No public live freight or Amtrak position feed with an open licence |
+| Road traffic (BLE / probe speeds) | none public | 0 | – | GDOT and ARC speed/travel-time data need a data use agreement (DataSupport@dot.ga.gov) and are offered to agencies and contractors |
+
+Expected Georgia total with every source above: roughly 200–600 moving tracks (aircraft peak in the daytime; buses peak at weekday rush hour). The 100,000 ceiling is about 170× the measured peak supply. The 4.5 MB Vercel response limit (~30,000 tracks at ~150 B each in the current JSON) would also need the compact or binary transport from phase 2.
+
+Legitimate ways to raise the count (each needs a step outside this repo):
+
+1. GDOT / ARC probe-speed data under a data use agreement (the project owner would have to apply).
+2. Registered OpenSky credentials for 90 s aircraft refresh.
+3. Asking Chatham Area Transit, Augusta Transit, Macon-Bibb MTA and Columbus METRA to publish GTFS-RT vehicle positions (they publish static GTFS).
+4. Two-fix motion inference for the bus feeds (phase 3), which changes "moving" from "has a position" to "has moved since the last fix".
+
+Not workarounds this project will use: tracking FBI or other law-enforcement aircraft and vehicles, removing the LADD/PIA privacy filter, de-anonymising aggregate feeds, scraping sources whose terms forbid it, or padding the count with synthetic or projected-only tracks.

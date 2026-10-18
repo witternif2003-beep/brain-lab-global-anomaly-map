@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   decodeGtfsRtVehicles,
+  mergeAdsbPoints,
   parseAdsbLol,
   parseGbfsFreeBikes,
   parseIemCurrents,
@@ -75,6 +76,27 @@ test("adsb.lol parser drops PIA/LADD aircraft, stale positions and out-of-Georgi
   assert.equal(ms[0].observedAt, "2026-10-04T12:59:58.000Z");
   assert.equal(ms[1].props.onGround, true);
   assert.ok(!JSON.stringify(ms).includes("a1b2c3") && !JSON.stringify(ms).includes("N123DL"));
+});
+
+test("adsb.lol + adsb.fi merge keeps the freshest fix per aircraft, ORs privacy flags and normalises seconds/ms", () => {
+  const nowMs = Date.parse("2026-10-04T13:00:00Z");
+  const merged = mergeAdsbPoints([
+    { now: nowMs, ac: [
+      { hex: "a1", flight: "DAL1", lat: 33.6, lon: -84.4, seen_pos: 5 },
+      { hex: "b2", flight: "PVT1", lat: 33.7, lon: -84.3, seen_pos: 1 },
+    ] },
+    { now: nowMs / 1000 - 2, aircraft: [
+      { hex: "a1", flight: "DAL1", lat: 33.61, lon: -84.41, seen_pos: 1 },
+      { hex: "b2", flight: "PVT1", lat: 33.7, lon: -84.3, seen_pos: 0, dbFlags: 8 },
+      { hex: "c3", flight: "SWA2", lat: 32.5, lon: -83.6, seen_pos: 0 },
+    ] },
+  ]);
+  assert.equal(merged.now, nowMs);
+  const ms = parseAdsbLol(merged);
+  assert.deepEqual(ms.map((m) => m.label).sort(), ["DAL1", "SWA2"]);
+  const dal = ms.find((m) => m.label === "DAL1")!;
+  assert.equal(dal.observedAt, "2026-10-04T12:59:57.000Z");
+  assert.ok(!JSON.stringify(merged).includes('"hex"'));
 });
 
 test("OpenSky parser converts metres and m/s", () => {

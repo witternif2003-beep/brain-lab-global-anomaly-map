@@ -26,6 +26,7 @@ import {
   parseUsgsQuakes,
   transitMarkers,
   GEOCODE_MIN_SCORE,
+  mergeAdsbPoints,
   type AccpdFeature,
   type ApdCrimeFeature,
   type AtlasAgency,
@@ -62,6 +63,25 @@ const gtfsRt = (agency: string, url: string): Feed => ({
   url,
   load: async (r) => transitMarkers(decodeGtfsRtVehicles(new Uint8Array(await r.arrayBuffer())).vehicles, agency),
 });
+
+const ADSB_GA = [
+  { id: "adsb.lol", url: "https://api.adsb.lol/v2/point/32.7/-83.25/250" },
+  { id: "adsb.fi", url: "https://opendata.adsb.fi/api/v2/lat/32.7/lon/-83.25/dist/250" },
+];
+
+/** Both community ADS-B networks queried around Georgia's centre and merged per aircraft; succeeds if either answers. */
+async function gaAircraft(): Promise<LiveMarker[]> {
+  const res = await Promise.allSettled(
+    ADSB_GA.map(async (p) => {
+      const r = await fetch(p.url, { cache: "no-store", headers: UA, signal: AbortSignal.timeout(12_000) });
+      if (!r.ok) throw new Error(`${p.id}: HTTP ${r.status}`);
+      return (await r.json()) as Parameters<typeof mergeAdsbPoints>[0][number];
+    }),
+  );
+  const ok = res.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
+  if (!ok.length) throw new Error(res.map((r) => (r.status === "rejected" ? String(r.reason) : "")).join("; "));
+  return parseAdsbLol(mergeAdsbPoints(ok));
+}
 
 const OSM_TTL_S = 6 * 3600;
 const OVERPASS = [
@@ -368,14 +388,14 @@ const LAYERS: Record<LiveLayer, LayerSpec> = {
   alpr: osm("alpr", "Fixed licence-plate-reader camera positions (no plate reads, no camera owner data beyond OSM tags)"),
   aircraft: {
     ttlS: 10,
-    source: "ADS-B aircraft positions from adsb.lol (ODbL); aircraft in the FAA PIA/LADD privacy programmes are removed",
+    source: "ADS-B aircraft positions from adsb.lol (ODbL) and adsb.fi open data (personal, non-commercial use), merged per aircraft; aircraft in the FAA PIA/LADD privacy programmes are removed",
     sourceUrl: "https://adsb.lol/",
-    feeds: [{ id: "adsb.lol", url: "https://api.adsb.lol/v2/point/32.7/-83.25/250", load: json((j) => parseAdsbLol(j)) }],
+    feeds: [{ id: "adsb.lol + adsb.fi", url: ADSB_GA.map((p) => p.url).join(" ; "), markers: gaAircraft }],
     fallback: [{ id: "OpenSky Network", url: "https://opensky-network.org/api/states/all?lamin=30.3&lomin=-85.7&lamax=35.1&lomax=-80.8", load: json((j) => parseOpenSky(j)) }],
   },
   transit: {
     ttlS: 20,
-    source: "Public bus positions (GTFS-realtime) from MARTA, Ride Gwinnett, CobbLinc, Athens-Clarke Transit, UGA Campus Transit, Connect Douglas and Georgia Tech Stinger; feeds listed in the Mobility Database",
+    source: "Public bus positions (GTFS-realtime) from MARTA, Ride Gwinnett, CobbLinc, Athens-Clarke Transit, UGA Campus Transit, Connect Douglas, Georgia Tech Stinger, Kennesaw State, SCAD Atlanta, SCAD Savannah and Valdosta State shuttles; feeds listed in the Mobility Database or on Passio GO",
     sourceUrl: "https://mobilitydatabase.org/",
     feeds: [
       gtfsRt("MARTA", "https://gtfs-rt.itsmarta.com/TMGTFSRealTimeWebService/vehicle/vehiclepositions.pb"),
@@ -385,6 +405,10 @@ const LAYERS: Record<LiveLayer, LayerSpec> = {
       gtfsRt("UGA Transit", "https://passio3.com/uga/passioTransit/gtfs/realtime/vehiclePositions"),
       gtfsRt("Connect Douglas", "https://passio3.com/douglas/passioTransit/gtfs/realtime/vehiclePositions"),
       gtfsRt("GT Stinger", "https://passio3.com/gatech/passioTransit/gtfs/realtime/vehiclePositions"),
+      gtfsRt("Kennesaw State", "https://passio3.com/kennesaw/passioTransit/gtfs/realtime/vehiclePositions"),
+      gtfsRt("SCAD Atlanta", "https://passio3.com/scadatlanta/passioTransit/gtfs/realtime/vehiclePositions"),
+      gtfsRt("SCAD Savannah", "https://passio3.com/scadsavannah/passioTransit/gtfs/realtime/vehiclePositions"),
+      gtfsRt("Valdosta State", "https://passio3.com/valdosta/passioTransit/gtfs/realtime/vehiclePositions"),
     ],
   },
   micromobility: {
