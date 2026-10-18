@@ -18,7 +18,9 @@ const ADSB_BOXES: [number, number, number, number][] = [
   [-11, 35, 30, 60],
 ];
 const ADSB_TILES = tileCentres(ADSB_BOXES);
-const ADSB_CONCURRENCY = 8;
+const ADSB_TILES_PER_CALL = 4;
+const ADSB_TILE_GAP_MS = 1_500;
+const ADSB_TILE_MAX_AGE_MS = 10 * 60_000;
 
 interface Source {
   id: string;
@@ -75,27 +77,38 @@ async function privacyLists(): Promise<PrivacyLists> {
   }
 }
 
+type AdsbTile = { ac?: AdsbAircraftRaw[]; now?: number };
+const tileCache: ({ at: number; json: AdsbTile } | null)[] = ADSB_TILES.map(() => null);
+let tileCursor = 0;
+let tileBackoffUntil = 0;
+
+/**
+ * adsb.lol rate-limits bursts (HTTP 429), so each call refreshes at most ADSB_TILES_PER_CALL tiles in rotation, spaced
+ * ADSB_TILE_GAP_MS apart, and merges every tile fetched within ADSB_TILE_MAX_AGE_MS. Each track keeps its own fix time.
+ */
 async function adsbTiles(): Promise<ParseResult> {
-  const out: ({ ac?: AdsbAircraftRaw[]; now?: number } | null)[] = new Array(ADSB_TILES.length).fill(null);
-  let next = 0;
   let lastError = "";
-  const worker = async () => {
-    while (next < ADSB_TILES.length) {
-      const i = next++;
+  if (Date.now() >= tileBackoffUntil) {
+    for (let n = 0; n < ADSB_TILES_PER_CALL; n++) {
+      const i = tileCursor;
       const [lat, lon] = ADSB_TILES[i];
       try {
-        out[i] = (await getJson(`${ADSB_POINT}/${lat}/${lon}/250`, {}, 10_000)) as { ac?: AdsbAircraftRaw[]; now?: number };
+        tileCache[i] = { at: Date.now(), json: (await getJson(`${ADSB_POINT}/${lat}/${lon}/250`, {}, 10_000)) as AdsbTile };
+        tileCursor = (tileCursor + 1) % ADSB_TILES.length;
       } catch (err) {
         lastError = reason(err);
+        if (lastError.includes("429")) tileBackoffUntil = Date.now() + 60_000;
+        else tileCursor = (tileCursor + 1) % ADSB_TILES.length;
+        break;
       }
+      await new Promise((r) => setTimeout(r, ADSB_TILE_GAP_MS));
     }
-  };
-  await Promise.all(Array.from({ length: ADSB_CONCURRENCY }, worker));
-  const ok = out.filter((r): r is { ac?: AdsbAircraftRaw[]; now?: number } => r !== null);
-  if (!ok.length) throw new Error(`all ${ADSB_TILES.length} tiles failed: ${lastError}`);
-  const result = parseAdsbLolTiles(ok, Date.now());
-  const failed = ADSB_TILES.length - ok.length;
-  return failed ? { ...result, warning: `${failed} of ${ADSB_TILES.length} tiles failed (${lastError})` } : result;
+  }
+  const fresh = tileCache.filter((t): t is { at: number; json: AdsbTile } => t !== null && Date.now() - t.at < ADSB_TILE_MAX_AGE_MS);
+  if (!fresh.length) throw new Error(lastError || "no adsb.lol tile fetched yet");
+  const result = parseAdsbLolTiles(fresh.map((t) => t.json), Date.now());
+  const note = `${fresh.length} of ${ADSB_TILES.length} tiles fresh${lastError ? `; last fetch ${lastError}` : ""}`;
+  return fresh.length < ADSB_TILES.length || lastError ? { ...result, warning: note } : result;
 }
 
 const SOURCES: Source[] = [
@@ -104,7 +117,7 @@ const SOURCES: Source[] = [
     kind: "aircraft",
     url: "https://adsb.lol/",
     licence: "adsb.lol community ADS-B feed (rate limits set by adsb.lol; licence terms not verified here, see adsb.lol)",
-    ttlMs: () => 120_000,
+    ttlMs: () => 30_000,
     load: adsbTiles,
   },
   {
