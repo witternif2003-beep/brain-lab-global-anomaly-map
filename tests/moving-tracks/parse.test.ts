@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { capTracks, hexList, isUsRegistered, movingGauges, parseAdsbLolTiles, parseDigitrafficAis, parseDigitrafficTrains, parseOpenSkyStates, tileCentres, type MovingSourceStatus, type MovingTracksPayload, type MovingTrack } from "../../lib/moving-tracks/parse";
+import { capTracks, hexList, isUsRegistered, movingGauges, parseAdsbTiles, parseDigitrafficAis, parseDigitrafficTrains, parseOpenSkyStates, tileCentres, type MovingSourceStatus, type MovingTracksPayload, type MovingTrack } from "../../lib/moving-tracks/parse";
 
 const NOW = 1_792_000_000;
 const state = (hex: string, o: Partial<Record<number, unknown>> = {}): unknown[] => {
@@ -65,18 +65,20 @@ test("gauges report nothing invented when the route is down", () => {
   assert.ok(g.every((x) => x.values.every((v) => v.value === null)));
 });
 
-test("adsb.lol tiles: dedupe by hex, drop PIA/LADD, ground and slow aircraft, publish no hex", () => {
+test("ADS-B tiles: dedupe by hex across providers, drop PIA/LADD, ground and slow aircraft, publish no hex", () => {
   const now = NOW * 1000;
   const a = { hex: "abc123", flight: "DAL1 ", lat: 33.6, lon: -84.4, alt_baro: 30000, gs: 450, track: 90, seen_pos: 1 };
-  const r = parseAdsbLolTiles(
+  const r = parseAdsbTiles(
     [
-      { now, ac: [a, { ...a, hex: "a00001", dbFlags: 8 }, { ...a, hex: "a00002", alt_baro: "ground" as const }, { ...a, hex: "a00003", gs: 5 }, { ...a, hex: "a00004", seen_pos: 500 }] },
-      { now, ac: [a, { ...a, hex: "a00005", dbFlags: 4 }] },
+      { provider: "adsb.lol", now, ac: [a, { ...a, hex: "a00001", dbFlags: 8 }, { ...a, hex: "a00002", alt_baro: "ground" as const }, { ...a, hex: "a00003", gs: 5 }, { ...a, hex: "a00004", seen_pos: 500 }] },
+      { provider: "adsb.fi", now: NOW, aircraft: [a, { ...a, hex: "a00005", dbFlags: 4 }, { ...a, hex: "a00006", seen_pos: 2 }] },
     ],
     now,
   );
-  assert.deepEqual([r.received, r.removedPrivacy, r.tracks.length], [6, 2, 1]);
+  assert.deepEqual([r.received, r.removedPrivacy, r.tracks.length], [7, 2, 2]);
+  assert.equal(r.tracks[1].at, now - 2000);
   assert.equal(r.tracks[0].label, "DAL1");
+  assert.equal(r.tracks[0].source, "adsb.lol");
   assert.equal(r.tracks[0].at, now - 1000);
   assert.ok(!JSON.stringify(r.tracks).includes("abc123"));
 });
@@ -89,7 +91,7 @@ test("tileCentres covers each box with overlapping 250 NM circles", () => {
 
 test("standby fallback sources are left out of up/lag gauges", () => {
   const src = (id: string, standby: boolean): MovingSourceStatus => ({ id, kind: "aircraft", url: "", licence: "", ok: !standby, standby, error: null, received: 1, moving: 1, removedPrivacy: 0, newestAt: null, lagSeconds: 3 });
-  const body = { generatedAt: "", max: 50_000, total: 0, truncated: 0, counts: { aircraft: 0, vessel: 0, train: 0 }, privacy: { listsLoaded: false, error: null, note: "" }, sources: [src("adsb.lol", false), src("OpenSky Network", true)], tracks: [] } satisfies MovingTracksPayload;
+  const body = { generatedAt: "", max: 50_000, total: 0, truncated: 0, counts: { aircraft: 0, vessel: 0, train: 0 }, privacy: { listsLoaded: false, error: null, note: "" }, sources: [src("adsb.lol + adsb.fi", false), src("OpenSky Network", true)], tracks: [] } satisfies MovingTracksPayload;
   const up = movingGauges(body).find((g) => g.name === "moving_tracks_source_up");
-  assert.deepEqual(up?.values.map((v) => v.labels?.source), ["adsb.lol"]);
+  assert.deepEqual(up?.values.map((v) => v.labels?.source), ["adsb.lol + adsb.fi"]);
 });

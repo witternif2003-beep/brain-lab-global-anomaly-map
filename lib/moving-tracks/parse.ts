@@ -172,18 +172,21 @@ export interface AdsbAircraftRaw {
   hex?: string; flight?: string; lat?: number; lon?: number; alt_baro?: number | 'ground'; gs?: number; track?: number; seen_pos?: number; dbFlags?: number;
 }
 
+export interface AdsbTileResponse { provider: string; ac?: AdsbAircraftRaw[]; aircraft?: AdsbAircraftRaw[]; now?: number }
+
 /**
- * adsb.lol `/v2/point` responses from overlapping tiles: airborne aircraft above 5 m/s, PIA/LADD (dbFlags 4|8) removed,
- * deduplicated by ICAO hex server-side; the hex is not published.
+ * readsb-style `/v2` tile responses (adsb.lol `ac`, adsb.fi `aircraft`): airborne aircraft above 5 m/s, PIA/LADD
+ * (dbFlags 4|8) removed, deduplicated by ICAO hex across tiles and providers server-side; the hex is not published.
  */
-export function parseAdsbLolTiles(responses: { ac?: AdsbAircraftRaw[]; now?: number }[], nowMs: number): ParseResult {
+export function parseAdsbTiles(responses: AdsbTileResponse[], nowMs: number): ParseResult {
   const seen = new Set<string>();
   const tracks: MovingTrack[] = [];
   let received = 0;
   let removedPrivacy = 0;
   for (const r of responses) {
-    const now = finite(r.now) ? r.now : nowMs;
-    for (const a of r.ac ?? []) {
+    // adsb.lol reports `now` in ms, adsb.fi in seconds.
+    const now = finite(r.now) ? (r.now < 1e11 ? r.now * 1000 : r.now) : nowMs;
+    for (const a of r.ac ?? r.aircraft ?? []) {
       const hex = (a.hex ?? '').toLowerCase();
       if (!hex || seen.has(hex)) continue;
       seen.add(hex);
@@ -203,7 +206,7 @@ export function parseAdsbLolTiles(responses: { ac?: AdsbAircraftRaw[]; now?: num
         altFt: finite(a.alt_baro) ? Math.round(a.alt_baro) : null,
         label: a.flight?.trim() || 'no callsign',
         at: Math.round(now - seenPos * 1000),
-        source: 'adsb.lol',
+        source: r.provider,
       });
     }
   }

@@ -1,4 +1,4 @@
-import { countKinds, capTracks, hexList, MOVING_TRACKS_MAX, parseAdsbLolTiles, parseDigitrafficAis, parseDigitrafficTrains, parseOpenSkyStates, tileCentres, type AdsbAircraftRaw, type MovingSourceStatus, type MovingTrack, type MovingTracksPayload, type ParseResult, type PrivacyLists, type TrackKind } from "../../../lib/moving-tracks/parse";
+import { countKinds, capTracks, hexList, MOVING_TRACKS_MAX, parseAdsbTiles, parseDigitrafficAis, parseDigitrafficTrains, parseOpenSkyStates, tileCentres, type AdsbTileResponse, type MovingSourceStatus, type MovingTrack, type MovingTracksPayload, type ParseResult, type PrivacyLists, type TrackKind } from "../../../lib/moving-tracks/parse";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -18,9 +18,30 @@ const ADSB_BOXES: [number, number, number, number][] = [
   [-11, 35, 30, 60],
 ];
 const ADSB_TILES = tileCentres(ADSB_BOXES);
-const ADSB_TILES_PER_CALL = 4;
-const ADSB_TILE_GAP_MS = 1_500;
 const ADSB_TILE_MAX_AGE_MS = 10 * 60_000;
+const ADSB_REFRESH_BUDGET_MS = 20_000;
+
+interface TileProvider {
+  name: string;
+  url: (lat: number, lon: number) => string;
+  /** Tiles refreshed per API call, spaced gapMs apart to stay under the provider's published or observed rate limit. */
+  perCall: number;
+  gapMs: number;
+  cache: ({ at: number; json: AdsbTileResponse } | null)[];
+  cursor: number;
+  backoffUntil: number;
+  lastError: string;
+}
+
+const provider = (name: string, url: TileProvider["url"], perCall: number, gapMs: number): TileProvider => ({
+  name, url, perCall, gapMs, cache: ADSB_TILES.map(() => null), cursor: 0, backoffUntil: 0, lastError: "",
+});
+
+const TILE_PROVIDERS: TileProvider[] = [
+  provider("adsb.lol", (lat, lon) => `${ADSB_POINT}/${lat}/${lon}/250`, 4, 1_500),
+  // adsb.fi open data: 1 request/s, personal non-commercial use (github.com/adsbfi/opendata).
+  provider("adsb.fi", (lat, lon) => `https://opendata.adsb.fi/api/v2/lat/${lat}/lon/${lon}/dist/250`, 8, 1_100),
+];
 
 interface Source {
   id: string;
@@ -77,52 +98,55 @@ async function privacyLists(): Promise<PrivacyLists> {
   }
 }
 
-type AdsbTile = { ac?: AdsbAircraftRaw[]; now?: number };
-const tileCache: ({ at: number; json: AdsbTile } | null)[] = ADSB_TILES.map(() => null);
-let tileCursor = 0;
-let tileBackoffUntil = 0;
+async function refreshTiles(p: TileProvider, deadline: number): Promise<void> {
+  if (Date.now() < p.backoffUntil) return;
+  p.lastError = "";
+  for (let n = 0; n < p.perCall && Date.now() < deadline; n++) {
+    const i = p.cursor;
+    const [lat, lon] = ADSB_TILES[i];
+    try {
+      const json = (await getJson(p.url(lat, lon), {}, Math.max(1_000, Math.min(10_000, deadline - Date.now())))) as Omit<AdsbTileResponse, "provider">;
+      p.cache[i] = { at: Date.now(), json: { ...json, provider: p.name } };
+      p.cursor = (p.cursor + 1) % ADSB_TILES.length;
+    } catch (err) {
+      p.lastError = reason(err);
+      if (p.lastError.includes("429")) p.backoffUntil = Date.now() + 60_000;
+      else p.cursor = (p.cursor + 1) % ADSB_TILES.length;
+      return;
+    }
+    if (n < p.perCall - 1) await new Promise((r) => setTimeout(r, p.gapMs));
+  }
+}
 
 /**
- * adsb.lol rate-limits bursts (HTTP 429), so each call refreshes at most ADSB_TILES_PER_CALL tiles in rotation, spaced
- * ADSB_TILE_GAP_MS apart, and merges every tile fetched within ADSB_TILE_MAX_AGE_MS. Each track keeps its own fix time.
+ * ADS-B exchanges rate-limit bursts, so each call refreshes a few tiles per provider in rotation and merges every tile
+ * fetched within ADSB_TILE_MAX_AGE_MS. Each track keeps its own fix time, so lag stays honest.
  */
 async function adsbTiles(): Promise<ParseResult> {
-  let lastError = "";
-  if (Date.now() >= tileBackoffUntil) {
-    for (let n = 0; n < ADSB_TILES_PER_CALL; n++) {
-      const i = tileCursor;
-      const [lat, lon] = ADSB_TILES[i];
-      try {
-        tileCache[i] = { at: Date.now(), json: (await getJson(`${ADSB_POINT}/${lat}/${lon}/250`, {}, 10_000)) as AdsbTile };
-        tileCursor = (tileCursor + 1) % ADSB_TILES.length;
-      } catch (err) {
-        lastError = reason(err);
-        if (lastError.includes("429")) tileBackoffUntil = Date.now() + 60_000;
-        else tileCursor = (tileCursor + 1) % ADSB_TILES.length;
-        break;
-      }
-      await new Promise((r) => setTimeout(r, ADSB_TILE_GAP_MS));
-    }
-  }
-  const fresh = tileCache.filter((t): t is { at: number; json: AdsbTile } => t !== null && Date.now() - t.at < ADSB_TILE_MAX_AGE_MS);
-  if (!fresh.length) throw new Error(lastError || "no adsb.lol tile fetched yet");
-  const result = parseAdsbLolTiles(fresh.map((t) => t.json), Date.now());
-  const note = `${fresh.length} of ${ADSB_TILES.length} tiles fresh${lastError ? `; last fetch ${lastError}` : ""}`;
-  return fresh.length < ADSB_TILES.length || lastError ? { ...result, warning: note } : result;
+  const deadline = Date.now() + ADSB_REFRESH_BUDGET_MS;
+  await Promise.all(TILE_PROVIDERS.map((p) => refreshTiles(p, deadline)));
+  const now = Date.now();
+  const fresh = TILE_PROVIDERS.map((p) => p.cache.filter((t): t is { at: number; json: AdsbTileResponse } => t !== null && now - t.at < ADSB_TILE_MAX_AGE_MS));
+  const all = fresh.flat();
+  const notes = TILE_PROVIDERS.map((p, i) => `${p.name} ${fresh[i].length}/${ADSB_TILES.length} tiles fresh${p.lastError ? ` (last fetch ${p.lastError})` : ""}`);
+  if (!all.length) throw new Error(notes.join("; "));
+  const result = parseAdsbTiles(all.map((t) => t.json), now);
+  const partial = TILE_PROVIDERS.some((p, i) => p.lastError || fresh[i].length < ADSB_TILES.length);
+  return partial ? { ...result, warning: notes.join("; ") } : result;
 }
 
 const SOURCES: Source[] = [
   {
-    id: "adsb.lol",
+    id: "adsb.lol + adsb.fi",
     kind: "aircraft",
-    url: "https://adsb.lol/",
-    licence: "adsb.lol community ADS-B feed (rate limits set by adsb.lol; licence terms not verified here, see adsb.lol)",
+    url: "https://adsb.lol/ ; https://adsb.fi/",
+    licence: "adsb.lol community ADS-B feed (licence terms not verified here); adsb.fi open data, personal non-commercial use only",
     ttlMs: () => 30_000,
     load: adsbTiles,
   },
   {
     id: "OpenSky Network",
-    fallbackFor: "adsb.lol",
+    fallbackFor: "adsb.lol + adsb.fi",
     kind: "aircraft",
     url: "https://opensky-network.org/",
     licence: "OpenSky Network data, non-commercial/research use with attribution",
@@ -198,7 +222,7 @@ export async function GET() {
     };
   });
   const listsLoaded = Boolean(privacy?.lists.hexes);
-  const adsbUsed = sources.some((s) => s.id === "adsb.lol" && s.ok);
+  const adsbUsed = sources.some((s) => s.id === "adsb.lol + adsb.fi" && s.ok);
   const body: MovingTracksPayload = {
     generatedAt: new Date(now).toISOString(),
     max: MOVING_TRACKS_MAX,
@@ -209,7 +233,7 @@ export async function GET() {
       listsLoaded,
       error: privacyError,
       note: adsbUsed
-        ? "Aircraft flagged PIA/LADD by adsb.lol removed; no ICAO hex, registration or MMSI published; pleasure craft unnamed"
+        ? "Aircraft flagged PIA/LADD by adsb.lol/adsb.fi removed; no ICAO hex, registration or MMSI published; pleasure craft unnamed"
         : listsLoaded
         ? "Aircraft on the FAA LADD/PIA lists (as currently seen by adsb.lol) removed; no ICAO hex, registration or MMSI published; pleasure craft unnamed"
         : "LADD/PIA lists unavailable, so every US-registered aircraft was removed; no ICAO hex, registration or MMSI published; pleasure craft unnamed",
