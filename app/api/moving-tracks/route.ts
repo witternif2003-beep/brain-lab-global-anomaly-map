@@ -1,7 +1,7 @@
-import { countKinds, capTracks, hexList, MOVING_TRACKS_MAX, parseDigitrafficAis, parseDigitrafficTrains, parseOpenSkyStates, type MovingSourceStatus, type MovingTrack, type MovingTracksPayload, type ParseResult, type PrivacyLists, type TrackKind } from "../../../lib/moving-tracks/parse";
+import { countKinds, capTracks, hexList, MOVING_TRACKS_MAX, parseAdsbLolTiles, parseDigitrafficAis, parseDigitrafficTrains, parseOpenSkyStates, tileCentres, type AdsbAircraftRaw, type MovingSourceStatus, type MovingTrack, type MovingTracksPayload, type ParseResult, type PrivacyLists, type TrackKind } from "../../../lib/moving-tracks/parse";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 const UA = { "Digitraffic-User": "brain-lab-godseye", "User-Agent": "brain-lab-godseye (+https://brain-lab-six.vercel.app)" };
 const OPENSKY_TOKEN_URL = "https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token";
@@ -11,6 +11,14 @@ const AIS_VESSELS = "https://meri.digitraffic.fi/api/ais/v1/vessels";
 const TRAINS = "https://rata.digitraffic.fi/api/v1/train-locations/latest";
 const LADD = "https://api.adsb.lol/v2/ladd";
 const PIA = "https://api.adsb.lol/v2/pia";
+const ADSB_POINT = "https://api.adsb.lol/v2/point";
+/** Contiguous US and Europe, the two densest ADS-B regions, as [west, south, east, north]. */
+const ADSB_BOXES: [number, number, number, number][] = [
+  [-125, 24, -66, 49],
+  [-11, 35, 30, 60],
+];
+const ADSB_TILES = tileCentres(ADSB_BOXES);
+const ADSB_CONCURRENCY = 8;
 
 interface Source {
   id: string;
@@ -19,6 +27,8 @@ interface Source {
   licence: string;
   ttlMs: () => number;
   load: () => Promise<ParseResult>;
+  /** Queried only when the source with this id failed. */
+  fallbackFor?: string;
 }
 
 interface Cached { at: number; result: ParseResult | null; error: string | null }
@@ -54,7 +64,7 @@ async function openSkyToken(): Promise<string | null> {
 async function privacyLists(): Promise<PrivacyLists> {
   if (privacy && Date.now() - privacy.at < 10 * 60_000) return privacy.lists;
   try {
-    const [ladd, pia] = await Promise.all([getJson(LADD, {}, 8_000), getJson(PIA, {}, 8_000)]);
+    const [ladd, pia] = await Promise.all([getJson(LADD, {}, 20_000), getJson(PIA, {}, 20_000)]);
     const lists = { hexes: new Set([...hexList(ladd as { ac?: { hex?: string }[] }), ...hexList(pia as { ac?: { hex?: string }[] })]) };
     privacy = { at: Date.now(), lists };
     privacyError = null;
@@ -65,9 +75,41 @@ async function privacyLists(): Promise<PrivacyLists> {
   }
 }
 
+async function adsbTiles(): Promise<ParseResult> {
+  const out: ({ ac?: AdsbAircraftRaw[]; now?: number } | null)[] = new Array(ADSB_TILES.length).fill(null);
+  let next = 0;
+  let lastError = "";
+  const worker = async () => {
+    while (next < ADSB_TILES.length) {
+      const i = next++;
+      const [lat, lon] = ADSB_TILES[i];
+      try {
+        out[i] = (await getJson(`${ADSB_POINT}/${lat}/${lon}/250`, {}, 10_000)) as { ac?: AdsbAircraftRaw[]; now?: number };
+      } catch (err) {
+        lastError = reason(err);
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: ADSB_CONCURRENCY }, worker));
+  const ok = out.filter((r): r is { ac?: AdsbAircraftRaw[]; now?: number } => r !== null);
+  if (!ok.length) throw new Error(`all ${ADSB_TILES.length} tiles failed: ${lastError}`);
+  const result = parseAdsbLolTiles(ok, Date.now());
+  const failed = ADSB_TILES.length - ok.length;
+  return failed ? { ...result, warning: `${failed} of ${ADSB_TILES.length} tiles failed (${lastError})` } : result;
+}
+
 const SOURCES: Source[] = [
   {
+    id: "adsb.lol",
+    kind: "aircraft",
+    url: "https://adsb.lol/",
+    licence: "adsb.lol community ADS-B feed (rate limits set by adsb.lol; licence terms not verified here, see adsb.lol)",
+    ttlMs: () => 120_000,
+    load: adsbTiles,
+  },
+  {
     id: "OpenSky Network",
+    fallbackFor: "adsb.lol",
     kind: "aircraft",
     url: "https://opensky-network.org/",
     licence: "OpenSky Network data, non-commercial/research use with attribution",
@@ -116,7 +158,12 @@ async function load(s: Source): Promise<Cached> {
 /** Up to 50,000 moving public tracks (aircraft, vessels, trains) with per-source status; nothing is filled in when a source fails. */
 export async function GET() {
   const now = Date.now();
-  const loaded = await Promise.all(SOURCES.map(load));
+  const primary = SOURCES.filter((s) => !s.fallbackFor);
+  const first = new Map((await Promise.all(primary.map(load))).map((c, i) => [primary[i].id, c]));
+  const standby = new Set(SOURCES.filter((s) => s.fallbackFor && first.get(s.fallbackFor)?.result).map((s) => s.id));
+  const loaded: Cached[] = await Promise.all(
+    SOURCES.map((s) => first.get(s.id) ?? (standby.has(s.id) ? Promise.resolve({ at: now, result: null, error: null }) : load(s))),
+  );
   const groups: MovingTrack[][] = loaded.map((c) => c.result?.tracks ?? []);
   const { tracks, truncated } = capTracks(groups);
   const sources: MovingSourceStatus[] = SOURCES.map((s, i) => {
@@ -128,7 +175,8 @@ export async function GET() {
       url: s.url,
       licence: s.licence,
       ok: Boolean(r),
-      error: loaded[i].error,
+      standby: standby.has(s.id),
+      error: loaded[i].error ?? r?.warning ?? null,
       received: r?.received ?? 0,
       moving: r?.tracks.length ?? 0,
       removedPrivacy: r?.removedPrivacy ?? 0,
@@ -137,6 +185,7 @@ export async function GET() {
     };
   });
   const listsLoaded = Boolean(privacy?.lists.hexes);
+  const adsbUsed = sources.some((s) => s.id === "adsb.lol" && s.ok);
   const body: MovingTracksPayload = {
     generatedAt: new Date(now).toISOString(),
     max: MOVING_TRACKS_MAX,
@@ -146,7 +195,9 @@ export async function GET() {
     privacy: {
       listsLoaded,
       error: privacyError,
-      note: listsLoaded
+      note: adsbUsed
+        ? "Aircraft flagged PIA/LADD by adsb.lol removed; no ICAO hex, registration or MMSI published; pleasure craft unnamed"
+        : listsLoaded
         ? "Aircraft on the FAA LADD/PIA lists (as currently seen by adsb.lol) removed; no ICAO hex, registration or MMSI published; pleasure craft unnamed"
         : "LADD/PIA lists unavailable, so every US-registered aircraft was removed; no ICAO hex, registration or MMSI published; pleasure craft unnamed",
     },
@@ -154,7 +205,7 @@ export async function GET() {
     tracks,
   };
   const anyOk = sources.some((s) => s.ok);
-  return Response.json(anyOk ? body : { ...body, error: sources.map((s) => `${s.id}: ${s.error}`).join("; ") }, {
+  return Response.json(anyOk ? body : { ...body, error: sources.filter((s) => !s.standby).map((s) => `${s.id}: ${s.error}`).join("; ") }, {
     status: anyOk ? 200 : 502,
     headers: { "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60" },
   });

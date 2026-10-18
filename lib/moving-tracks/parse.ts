@@ -31,6 +31,8 @@ export interface MovingSourceStatus {
   url: string;
   licence: string;
   ok: boolean;
+  /** Fallback source not queried because the primary source for its kind answered. */
+  standby: boolean;
   error: string | null;
   received: number;
   moving: number;
@@ -69,6 +71,7 @@ export interface ParseResult {
   tracks: MovingTrack[];
   received: number;
   removedPrivacy: number;
+  warning?: string;
 }
 
 /** OpenSky `/states/all`: airborne aircraft above 5 m/s with a position under 2 min old; LADD/PIA aircraft removed. */
@@ -162,6 +165,65 @@ export function parseDigitrafficTrains(json: unknown, nowMs: number): ParseResul
   return { tracks, received: rows.length, removedPrivacy: 0 };
 }
 
+const ADSB_PRIVACY_FLAGS = 4 | 8;
+const NM_KM = 1.852;
+
+export interface AdsbAircraftRaw {
+  hex?: string; flight?: string; lat?: number; lon?: number; alt_baro?: number | 'ground'; gs?: number; track?: number; seen_pos?: number; dbFlags?: number;
+}
+
+/**
+ * adsb.lol `/v2/point` responses from overlapping tiles: airborne aircraft above 5 m/s, PIA/LADD (dbFlags 4|8) removed,
+ * deduplicated by ICAO hex server-side; the hex is not published.
+ */
+export function parseAdsbLolTiles(responses: { ac?: AdsbAircraftRaw[]; now?: number }[], nowMs: number): ParseResult {
+  const seen = new Set<string>();
+  const tracks: MovingTrack[] = [];
+  let received = 0;
+  let removedPrivacy = 0;
+  for (const r of responses) {
+    const now = finite(r.now) ? r.now : nowMs;
+    for (const a of r.ac ?? []) {
+      const hex = (a.hex ?? '').toLowerCase();
+      if (!hex || seen.has(hex)) continue;
+      seen.add(hex);
+      received++;
+      if ((a.dbFlags ?? 0) & ADSB_PRIVACY_FLAGS) {
+        removedPrivacy++;
+        continue;
+      }
+      const seenPos = finite(a.seen_pos) ? a.seen_pos : Infinity;
+      if (!validLonLat(a.lon, a.lat) || a.alt_baro === 'ground' || !finite(a.gs) || a.gs * 0.514444 <= AIRCRAFT_MIN_MS || seenPos > MAX_POSITION_AGE_S) continue;
+      tracks.push({
+        kind: 'aircraft',
+        lon: round(a.lon as number, 5),
+        lat: round(a.lat as number, 5),
+        course: finite(a.track) ? round(a.track, 1) : null,
+        speedKt: round(a.gs, 1),
+        altFt: finite(a.alt_baro) ? Math.round(a.alt_baro) : null,
+        label: a.flight?.trim() || 'no callsign',
+        at: Math.round(now - seenPos * 1000),
+        source: 'adsb.lol',
+      });
+    }
+  }
+  return { tracks, received, removedPrivacy };
+}
+
+/** Centres of 250 NM query circles laid on a grid over each [west, south, east, north] box, spaced so neighbouring circles overlap. */
+export function tileCentres(boxes: [number, number, number, number][], radiusNm = 250): [number, number][] {
+  const stepKm = radiusNm * NM_KM * 1.6;
+  const out: [number, number][] = [];
+  for (const [w, s, e, n] of boxes) {
+    const dLat = stepKm / 111.32;
+    for (let lat = s + dLat / 2; lat < n + dLat / 2; lat += dLat) {
+      const dLon = stepKm / (111.32 * Math.cos((Math.min(lat, 85) * Math.PI) / 180));
+      for (let lon = w + dLon / 2; lon < e + dLon / 2; lon += dLon) out.push([round(lat, 2), round(lon, 2)]);
+    }
+  }
+  return out;
+}
+
 /** Lower-case hex set from adsb.lol `/v2/ladd` or `/v2/pia` (`{ ac: [{ hex }] }`). */
 export function hexList(json: { ac?: { hex?: string }[] }): string[] {
   return (json.ac ?? []).map((a) => (a.hex ?? '').replace(/^~/, '').toLowerCase()).filter(Boolean);
@@ -195,8 +257,8 @@ export function movingGauges(body: MovingTracksPayload | null): Gauge[] {
   return [
     { name: 'moving_tracks_total', help: `Moving public tracks published (ceiling ${MOVING_TRACKS_MAX}).`, values: KINDS.map((kind) => ({ labels: { kind }, value: body ? body.counts[kind] : null })) },
     { name: 'moving_tracks_truncated', help: 'Moving tracks dropped by the 50,000 ceiling.', values: [{ value: body?.truncated ?? null }] },
-    { name: 'moving_tracks_source_up', help: '1 when the moving-track source answered, 0 when it failed.', values: (body?.sources ?? []).map((s) => ({ labels: { source: s.id }, value: s.ok ? 1 : 0 })) },
-    { name: 'moving_tracks_source_lag_seconds', help: 'Seconds since the newest position fix from each moving-track source.', values: (body?.sources ?? []).map((s) => ({ labels: { source: s.id }, value: s.lagSeconds })) },
-    { name: 'moving_tracks_privacy_removed', help: 'Aircraft removed for FAA LADD/PIA privacy (or US-registered when the lists were unavailable).', values: (body?.sources ?? []).filter((s) => s.kind === 'aircraft').map((s) => ({ labels: { source: s.id }, value: s.removedPrivacy })) },
+    { name: 'moving_tracks_source_up', help: '1 when the moving-track source answered, 0 when it failed.', values: (body?.sources ?? []).filter((s) => !s.standby).map((s) => ({ labels: { source: s.id }, value: s.ok ? 1 : 0 })) },
+    { name: 'moving_tracks_source_lag_seconds', help: 'Seconds since the newest position fix from each moving-track source.', values: (body?.sources ?? []).filter((s) => !s.standby).map((s) => ({ labels: { source: s.id }, value: s.lagSeconds })) },
+    { name: 'moving_tracks_privacy_removed', help: 'Aircraft removed for FAA LADD/PIA privacy (or US-registered when the lists were unavailable).', values: (body?.sources ?? []).filter((s) => s.kind === 'aircraft' && !s.standby).map((s) => ({ labels: { source: s.id }, value: s.removedPrivacy })) },
   ];
 }

@@ -134,8 +134,9 @@ export function addMovingTrackLayers(map: MapLibreMap): void {
       const wall = await wallP;
       tracks = d.tracks.filter((t) => t.kind !== 'aircraft' || !wall.length || !insideRing(wall, [t.lon, t.lat]));
       draw();
-      const down = d.sources.filter((s) => !s.ok).map((s) => `${s.id} offline (${s.error})`);
-      const per = d.sources.filter((s) => s.ok).map((s) => `${s.moving.toLocaleString()} ${s.kind === 'aircraft' ? 'aircraft' : s.kind === 'vessel' ? 'ships' : 'trains'} (${s.id}, fix ${s.lagSeconds ?? '?'} s old)`);
+      const active = d.sources.filter((s) => !s.standby);
+      const down = active.filter((s) => !s.ok).map((s) => `${s.id} offline (${s.error})`);
+      const per = active.filter((s) => s.ok).map((s) => `${s.moving.toLocaleString()} ${s.kind === 'aircraft' ? 'aircraft' : s.kind === 'vessel' ? 'ships' : 'trains'} (${s.id}, fix ${s.lagSeconds ?? '?'} s old${s.error ? `, ${s.error}` : ''})`);
       const newest = Math.max(...d.sources.map((s) => s.newestAt ?? 0));
       reportGaFeed(map, {
         ...FEED,
@@ -148,7 +149,7 @@ export function addMovingTrackLayers(map: MapLibreMap): void {
           d.privacy.note,
         ].join(' · '),
         updatedAt: newest ? new Date(newest).toISOString() : null,
-        error: down.length === d.sources.length ? down.join('; ') : null,
+        error: down.length === active.length ? down.join('; ') : null,
       });
     } catch (err) {
       reportGaFeed(map, { ...FEED, count: null, updatedAt: null, error: String(err instanceof Error ? err.message : err) });

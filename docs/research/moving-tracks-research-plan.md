@@ -36,7 +36,7 @@ The procurement work answers "what tracking technology does the FBI buy, from wh
 | OpenSky `/states/all` | Global ADS-B/MLAT | 8,222 states | 7,580 above 5 m/s; 7,321 airborne | Free for non-commercial/research use with attribution; anonymous 400 credits/day (global call = 4 credits), registered 4,000/day | Built (phase 1) |
 | Digitraffic AIS locations | Baltic / Finnish waters | 890 vessels (night) | 311 at ≥0.5 kt | CC BY 4.0, Fintraffic | Built (phase 1) |
 | Digitraffic rail latest | Finland | 32 trains (night) | 29 | CC BY 4.0, Fintraffic | Built (phase 1) |
-| adsb.lol point/area | Regional ADS-B | n/a (HTTP 000 from VM; reachable from Vercel) | n/a | ODbL | Used for Georgia aircraft and for the LADD/PIA lists |
+| adsb.lol point/area | Regional ADS-B | n/a (HTTP 000 from VM; reachable from Vercel) | n/a | Licence terms not verified here; rate limits are dynamic per adsb.lol's API README | Primary aircraft source since phase 1b: 48 overlapping 250 NM tiles over the contiguous US and Europe; also Georgia aircraft and LADD/PIA lists |
 | adsb.fi | Regional ADS-B | 305 | not measured | Personal/non-commercial terms | Not built |
 | airplanes.live | Regional ADS-B | HTTP 403 | – | Restricted | Not built |
 | GTFS-RT (OVAPI NL, SEQ, MBTA, HSL, Edmonton, BART) | City buses/trains | 135–631 per feed | 0 with a speed field over 0.5 m/s | Per-agency open licences | Not built: speed is usually absent, so "moving" needs two successive fixes |
@@ -45,10 +45,11 @@ Day-time expectation (inference, not yet measured): OpenSky global airborne coun
 
 ## 4. Phase 1 design (built)
 
+- Phase 1b (measured): from Vercel, OpenSky failed with `UND_ERR_CONNECT_TIMEOUT` (TCP connect never completed), so aircraft now come from adsb.lol `/v2/point` tiles (TTL 120 s, 8 in parallel, partial tile failures reported as a warning). OpenSky is kept as a standby source queried only when every adsb.lol tile fails; standby sources are left out of the up/lag gauges so they do not trip `MovingTrackSourceOffline`.
 - Server: `app/api/moving-tracks/route.ts` fetches each source with its own TTL (OpenSky 900 s anonymous, 90 s with `OPENSKY_CLIENT_ID`/`OPENSKY_CLIENT_SECRET`; AIS 60 s; rail 30 s), caches per instance, and returns per-source `ok`, `error`, `received`, `moving`, `removedPrivacy`, `newestAt`, `lagSeconds`. If every source fails it returns HTTP 502 and the legend shows the error; nothing is filled in.
 - Motion rule: aircraft not on ground and above 5 m/s; vessels 0.5 kt to <102.3 kt (102.3 is AIS "not available"); trains speed > 0. Fix age limits: aircraft 2 min, AIS 10 min, rail 2 min.
 - Ceiling: `capTracks` shares 50,000 across sources in proportion to supply and keeps the newest fixes; the dropped count is published as `truncated`.
-- Privacy: no ICAO hex, registration or MMSI leaves the server. Aircraft on adsb.lol's live LADD/PIA lists are removed; if those lists fail, every US-registered aircraft (ICAO A00000–ADFFFF) is removed instead. Pleasure craft (AIS ship types 36/37) are unnamed.
+- Privacy: no ICAO hex, registration or MMSI leaves the server. adsb.lol aircraft with the PIA or LADD `dbFlags` bit (readsb bits 4 and 8) are removed per record; hex is used only server-side to dedupe overlapping tiles. For the OpenSky standby, aircraft on adsb.lol's live LADD/PIA lists are removed; if those lists fail, every US-registered aircraft (ICAO A00000–ADFFFF) is removed instead. Pleasure craft (AIS ship types 36/37) are unnamed.
 - Client: `lib/moving-tracks-layer.ts` renders one GeoJSON source (circle for tracks without course, rotated SDF arrow otherwise), projects aircraft up to 15 min and ships up to 10 min forward along course at reported speed, redraws every 2 s (4 s on touch), and skips aircraft inside the Georgia wall because the Georgia ADS-B layer already draws them.
 - Telemetry: `moving_tracks_total{kind}`, `moving_tracks_truncated`, `moving_tracks_source_up{source}`, `moving_tracks_source_lag_seconds{source}`, `moving_tracks_privacy_removed{source}`; alerts `MovingTrackSourceOffline`, `MovingTrackSourceStale`, `MovingTracksAtCeiling`. Browser: `window.__gaMoving.{tracks,flushMs}`.
 

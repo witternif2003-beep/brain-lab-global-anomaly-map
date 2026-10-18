@@ -42,7 +42,7 @@ async function probeBle(origin: string): Promise<BleTrafficPayload | null> {
 
 async function probeMoving(origin: string): Promise<MovingTracksPayload | null> {
   try {
-    const r = await fetch(`${origin}/api/moving-tracks`, { signal: AbortSignal.timeout(30_000) });
+    const r = await fetch(`${origin}/api/moving-tracks`, { signal: AbortSignal.timeout(55_000) });
     return r.ok ? ((await r.json()) as MovingTracksPayload) : null;
   } catch {
     return null;
