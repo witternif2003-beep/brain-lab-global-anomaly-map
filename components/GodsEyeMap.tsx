@@ -13,6 +13,7 @@ import MapMenuOverlay from './MapMenuOverlay';
 import { GaWall3DLayer, GA_WALL_3D_MIN_ZOOM } from '../lib/ga-wall-3d';
 import { addGaPatrolLayers } from '../lib/ga-patrol-3d';
 import { addGaLidarLayers } from '../lib/ga-lidar-layer';
+import { addGaRoadOverlay } from '../lib/ga-roads-overlay';
 import { addGaCompetitorLayers } from '../lib/ga-competitors';
 import { addDisneyLiveBoard } from '../lib/disney-live';
 import { addGaH3Telemetry } from '../lib/ga-h3-telemetry';
@@ -846,6 +847,7 @@ export default function GodsEyeMap({
       map.addLayer(new GaWall3DLayer());
     }
     addGaLidarLayers(map);
+    addGaRoadOverlay(map);
     addGaH3Telemetry(map);
     addGaHydrometLayers(map);
     addGaTrafficLayers(map);
