@@ -32,7 +32,9 @@ import { GpuPassTimer } from './ga-lidar/gpu-timer';
 import { isTouchDevice, lidarBudget } from './map/touch-gpu-budget';
 import { gpuSafeMode } from './map/crash-guard';
 
-export const GA_LIDAR_MIN_ZOOM = 15;
+export const GA_LIDAR_MIN_ZOOM = 10;
+/** Zoom from which LiDAR replaces the OSM 3D buildings (below it both stay on the map). */
+const GA_LIDAR_BUILDINGS_ZOOM = 15;
 const VIEW_TILES = 3.5;
 const POINT_MAX_CSS_PX = 6;
 /** Point diameter as a fraction of the node's point spacing on screen. */
@@ -279,7 +281,7 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     this.stats.nodesPlanned = plan.nodes.length;
     const queue = plan.nodes.filter((n) => !this.drawn.has(n.key) && !this.inflight.has(n.key));
     this.setStatus(queue.length ? 'loading points' : 'ready');
-    this.setOsmBuildings(false);
+    this.setOsmBuildings(zoom < GA_LIDAR_BUILDINGS_ZOOM);
     map.triggerRepaint();
 
     const worker = async () => {
