@@ -1,6 +1,6 @@
 import { Popup } from 'maplibre-gl';
 import type { ExpressionSpecification, GeoJSONSource, Map as MapLibreMap, MapLayerMouseEvent } from 'maplibre-gl';
-import { AGENCY_TYPES, CDE_WEBAPP, OFFENSES, policeStrobeColor, type Agency, type AgencyCategory, type OffenseSeries } from './fbi-agencies/parse';
+import { AGENCY_TYPES, agencyTypeColor, CDE_WEBAPP, OFFENSES, policeStrobeColor, type Agency, type AgencyCategory, type OffenseSeries } from './fbi-agencies/parse';
 import { STROBE_MS } from './ga-live-markers/strobe';
 import { reportGaFeed } from './ga-live-status';
 import { hitsGaDeck } from './ga-deck-overlay';
@@ -31,6 +31,15 @@ interface AgencyPayload {
   series?: OffenseSeries[];
   sources?: { offense: string; url: string; sha256: string | null; error: string | null }[];
   error?: string;
+}
+
+interface AgencyProps {
+  ori: string;
+  name?: string;
+  type?: string;
+  counties?: string;
+  nibrs?: boolean | string;
+  nibrsStart?: string;
 }
 
 interface State {
@@ -227,13 +236,9 @@ export function addGaFbiAgencyLayers(map: MapLibreMap): void {
     bound.delete(map);
   });
 
-  map.on('click', DOT, (e: MapLayerMouseEvent) => {
-    if (hitsGaDeck(map, e.point)) return;
-    const p = e.features?.[0]?.properties as { ori?: string; name?: string; type?: string; counties?: string; nibrs?: boolean | string; nibrsStart?: string } | undefined;
-    if (!p?.ori) return;
+  const showAgency = (box: HTMLElement, popup: Popup, p: AgencyProps) => {
     const ori = p.ori;
-    const box = document.createElement('div');
-    box.style.cssText = 'font:11px ui-monospace,monospace;color:#0f172a;line-height:1.45';
+    box.replaceChildren();
     const h = document.createElement('div');
     h.textContent = `FBI CDE AGENCY · ${p.name ?? ori}`;
     h.style.cssText = 'font-weight:800;margin-bottom:4px';
@@ -251,7 +256,6 @@ export function addGaFbiAgencyLayers(map: MapLibreMap): void {
     link.rel = 'noreferrer';
     link.textContent = 'FBI Crime Data Explorer';
     link.style.cssText = 'display:block;margin-top:4px;color:#7c3aed';
-    const popup = new Popup({ closeButton: true, maxWidth: 'min(340px, 92vw)' }).setLngLat(e.lngLat).setDOMContent(box).addTo(map);
     void (async () => {
       try {
         const r = await fetch(`/api/fbi/agency?ori=${encodeURIComponent(ori)}`);
@@ -268,6 +272,35 @@ export function addGaFbiAgencyLayers(map: MapLibreMap): void {
       }
       box.append(link);
     })();
+  };
+
+  map.on('click', DOT, (e: MapLayerMouseEvent) => {
+    if (hitsGaDeck(map, e.point)) return;
+    const seen = new Set<string>();
+    const here = (e.features ?? []).flatMap((f) => {
+      const p = f.properties as AgencyProps | null;
+      if (!p?.ori || seen.has(p.ori)) return [];
+      seen.add(p.ori);
+      return [p];
+    });
+    if (!here.length) return;
+    const box = document.createElement('div');
+    box.style.cssText = 'font:11px ui-monospace,monospace;color:#0f172a;line-height:1.45';
+    const popup = new Popup({ closeButton: true, maxWidth: 'min(340px, 92vw)' }).setLngLat(e.lngLat).setDOMContent(box).addTo(map);
+    if (here.length === 1) return showAgency(box, popup, here[0]);
+    const h = document.createElement('div');
+    h.textContent = `${here.length} FBI CDE AGENCIES AT THIS POINT`;
+    h.style.cssText = 'font-weight:800;margin-bottom:4px';
+    box.append(h);
+    for (const p of here.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''))) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.dataset.ori = p.ori;
+      b.textContent = `${p.name ?? p.ori} · ${p.type ?? 'Other'}`;
+      b.style.cssText = `display:block;width:100%;text-align:left;margin-top:3px;padding:3px 5px;border:1px solid ${agencyTypeColor(p.type ?? 'Other')};border-radius:6px;background:#fff;font:inherit;cursor:pointer`;
+      b.addEventListener('click', () => showAgency(box, popup, p));
+      box.append(b);
+    }
   });
   map.on('mouseenter', DOT, () => (map.getCanvas().style.cursor = 'pointer'));
   map.on('mouseleave', DOT, () => (map.getCanvas().style.cursor = ''));
