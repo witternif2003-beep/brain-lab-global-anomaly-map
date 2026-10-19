@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
+import { NIBRS_OFFENSES } from "../../../../lib/fbi-agencies/nibrs";
 import { agencyCategories, CDE_PUBLIC, CDE_WEBAPP, OFFENSES, parseAgencyDirectory, type RawAgency } from "../../../../lib/fbi-agencies/parse";
 
 export const dynamic = "force-dynamic";
@@ -32,6 +33,8 @@ export async function GET() {
           categories: agencyCategories(agencies),
           offenseCategories: OFFENSES.map(({ id, label, color }) => ({ id, label, color })),
           agencyOffenseSeries: agencies.length * OFFENSES.length,
+          nibrsOffenseTypes: NIBRS_OFFENSES.length,
+          nibrsAgencyOffenseSeries: agencies.filter((x) => x.nibrs).length * NIBRS_OFFENSES.length,
           agencies,
         },
       };

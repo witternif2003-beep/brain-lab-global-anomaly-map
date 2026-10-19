@@ -1,6 +1,7 @@
 import { Popup } from 'maplibre-gl';
 import type { ExpressionSpecification, GeoJSONSource, Map as MapLibreMap, MapLayerMouseEvent } from 'maplibre-gl';
 import { AGENCY_TYPES, agencyTypeColor, CDE_WEBAPP, OFFENSES, policeStrobeColor, type Agency, type AgencyCategory, type OffenseSeries } from './fbi-agencies/parse';
+import { GROUP_COLORS, NIBRS_OFFENSES, type CrimeAgainst, type NibrsCount } from './fbi-agencies/nibrs';
 import { STROBE_MS } from './ga-live-markers/strobe';
 import { reportGaFeed } from './ga-live-status';
 import { hitsGaDeck } from './ga-deck-overlay';
@@ -40,6 +41,74 @@ interface AgencyProps {
   counties?: string;
   nibrs?: boolean | string;
   nibrsStart?: string;
+}
+
+interface NibrsPayload {
+  year?: number;
+  retrievedAt?: string;
+  requested?: number;
+  published?: number;
+  counts?: NibrsCount[];
+  sources?: { code: string; sha256: string | null; error: string | null }[];
+  error?: string;
+}
+
+function nibrsSection(box: HTMLElement, ori: string): void {
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'margin-top:6px;border-top:1px solid #cbd5e1;padding-top:4px';
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.textContent = `Show ${NIBRS_OFFENSES.length} FBI NIBRS offence types (${new Date().getFullYear() - 1})`;
+  btn.style.cssText = 'width:100%;padding:4px 6px;border:1px solid #ff2bd6;border-radius:8px;background:#fdf2f8;font:inherit;font-weight:800;cursor:pointer';
+  wrap.append(btn);
+  box.append(wrap);
+  btn.addEventListener('click', () => {
+    btn.disabled = true;
+    btn.textContent = `Loading ${NIBRS_OFFENSES.length} NIBRS offence types…`;
+    void (async () => {
+      try {
+        const r = await fetch(`/api/fbi/nibrs?ori=${encodeURIComponent(ori)}`);
+        const d = (await r.json()) as NibrsPayload;
+        if (!r.ok) throw new Error(d.error ?? `HTTP ${r.status}`);
+        btn.remove();
+        const sha = new Map((d.sources ?? []).map((x) => [x.code, x.sha256]));
+        const head = document.createElement('div');
+        head.textContent = `FBI NIBRS ${d.year} · ${d.published}/${d.requested} offence types published · victims / offenders`;
+        head.style.cssText = 'font-weight:800';
+        wrap.append(head);
+        let group: CrimeAgainst | '' = '';
+        for (const c of d.counts ?? []) {
+          if (c.against !== group) {
+            group = c.against;
+            const g = document.createElement('div');
+            g.textContent = `CRIMES AGAINST ${group.toUpperCase()}`;
+            g.style.cssText = `margin-top:4px;font-weight:800;color:${GROUP_COLORS[group]}`;
+            wrap.append(g);
+          }
+          const none = c.victims === null && c.offenders === null;
+          const row = document.createElement('div');
+          row.style.cssText = `display:flex;gap:5px;align-items:center;margin-top:1px;${none || (c.victims ?? 0) + (c.offenders ?? 0) === 0 ? 'opacity:.55' : ''}`;
+          row.title = [c.topLocation ? `top location: ${c.topLocation}` : '', c.topWeapon ? `top weapon/force: ${c.topWeapon}` : '', `SHA-256 ${sha.get(c.code) ?? 'n/a'}`].filter(Boolean).join('\n');
+          const dot = document.createElement('span');
+          dot.style.cssText = `width:7px;height:7px;border-radius:50%;flex:none;background:${c.color};box-shadow:0 0 4px ${c.color}`;
+          const name = document.createElement('span');
+          name.textContent = `${c.code} ${c.label}`;
+          const v = document.createElement('span');
+          v.style.cssText = 'margin-left:auto;white-space:nowrap;font-weight:700';
+          v.textContent = none ? 'not published' : `${(c.victims ?? 0).toLocaleString()} / ${(c.offenders ?? 0).toLocaleString()}`;
+          row.append(dot, name, v);
+          wrap.append(row);
+        }
+        const foot = document.createElement('div');
+        foot.style.cssText = 'margin-top:4px;color:#475569';
+        foot.textContent = `Source grade A: FBI CDE NIBRS · retrieved ${d.retrievedAt ? new Date(d.retrievedAt).toLocaleString() : '—'} · counts are victims and offenders, not incidents; tap-and-hold a row for top location and SHA-256.`;
+        wrap.append(foot);
+      } catch (err) {
+        btn.disabled = false;
+        btn.textContent = `NIBRS unavailable: ${err instanceof Error ? err.message : String(err)} · tap to retry`;
+      }
+    })();
+  });
 }
 
 interface State {
@@ -207,10 +276,14 @@ export function addGaFbiAgencyLayers(map: MapLibreMap): void {
       reportGaFeed(map, {
         ...FEED,
         count: d.totals?.agencies ?? d.agencies.length,
-        detail: `${d.totals?.mapped ?? 0} mapped · ${d.totals?.nibrs ?? 0} NIBRS (white ring) · ${(d.categories ?? []).length} agency type × NIBRS categories · ${OFFENSES.length} FBI offence categories per agency (${(d.agencyOffenseSeries ?? 0).toLocaleString()} agency×offence series, loaded on tap) · new = red/blue strobe 10 min · refresh 6 h`,
+        detail: `${d.totals?.mapped ?? 0} mapped · ${d.totals?.nibrs ?? 0} NIBRS (white ring) · ${(d.categories ?? []).length} agency type × NIBRS categories · ${OFFENSES.length} FBI offence categories per agency + ${NIBRS_OFFENSES.length} NIBRS offence types per NIBRS agency (${((d.agencyOffenseSeries ?? 0) + (d.totals?.nibrs ?? 0) * NIBRS_OFFENSES.length).toLocaleString()} agency×offence series, loaded on tap) · new = red/blue strobe 10 min · refresh 6 h`,
         updatedAt: d.retrievedAt ?? null,
         sha256: d.sha256,
-        swatches: [...AGENCY_TYPES.map((t) => ({ label: t.type, color: t.color, count: byType.get(t.type) ?? 0 })), ...OFFENSES.map((o) => ({ label: o.label, color: o.color }))],
+        swatches: [
+          ...AGENCY_TYPES.map((t) => ({ label: t.type, color: t.color, count: byType.get(t.type) ?? 0 })),
+          ...OFFENSES.map((o) => ({ label: o.label, color: o.color })),
+          ...(Object.keys(GROUP_COLORS) as CrimeAgainst[]).map((g) => ({ label: `NIBRS vs ${g} (${NIBRS_OFFENSES.filter((o) => o.against === g).length})`, color: GROUP_COLORS[g] })),
+        ],
       });
     } catch (err) {
       reportGaFeed(map, { ...FEED, count: null, updatedAt: null, error: String(err instanceof Error ? err.message : err) });
@@ -271,6 +344,7 @@ export function addGaFbiAgencyLayers(map: MapLibreMap): void {
         status.textContent = `FBI CDE unavailable: ${err instanceof Error ? err.message : String(err)}`;
         status.style.color = '#b91c1c';
       }
+      if (String(p.nibrs) === 'true') nibrsSection(box, ori);
       box.append(link);
     })();
   };

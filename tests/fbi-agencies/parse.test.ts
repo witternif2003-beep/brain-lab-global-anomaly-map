@@ -10,6 +10,7 @@ import {
   POLICE_BLUE,
   POLICE_RED,
 } from "../../lib/fbi-agencies/parse";
+import { NIBRS_OFFENSES, parseNibrsAgency } from "../../lib/fbi-agencies/nibrs";
 
 test("directory flattens counties, de-duplicates ORIs, drops non-GA ORIs and out-of-state coordinates", () => {
   const ag = parseAgencyDirectory({
@@ -63,4 +64,22 @@ test("integrity badge and police strobe colours", () => {
   assert.equal(integrityState({ ...f, sourceUrl: "/fbi-osint" }, now, 90), "INTERNAL");
   assert.equal(policeStrobeColor(0, 240), POLICE_RED);
   assert.equal(policeStrobeColor(240, 240), POLICE_BLUE);
+});
+
+test("NIBRS: 53 Group A codes, no amber hues, victims/offenders summed and all-null breakdowns read as not published", () => {
+  assert.equal(NIBRS_OFFENSES.length, 53);
+  assert.equal(new Set(NIBRS_OFFENSES.map((o) => o.code)).size, 53);
+  for (const o of NIBRS_OFFENSES) {
+    const h = Number(/hsl\((\d+)/.exec(o.color)![1]);
+    assert.ok(!(h >= 25 && h <= 50), `${o.code} hue ${h}`);
+  }
+  const c = parseNibrsAgency("13A", {
+    victim: { sex: { Male: 2, Female: 1, Unknown: 0 }, location: { Unknown: 9, "Residence/Home": 2, Parking: 1 } },
+    offense: { weapons: { None: 5, Firearm: 2, Knife: 1 } },
+    offender: { sex: { Male: 2, Female: null } },
+  });
+  assert.deepEqual([c.victims, c.offenders, c.topLocation, c.topWeapon, c.against], [3, 2, "Residence/Home", "Firearm", "Persons"]);
+  const none = parseNibrsAgency("26H", { victim: { sex: { Male: null, Female: null } }, offender: { sex: { Male: null } } });
+  assert.equal(none.victims, null);
+  assert.equal(none.offenders, null);
 });
