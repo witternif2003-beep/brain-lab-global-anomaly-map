@@ -18,6 +18,7 @@ import { addGaCompetitorLayers } from '../lib/ga-competitors';
 import { addDisneyLiveBoard } from '../lib/disney-live';
 import { addGaH3Telemetry } from '../lib/ga-h3-telemetry';
 import { addGaTrafficLayers } from '../lib/ga-traffic-layer';
+import { addGaTrafficCountLayers } from '../lib/ga-traffic-counts-layer';
 import { addGaHydrometLayers } from '../lib/ga-hydromet-layer';
 import { addGaAnomalyBulbs } from '../lib/ga-anomaly-bulbs';
 import { addGaChangeLayer } from '../lib/ga-change-layer';
@@ -851,6 +852,7 @@ export default function GodsEyeMap({
     addGaH3Telemetry(map);
     addGaHydrometLayers(map);
     addGaTrafficLayers(map);
+    addGaTrafficCountLayers(map);
     addBleVehicleLayers(map);
     addMovingTrackLayers(map);
     addGaAnomalyBulbs(map);

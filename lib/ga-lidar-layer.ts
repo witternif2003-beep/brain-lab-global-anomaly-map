@@ -32,6 +32,7 @@ import { GpuPassTimer } from './ga-lidar/gpu-timer';
 import { isTouchDevice, lidarBudget } from './map/touch-gpu-budget';
 import { gpuSafeMode } from './map/crash-guard';
 import { raiseGaRoadOverlay } from './ga-roads-overlay';
+import { raiseGaTrafficCountLayers } from './ga-traffic-counts-layer';
 
 export const GA_LIDAR_MIN_ZOOM = 10;
 /** Zoom from which LiDAR replaces the OSM 3D buildings (below it both stay on the map). */
@@ -503,6 +504,7 @@ export function addGaLidarLayers(map: MapLibreMap): void {
       map.once('style.load', () => {
         if (!map.getLayer('ga-lidar-3d')) map.addLayer(new GaLidar3DLayer());
         raiseGaRoadOverlay(map);
+        raiseGaTrafficCountLayers(map);
       });
     });
   }
