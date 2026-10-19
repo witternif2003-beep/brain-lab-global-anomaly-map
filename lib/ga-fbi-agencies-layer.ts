@@ -108,7 +108,7 @@ function ensureLayers(map: MapLibreMap): void {
       type: 'symbol',
       source: SRC,
       minzoom: 10,
-      layout: { 'text-field': ['get', 'name'], 'text-size': 10, 'text-offset': [0, 1.1], 'text-anchor': 'top', 'text-optional': true },
+      layout: { 'symbol-sort-key': ['case', ['get', 'strobe'], 0, 1], 'text-field': ['get', 'name'], 'text-size': 10, 'text-offset': [0, 1.1], 'text-anchor': 'top', 'text-optional': true },
       paint: { 'text-color': '#fdf2f8', 'text-halo-color': '#1e1b4b', 'text-halo-width': 1.2 },
     });
   }
