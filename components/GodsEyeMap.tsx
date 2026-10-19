@@ -25,6 +25,7 @@ import { addGaCloudLayers } from '../lib/ga-clouds-layer';
 import { addTerminatorLayers } from '../lib/terminator-layer';
 import { addGaLiveMarkerLayers } from '../lib/ga-live-markers-layer';
 import { addGaFbiFeeds } from '../lib/ga-fbi-feed';
+import { addGaFbiAgencyLayers } from '../lib/ga-fbi-agencies-layer';
 import { addBleVehicleLayers } from '../lib/ble-traffic-layer';
 import { addMovingTrackLayers } from '../lib/moving-tracks-layer';
 import FbiOsintPopup from './FbiOsintPopup';
@@ -856,6 +857,7 @@ export default function GodsEyeMap({
     addGaCloudLayers(map);
     addGaLiveMarkerLayers(map);
     addGaFbiFeeds(map);
+    addGaFbiAgencyLayers(map);
     addGaPatrolLayers(map);
     addGaCompetitorLayers(map);
     addDisneyLiveBoard(map);
