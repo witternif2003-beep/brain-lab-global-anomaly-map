@@ -30,9 +30,10 @@ export const OFFENSES = [
 ] as const;
 export type OffenseId = (typeof OFFENSES)[number]["id"];
 
-/** Police light-bar pair used for new-record strobes. */
+/** Police light-bar pair used for new-record strobes; POLICE_OFF is the dark phase between flashes. */
 export const POLICE_RED = "#ff1744";
 export const POLICE_BLUE = "#2979ff";
+export const POLICE_OFF = "#0b0e14";
 
 export interface RawAgency {
   ori?: string;
@@ -184,5 +185,17 @@ export function integrityState(f: { sourceUrl: string; updatedAt: string | null;
   return now - t > staleMin * 60_000 ? "STALE" : "VERIFIED";
 }
 
-/** Police light-bar strobe: red and blue swap every `halfMs`. */
-export const policeStrobeColor = (now: number, halfMs = 240) => (Math.floor(now / halfMs) % 2 ? POLICE_BLUE : POLICE_RED);
+/** Flash length and redraw tick for the light-bar pattern. */
+export const POLICE_FLASH_MS = 60;
+const POLICE_SIDE_MS = 8 * POLICE_FLASH_MS;
+
+/** Police light-bar "quad flash": four red flashes (60 ms on / 60 ms off), then four blue, repeating every 960 ms. */
+export function policeLightBar(now: number): { color: string; on: boolean } {
+  const t = ((now % (2 * POLICE_SIDE_MS)) + 2 * POLICE_SIDE_MS) % (2 * POLICE_SIDE_MS);
+  return { color: t < POLICE_SIDE_MS ? POLICE_RED : POLICE_BLUE, on: Math.floor((t % POLICE_SIDE_MS) / POLICE_FLASH_MS) % 2 === 0 };
+}
+
+export const policeStrobeColor = (now: number) => {
+  const l = policeLightBar(now);
+  return l.on ? l.color : POLICE_OFF;
+};

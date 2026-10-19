@@ -1,7 +1,7 @@
 import { Popup } from 'maplibre-gl';
 import type { ExpressionSpecification, GeoJSONSource, Map as MapLibreMap, MapLayerMouseEvent } from 'maplibre-gl';
-import { AGENCY_TYPES, agencyTypeColor, CDE_WEBAPP, OFFENSES, policeStrobeColor, type Agency, type AgencyCategory, type OffenseSeries } from './fbi-agencies/parse';
-import { GROUP_COLORS, NIBRS_OFFENSES, type CrimeAgainst, type NibrsCount } from './fbi-agencies/nibrs';
+import { AGENCY_TYPES, agencyTypeColor, CDE_WEBAPP, OFFENSES, POLICE_FLASH_MS, POLICE_OFF, policeLightBar, policeStrobeColor, type Agency, type AgencyCategory, type OffenseSeries } from './fbi-agencies/parse';
+import { GROUP_COLORS, NIBRS_OFFENSES, type CrimeAgainst, type NibrsRow } from './fbi-agencies/nibrs';
 import { STROBE_MS } from './ga-live-markers/strobe';
 import { reportGaFeed } from './ga-live-status';
 import { hitsGaDeck } from './ga-deck-overlay';
@@ -10,13 +10,15 @@ const SRC = 'ga-fbi-agencies';
 const DOT = `${SRC}-dot`;
 const HALO = `${SRC}-halo`;
 const LABEL = `${SRC}-label`;
-const REFRESH_MS = 6 * 60 * 60_000;
-const BLINK_MS = 240;
+const REFRESH_MS = 60 * 60_000;
+const BLINK_MS = POLICE_FLASH_MS;
 const FEED = { id: 'fbi-agencies', label: 'FBI CDE reporting agencies, Georgia', color: '#ff2bd6', sourceUrl: 'https://cde.ucr.cjis.gov/LATEST/agency/byStateAbbr/GA' };
 const EMPTY: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] };
 
 interface DirectoryPayload {
   retrievedAt?: string;
+  fbiDataThrough?: string | null;
+  fbiLastRefresh?: string | null;
   sha256?: string;
   totals?: { agencies: number; mapped: number; nibrs: number };
   categories?: AgencyCategory[];
@@ -44,21 +46,23 @@ interface AgencyProps {
 }
 
 interface NibrsPayload {
-  year?: number;
+  window?: { from: string; to: string; latest: string | null };
+  fbiDataThrough?: string | null;
+  newInLatestFbiMonth?: number;
   retrievedAt?: string;
   requested?: number;
   published?: number;
-  counts?: NibrsCount[];
+  counts?: NibrsRow[];
   sources?: { code: string; sha256: string | null; error: string | null }[];
   error?: string;
 }
 
-function nibrsSection(box: HTMLElement, ori: string): void {
+function nibrsSection(box: HTMLElement, ori: string, popup: Popup, onNew: () => void): void {
   const wrap = document.createElement('div');
   wrap.style.cssText = 'margin-top:6px;border-top:1px solid #cbd5e1;padding-top:4px';
   const btn = document.createElement('button');
   btn.type = 'button';
-  btn.textContent = `Show ${NIBRS_OFFENSES.length} FBI NIBRS offence types (${new Date().getFullYear() - 1})`;
+  btn.textContent = `Show ${NIBRS_OFFENSES.length} FBI NIBRS offence types (12 months to the FBI's newest month)`;
   btn.style.cssText = 'width:100%;padding:4px 6px;border:1px solid #ff2bd6;border-radius:8px;background:#fdf2f8;font:inherit;font-weight:800;cursor:pointer';
   wrap.append(btn);
   box.append(wrap);
@@ -73,7 +77,8 @@ function nibrsSection(box: HTMLElement, ori: string): void {
         btn.remove();
         const sha = new Map((d.sources ?? []).map((x) => [x.code, x.sha256]));
         const head = document.createElement('div');
-        head.textContent = `FBI NIBRS ${d.year} · ${d.published}/${d.requested} offence types published · victims / offenders`;
+        head.textContent = `FBI NIBRS ${d.window?.from ?? ''} to ${d.window?.to ?? ''} · ${d.published}/${d.requested} offence types published · victims / offenders · ${d.newInLatestFbiMonth ?? 0} new in ${d.window?.latest ?? 'newest month'}`;
+        const flashDots: HTMLSpanElement[] = [];
         head.style.cssText = 'font-weight:800';
         wrap.append(head);
         let group: CrimeAgainst | '' = '';
@@ -91,17 +96,29 @@ function nibrsSection(box: HTMLElement, ori: string): void {
           row.title = [c.topLocation ? `top location: ${c.topLocation}` : '', c.topWeapon ? `top weapon/force: ${c.topWeapon}` : '', `SHA-256 ${sha.get(c.code) ?? 'n/a'}`].filter(Boolean).join('\n');
           const dot = document.createElement('span');
           dot.style.cssText = `width:7px;height:7px;border-radius:50%;flex:none;background:${c.color};box-shadow:0 0 4px ${c.color}`;
+          if (c.newInLatestFbiMonth) flashDots.push(dot);
           const name = document.createElement('span');
           name.textContent = `${c.code} ${c.label}`;
           const v = document.createElement('span');
           v.style.cssText = 'margin-left:auto;white-space:nowrap;font-weight:700';
-          v.textContent = none ? 'not published' : `${(c.victims ?? 0).toLocaleString()} / ${(c.offenders ?? 0).toLocaleString()}`;
+          v.textContent = none ? 'not published' : `${(c.victims ?? 0).toLocaleString()} / ${(c.offenders ?? 0).toLocaleString()}${c.newInLatestFbiMonth ? ` · new ${c.latestVictims ?? 0}/${c.latestOffenders ?? 0}` : ''}`;
           row.append(dot, name, v);
           wrap.append(row);
         }
         const foot = document.createElement('div');
         foot.style.cssText = 'margin-top:4px;color:#475569';
-        foot.textContent = `Source grade A: FBI CDE NIBRS · retrieved ${d.retrievedAt ? new Date(d.retrievedAt).toLocaleString() : '—'} · counts are victims and offenders, not incidents; tap-and-hold a row for top location and SHA-256.`;
+        if (flashDots.length) {
+          const t = setInterval(() => {
+            const col = policeStrobeColor(Date.now());
+            flashDots.forEach((el) => {
+              el.style.background = col;
+              el.style.boxShadow = `0 0 7px ${col}`;
+            });
+          }, BLINK_MS);
+          popup.once('close', () => clearInterval(t));
+          onNew();
+        }
+        foot.textContent = `${flashDots.length ? `red/blue light-bar = victims or offenders reported in ${d.window?.latest} (FBI's newest month) · ` : ''}Source grade A: FBI CDE NIBRS · FBI data through ${d.fbiDataThrough ?? '—'} · retrieved ${d.retrievedAt ? new Date(d.retrievedAt).toLocaleString() : '—'} · counts are victims and offenders, not incidents; tap-and-hold a row for top location and SHA-256.`;
         wrap.append(foot);
       } catch (err) {
         btn.disabled = false;
@@ -186,9 +203,12 @@ function ensureLayers(map: MapLibreMap): void {
 function blink(map: MapLibreMap, s: State): void {
   if (!map.getLayer(DOT)) return;
   const now = Date.now();
-  const c = policeStrobeColor(now, BLINK_MS);
-  map.setPaintProperty(DOT, 'circle-color', strobing(s, now) ? ['case', ['get', 'strobe'], c, typeColor] : typeColor);
-  if (map.getLayer(HALO)) map.setPaintProperty(HALO, 'circle-color', c);
+  const l = policeLightBar(now);
+  map.setPaintProperty(DOT, 'circle-color', strobing(s, now) ? ['case', ['get', 'strobe'], l.on ? l.color : POLICE_OFF, typeColor] : typeColor);
+  if (map.getLayer(HALO)) {
+    map.setPaintProperty(HALO, 'circle-color', l.color);
+    map.setPaintProperty(HALO, 'circle-opacity', l.on ? 0.6 : 0.05);
+  }
 }
 
 function setData(map: MapLibreMap, s: State): void {
@@ -225,7 +245,7 @@ function offenceRows(box: HTMLElement, d: AgencyPayload, popup: Popup): boolean 
   }
   if (strobeDots.length) {
     const t = setInterval(() => strobeDots.forEach((el) => {
-      const c = policeStrobeColor(Date.now(), BLINK_MS);
+      const c = policeStrobeColor(Date.now());
       el.style.background = c;
       el.style.boxShadow = `0 0 7px ${c}`;
     }), BLINK_MS);
@@ -250,6 +270,8 @@ export function addGaFbiAgencyLayers(map: MapLibreMap): void {
   if (bound.has(map)) return;
   bound.add(map);
   const s: State = { agencies: [], firstSeen: new Map(), loaded: false };
+  let release: string | null = null;
+  let releaseStrobeUntil = 0;
   if (typeof window !== 'undefined') {
     window.__gaFbiAgencies = {
       get agencies() {
@@ -269,6 +291,9 @@ export function addGaFbiAgencyLayers(map: MapLibreMap): void {
       for (const a of d.agencies) next.set(a.ori, s.loaded ? s.firstSeen.get(a.ori) ?? now : s.firstSeen.get(a.ori) ?? 0);
       s.firstSeen = next;
       s.agencies = d.agencies;
+      const newAgencies = s.loaded && [...next.values()].some((t) => t === now);
+      if (s.loaded && ((d.fbiDataThrough && d.fbiDataThrough !== release) || newAgencies)) releaseStrobeUntil = now + STROBE_MS;
+      release = d.fbiDataThrough ?? release;
       s.loaded = true;
       setData(map, s);
       const byType = new Map<string, number>();
@@ -276,7 +301,8 @@ export function addGaFbiAgencyLayers(map: MapLibreMap): void {
       reportGaFeed(map, {
         ...FEED,
         count: d.totals?.agencies ?? d.agencies.length,
-        detail: `${d.totals?.mapped ?? 0} mapped · ${d.totals?.nibrs ?? 0} NIBRS (white ring) · ${(d.categories ?? []).length} agency type × NIBRS categories · ${OFFENSES.length} FBI offence categories per agency + ${NIBRS_OFFENSES.length} NIBRS offence types per NIBRS agency (${((d.agencyOffenseSeries ?? 0) + (d.totals?.nibrs ?? 0) * NIBRS_OFFENSES.length).toLocaleString()} agency×offence series, loaded on tap) · new = red/blue strobe 10 min · refresh 6 h`,
+        strobeUntil: releaseStrobeUntil,
+        detail: `FBI data through ${d.fbiDataThrough ?? '—'}${d.fbiLastRefresh ? ` (FBI refresh ${d.fbiLastRefresh})` : ''} · checked hourly · ${d.totals?.mapped ?? 0} mapped · ${d.totals?.nibrs ?? 0} NIBRS (white ring) · ${(d.categories ?? []).length} agency type × NIBRS categories · ${OFFENSES.length} FBI offence categories per agency + ${NIBRS_OFFENSES.length} NIBRS offence types per NIBRS agency (${((d.agencyOffenseSeries ?? 0) + (d.totals?.nibrs ?? 0) * NIBRS_OFFENSES.length).toLocaleString()} agency×offence series, loaded on tap) · new = police light-bar flash 10 min`,
         updatedAt: d.retrievedAt ?? null,
         sha256: d.sha256,
         swatches: [
@@ -344,7 +370,11 @@ export function addGaFbiAgencyLayers(map: MapLibreMap): void {
         status.textContent = `FBI CDE unavailable: ${err instanceof Error ? err.message : String(err)}`;
         status.style.color = '#b91c1c';
       }
-      if (String(p.nibrs) === 'true') nibrsSection(box, ori);
+      if (String(p.nibrs) === 'true')
+        nibrsSection(box, ori, popup, () => {
+          s.firstSeen.set(ori, Date.now());
+          setData(map, s);
+        });
       box.append(link);
     })();
   };

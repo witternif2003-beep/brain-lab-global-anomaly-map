@@ -6,11 +6,13 @@ import {
   OFFENSES,
   parseAgencyDirectory,
   parseAgencySummarized,
+  policeLightBar,
   policeStrobeColor,
+  POLICE_OFF,
   POLICE_BLUE,
   POLICE_RED,
 } from "../../lib/fbi-agencies/parse";
-import { NIBRS_OFFENSES, parseNibrsAgency } from "../../lib/fbi-agencies/nibrs";
+import { NIBRS_OFFENSES, nibrsWindow, parseNibrsAgency } from "../../lib/fbi-agencies/nibrs";
 
 test("directory flattens counties, de-duplicates ORIs, drops non-GA ORIs and out-of-state coordinates", () => {
   const ag = parseAgencyDirectory({
@@ -62,8 +64,16 @@ test("integrity badge and police strobe colours", () => {
   assert.equal(integrityState({ ...f, updatedAt: null }, now, 90), "NO TIMESTAMP");
   assert.equal(integrityState({ ...f, error: "HTTP 502" }, now, 90), "ERROR");
   assert.equal(integrityState({ ...f, sourceUrl: "/fbi-osint" }, now, 90), "INTERNAL");
-  assert.equal(policeStrobeColor(0, 240), POLICE_RED);
-  assert.equal(policeStrobeColor(240, 240), POLICE_BLUE);
+  assert.deepEqual(policeLightBar(0), { color: POLICE_RED, on: true });
+  assert.deepEqual(policeLightBar(60), { color: POLICE_RED, on: false });
+  assert.deepEqual(policeLightBar(360), { color: POLICE_RED, on: true });
+  assert.deepEqual(policeLightBar(480), { color: POLICE_BLUE, on: true });
+  assert.deepEqual(policeLightBar(540), { color: POLICE_BLUE, on: false });
+  assert.deepEqual(policeLightBar(960), { color: POLICE_RED, on: true });
+  const flashes = (from: number, color: string) => Array.from({ length: 8 }, (_, i) => policeLightBar(from + i * 60)).filter((l) => l.on && l.color === color).length;
+  assert.equal(flashes(0, POLICE_RED), 4);
+  assert.equal(flashes(480, POLICE_BLUE), 4);
+  assert.equal(policeStrobeColor(60), POLICE_OFF);
 });
 
 test("NIBRS: 53 Group A codes, no amber hues, victims/offenders summed and all-null breakdowns read as not published", () => {
@@ -82,4 +92,10 @@ test("NIBRS: 53 Group A codes, no amber hues, victims/offenders summed and all-n
   const none = parseNibrsAgency("26H", { victim: { sex: { Male: null, Female: null } }, offender: { sex: { Male: null } } });
   assert.equal(none.victims, null);
   assert.equal(none.offenders, null);
+});
+
+test("NIBRS window is the 12 months ending at the FBI's newest month", () => {
+  assert.deepEqual(nibrsWindow("10/2026", new Date("2026-10-19T00:00:00Z")), { from: "11-2025", to: "10-2026", latest: "10-2026" });
+  assert.deepEqual(nibrsWindow("12/2026", new Date("2027-01-02T00:00:00Z")), { from: "01-2026", to: "12-2026", latest: "12-2026" });
+  assert.deepEqual(nibrsWindow(null, new Date("2026-10-19T00:00:00Z")), { from: "01-2025", to: "12-2025", latest: null });
 });

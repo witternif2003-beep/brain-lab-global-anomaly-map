@@ -116,6 +116,27 @@ function top(c: Counts | undefined, skip: string[]): string | null {
   return best ? best[0] : null;
 }
 
+export interface NibrsRow extends NibrsCount {
+  latestVictims: number | null;
+  latestOffenders: number | null;
+  /** Victims or offenders reported in the newest month the FBI has published. */
+  newInLatestFbiMonth: boolean;
+}
+
+/** Trailing 12-month window ending at the FBI's newest published month (`MM/YYYY`), or the last full calendar year when unknown. */
+export function nibrsWindow(maxDataDate: string | null | undefined, now: Date): { from: string; to: string; latest: string | null } {
+  const m = maxDataDate && /^(\d{2})\/(\d{4})$/.exec(maxDataDate);
+  if (!m) {
+    const y = now.getUTCFullYear() - 1;
+    return { from: `01-${y}`, to: `12-${y}`, latest: null };
+  }
+  const month = Number(m[1]);
+  const year = Number(m[2]);
+  const start = new Date(Date.UTC(year, month - 12, 1));
+  const to = `${m[1]}-${m[2]}`;
+  return { from: `${String(start.getUTCMonth() + 1).padStart(2, "0")}-${start.getUTCFullYear()}`, to, latest: to };
+}
+
 export function parseNibrsAgency(code: string, raw: CdeNibrsAgency): NibrsCount {
   const meta = NIBRS_OFFENSES.find((o) => o.code === code) ?? { code, label: code, against: "Society" as const, color: GROUP_COLORS.Society };
   return {

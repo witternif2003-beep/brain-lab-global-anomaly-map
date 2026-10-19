@@ -2,8 +2,12 @@ import type { Map as MapLibreMap } from 'maplibre-gl';
 import type { OsintGeo } from './fbi-osint/load';
 import { reportGaFeed } from './ga-live-status';
 import { addOsintGeoLayer, setOsintGeoData } from './ga-osint-geo-layer';
+import { STROBE_MS } from './ga-live-markers/strobe';
 
 const REFRESH_MS = 60 * 60_000;
+const WANTED_REFRESH_MS = 10 * 60_000;
+const prevWanted = new WeakMap<MapLibreMap, { total: number; strobeUntil: number }>();
+const prevCde = new WeakMap<MapLibreMap, { refresh: string | null; strobeUntil: number }>();
 const MIN_COVERAGE_PCT = 80;
 const WANTED = { id: 'fbi-wanted', label: 'FBI Wanted notices (Atlanta field office)', color: '#60a5fa', sourceUrl: 'https://www.fbi.gov/wanted' };
 const OSINT = { id: 'fbi-osint', label: 'FBI-relevant public OSINT indicators', color: '#f472b6', sourceUrl: '/fbi-osint' };
@@ -26,7 +30,11 @@ async function loadWanted(map: MapLibreMap) {
     const r = await fetch('/api/fbi/wanted?field_office=atlanta');
     const d = (await r.json()) as { total?: number; fetchedAt?: string; error?: string };
     if (!r.ok) throw new Error(d.error ?? `HTTP ${r.status}`);
-    reportGaFeed(map, { ...WANTED, count: d.total ?? 0, detail: 'fbi.gov Wanted API · count only, no names or photos on the map · refresh 1 h', updatedAt: d.fetchedAt ?? null });
+    const p = prevWanted.get(map);
+    const total = d.total ?? 0;
+    const strobeUntil = p && total > p.total ? Date.now() + STROBE_MS : p?.strobeUntil ?? 0;
+    prevWanted.set(map, { total, strobeUntil });
+    reportGaFeed(map, { ...WANTED, count: total, strobeUntil, detail: `fbi.gov Wanted API · count only, no names or photos on the map · refresh 10 min${strobeUntil > Date.now() ? ` · ${total - (p?.total ?? total)} new notice(s), flashing` : ''}`, updatedAt: d.fetchedAt ?? null });
   } catch (err) {
     reportGaFeed(map, { ...WANTED, count: null, updatedAt: null, error: String(err) });
   }
@@ -59,8 +67,13 @@ async function loadCde(map: MapLibreMap) {
       .filter((k) => rates[k] !== null && (coverage[k] ?? 0) >= MIN_COVERAGE_PCT)
       .sort((a, b) => monthKey(b).localeCompare(monthKey(a)))[0];
     if (!month) throw new Error('no month with enough reporting coverage');
+    const refresh = d.cde_properties?.last_refresh_date?.UCR ?? null;
+    const pc = prevCde.get(map);
+    const strobeUntil = pc && refresh && refresh !== pc.refresh ? Date.now() + STROBE_MS : pc?.strobeUntil ?? 0;
+    prevCde.set(map, { refresh, strobeUntil });
     reportGaFeed(map, {
       ...CDE,
+      strobeUntil,
       count: actuals[month] ?? null,
       detail: `offenses in ${month} · ${rates[month]} per 100k · ${coverage[month]}% of population covered (latest month ≥${MIN_COVERAGE_PCT}%)${d.cde_properties?.last_refresh_date?.UCR ? ` · FBI refresh ${d.cde_properties.last_refresh_date.UCR}` : ''}`,
       updatedAt: d.fetchedAt ?? null,
@@ -77,13 +90,16 @@ export function addGaFbiFeeds(map: MapLibreMap): void {
   addOsintGeoLayer(map, 'IP geolocation by DB-IP (CC BY 4.0)');
   if (bound.has(map)) return;
   bound.add(map);
-  const load = () => Promise.all([loadWanted(map), loadCde(map)]);
+  const load = () => loadCde(map);
   void load();
+  void loadWanted(map);
+  const wantedTimer = setInterval(() => void loadWanted(map), WANTED_REFRESH_MS);
   void loadOsint(map);
   const timer = setInterval(() => void load(), REFRESH_MS);
   const osintTimer = setInterval(() => void loadOsint(map), OSINT_REFRESH_MS);
   map.once('remove', () => {
     clearInterval(timer);
+    clearInterval(wantedTimer);
     clearInterval(osintTimer);
     bound.delete(map);
   });

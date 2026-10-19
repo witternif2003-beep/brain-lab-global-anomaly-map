@@ -5,7 +5,7 @@ import { CDE_PUBLIC, GA_ORI, OFFENSES, parseAgencySummarized, type CdeAgencySumm
 export const dynamic = "force-dynamic";
 export const maxDuration = 25;
 
-const TTL_MS = 6 * 60 * 60_000;
+const TTL_MS = 60 * 60_000;
 const MAX_CACHED = 300;
 const cache = new Map<string, { at: number; body: Record<string, unknown> }>();
 
@@ -46,7 +46,7 @@ export async function GET(req: Request) {
   const ori = new URL(req.url).searchParams.get("ori") ?? "";
   if (!GA_ORI.test(ori)) return NextResponse.json({ error: "ori must be a Georgia FBI ORI (GA + 7 characters)" }, { status: 400 });
   const hit = cache.get(ori);
-  if (hit && Date.now() - hit.at < TTL_MS) return NextResponse.json(hit.body, { headers: { "Cache-Control": "public, s-maxage=3600" } });
+  if (hit && Date.now() - hit.at < TTL_MS) return NextResponse.json(hit.body, { headers: { "Cache-Control": "public, s-maxage=900" } });
   const y = new Date().getUTCFullYear();
   const results = await Promise.all(OFFENSES.map((o) => one(ori, o.id, `01-${y - 1}`, `12-${y}`)));
   const ok = results.filter((r) => r.series);
@@ -64,5 +64,5 @@ export async function GET(req: Request) {
   };
   if (cache.size >= MAX_CACHED) cache.delete(cache.keys().next().value!);
   cache.set(ori, { at: Date.now(), body });
-  return NextResponse.json(body, { headers: { "Cache-Control": "public, s-maxage=3600" } });
+  return NextResponse.json(body, { headers: { "Cache-Control": "public, s-maxage=900" } });
 }
