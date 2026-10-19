@@ -42,23 +42,35 @@ Retrieved 2026-10-19 (UTC). Scope: roads inside the Georgia wall. Data rule: mea
   (not a GDOT classification): Light < 250, Moderate 250–999, Busy 1,000–2,999, Heavy 3,000–5,999, Very heavy ≥ 6,000.
   Colours: Tiffany, sky, violet, pink, neon magenta, each on a dark outline.
 - **Slowed** = measured average speed below 67% of the posted limit: red outline.
-- **Moving indicators**: one animated dash track per measured direction, rotated to the lane bearing. Dash density follows
-  measured veh/h; motion speed follows measured average mph; a direction with no measured speed is drawn still.
-  Dashes show measured flow, not individual vehicles.
+- **Direction arrows**: one arrow per measured direction, a map symbol anchored at its centre on the station's published
+  coordinate at every zoom (the floating dash markers that stuck out beside each station were removed). From zoom 14 the
+  arrow points along the matched mapped road (same matcher as the cars); below that, along GDOT's lane bearing.
 - **Readability at every zoom**: dots scale with zoom and volume (3–22 px); labels from zoom 6.5 ("13700/h"), full
-  "I-85 · 13656 veh/h · 32 mph" from zoom 10; text 10–17 px with a 2.2 px dark halo; dashes scale 0.45×–1.6× with zoom.
+  "I-85 · 13656 veh/h · 32 mph" from zoom 10; text 10–17 px with a 2.2 px dark halo; arrows scale 0.45×–1.4× with zoom.
   Layers are raised above roads and LiDAR, and again after a WebGL context restore.
 - **Freshness**: a station whose latest bin is > 45 min old is drawn at 45% opacity and labelled STALE; the live-feeds legend
   shows the feed's data age, Verified/Stale/Error badge and per-level counts.
 
 ## 4a. Car-level animation at 1,000 ft and below (code: lib/ga-traffic-counts/cars.ts)
 
+- **Colour:** all cars are the same grey (#9ca3af) with white headlights and red tail lights; the traffic level stays on the station dot and arrow.
 - **Gate:** cars draw only when the camera is at or below 1,000 ft (304.8 m) above the map centre: camera-to-centre distance × cos(pitch), from the vertical field of view, viewport height and Web Mercator scale. Measured on a 390×844 viewport: zoom 17.2 = 483 m (off), zoom 18.7 = 171 m (on), zoom 19.2 pitch 55° = 69 m (on).
 - **Pinned to mapped roads:** for each measured direction the layer takes the OpenFreeMap road lines rendered around the station. It keeps the road class nearest the station, so a motorway station never borrows a side street. It picks the line within 80 m whose direction is within 60° of GDOT's lane bearing; one-way carriageways are used only with traffic (OpenMapTiles `oneway` 1 / −1). Then it draws ±300 m of that line.
 - **Spacing = measured density:** metres between vehicles = mph × 1609.34 ÷ veh/h for that direction, across all lanes. Below 9 m (icon length + gap) the spacing is held at 9 m and one icon stands for more than one vehicle (exposed as `vehiclesPerIcon`).
 - **Speed = measured average mph** for that direction; cars stand still when no speed was measured. With `prefers-reduced-motion` they are drawn once and not animated.
 - **Not individual vehicles:** GDOT TADA publishes 15-minute counts and average speeds per station and direction, not vehicle positions. The cars are an encoding of those aggregates, on roads that have a station only. Lane positions, gaps between cars and vehicle types are not measured.
 - **Limitation:** GDOT's lane bearings are coarse at some stations (e.g. 0°/180° on a stretch of I-85 that runs about 35°). The 60° tolerance still matches the right carriageway, but a station whose bearing is off by more than 60° gets no cars.
+
+## 4b. Arrow pinning precision (retrieved 2026-10-19)
+
+- **On screen:** the arrow is a MapLibre symbol whose anchor is the station coordinate itself (`icon-anchor: center`), so the
+  drawn position equals the coordinate up to sub-pixel rounding. The CDP check finds the arrow within ±1 CSS px of
+  `map.project(coordinate)` at each tested zoom; 1 px is about 0.6 m at zoom 18 and 0.04 m at zoom 22 at 33.9°N.
+- **On the ground (5 cm target): INSUFFICIENT_EVIDENCE / not achievable from the source.** GDOT TADA publishes station
+  coordinates with these decimal places (202 reporting stations, /api/ga-traffic-counts): 3 decimals (about 110 m) ×3, 4 (about
+  11 m) ×24, 5 (about 1.1 m) ×120, 6 (about 0.11 m) ×55. No station is published finer than about 0.11 m, and GDOT does not
+  state the survey accuracy. OpenStreetMap road geometry is traced from imagery and usually a few metres from the true lane.
+- **What would get closer:** surveyed station positions from GDOT (RTK GNSS, cm-level) or lane-level HD map geometry.
 
 ## 5. Performance budget
 

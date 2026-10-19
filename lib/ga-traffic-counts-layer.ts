@@ -1,10 +1,10 @@
-import { Marker, Popup } from 'maplibre-gl';
+import { Popup } from 'maplibre-gl';
 import type { ExpressionSpecification, GeoJSONSource, Map as MapLibreMap } from 'maplibre-gl';
 import { insideRing, loadGaWallRing, type LngLat } from './ga-patrol-3d';
 import { reportGaFeed } from './ga-live-status';
 import { hitsGaDeck } from './ga-deck-overlay';
-import { carSpacingM, carsAlong, roadPathFor, type RoadLine } from './ga-traffic-counts/cars';
-import { flowStyle, LEVELS, TADA_PAGE, type CountsPayload, type StationDirection, type StationProps } from './ga-traffic-counts/normalize';
+import { carSpacingM, carsAlong, roadHeadingAt, roadPathFor, type RoadLine } from './ga-traffic-counts/cars';
+import { LEVELS, TADA_PAGE, type CountsPayload, type StationProps } from './ga-traffic-counts/normalize';
 
 const API = '/api/ga-traffic-counts';
 const REFRESH_MS = 5 * 60_000;
@@ -13,7 +13,14 @@ const DOT = `${SRC}-dot`;
 const LABEL = `${SRC}-label`;
 const CARS_SRC = 'ga-traffic-cars';
 const CARS = `${SRC}-cars`;
-export const GA_TRAFFIC_COUNT_LAYERS = [CARS, DOT, LABEL] as const;
+const ARROW_SRC = 'ga-traffic-arrows';
+const ARROW = `${SRC}-arrow`;
+export const GA_TRAFFIC_COUNT_LAYERS = [CARS, DOT, ARROW, LABEL] as const;
+/** From this zoom the arrow takes its direction from the mapped road at the station instead of GDOT's lane bearing. */
+const ARROW_ROAD_MIN_ZOOM = 14;
+const ARROW_ROAD_MAX = 40;
+/** Road search radius around a station when matching the arrow direction (the matcher accepts lines within 80 m). */
+const ARROW_ROAD_SEARCH_M = 100;
 /** Cars are drawn only when the camera is at or below 1,000 ft (304.8 m) above the ground at the map centre. */
 export const CARS_MAX_AGL_M = 304.8;
 const CAR_ROAD_CLASSES = new Set(['motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'minor']);
@@ -23,51 +30,11 @@ const CAR_FRAME_MS = 33;
 const CAR_REMATCH_MS = 2_000;
 const ATTRIBUTION = 'GA live counts: Georgia DOT TADA continuous count stations (15-min bins) · measured at stations only';
 const EMPTY: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] };
-const STYLE_ID = 'ga-traffic-flow-css';
-const FLOW_CLASS = 'ga-traffic-flow';
+const CAR_IMAGE = 'ga-car';
+const CAR_GREY = '#9ca3af';
 
 const LEVEL_COLOR = ['match', ['get', 'level'], ...LEVELS.flatMap((l) => [l.id, l.color]), '#81d8d0'] as unknown as ExpressionSpecification;
 const VPH_RADIUS = (lo: number, hi: number) => ['interpolate', ['linear'], ['get', 'vph'], 0, lo, 1000, lo + (hi - lo) * 0.35, 6000, hi, 14000, hi * 1.2];
-
-function ensureFlowCss(): void {
-  if (typeof document === 'undefined' || document.getElementById(STYLE_ID)) return;
-  const style = document.createElement('style');
-  style.id = STYLE_ID;
-  style.textContent = [
-    `@keyframes ga-traffic-flow{from{transform:translateY(0)}to{transform:translateY(calc(-1 * var(--p)))}}`,
-    `.${FLOW_CLASS}{pointer-events:none}`,
-    `.${FLOW_CLASS}>u{display:block;position:relative;width:26px;height:var(--len);transform:scale(var(--ga-flow-scale,1));transform-origin:50% 100%}`,
-    `.${FLOW_CLASS}>u>i{position:absolute;left:15px;top:6px;width:7px;bottom:0;overflow:hidden;border-radius:4px;background:rgba(11,14,20,.72);box-shadow:0 0 0 1px rgba(11,14,20,.9)}`,
-    `.${FLOW_CLASS}>u>i>b{position:absolute;left:1px;right:1px;top:0;height:calc(100% + var(--p));background:repeating-linear-gradient(to top,var(--c) 0 var(--d),transparent var(--d) var(--p));animation:ga-traffic-flow var(--t) linear infinite;will-change:transform}`,
-    `.${FLOW_CLASS}>u>s{position:absolute;left:12.5px;top:0;width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-bottom:8px solid var(--c);filter:drop-shadow(0 0 2px #0b0e14)}`,
-    `@media (prefers-reduced-motion:reduce){.${FLOW_CLASS}>u>i>b{animation-duration:calc(var(--t) * 4)}}`,
-  ].join('');
-  document.head.append(style);
-}
-
-function flowMarker(d: StationDirection, color: string, lngLat: LngLat): Marker {
-  const f = flowStyle(d);
-  const el = document.createElement('div');
-  el.className = FLOW_CLASS;
-  el.style.setProperty('--len', `${f.len}px`);
-  el.style.setProperty('--p', `${f.period}px`);
-  el.style.setProperty('--d', `${f.dash}px`);
-  el.style.setProperty('--c', color);
-  el.style.setProperty('--t', f.durationS ? `${f.durationS.toFixed(2)}s` : '0s');
-  const track = document.createElement('i');
-  const dashes = document.createElement('b');
-  if (!f.durationS) dashes.style.animation = 'none';
-  track.append(dashes);
-  const box = document.createElement('u');
-  box.append(track, document.createElement('s'));
-  el.append(box);
-  el.title = `${d.direction} · ${d.vph.toLocaleString()} veh/h${d.avgMph ? ` · ${d.avgMph} mph` : ''}`;
-  return new Marker({ element: el, anchor: 'bottom', rotationAlignment: 'map', pitchAlignment: 'map', rotation: d.bearing ?? 0 }).setLngLat(lngLat);
-}
-
-function flowScale(zoom: number): number {
-  return Math.max(0.45, Math.min(1.6, 0.45 + (zoom - 6) * 0.115));
-}
 
 function popup(map: MapLibreMap, lngLat: LngLat, p: StationProps) {
   const box = document.createElement('div');
@@ -95,7 +62,7 @@ function popup(map: MapLibreMap, lngLat: LngLat, p: StationProps) {
     box.append(row);
   }
   const note = document.createElement('div');
-  note.textContent = 'Measured at this station only; moving dashes show measured flow, not individual vehicles.';
+  note.textContent = 'Measured at this station only. Arrows sit on the station\'s published coordinate and point along the mapped road from zoom 14; at 1,000 ft and below, grey cars on the road show the measured flow, not individual vehicles.';
   note.style.cssText = 'margin-top:3px;color:#475569';
   const a = document.createElement('a');
   a.href = TADA_PAGE;
@@ -108,7 +75,7 @@ function popup(map: MapLibreMap, lngLat: LngLat, p: StationProps) {
 
 const bound = new WeakSet<MapLibreMap>();
 
-/** Top-down car icon (nose up) in a traffic-level colour, with headlights, windscreen and tail lights so travel direction reads at a glance. */
+/** Top-down car icon (nose up) with headlights, windscreen and tail lights so travel direction reads at a glance. */
 function carImage(color: string): ImageData {
   const c = document.createElement('canvas');
   c.width = 36;
@@ -131,9 +98,10 @@ function carImage(color: string): ImageData {
 
 /** Camera height above the ground at the map centre, in metres (camera-to-centre distance × cos pitch, Web Mercator scale at the centre latitude). */
 const EARTH_CIRCUMFERENCE_M = 40_075_016.686;
+const metresPerPx = (map: MapLibreMap) => (EARTH_CIRCUMFERENCE_M * Math.cos((map.getCenter().lat * Math.PI) / 180)) / (512 * 2 ** map.getZoom());
 const cameraAglM = (map: MapLibreMap) => {
   const fov = (map.getVerticalFieldOfView() * Math.PI) / 180;
-  const mpp = (EARTH_CIRCUMFERENCE_M * Math.cos((map.getCenter().lat * Math.PI) / 180)) / (512 * 2 ** map.getZoom());
+  const mpp = metresPerPx(map);
   return (0.5 / Math.tan(fov / 2)) * map.getContainer().clientHeight * mpp * Math.cos((map.getPitch() * Math.PI) / 180);
 };
 
@@ -158,7 +126,7 @@ function roadLinesNear(map: MapLibreMap, at: LngLat, px: number): RoadLine[] {
  * spacing from measured veh/h ÷ mph, speed from measured mph. Shown only at or below CARS_MAX_AGL_M.
  */
 function addTrafficCars(map: MapLibreMap, getStations: () => GeoJSON.Feature<GeoJSON.Point, StationProps>[]): () => void {
-  for (const l of LEVELS) if (!map.hasImage(`ga-car-${l.id}`)) map.addImage(`ga-car-${l.id}`, carImage(l.color), { pixelRatio: 2 });
+  if (!map.hasImage(CAR_IMAGE)) map.addImage(CAR_IMAGE, carImage(CAR_GREY), { pixelRatio: 2 });
   if (!map.getSource(CARS_SRC)) map.addSource(CARS_SRC, { type: 'geojson', data: EMPTY });
   if (!map.getLayer(CARS)) {
     map.addLayer({
@@ -167,7 +135,7 @@ function addTrafficCars(map: MapLibreMap, getStations: () => GeoJSON.Feature<Geo
       source: CARS_SRC,
       minzoom: 15,
       layout: {
-        'icon-image': ['concat', 'ga-car-', ['get', 'level']] as unknown as ExpressionSpecification,
+        'icon-image': CAR_IMAGE,
         'icon-rotate': ['get', 'heading'],
         'icon-rotation-alignment': 'map',
         'icon-pitch-alignment': 'map',
@@ -243,7 +211,82 @@ function addTrafficCars(map: MapLibreMap, getStations: () => GeoJSON.Feature<Geo
   };
 }
 
+/** Arrow (point up, centred) in a traffic-level colour with a dark outline. */
+function arrowImage(color: string): ImageData {
+  const c = document.createElement('canvas');
+  c.width = 48;
+  c.height = 48;
+  const g = c.getContext('2d') as CanvasRenderingContext2D;
+  g.beginPath();
+  g.moveTo(24, 3); g.lineTo(42, 27); g.lineTo(30, 27); g.lineTo(30, 45); g.lineTo(18, 45); g.lineTo(18, 27); g.lineTo(6, 27);
+  g.closePath();
+  g.lineJoin = 'round';
+  g.lineWidth = 5;
+  g.strokeStyle = '#0b0e14';
+  g.stroke();
+  g.fillStyle = color;
+  g.fill();
+  return g.getImageData(0, 0, c.width, c.height);
+}
+
+/**
+ * One arrow per measured direction, anchored at its centre on the station's published coordinate at every zoom.
+ * From ARROW_ROAD_MIN_ZOOM it points along the matched mapped road (one-way carriageways with traffic); otherwise along GDOT's lane bearing.
+ */
+function addStationArrows(map: MapLibreMap, getStations: () => GeoJSON.Feature<GeoJSON.Point, StationProps>[]): { refresh: () => void; stop: () => void } {
+  for (const l of LEVELS) if (!map.hasImage(`ga-arrow-${l.id}`)) map.addImage(`ga-arrow-${l.id}`, arrowImage(l.color), { pixelRatio: 2 });
+  if (!map.getSource(ARROW_SRC)) map.addSource(ARROW_SRC, { type: 'geojson', data: EMPTY });
+  if (!map.getLayer(ARROW)) {
+    map.addLayer({
+      id: ARROW,
+      type: 'symbol',
+      source: ARROW_SRC,
+      layout: {
+        'icon-image': ['concat', 'ga-arrow-', ['get', 'level']] as unknown as ExpressionSpecification,
+        'icon-anchor': 'center',
+        'icon-rotate': ['get', 'heading'],
+        'icon-rotation-alignment': 'map',
+        'icon-pitch-alignment': 'map',
+        'icon-allow-overlap': true,
+        'icon-ignore-placement': true,
+        'icon-size': ['interpolate', ['linear'], ['zoom'], 5, 0.45, 10, 0.75, 15, 1, 20, 1.4] as unknown as ExpressionSpecification,
+      },
+    }, map.getLayer(LABEL) ? LABEL : undefined);
+  }
+  let timers: number[] = [];
+  const build = () => {
+    const zoom = map.getZoom();
+    const b = map.getBounds();
+    const c = map.getCenter();
+    const near = new Set(zoom < ARROW_ROAD_MIN_ZOOM ? [] : getStations()
+      .filter((f) => b.contains(f.geometry.coordinates as LngLat))
+      .sort((x, y) => Math.hypot(x.geometry.coordinates[0] - c.lng, x.geometry.coordinates[1] - c.lat) - Math.hypot(y.geometry.coordinates[0] - c.lng, y.geometry.coordinates[1] - c.lat))
+      .slice(0, ARROW_ROAD_MAX));
+    let matched = 0;
+    const px = Math.min(1500, Math.max(120, ARROW_ROAD_SEARCH_M / metresPerPx(map)));
+    const features: GeoJSON.Feature[] = getStations().flatMap((f) => {
+      const at = f.geometry.coordinates as LngLat;
+      const lines = near.has(f) ? roadLinesNear(map, at, px) : [];
+      return f.properties.directions.filter((d) => d.bearing !== null && d.count > 0).map((d) => {
+        const road = lines.length ? roadHeadingAt(at, d.bearing as number, lines) : null;
+        if (road !== null) matched++;
+        return { type: 'Feature' as const, geometry: { type: 'Point' as const, coordinates: at }, properties: { heading: road ?? d.bearing, level: f.properties.level, direction: d.direction, onRoad: road !== null } };
+      });
+    });
+    (map.getSource(ARROW_SRC) as GeoJSONSource | undefined)?.setData({ type: 'FeatureCollection', features });
+    window.__gaTrafficArrows = { arrows: features.length, roadMatched: matched };
+  };
+  const refresh = () => {
+    timers.forEach(clearTimeout);
+    build();
+    timers = [1_500, 4_000].map((ms) => window.setTimeout(build, ms));
+  };
+  map.on('moveend', refresh);
+  return { refresh, stop: () => { timers.forEach(clearTimeout); map.off('moveend', refresh); } };
+}
+
 declare global {
+  interface Window { __gaTrafficArrows?: { arrows: number; roadMatched: number } }
   interface Window { __gaTrafficCars?: { active: boolean; paths: number; aglM: number; vehiclesPerIcon: number[]; pathPoints?: number[] } }
 }
 
@@ -252,7 +295,7 @@ export function raiseGaTrafficCountLayers(map: MapLibreMap): void {
   for (const id of GA_TRAFFIC_COUNT_LAYERS) if (map.getLayer(id)) map.moveLayer(id);
 }
 
-/** Live GDOT continuous-count-station traffic (15-min counts, average speed) inside the GA wall, with moving flow indicators (idempotent). */
+/** Live GDOT continuous-count-station traffic (15-min counts, average speed) inside the GA wall, with direction arrows on each station coordinate and grey road-pinned cars at 1,000 ft and below (idempotent). */
 export function addGaTrafficCountLayers(map: MapLibreMap): void {
   if (!map.getSource(SRC)) map.addSource(SRC, { type: 'geojson', data: EMPTY, attribution: ATTRIBUTION });
   if (!map.getLayer(DOT)) {
@@ -292,15 +335,10 @@ export function addGaTrafficCountLayers(map: MapLibreMap): void {
   }
   if (bound.has(map)) return;
   bound.add(map);
-  ensureFlowCss();
 
-  let markers: Marker[] = [];
   let stations: GeoJSON.Feature<GeoJSON.Point, StationProps>[] = [];
   const stopCars = addTrafficCars(map, () => stations);
-  const container = map.getContainer();
-  const rescale = () => container.style.setProperty('--ga-flow-scale', flowScale(map.getZoom()).toFixed(2));
-  rescale();
-  map.on('zoom', rescale);
+  const arrows = addStationArrows(map, () => stations);
 
   const refresh = async () => {
     try {
@@ -311,8 +349,7 @@ export function addGaTrafficCountLayers(map: MapLibreMap): void {
       (map.getSource(SRC) as GeoJSONSource | undefined)?.setData({ type: 'FeatureCollection', features });
       stations = features as GeoJSON.Feature<GeoJSON.Point, StationProps>[];
       map.fire('moveend');
-      for (const m of markers) m.remove();
-      markers = features.flatMap((f) => f.properties.directions.filter((x) => x.count > 0).map((x) => flowMarker(x, f.properties.color, f.geometry.coordinates as LngLat).addTo(map)));
+      arrows.refresh();
       const s = d.summary;
       reportGaFeed(map, {
         id: 'traffic-counts', label: 'GDOT live traffic counts (15 min)', color: '#ff2bd6', count: features.length,
@@ -330,8 +367,7 @@ export function addGaTrafficCountLayers(map: MapLibreMap): void {
   map.once('remove', () => {
     clearInterval(timer);
     stopCars();
-    for (const m of markers) m.remove();
-    markers = [];
+    arrows.stop();
     bound.delete(map);
   });
 

@@ -102,12 +102,6 @@ export interface StationDirection {
   avgMph: number | null;
 }
 
-/** Moving-dash geometry for one direction: dash density from measured veh/h, motion speed from measured average mph (still when no speed was measured). */
-export function flowStyle(d: StationDirection): { len: number; period: number; dash: number; durationS: number | null } {
-  const period = d.vph >= 3000 ? 8 : d.vph >= 1000 ? 11 : d.vph >= 250 ? 15 : 22;
-  return { len: 46, period, dash: Math.max(3, Math.round(period * 0.45)), durationS: d.avgMph ? Math.max(0.12, (period / (d.avgMph * 0.9)) * 2) : null };
-}
-
 export interface StationProps {
   id: string;
   name: string;

@@ -35,13 +35,15 @@ export function carSpacingM(vph: number, mph: number | null): { spacingM: number
   return real >= MIN_CAR_SPACING_M ? { spacingM: real, vehiclesPerIcon: 1 } : { spacingM: MIN_CAR_SPACING_M, vehiclesPerIcon: MIN_CAR_SPACING_M / real };
 }
 
+interface RoadMatch { pts: XY[]; seg: number; t: number }
+
 /**
- * Picks the mapped road line through a station for one travel bearing and returns ±halfM of it, oriented with traffic.
+ * The mapped road line through a station for one travel bearing, oriented with traffic.
  * A line qualifies when its nearest segment is within maxOffM of the station and runs within 60° of the bearing;
  * two-way lines may run either way (reversed if opposite), one-way carriageways only with traffic.
  * Only lines of the same road class as the line nearest the station count, so a station on a motorway never borrows a side street.
  */
-export function roadPathFor(station: LngLat, bearing: number, lines: RoadLine[], halfM = CAR_PATH_HALF_M, maxOffM = 80): LngLat[] | null {
+function matchRoad(station: LngLat, bearing: number, lines: RoadLine[], maxOffM: number): RoadMatch | null {
   let best: { xy: XY[]; seg: number; t: number; score: number; reverse: boolean } | null = null;
   const nearest = lines.reduce<{ off: number; cls: string | null }>((acc, l) => {
     const off = offsetM(station, l.coords);
@@ -68,14 +70,21 @@ export function roadPathFor(station: LngLat, bearing: number, lines: RoadLine[],
     }
   }
   if (!best) return null;
-  let pts = best.xy;
-  let seg = best.seg;
-  let t = best.t;
-  if (best.reverse) {
-    pts = [...pts].reverse();
-    seg = pts.length - 2 - seg;
-    t = 1 - t;
-  }
+  if (!best.reverse) return { pts: best.xy, seg: best.seg, t: best.t };
+  return { pts: [...best.xy].reverse(), seg: best.xy.length - 2 - best.seg, t: 1 - best.t };
+}
+
+/** Direction of travel of the matched road at the station (degrees from north), or null when no road matches. */
+export function roadHeadingAt(station: LngLat, bearing: number, lines: RoadLine[], maxOffM = 80): number | null {
+  const m = matchRoad(station, bearing, lines, maxOffM);
+  return m ? bearingOf(m.pts[m.seg], m.pts[m.seg + 1]) : null;
+}
+
+/** ±halfM of the matched road line through the station, oriented with traffic (see matchRoad). */
+export function roadPathFor(station: LngLat, bearing: number, lines: RoadLine[], halfM = CAR_PATH_HALF_M, maxOffM = 80): LngLat[] | null {
+  const m = matchRoad(station, bearing, lines, maxOffM);
+  if (!m) return null;
+  const { pts, seg, t } = m;
   const a = pts[seg], b = pts[seg + 1];
   const mid: XY = [a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1])];
   const walk = (step: -1 | 1): XY[] => {

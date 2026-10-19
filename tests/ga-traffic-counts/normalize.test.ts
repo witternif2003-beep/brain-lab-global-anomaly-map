@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildCounts, flowStyle, levelFor, localToIso, roadName, type TadaSite, type TadaSnapshot } from "../../lib/ga-traffic-counts/normalize";
+import { buildCounts, levelFor, localToIso, roadName, type TadaSite, type TadaSnapshot } from "../../lib/ga-traffic-counts/normalize";
 
 const site = (o: Partial<TadaSite> = {}): TadaSite => ({
   id: "A", node: "GDOT_CCS", name: "121-5502", description: "I-85 N of Pleasantdale Rd, ATL(SB-VOL)", isDisabled: false,
@@ -20,14 +20,12 @@ test("converts US/Eastern wall time to UTC across DST", () => {
   assert.equal(localToIso("bad"), null);
 });
 
-test("levels, road names and flow geometry follow measured values", () => {
+test("levels and road names follow measured values", () => {
   assert.equal(levelFor(0).id, "light");
   assert.equal(levelFor(1000).id, "busy");
   assert.equal(levelFor(13656).id, "very-heavy");
   assert.equal(roadName("I-85 N of Pleasantdale Rd"), "I-85");
   assert.equal(roadName("SR169 btwn Wayne Co Line & SR 121"), "SR169");
-  assert.equal(flowStyle({ direction: "S", bearing: 0, count: 1, vph: 4, avgMph: null }).durationS, null);
-  assert.ok((flowStyle({ direction: "S", bearing: 0, count: 900, vph: 3600, avgMph: 64 }).durationS ?? 9) < (flowStyle({ direction: "S", bearing: 0, count: 900, vph: 3600, avgMph: 20 }).durationS ?? 0));
 });
 
 test("builds station features from the newest measured bin only", () => {

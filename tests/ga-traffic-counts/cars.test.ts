@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { carSpacingM, carsAlong, MIN_CAR_SPACING_M, roadPathFor, type LngLat, type RoadLine } from "../../lib/ga-traffic-counts/cars";
+import { carSpacingM, carsAlong, MIN_CAR_SPACING_M, roadHeadingAt, roadPathFor, type LngLat, type RoadLine } from "../../lib/ga-traffic-counts/cars";
 
 test("carSpacingM is measured speed ÷ measured flow, floored at icon spacing", () => {
   const s = carSpacingM(1000, 60);
@@ -53,4 +53,12 @@ test("roadPathFor stays on the road class nearest the station", () => {
   const closeMotorway: RoadLine = { coords: [[-84.39995, 33.74], [-84.39995, 33.76]], oneway: 1, cls: "motorway" };
   assert.equal(roadPathFor(station, 180, [motorway, sideStreet, closeMotorway]), null);
   assert.ok(roadPathFor(station, 0, [motorway, sideStreet, closeMotorway]));
+});
+
+test("roadHeadingAt follows the matched carriageway, not the coarse lane bearing", () => {
+  const ne: RoadLine = { coords: [[-84.401, 33.7493], [-84.399, 33.7507]], oneway: 1, cls: "motorway" };
+  const h = roadHeadingAt(station, 0, [ne]);
+  assert.ok(h !== null && h > 45 && h < 55);
+  assert.equal(roadHeadingAt(station, 180, [ne]), null);
+  assert.equal(roadHeadingAt(station, 0, []), null);
 });

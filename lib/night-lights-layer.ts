@@ -31,7 +31,7 @@ export const NIGHT_OVERLAYS: NightOverlay[] = [
     upstream: 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}',
     maxzoom: 19,
     attribution: 'Night roads: Esri, HERE, Garmin, © OpenStreetMap contributors',
-    paint: { 'raster-opacity': 0.65, 'raster-brightness-max': 0.8 },
+    paint: { 'raster-opacity': ['interpolate', ['linear'], ['zoom'], 13, 0.65, 15, 0], 'raster-brightness-max': 0.8 },
   },
   {
     id: 'places',

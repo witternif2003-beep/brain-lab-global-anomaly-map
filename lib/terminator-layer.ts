@@ -11,6 +11,9 @@ const bound = new WeakSet<MapLibreMap>();
 
 const fmt = (deg: number, pos: string, neg: string) => `${Math.abs(deg).toFixed(2)}°${deg >= 0 ? pos : neg}`;
 
+/** Street-level views always show the daytime imagery: the night shade fades out over the two zoom levels below this. */
+export const DAYLIGHT_FROM_ZOOM = 15;
+
 /** Day/night terminator shaded as one smooth gradient from sunset to astronomical night, computed from the sun's position. */
 export function addTerminatorLayers(map: MapLibreMap): void {
   const now = new Date();
@@ -23,7 +26,7 @@ export function addTerminatorLayers(map: MapLibreMap): void {
       paint: {
         'fill-color': '#000000',
         'fill-antialias': false,
-        'fill-opacity': ['get', 'opacity'],
+        'fill-opacity': ['interpolate', ['linear'], ['zoom'], DAYLIGHT_FROM_ZOOM - 2, ['get', 'opacity'], DAYLIGHT_FROM_ZOOM, 0],
       },
     });
   }
