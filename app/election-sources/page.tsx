@@ -1,6 +1,7 @@
 import React from "react";
 import { Landmark } from "lucide-react";
 import ElectionSourcesPanel from "../../components/election-sources/ElectionSourcesPanel";
+import VoterRollHealthPanel from "../../components/election-sources/VoterRollHealthPanel";
 
 export default function ElectionSourcesPage() {
   return (
@@ -42,6 +43,7 @@ export default function ElectionSourcesPage() {
         </p>
       </div>
       <ElectionSourcesPanel />
+      <VoterRollHealthPanel />
     </div>
   );
 }
