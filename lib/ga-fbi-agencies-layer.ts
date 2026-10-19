@@ -91,6 +91,7 @@ function ensureLayers(map: MapLibreMap): void {
       id: DOT,
       type: 'circle',
       source: SRC,
+      layout: { 'circle-sort-key': ['case', ['get', 'strobe'], 1, 0] },
       paint: {
         'circle-radius': ['interpolate', ['linear'], ['zoom'], 6, 3, 12, 7],
         'circle-color': typeColor,
