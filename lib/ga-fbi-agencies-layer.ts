@@ -39,6 +39,12 @@ interface State {
   loaded: boolean;
 }
 
+declare global {
+  interface Window {
+    __gaFbiAgencies?: { agencies: number; strobing: () => string[] };
+  }
+}
+
 const bound = new WeakSet<MapLibreMap>();
 
 const typeColor: ExpressionSpecification = ['match', ['get', 'type'], ...AGENCY_TYPES.flatMap((t) => [t.type, t.color]), '#f8fafc'] as unknown as ExpressionSpecification;
@@ -165,6 +171,14 @@ export function addGaFbiAgencyLayers(map: MapLibreMap): void {
   if (bound.has(map)) return;
   bound.add(map);
   const s: State = { agencies: [], firstSeen: new Map(), loaded: false };
+  if (typeof window !== 'undefined') {
+    window.__gaFbiAgencies = {
+      get agencies() {
+        return s.agencies.length;
+      },
+      strobing: () => [...s.firstSeen].filter(([, t]) => t > 0 && Date.now() - t < STROBE_MS).map(([ori]) => ori),
+    };
+  }
 
   const refresh = async () => {
     try {

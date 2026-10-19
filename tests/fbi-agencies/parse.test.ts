@@ -43,8 +43,9 @@ test("agency series ignores Georgia/US comparison rows, keeps 12 trailing months
   };
   const s = parseAgencySummarized("burglary", raw);
   assert.equal(s.months.length, 12);
-  assert.equal(s.months[0], "01-2026");
-  assert.equal(s.total, 10 + 3);
+  assert.equal(s.months[0], "12-2025");
+  assert.equal(s.months.at(-1), "11-2026");
+  assert.equal(s.total, 11 + 3);
   assert.equal(s.latestMonth, "11-2026");
   assert.equal(s.latest, 3);
   assert.equal(s.newInLatestFbiMonth, true);

@@ -115,7 +115,7 @@ export interface OffenseSeries {
   offense: OffenseId;
   label: string;
   color: string;
-  /** MM-YYYY keys, oldest first, limited to the trailing 12 months the FBI published for this agency. */
+  /** MM-YYYY keys, oldest first: the 12 months ending at the agency's latest published month. */
   months: string[];
   offenses: (number | null)[];
   clearances: (number | null)[];
@@ -136,7 +136,10 @@ export function parseAgencySummarized(offense: OffenseId, raw: CdeAgencySummariz
     Object.entries(actuals).find(([k]) => k.endsWith(suffix) && !k.startsWith("Georgia ") && !k.startsWith("United States "))?.[1] ?? {};
   const off = local(" Offenses");
   const clr = local(" Clearances");
-  const months = Object.keys(off).sort((a, b) => monthOrder(a).localeCompare(monthOrder(b))).slice(-12);
+  const all = Object.keys(off).sort((a, b) => monthOrder(a).localeCompare(monthOrder(b)));
+  let end = all.length;
+  while (end > 0 && num(off[all[end - 1]]) === null) end--;
+  const months = all.slice(Math.max(0, end - 12), end);
   const offenses = months.map((k) => num(off[k]));
   const reported = offenses.filter((v): v is number => v !== null);
   let li = -1;
