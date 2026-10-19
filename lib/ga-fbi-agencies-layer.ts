@@ -1,6 +1,7 @@
-import { Popup } from 'maplibre-gl';
+import { Marker, Popup } from 'maplibre-gl';
 import type { ExpressionSpecification, GeoJSONSource, Map as MapLibreMap, MapLayerMouseEvent } from 'maplibre-gl';
-import { AGENCY_TYPES, agencyTypeColor, CDE_WEBAPP, OFFENSES, POLICE_FLASH_MS, POLICE_OFF, policeLightBar, policeStrobeColor, type Agency, type AgencyCategory, type OffenseSeries } from './fbi-agencies/parse';
+import { AGENCY_TYPES, agencyTypeColor, CDE_WEBAPP, OFFENSES, type Agency, type AgencyCategory, type OffenseSeries } from './fbi-agencies/parse';
+import { ensureLightBarCss, LIGHTBAR_CLASS } from './fbi-agencies/lightbar';
 import { GROUP_COLORS, NIBRS_OFFENSES, type CrimeAgainst, type NibrsRow } from './fbi-agencies/nibrs';
 import { STROBE_MS } from './ga-live-markers/strobe';
 import { reportGaFeed } from './ga-live-status';
@@ -11,7 +12,6 @@ const DOT = `${SRC}-dot`;
 const HALO = `${SRC}-halo`;
 const LABEL = `${SRC}-label`;
 const REFRESH_MS = 60 * 60_000;
-const BLINK_MS = POLICE_FLASH_MS;
 const FEED = { id: 'fbi-agencies', label: 'FBI CDE reporting agencies, Georgia', color: '#ff2bd6', sourceUrl: 'https://cde.ucr.cjis.gov/LATEST/agency/byStateAbbr/GA' };
 const EMPTY: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] };
 
@@ -57,7 +57,7 @@ interface NibrsPayload {
   error?: string;
 }
 
-function nibrsSection(box: HTMLElement, ori: string, popup: Popup, onNew: () => void): void {
+function nibrsSection(box: HTMLElement, ori: string, onNew: () => void): void {
   const wrap = document.createElement('div');
   wrap.style.cssText = 'margin-top:6px;border-top:1px solid #cbd5e1;padding-top:4px';
   const btn = document.createElement('button');
@@ -96,7 +96,10 @@ function nibrsSection(box: HTMLElement, ori: string, popup: Popup, onNew: () => 
           row.title = [c.topLocation ? `top location: ${c.topLocation}` : '', c.topWeapon ? `top weapon/force: ${c.topWeapon}` : '', `SHA-256 ${sha.get(c.code) ?? 'n/a'}`].filter(Boolean).join('\n');
           const dot = document.createElement('span');
           dot.style.cssText = `width:7px;height:7px;border-radius:50%;flex:none;background:${c.color};box-shadow:0 0 4px ${c.color}`;
-          if (c.newInLatestFbiMonth) flashDots.push(dot);
+          if (c.newInLatestFbiMonth) {
+            dot.classList.add(LIGHTBAR_CLASS);
+            flashDots.push(dot);
+          }
           const name = document.createElement('span');
           name.textContent = `${c.code} ${c.label}`;
           const v = document.createElement('span');
@@ -107,17 +110,7 @@ function nibrsSection(box: HTMLElement, ori: string, popup: Popup, onNew: () => 
         }
         const foot = document.createElement('div');
         foot.style.cssText = 'margin-top:4px;color:#475569';
-        if (flashDots.length) {
-          const t = setInterval(() => {
-            const col = policeStrobeColor(Date.now());
-            flashDots.forEach((el) => {
-              el.style.background = col;
-              el.style.boxShadow = `0 0 7px ${col}`;
-            });
-          }, BLINK_MS);
-          popup.once('close', () => clearInterval(t));
-          onNew();
-        }
+        if (flashDots.length) onNew();
         foot.textContent = `${flashDots.length ? `red/blue light-bar = victims or offenders reported in ${d.window?.latest} (FBI's newest month) · ` : ''}Source grade A: FBI CDE NIBRS · FBI data through ${d.fbiDataThrough ?? '—'} · retrieved ${d.retrievedAt ? new Date(d.retrievedAt).toLocaleString() : '—'} · counts are victims and offenders, not incidents; tap-and-hold a row for top location and SHA-256.`;
         wrap.append(foot);
       } catch (err) {
@@ -129,6 +122,7 @@ function nibrsSection(box: HTMLElement, ori: string, popup: Popup, onNew: () => 
 }
 
 interface State {
+  markers: Map<string, Marker>;
   agencies: Agency[];
   firstSeen: Map<string, number>;
   loaded: boolean;
@@ -144,7 +138,6 @@ const bound = new WeakSet<MapLibreMap>();
 
 const typeColor: ExpressionSpecification = ['match', ['get', 'type'], ...AGENCY_TYPES.flatMap((t) => [t.type, t.color]), '#f8fafc'] as unknown as ExpressionSpecification;
 
-const strobing = (s: State, now: number) => [...s.firstSeen.values()].some((t) => t > 0 && now - t < STROBE_MS);
 
 function features(s: State, now: number): GeoJSON.FeatureCollection {
   return {
@@ -200,19 +193,31 @@ function ensureLayers(map: MapLibreMap): void {
   }
 }
 
-function blink(map: MapLibreMap, s: State): void {
-  if (!map.getLayer(DOT)) return;
+/** One CSS-animated light-bar marker per strobing agency, so flashing never forces a WebGL redraw. */
+function syncMarkers(map: MapLibreMap, s: State): void {
   const now = Date.now();
-  const l = policeLightBar(now);
-  map.setPaintProperty(DOT, 'circle-color', strobing(s, now) ? ['case', ['get', 'strobe'], l.on ? l.color : POLICE_OFF, typeColor] : typeColor);
-  if (map.getLayer(HALO)) {
-    map.setPaintProperty(HALO, 'circle-color', l.color);
-    map.setPaintProperty(HALO, 'circle-opacity', l.on ? 0.6 : 0.05);
+  const live = new Set<string>();
+  for (const a of s.agencies) {
+    const t = s.firstSeen.get(a.ori) ?? 0;
+    if (a.lat === null || a.lon === null || !(t > 0 && now - t < STROBE_MS)) continue;
+    live.add(a.ori);
+    if (s.markers.has(a.ori)) continue;
+    const el = document.createElement('div');
+    el.className = LIGHTBAR_CLASS;
+    el.title = `${a.name} · new FBI data`;
+    el.style.cssText = 'width:12px;height:12px;border-radius:50%;border:1.5px solid #ffffff;pointer-events:none';
+    s.markers.set(a.ori, new Marker({ element: el }).setLngLat([a.lon, a.lat]).addTo(map));
+  }
+  for (const [ori, m] of s.markers) {
+    if (live.has(ori)) continue;
+    m.remove();
+    s.markers.delete(ori);
   }
 }
 
 function setData(map: MapLibreMap, s: State): void {
   (map.getSource(SRC) as GeoJSONSource | undefined)?.setData(features(s, Date.now()));
+  syncMarkers(map, s);
 }
 
 const row = (box: HTMLElement, k: string, v: string) => {
@@ -232,7 +237,10 @@ function offenceRows(box: HTMLElement, d: AgencyPayload, popup: Popup): boolean 
     r.style.cssText = 'display:flex;gap:5px;align-items:center;margin-top:2px';
     const dot = document.createElement('span');
     dot.style.cssText = `width:8px;height:8px;border-radius:50%;flex:none;background:${sr.color};box-shadow:0 0 5px ${sr.color}`;
-    if (sr.newInLatestFbiMonth) strobeDots.push(dot);
+    if (sr.newInLatestFbiMonth) {
+      dot.classList.add(LIGHTBAR_CLASS);
+      strobeDots.push(dot);
+    }
     const name = document.createElement('span');
     name.textContent = `FBI CDE · ${sr.label}`;
     name.style.fontWeight = '700';
@@ -242,14 +250,6 @@ function offenceRows(box: HTMLElement, d: AgencyPayload, popup: Popup): boolean 
     r.title = `SHA-256 ${shaByOffense.get(sr.offense) ?? 'n/a'}`;
     r.append(dot, name, v);
     box.append(r);
-  }
-  if (strobeDots.length) {
-    const t = setInterval(() => strobeDots.forEach((el) => {
-      const c = policeStrobeColor(Date.now());
-      el.style.background = c;
-      el.style.boxShadow = `0 0 7px ${c}`;
-    }), BLINK_MS);
-    popup.once('close', () => clearInterval(t));
   }
   const failed = (d.sources ?? []).filter((x) => x.error);
   const foot = document.createElement('div');
@@ -269,7 +269,8 @@ export function addGaFbiAgencyLayers(map: MapLibreMap): void {
   ensureLayers(map);
   if (bound.has(map)) return;
   bound.add(map);
-  const s: State = { agencies: [], firstSeen: new Map(), loaded: false };
+  ensureLightBarCss();
+  const s: State = { agencies: [], firstSeen: new Map(), loaded: false, markers: new Map() };
   let release: string | null = null;
   let releaseStrobeUntil = 0;
   if (typeof window !== 'undefined') {
@@ -317,21 +318,14 @@ export function addGaFbiAgencyLayers(map: MapLibreMap): void {
   };
   void refresh();
   const refreshTimer = setInterval(() => void refresh(), REFRESH_MS);
-  const blinkTimer = setInterval(() => {
-    const now = Date.now();
-    if (strobing(s, now)) blink(map, s);
-  }, BLINK_MS);
-  const expireTimer = setInterval(() => {
-    setData(map, s);
-    blink(map, s);
-  }, 60_000);
+  const expireTimer = setInterval(() => setData(map, s), 60_000);
   map.on('style.load', () => {
     ensureLayers(map);
     setData(map, s);
   });
   map.once('remove', () => {
     clearInterval(refreshTimer);
-    clearInterval(blinkTimer);
+    s.markers.forEach((m) => m.remove());
     clearInterval(expireTimer);
     bound.delete(map);
   });
@@ -371,7 +365,7 @@ export function addGaFbiAgencyLayers(map: MapLibreMap): void {
         status.style.color = '#b91c1c';
       }
       if (String(p.nibrs) === 'true')
-        nibrsSection(box, ori, popup, () => {
+        nibrsSection(box, ori, () => {
           s.firstSeen.set(ori, Date.now());
           setData(map, s);
         });

@@ -1,6 +1,7 @@
 import type { IControl, Map as MapLibreMap } from 'maplibre-gl';
 import { BEACON_CATEGORIES } from './ga-beacon-categories';
-import { INTEGRITY_COLORS, integrityState, POLICE_FLASH_MS, policeStrobeColor, type IntegrityState } from './fbi-agencies/parse';
+import { INTEGRITY_COLORS, integrityState, type IntegrityState } from './fbi-agencies/parse';
+import { ensureLightBarCss, LIGHTBAR_CLASS } from './fbi-agencies/lightbar';
 
 export interface GaFeedStatus {
   id: string;
@@ -48,8 +49,7 @@ class GaLiveLegend implements IControl {
   private timer: ReturnType<typeof setInterval> | null = null;
   private map: MapLibreMap | null = null;
   private beaconsOpen = false;
-  private flash: HTMLElement[] = [];
-  private flashTimer: ReturnType<typeof setInterval> | null = null;
+
 
   onAdd(map: MapLibreMap): HTMLElement {
     this.map = map;
@@ -66,20 +66,12 @@ class GaLiveLegend implements IControl {
     this.el = el;
     this.render();
     this.timer = setInterval(() => this.render(), 30_000);
-    this.flashTimer = setInterval(() => {
-      if (!this.flash.length) return;
-      const c = policeStrobeColor(Date.now());
-      for (const d of this.flash) {
-        d.style.background = c;
-        d.style.boxShadow = `0 0 8px ${c}`;
-      }
-    }, POLICE_FLASH_MS);
+    ensureLightBarCss();
     return el;
   }
 
   onRemove(): void {
     if (this.timer) clearInterval(this.timer);
-    if (this.flashTimer) clearInterval(this.flashTimer);
     this.el?.remove();
     this.el = null;
   }
@@ -88,7 +80,6 @@ class GaLiveLegend implements IControl {
     if (!this.body || !this.map) return;
     const list = [...(feeds.get(this.map)?.values() ?? [])].sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
     this.body.replaceChildren();
-    this.flash = [];
     for (const f of list) {
       const row = document.createElement('div');
       row.style.cssText = 'margin-top:5px;line-height:1.35';
@@ -96,7 +87,7 @@ class GaLiveLegend implements IControl {
       head.style.cssText = 'display:flex;gap:6px;align-items:center';
       const dot = document.createElement('span');
       dot.style.cssText = `width:8px;height:8px;border-radius:50%;flex:none;background:${f.color}`;
-      if ((f.strobeUntil ?? 0) > Date.now()) this.flash.push(dot);
+      if ((f.strobeUntil ?? 0) > Date.now()) dot.classList.add(LIGHTBAR_CLASS);
       const name = document.createElement('a');
       name.href = f.sourceUrl;
       name.target = '_blank';
