@@ -7,6 +7,7 @@ import { hexToRgba } from './ga-point-colors';
 import type { GaIconShape } from './ga-marker-icons';
 import type { GaModelKind } from './ga-mesh-models';
 import { box } from './ga-orbital-layer';
+import { setGaBuildingFlags } from './ga-building-flags';
 import type { LiveLayer, LiveMarker, LiveValue } from './ga-live-markers/parse';
 import type { CameraState } from './ga-live-markers/snapshot';
 import { hasActiveStrobe, STROBE_MS, strobeKey, strobeSince } from './ga-live-markers/strobe';
@@ -236,7 +237,7 @@ const SPECS: Record<LiveLayer, Spec> = {
     detail: () => 'mapped locations · not siren activations',
   },
   towers: {
-    label: 'Communication towers (OSM)', color: '#f87171', stroke: '#7f1d1d', radiusPx: 2.5, z: 15, refreshMs: OSM_REFRESH_MS,
+    label: 'Communication towers (OSM)', color: '#ff4fd8', stroke: '#0b0e14', radiusPx: 2.5, z: 15, refreshMs: OSM_REFRESH_MS,
     iconPx: 12, icon: () => ({ shape: 'tower' }),
     title: (m) => `COMM TOWER · ${m.label}`, rows: osmRows,
     detail: (ms) => `${ms.filter((m) => m.props.operator).length} with operator tagged · mapped locations`,
@@ -565,6 +566,10 @@ export function addGaLiveMarkerLayers(map: MapLibreMap): void {
       };
     });
     setGaDeckGroup(map, layer, { z: spec.z, labelMinZoom: spec.labelMinZoom, items, onClick: popupFor(layer, layer === 'gdotcams' ? camerasChanged : undefined) });
+    if (layer === 'police' || layer === 'firestations') setGaBuildingFlags(map, [
+        ...(current.police ?? []).map((x) => ({ coord: [x.lon, x.lat] as [number, number], roofM: 7.3 })),
+        ...(current.firestations ?? []).map((x) => ({ coord: [x.lon, x.lat] as [number, number], roofM: 14 })),
+      ]);
   };
 
   const reports: Partial<Record<LiveLayer, () => void>> = {};
