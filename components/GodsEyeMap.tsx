@@ -12,6 +12,7 @@ import MapDebugOverlay from './MapDebugOverlay';
 import MapMenuOverlay from './MapMenuOverlay';
 import { GaWall3DLayer, GA_WALL_3D_MIN_ZOOM } from '../lib/ga-wall-3d';
 import { addGaPatrolLayers } from '../lib/ga-patrol-3d';
+import { addUsBorderRunnerLayers } from '../lib/us-border-runners-3d';
 import { addGaLidarLayers } from '../lib/ga-lidar-layer';
 import { addGaRoadOverlay } from '../lib/ga-roads-overlay';
 import { addGaCompetitorLayers } from '../lib/ga-competitors';
@@ -865,6 +866,7 @@ export default function GodsEyeMap({
     addGaFbiFeeds(map);
     addGaFbiAgencyLayers(map);
     addGaPatrolLayers(map);
+    addUsBorderRunnerLayers(map);
     addGaCompetitorLayers(map);
     addDisneyLiveBoard(map);
 
