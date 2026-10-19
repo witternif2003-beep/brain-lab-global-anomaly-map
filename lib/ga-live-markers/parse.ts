@@ -1,7 +1,7 @@
 export const GA_BBOX = { west: -85.7, south: 30.3, east: -80.8, north: 35.1 };
 
 export type OsmInfraKind = "signals" | "towers" | "police" | "firestations" | "sirens" | "speedcams" | "alpr";
-export type LiveLayer = "aircraft" | "transit" | "micromobility" | "stations" | "streamgauges" | "quakes" | "tfr" | "augusta911" | "athens911" | "gdotcams" | "pireps" | "equipment" | "policereports" | "policetech" | OsmInfraKind;
+export type LiveLayer = "aircraft" | "transit" | "micromobility" | "stations" | "streamgauges" | "quakes" | "tfr" | "augusta911" | "athens911" | "gdotcams" | "pireps" | "equipment" | "policereports" | "policetech" | "webcams" | OsmInfraKind;
 export type LiveValue = string | number | boolean | null;
 
 export interface LiveMarker {
@@ -776,6 +776,32 @@ export function atlasMarkers(json: { retrievedAt?: string; agencies?: AtlasAgenc
         sourceLink: a.tech.find((t) => t.link)?.link ?? null,
         placedBy: a.placedBy,
         osm: a.osm,
+      });
+    })
+    .filter(keep);
+}
+
+export interface CoastalWebcamRow {
+  attributes?: { Name?: string | null; Latitude?: number | null; Longitude?: number | null; Video_Link?: string | null };
+}
+
+/** Players that publish their own embeddable live video: an iframe page, or a plain HLS playlist. */
+const WEBCAM_PLAYERS: [RegExp, "iframe" | "hls"][] = [
+  [/^https:\/\/live\d*\.brownrice\.com\/embed\/[\w-]+\/?$/, "iframe"],
+  [/^https:\/\/manage\.hdrelay\.com\/webPlayer\/iframe\/[\w-]+$/, "iframe"],
+  [/^https:\/\/[\w-]+\.streamlock\.net\/[\w./-]+\.m3u8$/, "hls"],
+];
+
+/** Public live webcams from GEMA's "Coastal GA WebCams" ArcGIS layer; only https players from known embeddable hosts get a `player`. */
+export function parseCoastalWebcams(json: { features?: CoastalWebcamRow[] } | null | undefined): LiveMarker[] {
+  return (json?.features ?? [])
+    .map(({ attributes: a = {} }) => {
+      const url = a.Video_Link?.trim() ?? "";
+      const player = WEBCAM_PLAYERS.find(([re]) => re.test(url))?.[1] ?? null;
+      return marker(num(a.Longitude), num(a.Latitude), null, a.Name?.trim() || "Webcam", {
+        videoUrl: player ? url : null,
+        player,
+        host: player ? new URL(url).hostname : null,
       });
     })
     .filter(keep);

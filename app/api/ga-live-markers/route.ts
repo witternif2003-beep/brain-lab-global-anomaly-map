@@ -15,6 +15,7 @@ import {
   parseAugusta911Feed,
   parseApdCrime,
   parseAwcPireps,
+  parseCoastalWebcams,
   parseDoravilleIncidents,
   parseGbfsFreeBikes,
   parseIemCurrents,
@@ -332,7 +333,15 @@ async function gdotCamerasMirror(): Promise<LiveMarker[]> {
   return parse511Cameras(ga511CamerasFromViewRows({ features: rows }));
 }
 
+const COASTAL_WEBCAMS = "https://services1.arcgis.com/2iUE8l8JKrP2tygQ/arcgis/rest/services/Coastal_GA_WebCams/FeatureServer/0";
+
 const LAYERS: Record<LiveLayer, LayerSpec> = {
+  webcams: {
+    ttlS: 3600,
+    source: "Public live webcams listed in GEMA's “Coastal GA WebCams” ArcGIS layer; video plays from each camera owner's own player (Brownrice, HDRelay, Wowza streamlock)",
+    sourceUrl: COASTAL_WEBCAMS,
+    feeds: [{ id: "Coastal GA WebCams (GEMA)", url: `${COASTAL_WEBCAMS}/query?where=1%3D1&outFields=Name,Latitude,Longitude,Video_Link&returnGeometry=false&f=json`, load: json(parseCoastalWebcams) }],
+  },
   gdotcams: {
     ttlS: 3600,
     source: "Georgia DOT traffic cameras from the 511GA developer API; each picture is served by 511ga.org and checked by /api/ga-camera against 511GA's “no live feed” placeholders, and each camera is colored verified-live or no-picture (live video needs a 511GA login and is not shown)",

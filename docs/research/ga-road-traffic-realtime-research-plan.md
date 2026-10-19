@@ -51,6 +51,15 @@ Retrieved 2026-10-19 (UTC). Scope: roads inside the Georgia wall. Data rule: mea
 - **Freshness**: a station whose latest bin is > 45 min old is drawn at 45% opacity and labelled STALE; the live-feeds legend
   shows the feed's data age, Verified/Stale/Error badge and per-level counts.
 
+## 4a. Car-level animation at 1,000 ft and below (code: lib/ga-traffic-counts/cars.ts)
+
+- **Gate:** cars draw only when the camera is at or below 1,000 ft (304.8 m) above the map centre: camera-to-centre distance × cos(pitch), from the vertical field of view, viewport height and Web Mercator scale. Measured on a 390×844 viewport: zoom 17.2 = 483 m (off), zoom 18.7 = 171 m (on), zoom 19.2 pitch 55° = 69 m (on).
+- **Pinned to mapped roads:** for each measured direction the layer takes the OpenFreeMap road lines rendered around the station. It keeps the road class nearest the station, so a motorway station never borrows a side street. It picks the line within 80 m whose direction is within 60° of GDOT's lane bearing; one-way carriageways are used only with traffic (OpenMapTiles `oneway` 1 / −1). Then it draws ±300 m of that line.
+- **Spacing = measured density:** metres between vehicles = mph × 1609.34 ÷ veh/h for that direction, across all lanes. Below 9 m (icon length + gap) the spacing is held at 9 m and one icon stands for more than one vehicle (exposed as `vehiclesPerIcon`).
+- **Speed = measured average mph** for that direction; cars stand still when no speed was measured. With `prefers-reduced-motion` they are drawn once and not animated.
+- **Not individual vehicles:** GDOT TADA publishes 15-minute counts and average speeds per station and direction, not vehicle positions. The cars are an encoding of those aggregates, on roads that have a station only. Lane positions, gaps between cars and vehicle types are not measured.
+- **Limitation:** GDOT's lane bearings are coarse at some stations (e.g. 0°/180° on a stretch of I-85 that runs about 35°). The 60° tolerance still matches the right carriageway, but a station whose bearing is off by more than 60° gets no cars.
+
 ## 5. Performance budget
 
 - One API call per 5 min; the server caches the snapshot 3 min and the 22 MB station list 24 h (one ~4 s fetch per cold start).

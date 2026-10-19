@@ -19,6 +19,7 @@ export const BEACON_CATEGORIES: BeaconCategory[] = [
   { domain: 'Location & tracking', name: 'LoJack police tracking computers', feeds: [], note: NOT_PUBLIC },
   { domain: 'Location & tracking', name: 'Covert RFID / IR trackers', feeds: [], note: 'NO PUBLIC SOURCE · covert tracking' },
   { domain: 'Surveillance & detection', name: 'Traffic CCTV (GDOT 511GA)', feeds: ['gdotcams'], note: 'public DOT road cameras · all cameras shown · blue = verified live picture, gray = 511GA placeholder, amber = not checked yet · video needs 511GA login' },
+  { domain: 'Surveillance & detection', name: 'Public live webcams (video)', feeds: ['webcams'], note: "camera owners' own public players listed by GEMA · live video in the popup" },
   { domain: 'Surveillance & detection', name: 'Automated licence-plate readers (ALPR)', feeds: ['alpr'], note: 'fixed camera positions · no plate reads' },
   { domain: 'Surveillance & detection', name: 'Drone detection & Remote ID', feeds: ['tfr'], note: 'FAA UAS/flight restrictions · operator locations not shown' },
   { domain: 'Surveillance & detection', name: 'Radar & LIDAR speed enforcement', feeds: ['speedcams'], note: 'fixed speed cameras · handheld units not published' },

@@ -157,7 +157,7 @@ const SPECS: Record<LiveLayer, Spec> = {
       ['Camera', fmt(p.camera)],
       ['Roadway', `${fmt(p.roadway)}${p.direction ? ` · ${p.direction}` : ''}`],
       ['Image', p.imageUrl ? 'live picture from 511ga.org, checked and refreshed every 60 s while open' : 'no enabled view published by GDOT'],
-      ['Video', 'GDOT video streams need a 511GA login, so only the live picture is shown'],
+      ['Video', "GDOT video plays only on 511ga.org (its streams need 511GA's own short-lived access tokens), so this shows the live picture 511GA itself refreshes every 60 s"],
     ],
     detail: (ms) => {
       const n = (s: CameraState) => ms.filter((m) => cameraState(m) === s).length;
@@ -244,13 +244,13 @@ const SPECS: Record<LiveLayer, Spec> = {
   speedcams: {
     label: 'Speed cameras (OSM)', color: '#3b82f6', stroke: '#ef4444', radiusPx: 3, z: 23, refreshMs: OSM_REFRESH_MS,
     iconPx: 14, labelMinZoom: 12, icon: () => ({ shape: 'camera' }), tag: osmTag,
-    title: (m) => `SPEED CAMERA · ${m.label}`, rows: osmRows,
+    title: (m) => `SPEED CAMERA · ${m.label}`, rows: (p) => [...osmRows(p), ['Video', 'none published · OpenStreetMap location record only']],
     detail: () => 'fixed camera locations · no speed readings',
   },
   alpr: {
     label: 'Plate-reader camera locations (OSM)', color: '#dc2626', stroke: '#1e40af', radiusPx: 3, z: 22, refreshMs: OSM_REFRESH_MS,
     iconPx: 13, icon: () => ({ shape: 'camera' }),
-    title: () => 'PLATE-READER CAMERA (location only)', rows: osmRows,
+    title: () => 'PLATE-READER CAMERA (location only)', rows: (p) => [...osmRows(p), ['Video', 'none published · OpenStreetMap location record only']],
     detail: (ms) => `${ms.filter((m) => m.props.operator).length} with operator tagged · fixed positions only, no plate reads`,
   },
   signals: {
@@ -258,6 +258,18 @@ const SPECS: Record<LiveLayer, Spec> = {
     iconPx: 9, icon: () => ({ shape: 'signal' }),
     title: () => 'TRAFFIC SIGNAL', rows: osmRows,
     detail: () => 'signal-preemption points · locations only, no signal state',
+  },
+  webcams: {
+    label: 'Live webcams with public video (GEMA coastal list)', color: '#22d3ee', stroke: '#ff2bd6', radiusPx: 5, z: 35, refreshMs: 60 * 60_000,
+    iconPx: 20, labelMinZoom: 9, dateOnly: true,
+    icon: () => ({ shape: 'camera' }),
+    tag: (m) => m.label,
+    title: (m) => `LIVE WEBCAM · ${m.label}`,
+    rows: (p) => [
+      ['Video', p.player ? `live video from the owner's player (${fmt(p.host)})` : 'no embeddable player published'],
+      ['Listed by', 'Georgia Emergency Management (GEMA) ArcGIS layer'],
+    ],
+    detail: (ms) => `${ms.filter((m) => m.props.player).length} with an embeddable live video player · camera owners' own streams`,
   },
   aircraft: {
     label: 'Aircraft (ADS-B)', color: '#e0f2fe', stroke: '#0369a1', radiusPx: 4.5, z: 33, refreshMs: 10_000,
@@ -378,6 +390,7 @@ function sourceLink(layer: LiveLayer, m: LiveMarker): { href: string; text: stri
   if (layer === 'pireps') return { href: 'https://aviationweather.gov/gfa/#pirep', text: 'NOAA AWC PIREP map ↗' };
   if (layer === 'quakes' && m.props.url) return { href: String(m.props.url), text: 'USGS event page ↗' };
   if (layer === 'gdotcams') return { href: 'https://511ga.org/cctv', text: '511GA cameras ↗' };
+  if (layer === 'webcams') return m.props.videoUrl ? { href: String(m.props.videoUrl), text: "Open the owner's live player ↗" } : { href: 'https://services1.arcgis.com/2iUE8l8JKrP2tygQ/arcgis/rest/services/Coastal_GA_WebCams/FeatureServer/0', text: 'GEMA webcam layer ↗' };
   if (layer === 'augusta911') return m.props.postUrl ? { href: String(m.props.postUrl), text: 'Augusta E911 post ↗' } : { href: 'https://www.augustaga.gov/66/E911-Emergency-Services', text: 'Augusta E911 ↗' };
   if (layer === 'athens911') return { href: 'https://services2.arcgis.com/xSEULKvB31odt3XQ/arcgis/rest/services/Incidents_accpd_Public/FeatureServer/0', text: 'ACCPD public ArcGIS layer ↗' };
   if (layer === 'aircraft') return { href: `https://adsb.lol/?lat=${m.lat}&lon=${m.lon}&zoom=11`, text: 'Open area in adsb.lol ↗' };
@@ -412,13 +425,64 @@ async function checkCamera(url: string): Promise<{ state: CameraState; blob: Blo
   return { state, blob };
 }
 
+const PLAYER_CSS = 'display:block;width:100%;aspect-ratio:16/9;border:0;background:#000;margin:4px 0';
+
+/** Embeds a camera owner's live player above the popup rows; returns a cleanup that stops the stream. */
+function webcamPlayer(el: HTMLElement, url: string, kind: 'iframe' | 'hls', label: string): () => void {
+  const stamp = document.createElement('div');
+  stamp.style.cssText = 'font:10px ui-monospace,monospace;color:#475569';
+  let stop = () => {};
+  if (kind === 'iframe') {
+    const frame = document.createElement('iframe');
+    frame.src = url;
+    frame.title = `Live webcam ${label}`;
+    frame.allow = 'autoplay; fullscreen; picture-in-picture';
+    frame.allowFullscreen = true;
+    frame.referrerPolicy = 'no-referrer-when-downgrade';
+    frame.style.cssText = PLAYER_CSS;
+    stamp.textContent = "LIVE VIDEO · owner's player; if it shows an offline notice, the owner has paused the camera";
+    el.insertBefore(frame, el.children[1] ?? null);
+    stop = () => frame.remove();
+  } else {
+    const video = document.createElement('video');
+    video.muted = true;
+    video.autoplay = true;
+    video.playsInline = true;
+    video.controls = true;
+    video.style.cssText = PLAYER_CSS;
+    stamp.textContent = 'connecting to live stream…';
+    let hls: { destroy: () => void } | null = null;
+    let open = true;
+    video.addEventListener('playing', () => { stamp.textContent = `LIVE VIDEO · ${video.videoWidth}×${video.videoHeight} · playing since ${new Date().toLocaleTimeString()}`; stamp.style.color = '#15803d'; });
+    video.addEventListener('error', () => { stamp.textContent = 'stream unavailable right now'; stamp.style.color = '#b91c1c'; });
+    if (video.canPlayType('application/vnd.apple.mpegurl')) video.src = url;
+    else void import('hls.js').then(({ default: Hls }) => {
+      if (!open) return;
+      if (!Hls.isSupported()) { stamp.textContent = 'this browser cannot play HLS video; use the link below'; return; }
+      const h = new Hls({ maxBufferLength: 10, startLevel: -1 });
+      h.on(Hls.Events.ERROR, (_e, d) => { if (d.fatal) { stamp.textContent = `stream unavailable right now (${d.details})`; stamp.style.color = '#b91c1c'; } });
+      h.loadSource(url);
+      h.attachMedia(video);
+      hls = h;
+    });
+    el.insertBefore(video, el.children[1] ?? null);
+    stop = () => { open = false; hls?.destroy(); video.removeAttribute('src'); video.load(); };
+  }
+  el.insertBefore(stamp, el.children[2] ?? null);
+  return stop;
+}
+
 function popupFor(layer: LiveLayer, onCameraChecked?: () => void) {
   return (map: MapLibreMap, lngLat: LngLat, props: Record<string, unknown>) => {
     const m = props.marker as LiveMarker;
     const link = sourceLink(layer, m);
     const rows = SPECS[layer].dateOnly ? SPECS[layer].rows(m.props) : [...SPECS[layer].rows(m.props), ['Reported', m.observedAt ? new Date(m.observedAt).toLocaleString() : ''] as [string, string]];
     const el = box(SPECS[layer].title(m), rows, link.href, link.text);
-    const popup = new Popup({ closeButton: true, maxWidth: layer === 'gdotcams' ? 'min(480px, 94vw)' : 'min(300px, 90vw)' }).setLngLat(lngLat);
+    const popup = new Popup({ closeButton: true, maxWidth: layer === 'gdotcams' || layer === 'webcams' ? 'min(480px, 94vw)' : 'min(300px, 90vw)' }).setLngLat(lngLat);
+    if (layer === 'webcams' && typeof m.props.videoUrl === 'string') {
+      const stop = webcamPlayer(el, m.props.videoUrl, m.props.player === 'hls' ? 'hls' : 'iframe', m.label);
+      popup.on('close', stop);
+    }
     if (layer === 'gdotcams' && typeof m.props.imageUrl === 'string') {
       const src = m.props.imageUrl;
       const img = document.createElement('img');

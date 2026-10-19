@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { ga511CamerasFromViewRows, parse511Cameras } from "../../lib/ga-live-markers/parse";
+import { ga511CamerasFromViewRows, parse511Cameras, parseCoastalWebcams } from "../../lib/ga-live-markers/parse";
 
 const cam = (over: Record<string, unknown> = {}) => ({
   Id: 186,
@@ -58,4 +58,17 @@ test("ga511CamerasFromViewRows regroups the flattened ArcGIS view rows by camera
   const [m] = parse511Cameras(cams);
   assert.equal(m.props.imageUrl, "https://511ga.org/map/Cctv/18560");
   assert.equal(m.props.views, 2);
+});
+
+test("parseCoastalWebcams keeps embeddable players from known hosts only", () => {
+  const ms = parseCoastalWebcams({ features: [
+    { attributes: { Name: "Hotel Tybee Beach Cam", Latitude: 31.9939, Longitude: -80.8464, Video_Link: "https://live2.brownrice.com/embed/mousepad1" } },
+    { attributes: { Name: "Savannah River Street East", Latitude: 32.0818, Longitude: -81.0912, Video_Link: "https://5b5d5bdb0d55e.streamlock.net/live/camera_river-street-east.stream/playlist.m3u8" } },
+    { attributes: { Name: "Unknown", Latitude: 32, Longitude: -81.5, Video_Link: "http://example.com/cam" } },
+    { attributes: { Name: "Outside GA", Latitude: 40, Longitude: -81, Video_Link: "https://live2.brownrice.com/embed/x" } },
+  ] });
+  assert.equal(ms.length, 3);
+  assert.deepEqual(ms.map((m) => m.props.player), ["iframe", "hls", null]);
+  assert.equal(ms[0].props.host, "live2.brownrice.com");
+  assert.equal(ms[2].props.videoUrl, null);
 });
