@@ -37,6 +37,8 @@ import { SKY_PHOTO_SOURCE_URL, SkyPhotoRenderer, projectRaDec, skyBasis, skyBody
 import { AWS_TERRARIUM_TILES, OPENFREEMAP_PLANET } from '../lib/lidar-globe-sources';
 import { CreditsControl } from '../lib/map/credits-control';
 import { noteContextLost } from '../lib/map/crash-guard';
+import { installVramMeter } from '../lib/map/vram-meter';
+import { governDrapeMemory } from '../lib/map/terrain-rtt';
 
 const ALLY_STATE_CODES = ['AL', 'FL', 'NC', 'SC', 'TN', 'TX', 'VA'];
 const STARMAP_8K_MIN_DEVICE_PX = 1920;
@@ -1325,6 +1327,7 @@ export default function GodsEyeMap({
       probeContext?.getExtension('WEBGL_lose_context')?.loseContext();
     }
 
+    installVramMeter();
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: BASEMAPS.satellite as any,
@@ -1403,6 +1406,8 @@ export default function GodsEyeMap({
       console.error('[maplibre]', e?.error?.message ?? e);
     });
 
+    const stopDrapeGovernor = governDrapeMemory(map);
+    map.once('remove', stopDrapeGovernor);
     const gpu = { contextLost: 0, contextRestored: 0 };
     (window as unknown as { __gaGpu?: typeof gpu }).__gaGpu = gpu;
     map.on('webglcontextlost', () => {

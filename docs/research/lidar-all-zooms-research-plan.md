@@ -30,3 +30,11 @@ The "before" run used the live site and the "after" run a local production build
 3. Quantise positions to 16-bit per node (from 32-bit float), cutting GPU memory per point by about a third.
 4. Test on a real iPhone (Safari Web Inspector) at zoom 10, 12, 15 and 18 for 10 minutes each, recording context losses.
 5. Use a QL1 collection where USGS has one for the area.
+
+## GPU memory at max zoom (measured 2026-10-19)
+
+- `lib/map/vram-meter.ts` counts this page's WebGL allocations (buffers, textures, renderbuffers; freed on delete). Browsers expose no GPU-memory API, so it is an estimate of what the page asked for.
+- Before: on a 390×844 touch view, zoom 22 with 70° pitch held 1,263 MB. 1,195 MB of it was 224 MapLibre terrain drape textures (1024² RGBA, mipmapped), not LiDAR.
+- Fix (`lib/map/terrain-rtt.ts`): drape factor 2 → 1 (512² drapes) on touch devices always, and on desktops once measured memory reaches the target. After: 343 MB at zoom 22 / 70° (peak 355 MB), 241 MB at zoom 18 / 60°.
+- `lib/map/vram-budget.ts` gives LiDAR whatever fits in the target (touch 512 MB, desktop 2,048 MB; lower after a crash) after everything else, from 250,000 up to the 5,000,000 ceiling. These targets are this app's own limits: iOS does not publish a per-tab GPU memory limit (UNVERIFIED).
+- 5,000,000 points × 15 bytes = 75 MB. 500× that (37.5 GB) exceeds phone and most desktop GPU memory, so it is not offered.

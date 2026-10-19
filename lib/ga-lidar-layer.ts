@@ -31,6 +31,9 @@ import type { EptProject, Hierarchy, LidarNodeData } from './ga-lidar/ept';
 import { GpuPassTimer } from './ga-lidar/gpu-timer';
 import { isTouchDevice, lidarBudget } from './map/touch-gpu-budget';
 import { gpuSafeMode } from './map/crash-guard';
+import { drawingBufferBytes, LIDAR_MIN_POINTS, lidarPointBudget, vramTargetBytes } from './map/vram-budget';
+import { vramMeterInstalled, vramSnapshot } from './map/vram-meter';
+import { reportGaFeed } from './ga-live-status';
 import { raiseGaRoadOverlay } from './ga-roads-overlay';
 import { raiseGaTrafficCountLayers } from './ga-traffic-counts-layer';
 
@@ -64,6 +67,14 @@ export interface GaLidarStats {
   /** p95 GPU time of the LiDAR draw (ms); null when EXT_disjoint_timer_query_webgl2 is unavailable. */
   gpuMsP95: number | null;
   gpuTimer: 'unsupported' | 'active';
+  /** Measured GPU memory held by this page's WebGL allocations (MB), its peak, and the working target. */
+  vramMB: number | null;
+  vramPeakMB: number | null;
+  vramTargetMB: number;
+  /** Points the layer may hold after the GPU-memory budget (≤ the 5,000,000 ceiling). */
+  pointBudget: number;
+  /** True when loading stopped early because measured GPU memory reached the target. */
+  vramLimited: boolean;
 }
 
 const VERTEX = /* glsl */ `
@@ -155,7 +166,13 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     status: 'idle',
     gpuMsP95: null,
     gpuTimer: 'unsupported',
+    vramMB: null,
+    vramPeakMB: null,
+    vramTargetMB: 0,
+    pointBudget: 0,
+    vramLimited: false,
   };
+  private vramTimer: ReturnType<typeof setInterval> | null = null;
   private gpuTimer: GpuPassTimer | null = null;
   private readonly onMoveEnd = () => {
     if (this.timer) clearTimeout(this.timer);
@@ -179,6 +196,7 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     this.camera.matrixWorldAutoUpdate = false;
     map.on('moveend', this.onMoveEnd);
     map.on('idle', this.onIdle);
+    this.vramTimer = setInterval(() => this.reportVram(), VRAM_REPORT_MS);
     if (typeof window !== 'undefined') {
       (window as unknown as { __gaLidar?: GaLidarStats }).__gaLidar = this.stats;
     }
@@ -189,6 +207,7 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     map.off('moveend', this.onMoveEnd);
     map.off('idle', this.onIdle);
     if (this.timer) clearTimeout(this.timer);
+    if (this.vramTimer) clearInterval(this.vramTimer);
     this.generation++;
     for (const key of [...this.drawn.keys()]) this.dropNode(key);
     this.material.dispose();
@@ -260,7 +279,7 @@ export class GaLidar3DLayer implements CustomLayerInterface {
 
     const half = (VIEW_TILES * WORLD_3857) / 2 ** zoom;
     const targetDepth = Math.min(14, targetDepthFor(project, half) + EXTRA_DEPTH);
-    const view = { cx, cy, half, targetDepth, pointBudget: lidarBudget(isTouchDevice(), gpuSafeMode()).points };
+    const view = { cx, cy, half, targetDepth, pointBudget: this.pointBudget() };
     this.stats.targetDepth = targetDepth;
     this.setStatus('loading hierarchy');
 
@@ -289,6 +308,11 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     const worker = async () => {
       for (let next = queue.shift(); next; next = queue.shift()) {
         if (gen !== this.generation) return;
+        if (this.stats.pointsDrawn >= LIDAR_MIN_POINTS && this.overVramTarget()) {
+          this.stats.vramLimited = true;
+          queue.length = 0;
+          return;
+        }
         const key = next.key;
         this.inflight.add(key);
         this.setStatus('loading points');
@@ -307,6 +331,55 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     };
     await Promise.all(Array.from({ length: lidarBudget(isTouchDevice(), gpuSafeMode()).fetchParallel }, worker));
     if (gen === this.generation) this.setStatus('ready');
+  }
+
+  /** GPU bytes of the LiDAR points currently uploaded. */
+  private lidarBytes(): number {
+    let b = 0;
+    for (const n of this.drawn.values()) for (const a of Object.values(n.points.geometry.attributes)) b += (a.array as ArrayBufferView).byteLength;
+    return b;
+  }
+
+  /** Measured page GPU bytes plus the map's own drawing buffer (not visible to the allocation meter). */
+  private measuredVram(): number | null {
+    if (!vramMeterInstalled() || !this.map) return null;
+    const c = this.map.getCanvas();
+    return vramSnapshot().bytes + drawingBufferBytes(c.width, c.height, isTouchDevice() ? 1 : 4);
+  }
+
+  private vramTarget(): number {
+    return vramTargetBytes(isTouchDevice(), gpuSafeMode());
+  }
+
+  /** LiDAR point budget: the 5,000,000 ceiling, lowered to what fits in the GPU-memory target next to everything else on the map. */
+  private pointBudget(): number {
+    const ceiling = lidarBudget(isTouchDevice(), gpuSafeMode()).points;
+    const used = this.measuredVram();
+    const budget = used === null ? ceiling : lidarPointBudget({ ceiling, targetBytes: this.vramTarget(), otherBytes: used - this.lidarBytes() });
+    this.stats.pointBudget = budget;
+    this.stats.vramLimited = budget < ceiling;
+    return budget;
+  }
+
+  private overVramTarget(): boolean {
+    const used = this.measuredVram();
+    return used !== null && used >= this.vramTarget();
+  }
+
+  private reportVram(): void {
+    const map = this.map;
+    const used = this.measuredVram();
+    const MB = 1024 * 1024;
+    this.stats.vramTargetMB = Math.round(this.vramTarget() / MB);
+    if (!map || used === null) return;
+    this.stats.vramMB = Math.round(used / MB);
+    this.stats.vramPeakMB = Math.round(vramSnapshot().peakBytes / MB);
+    const lidarMB = Math.round(this.lidarBytes() / MB);
+    reportGaFeed(map, {
+      id: 'gpu-memory', label: 'GPU memory (measured)', color: this.stats.vramLimited ? '#f43f5e' : '#22d3ee', count: this.stats.vramMB,
+      detail: `${this.stats.vramMB} MB of ${this.stats.vramTargetMB} MB target · peak ${this.stats.vramPeakMB} MB · LiDAR ${lidarMB} MB, ${this.stats.pointsDrawn.toLocaleString()} of ${this.stats.pointBudget.toLocaleString()} allowed points${this.stats.vramLimited ? ' · LiDAR capped to fit' : ''}${gpuSafeMode() ? ' · safe mode after a recent crash' : ''} · counted from WebGL allocations (estimate)`,
+      updatedAt: new Date().toISOString(), sourceUrl: '',
+    });
   }
 
   /** Real-world metres per EPSG:3857 metre at the layer origin. */
@@ -482,6 +555,7 @@ export class GaLidar3DLayer implements CustomLayerInterface {
 }
 
 const ATTRIBUTION_SOURCE = 'ga-lidar-attribution';
+const VRAM_REPORT_MS = 5_000;
 /** MapLibre cannot restore custom layers after WebGL context loss, so they are re-created on restore. */
 const restoreHooked = new WeakSet<MapLibreMap>();
 
