@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { hasActiveStrobe, STROBE_MS, strobeKey, strobeSince } from "../../lib/ga-live-markers/strobe";
+import { CRIME_STROBE_BLUE, CRIME_STROBE_RED, CRIME_TRIANGLE_LAYERS, crimeStrobePhase, hasActiveStrobe, STROBE_MS, strobeKey, strobeSince } from "../../lib/ga-live-markers/strobe";
+import { readFileSync } from "node:fs";
 import type { LiveMarker } from "../../lib/ga-live-markers/parse";
 
 const m = (label: string, lon: number, lat: number, observedAt: string | null, props: LiveMarker["props"] = {}): LiveMarker => ({ label, lon, lat, observedAt, props });
@@ -39,4 +40,21 @@ test("hasActiveStrobe reports whether any indicator is still inside the window",
   assert.equal(hasActiveStrobe(seen, NOW + 2_000), false);
   assert.equal(hasActiveStrobe(seen, NOW + 2_000, 60_000), true);
   assert.equal(hasActiveStrobe(undefined, NOW), false);
+});
+
+test("new crime triangles flash dark red four times, then blue four times, every 960 ms", () => {
+  assert.equal(CRIME_STROBE_RED, "#8b0000");
+  assert.equal(CRIME_STROBE_BLUE, "#1d4ed8");
+  assert.deepEqual([...CRIME_TRIANGLE_LAYERS].sort(), ["augusta911", "policereports"]);
+  const phases = Array.from({ length: 16 }, (_, i) => crimeStrobePhase(i * 60 + 1));
+  assert.deepEqual(phases, [1, 0, 1, 0, 1, 0, 1, 0, 2, 0, 2, 0, 2, 0, 2, 0]);
+  assert.equal(crimeStrobePhase(960 + 1), 1);
+});
+
+test("crime triangle markers carry the red/blue strobe fills and the overlay swaps glyph fill only while pulsing", () => {
+  const layer = readFileSync("lib/ga-live-markers-layer.ts", "utf8");
+  const deck = readFileSync("lib/ga-deck-overlay.ts", "utf8");
+  assert.match(layer, /strobeColors: CRIME_TRIANGLE_LAYERS\.has\(layer\) \? crimeStrobe : undefined/);
+  assert.match(deck, /item\.pulse && item\.strobeColors && state\.lightBar \? item\.strobeColors\[state\.lightBar - 1\] : item\.fill/);
+  assert.match(deck, /getIcon: \(item\) => gaIconKey\(item\.icon!, strobeFill\(state, item\), item\.stroke\)/);
 });

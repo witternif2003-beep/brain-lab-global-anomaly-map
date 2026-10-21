@@ -1,3 +1,4 @@
+import { policeLightBar } from "../fbi-agencies/parse";
 import type { LiveLayer, LiveMarker } from "./parse";
 
 export const STROBE_MS = 10 * 60_000;
@@ -32,3 +33,14 @@ export function strobeSince(layer: LiveLayer, ms: LiveMarker[], prev: Map<string
 
 export const hasActiveStrobe = (seen: Map<string, number> | undefined, now: number, slackMs = 0) =>
   !!seen && [...seen.values()].some((t) => now - t < STROBE_MS + slackMs);
+
+/** Layers drawn as red warning triangles for police-reported offences and E911 calls. */
+export const CRIME_TRIANGLE_LAYERS: ReadonlySet<LiveLayer> = new Set<LiveLayer>(["policereports", "augusta911"]);
+export const CRIME_STROBE_RED = "#8b0000";
+export const CRIME_STROBE_BLUE = "#1d4ed8";
+
+/** Police light-bar phase for a new crime triangle: 1 = dark red, 2 = blue, 0 = between flashes (triangle keeps its own colour). */
+export function crimeStrobePhase(now: number): 0 | 1 | 2 {
+  const l = policeLightBar(now);
+  return l.on ? (l.color === policeLightBar(0).color ? 1 : 2) : 0;
+}

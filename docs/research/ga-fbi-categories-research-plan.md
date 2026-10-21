@@ -41,3 +41,14 @@ Colours: agency types and offence categories use neon pink, Tiffany blue, cyan, 
 
 - Unit tests: `tests/fbi-agencies/parse.test.ts` (directory de-duplication and Georgia bounds, trailing-12-month series and newest-month flag, integrity states, strobe colours).
 - Live: `/api/fbi/agencies` totals must match the counts above within FBI directory changes; `/api/fbi/agency?ori=GA0880100` must return 10 series with a SHA-256 for each.
+
+## Crime-triangle police strobe (2026-10-21)
+
+Request: "all new crime triangles must flash in the police pattern dark red and blue".
+
+- Applies to the two layers drawn as warning triangles that report police matters: Atlanta PD / Doraville PD police-reported offences (`policereports`) and Augusta E911 calls (`augusta911`) (`lib/ga-live-markers/strobe.ts`, `CRIME_TRIANGLE_LAYERS`). NOAA pilot reports also use a triangle but are not crime and keep their normal pulse.
+- "New" is the existing rule: a record first seen within the last 10 minutes, or observed within 10 minutes on first load (`STROBE_MS`, `strobeSince`).
+- Pattern: the existing police quad-flash timing (`policeLightBar`, 60 ms on / 60 ms off, four dark-red #8b0000 flashes then four blue #1d4ed8 flashes, 960 ms cycle). The triangle glyph itself and its halo take the flash colour; between flashes the triangle keeps its own colour, so it never disappears.
+- Redraw tick is 50 ms, so on a busy device some 60 ms flashes may merge; nothing about the underlying record changes.
+- Not added: 30,000 new "FBI tracking" categories. The 33,988 real agency × offence series listed above remain the full set of FBI-published Georgia categories found; none are real-time tracking.
+- Tests: `tests/ga-live-markers/strobe.test.ts` (layer set, colours, 16-step phase sequence, glyph fill swap only while pulsing).

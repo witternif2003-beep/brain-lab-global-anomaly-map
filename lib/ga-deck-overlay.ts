@@ -9,6 +9,7 @@ import { GA_MODEL_REACH_M, gaMesh, type GaModelKind } from './ga-mesh-models';
 import { cappedPixelRatio, isTouchDevice, LIDAR_POINT_CEILING } from './map/touch-gpu-budget';
 import type { CloudPuff } from './ga-clouds/cloud-puffs';
 import { puffAtlas } from './ga-clouds/puff-texture';
+import { crimeStrobePhase } from './ga-live-markers/strobe';
 
 export type RGBA = [number, number, number, number];
 export interface GaDeckItem {
@@ -19,6 +20,8 @@ export interface GaDeckItem {
   strokePx: number;
   glow?: number;
   pulse?: boolean;
+  /** While `pulse` is set, the glyph and halo alternate between these two fills in the police light-bar pattern. */
+  strobeColors?: [RGBA, RGBA];
   /** Drawn as this glyph (sized `iconPx`) instead of a circle. */
   icon?: GaIconShape;
   iconPx?: number;
@@ -91,6 +94,7 @@ interface DeckState {
   lastPulse: number;
   pulseRadiusScale: number;
   pulseOpacity: number;
+  lightBar: 0 | 1 | 2;
   pointerFrame: number;
   pointer: Point | null;
   cursorSet: boolean;
@@ -113,7 +117,7 @@ interface DeckState {
 }
 
 const states = new WeakMap<MapLibreMap, DeckState>();
-type GroupViews = { glow: GaDeckItem[]; pulse: GaDeckItem[]; dots: GaDeckItem[]; icons: GaDeckItem[]; streetIcons: GaDeckItem[]; labels: GaDeckItem[]; models: Map<GaModelKind, GaDeckItem[]>; elevated: GaDeckItem[] };
+type GroupViews = { glow: GaDeckItem[]; pulse: GaDeckItem[]; lightBar: boolean; dots: GaDeckItem[]; icons: GaDeckItem[]; streetIcons: GaDeckItem[]; labels: GaDeckItem[]; models: Map<GaModelKind, GaDeckItem[]>; elevated: GaDeckItem[] };
 const viewsByGroup = new WeakMap<GaDeckGroup, GroupViews>();
 const DEPTH_PARAMETERS = { depthCompare: 'always', depthWriteEnabled: false, cullMode: 'none' } as const;
 const ADDITIVE_PARAMETERS = {
@@ -131,6 +135,9 @@ const SOURCE_URL = 'https://deck.gl/docs/developer-guide/webgpu';
 const HIT_BOX_PX = 24;
 /** Strobe period for new/alerting markers: on for half, off for half (~4 blinks per second). */
 const PULSE_BLINK_MS = 240;
+
+const strobeFill = (state: DeckState, item: GaDeckItem): RGBA =>
+  item.pulse && item.strobeColors && state.lightBar ? item.strobeColors[state.lightBar - 1] : item.fill;
 const MESH_PARAMETERS = { depthCompare: 'less-equal', depthWriteEnabled: true, cullMode: 'none' } as const;
 const EARTH_CIRCUMFERENCE_M = 40_075_016.686;
 /** Cloud sprites test depth against terrain but don't write it, so overlapping puffs blend instead of clipping. */
@@ -160,6 +167,7 @@ function getState(map: MapLibreMap): DeckState {
     lastPulse: 0,
     pulseRadiusScale: 1.2,
     pulseOpacity: 0.9,
+    lightBar: 0,
     pointerFrame: 0,
     pointer: null,
     cursorSet: false,
@@ -398,6 +406,7 @@ function groupViews(group: GaDeckGroup): GroupViews {
     views = {
       glow: group.items.filter((item) => (item.glow ?? 0) > 0),
       pulse: group.items.filter((item) => !!item.pulse),
+      lightBar: group.items.some((item) => !!item.pulse && !!item.strobeColors),
       dots: group.items.filter((item) => !item.icon),
       icons: group.items.filter((item) => !!item.icon),
       streetIcons: group.items.filter((item) => !!item.icon && (!item.model || !!item.model.elevM)),
@@ -573,10 +582,10 @@ function createLayers(state: DeckState): Layer[] {
         getPosition: (item) => anchored(state, item.coord),
         iconAtlas: state.atlas.url,
         iconMapping: state.atlas.mapping,
-        getIcon: (item) => gaIconKey(item.icon!, item.fill, item.stroke),
+        getIcon: (item) => gaIconKey(item.icon!, strobeFill(state, item), item.stroke),
         getSize: (item) => (item.iconPx ?? 12) * GA_MARKER_SCALE * GA_ICON_CELL_SCALE,
         getAngle: (item) => (item.angle === undefined ? 0 : state.bearing - item.angle),
-        updateTriggers: { getAngle: state.bearing, getPosition: state.groundVersion },
+        updateTriggers: { getAngle: state.bearing, getPosition: state.groundVersion, getIcon: views.lightBar ? state.lightBar : 0 },
         sizeUnits: 'pixels',
         billboard: true,
         alphaCutoff: 0.02,
@@ -632,9 +641,9 @@ function createLayers(state: DeckState): Layer[] {
         id: `ga-deck-${key}-pulse`,
         data: pulse,
         getPosition: (item: GaDeckItem) => anchored(state, item.coord),
-        updateTriggers: { getPosition: state.groundVersion },
+        updateTriggers: { getPosition: state.groundVersion, getFillColor: views.lightBar ? state.lightBar : 0 },
         getRadius: (item: GaDeckItem) => item.radiusPx * GA_MARKER_SCALE,
-        getFillColor: (item: GaDeckItem) => [item.fill[0], item.fill[1], item.fill[2], 120],
+        getFillColor: (item: GaDeckItem) => { const f = strobeFill(state, item); return [f[0], f[1], f[2], 120]; },
         getLineColor: (item: GaDeckItem) => item.stroke,
         getLineWidth: (item: GaDeckItem) => item.strokePx,
         radiusScale: gaGlowMultiplier(state.pulseRadiusScale),
@@ -680,6 +689,7 @@ function startPulse(map: MapLibreMap, state: DeckState): void {
     const on = now % PULSE_BLINK_MS < PULSE_BLINK_MS * 0.5;
     state.pulseRadiusScale = 1.9;
     state.pulseOpacity = on ? 0.95 : 0;
+    state.lightBar = crimeStrobePhase(now);
     if ([...state.groups.values()].some((group) => group.items.some((item) => item.pulse))) {
       updateLayers(state);
     }
@@ -936,7 +946,7 @@ export function setGaDeckClouds(map: MapLibreMap, puffs: CloudPuff[]): void {
 export function setGaDeckGroup(map: MapLibreMap, key: GroupKey, group: GaDeckGroup): void {
   const state = getState(map);
   state.groups.set(key, group);
-  state.atlas = gaIconAtlas(group.items);
+  state.atlas = gaIconAtlas(group.items.flatMap((item) => [item, ...(item.strobeColors ?? []).map((fill) => ({ icon: item.icon, fill, stroke: item.stroke }))]));
   if (group.labelMinZoom !== undefined) declutterLabels(state);
   publishState(map, state);
   if (state.overlay) updateLayers(state);

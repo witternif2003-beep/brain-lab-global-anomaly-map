@@ -2,7 +2,7 @@ import { Popup } from 'maplibre-gl';
 import type { Map as MapLibreMap } from 'maplibre-gl';
 import { insideRing, loadGaWallRing, offset, type LngLat } from './ga-patrol-3d';
 import { reportGaFeed } from './ga-live-status';
-import { setGaDeckGroup, type GaDeckItem } from './ga-deck-overlay';
+import { setGaDeckGroup, type GaDeckItem, type RGBA } from './ga-deck-overlay';
 import { hexToRgba } from './ga-point-colors';
 import type { GaIconShape } from './ga-marker-icons';
 import type { GaModelKind } from './ga-mesh-models';
@@ -10,7 +10,7 @@ import { box } from './ga-orbital-layer';
 import { setGaBuildingFlags } from './ga-building-flags';
 import type { LiveLayer, LiveMarker, LiveValue } from './ga-live-markers/parse';
 import type { CameraState } from './ga-live-markers/snapshot';
-import { hasActiveStrobe, STROBE_MS, strobeKey, strobeSince } from './ga-live-markers/strobe';
+import { CRIME_STROBE_BLUE, CRIME_STROBE_RED, CRIME_TRIANGLE_LAYERS, hasActiveStrobe, STROBE_MS, strobeKey, strobeSince } from './ga-live-markers/strobe';
 
 interface Payload {
   generatedAt?: string;
@@ -549,6 +549,7 @@ export function addGaLiveMarkerLayers(map: MapLibreMap): void {
     const fill = hexToRgba(spec.color, 235);
     const fillOf = spec.colorOf;
     const stroke = hexToRgba(spec.stroke);
+    const crimeStrobe: [RGBA, RGBA] = [hexToRgba(CRIME_STROBE_RED), hexToRgba(CRIME_STROBE_BLUE)];
     const items: GaDeckItem[] = ms.map((m) => {
       const cam = layer === 'gdotcams' ? cameraState(m) : 'live';
       return {
@@ -562,6 +563,7 @@ export function addGaLiveMarkerLayers(map: MapLibreMap): void {
       stroke,
       strokePx: layer === 'micromobility' ? 0.5 : 1,
       pulse: (layer === 'aircraft' && !!m.props.emergency) || (layer === 'tfr' && tfrState(m.props, now) === 'active') || now - (firstSeen[layer]?.get(strobeKey(layer, m)) ?? 0) < STROBE_MS,
+      strobeColors: CRIME_TRIANGLE_LAYERS.has(layer) ? crimeStrobe : undefined,
       props: { marker: m },
       };
     });
