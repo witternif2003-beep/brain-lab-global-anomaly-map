@@ -404,7 +404,7 @@ const LAYERS: Record<LiveLayer, LayerSpec> = {
   },
   transit: {
     ttlS: 20,
-    source: "Public bus positions (GTFS-realtime) from MARTA, Ride Gwinnett, CobbLinc, Athens-Clarke Transit, UGA Campus Transit, Connect Douglas, Georgia Tech Stinger, Kennesaw State, SCAD Atlanta, SCAD Savannah and Valdosta State shuttles; feeds listed in the Mobility Database or on Passio GO",
+    source: "Public bus positions (GTFS-realtime) from MARTA, Ride Gwinnett, CobbLinc, Athens-Clarke Transit, UGA Campus Transit, Connect Douglas, Georgia Tech Stinger, Kennesaw State, SCAD Atlanta, SCAD Savannah and Valdosta State shuttles, Xpress commuter coaches (ATL) and Columbus METRA; feeds listed in the Mobility Database, the Transitland Atlas or on Passio GO",
     sourceUrl: "https://mobilitydatabase.org/",
     feeds: [
       gtfsRt("MARTA", "https://gtfs-rt.itsmarta.com/TMGTFSRealTimeWebService/vehicle/vehiclepositions.pb"),
@@ -418,6 +418,8 @@ const LAYERS: Record<LiveLayer, LayerSpec> = {
       gtfsRt("SCAD Atlanta", "https://passio3.com/scadatlanta/passioTransit/gtfs/realtime/vehiclePositions"),
       gtfsRt("SCAD Savannah", "https://passio3.com/scadsavannah/passioTransit/gtfs/realtime/vehiclePositions"),
       gtfsRt("Valdosta State", "https://passio3.com/valdosta/passioTransit/gtfs/realtime/vehiclePositions"),
+      gtfsRt("Xpress", "https://myxpress2.xpressga.com/gtfsrt/vehicles"),
+      gtfsRt("Columbus METRA", "https://metracolumbus.com/gtfs-rt/vehiclepositions"),
     ],
   },
   micromobility: {
