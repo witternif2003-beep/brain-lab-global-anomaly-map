@@ -12,6 +12,7 @@ import {
   parse511Cameras,
   parseAccpdIncidents,
   parseAdsbLol,
+  parseAisStream,
   parseAugusta911Feed,
   parseApdCrime,
   parseAwcPireps,
@@ -28,6 +29,9 @@ import {
   transitMarkers,
   GEOCODE_MIN_SCORE,
   mergeAdsbPoints,
+  AIS_MAX_AGE_S,
+  aisTimeMs,
+  type AisStreamMessage,
   type AccpdFeature,
   type ApdCrimeFeature,
   type AtlasAgency,
@@ -82,6 +86,49 @@ async function gaAircraft(): Promise<LiveMarker[]> {
   const ok = res.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
   if (!ok.length) throw new Error(res.map((r) => (r.status === "rejected" ? String(r.reason) : "")).join("; "));
   return parseAdsbLol(mergeAdsbPoints(ok));
+}
+
+const AIS_URL = "wss://stream.aisstream.io/v0/stream";
+const AIS_LISTEN_MS = 12_000;
+/** Georgia's coast and tidal rivers, clipped to GA_BBOX (aisstream.io boxes are [[lat, lon], [lat, lon]]). */
+const AIS_BOX = [[[GA_BBOX.south, -82.0], [32.3, GA_BBOX.east]]];
+const aisSeen = new Map<number, AisStreamMessage>();
+
+/** Listens to aisstream.io for AIS_LISTEN_MS, then merges with positions this instance heard in the last 15 min (Class A ships report every few seconds to 3 min). */
+async function gaVessels(): Promise<LiveMarker[]> {
+  const key = process.env.AISSTREAM_API_KEY;
+  if (!key) throw new Error("AISSTREAM_API_KEY is not configured (free key: https://aisstream.io/apikeys)");
+  await new Promise<void>((resolve, reject) => {
+    const ws = new WebSocket(AIS_URL);
+    let failed: string | null = null;
+    let closing = false;
+    const stop = () => {
+      closing = true;
+      ws.close();
+    };
+    const timer = setTimeout(stop, AIS_LISTEN_MS);
+    const hardStop = setTimeout(() => (failed ? reject(new Error(failed)) : resolve()), AIS_LISTEN_MS + 3_000);
+    ws.onopen = () => ws.send(JSON.stringify({ APIKey: key, BoundingBoxes: AIS_BOX, FilterMessageTypes: ["PositionReport", "StandardClassBPositionReport", "ExtendedClassBPositionReport"] }));
+    ws.onmessage = async (e) => {
+      const m = JSON.parse(typeof e.data === "string" ? e.data : await new Response(e.data as Blob).text()) as AisStreamMessage & { error?: string };
+      if (m.error) {
+        failed = `aisstream.io: ${m.error}`;
+        stop();
+      } else if (typeof m.MetaData?.MMSI === "number") aisSeen.set(m.MetaData.MMSI, m);
+    };
+    ws.onerror = () => {
+      if (!closing) failed ??= "aisstream.io: WebSocket error";
+    };
+    ws.onclose = () => {
+      clearTimeout(timer);
+      clearTimeout(hardStop);
+      if (failed) reject(new Error(failed));
+      else resolve();
+    };
+  });
+  const cutoff = Date.now() - AIS_MAX_AGE_S * 1000;
+  for (const [mmsi, m] of aisSeen) if ((aisTimeMs(m.MetaData?.time_utc) ?? 0) < cutoff) aisSeen.delete(mmsi);
+  return parseAisStream([...aisSeen.values()]);
 }
 
 const OSM_TTL_S = 6 * 3600;
@@ -401,6 +448,12 @@ const LAYERS: Record<LiveLayer, LayerSpec> = {
     sourceUrl: "https://adsb.lol/",
     feeds: [{ id: "adsb.lol + adsb.fi", url: ADSB_GA.map((p) => p.url).join(" ; "), markers: gaAircraft }],
     fallback: [{ id: "OpenSky Network", url: "https://opensky-network.org/api/states/all?lamin=30.3&lomin=-85.7&lamax=35.1&lomax=-80.8", load: json((j) => parseOpenSky(j)) }],
+  },
+  vessels: {
+    ttlS: 60,
+    source: "AIS ship and boat positions off Georgia's coast and in its tidal rivers, relayed by aisstream.io (free API key); latest position per vessel from the last 15 min; Class B (mostly private boats) shown without names; MMSI not published; not for navigation",
+    sourceUrl: "https://aisstream.io/documentation",
+    feeds: [{ id: "aisstream.io", url: AIS_URL, markers: gaVessels }],
   },
   transit: {
     ttlS: 20,

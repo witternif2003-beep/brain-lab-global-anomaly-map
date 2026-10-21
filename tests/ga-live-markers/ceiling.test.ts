@@ -8,7 +8,7 @@ test("ceiling is 30,000 and counts only layers that refresh while the map is ope
   for (const fixed of ["signals", "towers", "police", "firestations", "sirens", "speedcams", "alpr", "equipment", "policetech"]) {
     assert.ok(!(LIVE_FEED_LAYERS as readonly string[]).includes(fixed), fixed);
   }
-  assert.equal(LIVE_FEED_LAYERS.length, 13);
+  assert.equal(LIVE_FEED_LAYERS.length, 14);
 });
 
 test("sums loaded layers, lists unloaded or failed layers as missing instead of 0", () => {
@@ -18,7 +18,7 @@ test("sums loaded layers, lists unloaded or failed layers as missing instead of 
   assert.deepEqual(c.parts.map((p) => p.layer), ["micromobility", "athens911", "aircraft"]);
   assert.ok(c.missing.includes("transit"));
   assert.ok(c.missing.includes("stations"));
-  assert.equal(c.missing.length, 10);
+  assert.equal(c.missing.length, 11);
 });
 
 test("the map reports the ceiling row and never drops points to fit it", () => {

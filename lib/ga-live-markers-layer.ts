@@ -290,6 +290,22 @@ const SPECS: Record<LiveLayer, Spec> = {
     ],
     detail: (ms) => `${ms.filter((m) => !m.props.onGround).length} airborne · ${ms.filter((m) => m.props.onGround).length} on ground · ${ms.filter(lowGps).length} with low GPS accuracy · PIA/LADD aircraft removed`,
   },
+  vessels: {
+    label: 'Ships and boats (AIS, aisstream.io)', color: '#2dd4bf', stroke: '#134e4a', radiusPx: 4, z: 32, refreshMs: 60_000,
+    iconPx: 20, labelMinZoom: 10,
+    icon: (m) => (heading(m.props.heading ?? m.props.cog) === undefined ? { shape: 'vehicle' } : { shape: 'heading', angle: heading(m.props.heading ?? m.props.cog) }),
+    tag: (m) => (m.props.aisClass === 'A' ? m.label : ''),
+    title: (m) => `VESSEL · ${m.label}`,
+    rows: (p) => [
+      ['AIS class', p.aisClass === 'A' ? 'A (commercial / passenger ships)' : 'B (mostly private boats · name hidden)'],
+      ['Speed', fmt(p.sogKt, ' kt')],
+      ['Course', fmt(p.cog, '°')],
+      ['Heading', fmt(p.heading, '°')],
+      ['Status', fmt(p.navStatus)],
+      ['Source', 'public AIS broadcast relayed by aisstream.io · not for navigation'],
+    ],
+    detail: (ms) => `${ms.filter((m) => m.props.aisClass === 'A').length} Class A · ${ms.filter((m) => m.props.aisClass === 'B').length} Class B · ${ms.filter((m) => Number(m.props.sogKt) >= 0.5).length} under way · positions from the last 15 min`,
+  },
   transit: {
     label: 'Transit buses (GTFS-RT)', color: '#fbbf24', stroke: '#78350f', radiusPx: 4, z: 32, refreshMs: 20_000,
     iconPx: 20, labelMinZoom: 11,
@@ -396,6 +412,7 @@ function sourceLink(layer: LiveLayer, m: LiveMarker): { href: string; text: stri
   if (layer === 'augusta911') return m.props.postUrl ? { href: String(m.props.postUrl), text: 'Augusta E911 post ↗' } : { href: 'https://www.augustaga.gov/66/E911-Emergency-Services', text: 'Augusta E911 ↗' };
   if (layer === 'athens911') return { href: 'https://services2.arcgis.com/xSEULKvB31odt3XQ/arcgis/rest/services/Incidents_accpd_Public/FeatureServer/0', text: 'ACCPD public ArcGIS layer ↗' };
   if (layer === 'aircraft') return { href: `https://adsb.lol/?lat=${m.lat}&lon=${m.lon}&zoom=11`, text: 'Open area in adsb.lol ↗' };
+  if (layer === 'vessels') return { href: 'https://aisstream.io/', text: 'aisstream.io ↗' };
   if (layer === 'transit') return m.props.agency === 'MARTA' ? { href: 'https://itsmarta.com/', text: 'MARTA ↗' } : { href: 'https://mobilitydatabase.org/', text: 'Mobility Database feed catalogue ↗' };
   return { href: 'https://github.com/MobilityData/gbfs', text: 'GBFS specification ↗' };
 }

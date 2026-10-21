@@ -1,7 +1,7 @@
 export const GA_BBOX = { west: -85.7, south: 30.3, east: -80.8, north: 35.1 };
 
 export type OsmInfraKind = "signals" | "towers" | "police" | "firestations" | "sirens" | "speedcams" | "alpr";
-export type LiveLayer = "aircraft" | "transit" | "micromobility" | "stations" | "streamgauges" | "quakes" | "tfr" | "augusta911" | "athens911" | "gdotcams" | "pireps" | "equipment" | "policereports" | "policetech" | "webcams" | OsmInfraKind;
+export type LiveLayer = "aircraft" | "transit" | "micromobility" | "stations" | "streamgauges" | "quakes" | "tfr" | "augusta911" | "athens911" | "gdotcams" | "pireps" | "equipment" | "policereports" | "policetech" | "webcams" | "vessels" | OsmInfraKind;
 export type LiveValue = string | number | boolean | null;
 
 export interface LiveMarker {
@@ -805,4 +805,56 @@ export function parseCoastalWebcams(json: { features?: CoastalWebcamRow[] } | nu
       });
     })
     .filter(keep);
+}
+
+export interface AisStreamMessage {
+  MessageType?: string;
+  MetaData?: { MMSI?: number; ShipName?: string; latitude?: number; longitude?: number; time_utc?: string };
+  Message?: Record<string, { Sog?: number; Cog?: number; TrueHeading?: number; NavigationalStatus?: number; Valid?: boolean } | undefined>;
+}
+
+const AIS_NAV_STATUS = [
+  "under way using engine", "at anchor", "not under command", "restricted manoeuvrability", "constrained by draught",
+  "moored", "aground", "engaged in fishing", "under way sailing",
+];
+export const AIS_MAX_AGE_S = 15 * 60;
+const AIS_POSITION_TYPES = new Set(["PositionReport", "StandardClassBPositionReport", "ExtendedClassBPositionReport"]);
+
+/** aisstream.io `time_utc` ("2026-10-21 14:13:25.445923921 +0000 UTC") as epoch ms. */
+export function aisTimeMs(t: string | undefined): number | null {
+  const m = /^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2})(\.\d{1,3})?/.exec(t ?? "");
+  const ms = m ? Date.parse(`${m[1]}T${m[2]}${m[3] ?? ""}Z`) : NaN;
+  return Number.isFinite(ms) ? ms : null;
+}
+
+/**
+ * Latest aisstream.io position per vessel, positions from the last 15 min only.
+ * Class A transponders (required on commercial ships) keep their broadcast name; Class B (mostly private boats) get no name.
+ * MMSI is used only to merge reports and is never returned.
+ */
+export function parseAisStream(msgs: AisStreamMessage[], nowMs = Date.now()): LiveMarker[] {
+  const latest = new Map<number, { at: number; m: LiveMarker }>();
+  for (const msg of msgs) {
+    if (!AIS_POSITION_TYPES.has(msg.MessageType ?? "")) continue;
+    const r = msg.Message?.[msg.MessageType ?? ""];
+    const meta = msg.MetaData;
+    const at = aisTimeMs(meta?.time_utc);
+    if (!r || !meta || typeof meta.MMSI !== "number" || r.Valid === false || at === null || nowMs - at > AIS_MAX_AGE_S * 1000) continue;
+    const classA = msg.MessageType === "PositionReport";
+    const sog = num(r.Sog);
+    const cog = num(r.Cog);
+    const hdg = num(r.TrueHeading);
+    const nav = classA ? num(r.NavigationalStatus) : null;
+    const name = classA ? meta.ShipName?.trim() || "" : "";
+    const mk = marker(num(meta.longitude), num(meta.latitude), new Date(at).toISOString(), name || (classA ? "unnamed vessel" : "small craft"), {
+      aisClass: classA ? "A" : "B",
+      sogKt: sog !== null && sog < 102.3 ? sog : null,
+      cog: cog !== null && cog < 360 ? cog : null,
+      heading: hdg !== null && hdg < 360 ? hdg : null,
+      navStatus: nav !== null && nav < AIS_NAV_STATUS.length ? AIS_NAV_STATUS[nav] : null,
+    });
+    const prev = latest.get(meta.MMSI);
+    if (mk && (!prev || at >= prev.at)) latest.set(meta.MMSI, { at, m: mk });
+  }
+  return [...latest.values()].map((v) => v.m);
 }

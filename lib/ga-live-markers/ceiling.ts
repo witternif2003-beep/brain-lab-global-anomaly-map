@@ -5,7 +5,7 @@ export const LIVE_POINT_CEILING = 30_000;
 /** Layers whose points come from feeds that refresh while the map is open (positions, readings, calls, reports, camera pictures); fixed OSM and Atlas of Surveillance layers are excluded. */
 export const LIVE_FEED_LAYERS: readonly LiveLayer[] = [
   "aircraft", "transit", "micromobility", "stations", "streamgauges", "quakes", "tfr",
-  "pireps", "augusta911", "athens911", "policereports", "gdotcams", "webcams",
+  "pireps", "augusta911", "athens911", "policereports", "gdotcams", "webcams", "vessels",
 ];
 
 export interface LiveCeiling {
