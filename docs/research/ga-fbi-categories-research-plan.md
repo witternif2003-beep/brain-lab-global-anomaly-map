@@ -52,3 +52,14 @@ Request: "all new crime triangles must flash in the police pattern dark red and 
 - Redraw tick is 50 ms, so on a busy device some 60 ms flashes may merge; nothing about the underlying record changes.
 - Not added: 30,000 new "FBI tracking" categories. The 33,988 real agency × offence series listed above remain the full set of FBI-published Georgia categories found; none are real-time tracking.
 - Tests: `tests/ga-live-markers/strobe.test.ts` (layer set, colours, 16-step phase sequence, glyph fill swap only while pulsing).
+
+## Live points on the map, 30,000 ceiling (2026-10-21)
+
+Request: "I NEED 30,000 max ceiling new live tracking on map".
+
+- Built: a "Live points on map (ceiling 30,000)" row in the Georgia live legend (`lib/ga-live-markers/ceiling.ts`, `lib/ga-live-markers-layer.ts`). It sums the points currently on the map from the 13 public layers that refresh while the map is open, shows the share of 30,000, and lists each layer with its own colour and count. Layers still loading or failing are listed as not counted, never as 0. Fixed OSM and Atlas of Surveillance layers are excluded.
+- The ceiling is a display budget, not a target: no points are invented to reach it, and none are dropped to fit it.
+- Measured on production `/api/ga-live-markers` (2026-10-21 UTC, one sample each): parked scooters/bikes 5,465; Athens-Clarke PD calls 5,042; GDOT cameras 3,938 (public ArcGIS copy; 511GA API key not set); police-reported offences 2,832; Augusta E911 1,661; weather/hydro stations 628; aircraft 444; USGS gauges 355; transit buses 344; pilot reports 10; webcams 4; earthquakes 3; TFRs 0. Total 20,726 (69.1% of 30,000). One sample, so counts vary with time of day.
+- "Live" differs by layer: aircraft refresh every 10 s, buses 20 s, scooters 60 s, gauges/stations 5 min, police reports and Athens calls 30 min (published with a delay), cameras 60 min. Police and 911 layers are incident records, not tracking of people.
+- Ways to raise the real count (not built; each needs its terms and rate limits checked first): a free 511GA API key (`GA511_API_KEY`) for the official camera feed and 511GA incidents; more GTFS-realtime agencies listed for Georgia in the Mobility Database; more GBFS systems in Georgia cities; AIS vessel positions off the Georgia coast (keyed APIs).
+- Tests: `tests/ga-live-markers/ceiling.test.ts`.

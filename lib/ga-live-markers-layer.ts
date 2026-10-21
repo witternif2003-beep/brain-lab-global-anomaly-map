@@ -11,6 +11,7 @@ import { setGaBuildingFlags } from './ga-building-flags';
 import type { LiveLayer, LiveMarker, LiveValue } from './ga-live-markers/parse';
 import type { CameraState } from './ga-live-markers/snapshot';
 import { CRIME_STROBE_BLUE, CRIME_STROBE_RED, CRIME_TRIANGLE_LAYERS, hasActiveStrobe, STROBE_MS, strobeKey, strobeSince } from './ga-live-markers/strobe';
+import { LIVE_FEED_LAYERS, liveCeiling } from './ga-live-markers/ceiling';
 
 interface Payload {
   generatedAt?: string;
@@ -575,6 +576,24 @@ export function addGaLiveMarkerLayers(map: MapLibreMap): void {
   };
 
   const reports: Partial<Record<LiveLayer, () => void>> = {};
+  const liveCounts: Partial<Record<LiveLayer, number | null>> = {};
+  const liveLoadedAt: Partial<Record<LiveLayer, string>> = {};
+  const reportCeiling = (layer: LiveLayer) => {
+    if (!LIVE_FEED_LAYERS.includes(layer)) return;
+    const c = liveCeiling(liveCounts);
+    const times = c.parts.map((p) => liveLoadedAt[p.layer]).filter((t): t is string => !!t).sort();
+    reportGaFeed(map, {
+      id: 'live-ceiling',
+      label: `Live points on map (ceiling ${c.ceiling.toLocaleString('en-US')})`,
+      color: '#22d3ee',
+      count: c.parts.length ? c.total : null,
+      detail: `${c.pct}% of the ${c.ceiling.toLocaleString('en-US')} ceiling, sum of ${c.parts.length} public feeds that refresh while the map is open${c.missing.length ? ` · not counted (loading or unavailable): ${c.missing.map((l) => SPECS[l].label).join(', ')}` : ''} · fixed OSM and Atlas of Surveillance layers not counted · every point is shown; none are dropped to fit the ceiling`,
+      updatedAt: times[0] ?? null,
+      sourceUrl: '/api/ga-live-markers?layer=aircraft',
+      error: c.parts.length ? null : 'no live feed has loaded yet',
+      swatches: c.parts.map((p) => ({ label: SPECS[p.layer].label, color: SPECS[p.layer].color, count: p.count })),
+    });
+  };
   const camerasChanged = () => {
     render('gdotcams');
     reports.gdotcams?.();
@@ -630,6 +649,9 @@ export function addGaLiveMarkerLayers(map: MapLibreMap): void {
         error: failed.length ? `unavailable: ${failed.map((f) => `${f.id} (${f.error})`).join(', ')}` : null,
       });
       reports[layer]();
+      liveCounts[layer] = ms.length;
+      liveLoadedAt[layer] = d.generatedAt ?? new Date().toISOString();
+      reportCeiling(layer);
       if (layer === 'gdotcams') void verifyCamerasInView();
       if (layer === 'aircraft') {
         const adsb = ms.filter((m) => typeof m.props.gpsNacp === 'number');
@@ -642,6 +664,8 @@ export function addGaLiveMarkerLayers(map: MapLibreMap): void {
       }
     } catch (err) {
       reportGaFeed(map, { id: layer, label: spec.label, color: spec.color, count: null, updatedAt: null, sourceUrl: '', error: String(err) });
+      liveCounts[layer] = null;
+      reportCeiling(layer);
     }
   };
 
