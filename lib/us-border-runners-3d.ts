@@ -71,35 +71,50 @@ function markerData(runners: BorderRunner[], epochMs: number): GeoJSON.FeatureCo
   };
 }
 
+type RunnerAnimate = (dt: number, moving: boolean, speedScale?: number) => void;
+
 interface RunnerFigure {
   wrapper: Group;
-  body: Group;
+  stride: Group;
   mixer: AnimationMixer | null;
-  phase: number;
 }
 
-/** Independent skinned clone per state with its own mixer and stride phase. */
+/**
+ * Independent skinned clone per state with its own mixer and a private stride closure.
+ * `stride` is in the glTF's native Y-up frame; `upright` turns it into the map's Z-up frame.
+ */
 function createRunnerFigure(base: Object3D, clip: AnimationClip | undefined, seed: number): RunnerFigure {
   const wrapper = new Group();
-  const body = new Group();
-  body.add(cloneSkinned(base));
-  wrapper.add(body);
+  const upright = new Group();
+  upright.rotation.x = Math.PI / 2;
+  const stride = new Group();
+  stride.add(cloneSkinned(base));
+  upright.add(stride);
+  wrapper.add(upright);
+  let phase = 0;
+  const animate: RunnerAnimate = (dt, moving, speedScale = 1) => {
+    if (moving) {
+      const cadence = Math.max(1.2, Math.min(3.4, speedScale * 2.2));
+      phase += dt * cadence * Math.PI;
+      stride.position.y = Math.abs(Math.sin(phase)) * 0.05;
+      stride.rotation.x = -0.12;
+      stride.rotation.z = Math.sin(phase) * 0.025;
+    } else {
+      stride.position.y = 0;
+      stride.rotation.x = 0;
+      stride.rotation.z = 0;
+    }
+  };
+  stride.userData.animate = animate;
+  stride.userData.kind = 'official';
   let mixer: AnimationMixer | null = null;
   if (clip) {
-    mixer = new AnimationMixer(body);
+    mixer = new AnimationMixer(stride);
     mixer.timeScale = ANIMATION_TIME_SCALE;
     mixer.clipAction(clip).play();
     mixer.setTime(seed * clip.duration);
   }
-  return { wrapper, body, mixer, phase: seed * Math.PI * 2 };
-}
-
-/** Stride bob/sway on top of the walk clip, cadence scaled to running speed. */
-export function animateRunner(fig: { body: Group; phase: number }, dt: number, speedScale = RUN_SPEED_MPS / 1.4): void {
-  const cadence = Math.max(1.2, Math.min(3.4, speedScale * 2.2));
-  fig.phase += dt * cadence * Math.PI;
-  fig.body.position.z = Math.abs(Math.sin(fig.phase)) * 0.05;
-  fig.body.rotation.y = Math.sin(fig.phase) * 0.025;
+  return { wrapper, stride, mixer };
 }
 
 /** One human-scale animated figure per state (except Georgia), drawn only for runners inside the view. */
@@ -138,13 +153,12 @@ export class UsBorderRunners3DLayer implements CustomLayerInterface {
       (gltf) => {
         if (this.disposed) return;
         const root = gltf.scene;
-        root.rotation.x = Math.PI / 2;
         root.updateMatrixWorld(true);
         const box = new Box3().setFromObject(root);
-        const h = box.max.z - box.min.z || 1;
+        const h = box.max.y - box.min.y || 1;
         const k = FIGURE_HEIGHT_M / h;
         root.scale.setScalar(k);
-        root.position.z = -box.min.z * k;
+        root.position.y = -box.min.y * k;
         root.traverse((o) => {
           if (!(o instanceof Mesh)) return;
           o.frustumCulled = false;
@@ -229,7 +243,7 @@ export class UsBorderRunners3DLayer implements CustomLayerInterface {
       const fig = this.figureFor(r, i);
       if (!fig) continue;
       fig.mixer?.update(dt);
-      animateRunner(fig, dt);
+      (fig.stride.userData.animate as RunnerAnimate)(dt, dt > 0, ANIMATION_TIME_SCALE);
       const elevation = map.getTerrain() ? (map.queryTerrainElevation(pos.lngLat) ?? 0) : 0;
       const origin = MercatorCoordinate.fromLngLat(pos.lngLat, elevation);
       const s = origin.meterInMercatorCoordinateUnits();

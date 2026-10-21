@@ -70,6 +70,11 @@ test("runner layer uses the CC BY 4.0 Cesium Man figure and is added without rem
   assert.match(layer, /cloneSkinned\(base\)/);
   assert.doesNotMatch(layer, /sketchfab|kkk|klan|t\.me\//i);
   assert.match(layer, /link\.href = US_BORDER_RUNNERS_SOURCE_URL/);
+  assert.match(layer, /const cadence = Math\.max\(1\.2, Math\.min\(3\.4, speedScale \* 2\.2\)\);/);
+  assert.match(layer, /stride\.position\.y = Math\.abs\(Math\.sin\(phase\)\) \* 0\.05;/);
+  assert.match(layer, /stride\.rotation\.x = -0\.12;/);
+  assert.match(layer, /stride\.rotation\.z = Math\.sin\(phase\) \* 0\.025;/);
+  assert.match(layer, /stride\.userData\.kind = 'official';/);
   const map = read("components/GodsEyeMap.tsx");
   assert.match(map, /addGaPatrolLayers\(map\);\n\s*addUsBorderRunnerLayers\(map\);/);
 });
