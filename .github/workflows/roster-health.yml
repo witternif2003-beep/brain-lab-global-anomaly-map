@@ -1,0 +1,66 @@
+name: Election source health
+
+on:
+  schedule:
+    - cron: "17 13 * * *"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "lib/elections/**"
+      - "tests/elections/**"
+      - "scripts/probe-elections.ts"
+      - ".github/workflows/roster-health.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: roster-health-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Unit tests
+        run: npm run test:elections
+
+      - name: Restore probe history
+        uses: actions/cache/restore@v4
+        with:
+          path: .roster-state
+          key: roster-health-${{ github.run_id }}
+          restore-keys: roster-health-
+
+      - name: Probe official election-office sites
+        id: probe
+        continue-on-error: ${{ github.event_name == 'pull_request' }}
+        env:
+          ROSTER_STATE_DIR: .roster-state
+        run: npm run probe:elections
+
+      - name: Save probe history
+        if: always() && github.event_name != 'pull_request'
+        uses: actions/cache/save@v4
+        with:
+          path: .roster-state
+          key: roster-health-${{ github.run_id }}
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: roster-health-report
+          path: .roster-state/report.json
+          if-no-files-found: ignore
+          retention-days: 30

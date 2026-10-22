@@ -106,7 +106,7 @@ export default function Footer() {
             <span>&bull;</span>
             <span className="text-[#10b981]">Validation Gated Continual Learning</span>
             <span>&bull;</span>
-            <span className="text-[#fb923c]">Non-Parametric Dynamic Thresholding</span>
+            <span className="text-[#ff4fd8]">Non-Parametric Dynamic Thresholding</span>
           </div>
         </div>
 

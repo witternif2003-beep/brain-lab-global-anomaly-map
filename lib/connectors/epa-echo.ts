@@ -38,7 +38,7 @@ const num = (v: unknown): number => {
 export async function fetchEpaEcho(a: { territory: string; rows?: number }) {
   const rows = a.rows ?? 100;
   const url = `${ECHO}?output=JSON&p_st=${encodeURIComponent(a.territory)}&p_act=Y&rows=${rows}`;
-  const res = await fetch(url, {
+  const res = await fetch(url, { signal: AbortSignal.timeout(15_000),
     headers: { Accept: "application/json", "User-Agent": "brain-lab-ingest/1.0" },
     cache: "no-store"
   });
@@ -60,11 +60,20 @@ export async function fetchEpaEcho(a: { territory: string; rows?: number }) {
     record_count: ok ? 1 : 0,
     access_note: "EPA ECHO public REST, no key. Aggregate compliance summary — counts only, not findings."
   });
+  const capped = /Rows Returned would be (\d+)/.exec(String(R.Error?.ErrorMessage ?? ""));
+  if (!ok && capped) {
+    return {
+      records: [],
+      provenance: prov,
+      capped_rows: Number(capped[1]),
+      note: `ECHO reports ${Number(capped[1]).toLocaleString("en-US")} matching facilities but refuses aggregates above its queryset limit, so no penalty total is returned.`
+    };
+  }
   if (!ok) {
     return {
       records: [],
       provenance: prov,
-      note: `ECHO query failed: ${String(R.Message ?? "no response")}`
+      note: `ECHO query failed (HTTP ${res.status}): ${String(R.Message ?? R.Error?.ErrorMessage ?? "no response")}`
     };
   }
   const facilities = num(R.QueryRows);

@@ -32,6 +32,19 @@ export default function BuildFreshnessChip({ buildSha }: { buildSha: string }) {
   }, []);
 
   const short = (buildSha || "local").slice(0, 7);
+  const stale = short !== "local" && liveSha !== null && liveSha !== short;
+
+  useEffect(() => {
+    if (!stale || !liveSha) return;
+    const key = `brainlab-auto-reload-${liveSha}`;
+    try {
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, "1");
+    } catch {
+      return;
+    }
+    window.location.reload();
+  }, [stale, liveSha]);
   if (short === "local") {
     return (
       <div className="fixed bottom-3 right-3 z-[60] font-mono text-[9px] font-bold px-2.5 py-1 rounded-full bg-[#020b18]/90 text-slate-400 border border-slate-600/60 pointer-events-none">
@@ -39,13 +52,12 @@ export default function BuildFreshnessChip({ buildSha }: { buildSha: string }) {
       </div>
     );
   }
-  const stale = liveSha !== null && liveSha !== short;
 
   if (stale) {
     return (
       <button
         onClick={() => window.location.reload()}
-        className="fixed bottom-3 right-3 z-[60] font-mono text-[10px] font-black px-3 py-1.5 rounded-full bg-[#f5a623] text-[#0d0a06] shadow-[0_0_16px_rgba(245,166,35,0.7)] flex items-center gap-1.5 animate-pulse"
+        className="fixed bottom-3 right-3 z-[60] font-mono text-[10px] font-black px-3 py-1.5 rounded-full bg-[#ff2ec4] text-[#1a0014] shadow-[0_0_16px_rgba(255,46,196,0.7)] flex items-center gap-1.5 animate-pulse"
         title={`Viewing cached build ${short}; live is ${liveSha}. Tap to reload.`}
       >
         <RefreshCw className="w-3 h-3" />

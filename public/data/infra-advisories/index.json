@@ -1,0 +1,19 @@
+{
+  "generatedAt": "2026-10-01T23:20:19.307Z",
+  "provider": "NIST National Vulnerability Database (NVD) CVE API 2.0",
+  "providerUrl": "https://nvd.nist.gov/developers/vulnerabilities",
+  "scope": "Public vulnerability advisories published in 2026. 11,995 come from critical-infrastructure, OT/ICS and network vendors; the rest are other vendors' 2026 advisories. These are advisories, not incident reports, and are not attributed to any person or location.",
+  "publishedYear": 2026,
+  "prioritizedRecords": 11995,
+  "totalRecords": 25000,
+  "shardSize": 1000,
+  "shards": 25,
+  "severityCounts": {
+    "CRITICAL": 2821,
+    "HIGH": 10437,
+    "MEDIUM": 9337,
+    "LOW": 1688,
+    "NONE": 49,
+    "UNKNOWN": 668
+  }
+}

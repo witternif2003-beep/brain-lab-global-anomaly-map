@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import WhiteHouseDigitalTwin3D from "../../components/WhiteHouseDigitalTwin3D";
+import dynamic from "next/dynamic";
 import WhiteHouseReal3DViewer from "../../components/WhiteHouseReal3DViewer";
 import LucidMethodologyTrace from "../../components/LucidMethodologyTrace";
 import PageEmblemHeader from "../../components/PageEmblemHeader";
@@ -8,29 +8,30 @@ import { RealTimeSparkline } from "../../components/RealTimeSparkline";
 import { ShieldAlert, Cpu, TrendingUp, Building2, ExternalLink, BookOpen, Layers } from "lucide-react";
 import { DIGITAL_TWIN_RESEARCH_CITATIONS } from "../../lib/whitehouse-digital-twin";
 
+const LidarGlobe = dynamic(() => import("../../components/LidarGlobe"), { ssr: false });
+
 export default function ThreatGlobePage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6 font-mono">
       
       {/* Page Header */}
       <PageEmblemHeader
-        badgeText="Operational Architectural Layer"
+        badgeText="LiDAR & HD Imagery Layer"
         badgeIcon={<Building2 className="w-4 h-4 text-[#00e5ff]" />}
-        title="WHITE HOUSE COMMON OPERATING PICTURE (COP) & DIGITAL TWIN"
-        description="Physical and architectural model derived from Library of Congress Historic American Buildings Survey (HABS DC-37), NPS surveys, and IEEE 10820352 parametric digital twin standards. Spatial tolerance verified within ±2.0 centimeters across all wings."
+        title="3D GLOBE — LIDAR, ELEVATION & HD SATELLITE IMAGERY"
+        description="Photographic globe built from Esri World Imagery, AWS Terrain Tiles (USGS 3DEP elevation), the DC OCTO 2024 USGS QL1 LiDAR collection (intensity, DSM, nDSM) and OpenStreetMap building heights, with the live telemetry feed overlaid as pins."
         rightElement={
           <div className="glass-card px-4 py-2.5 rounded-2xl border-2 border-[#00e5ff]/50 text-right shadow-[0_0_20px_rgba(0,229,255,0.25)] bg-[#020b18]/90">
-            <div className="text-[10px] text-[#80deea] font-bold">DIGITAL TWIN STATUS</div>
+            <div className="text-[10px] text-[#80deea] font-bold">GLOBE SOURCES</div>
             <div className="text-[#69f0ae] font-black text-lg flex items-center justify-end gap-1.5">
               <span className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse"></span>
-              <span>ONLINE • ±2.0CM CALIBRATED</span>
+              <span>PUBLIC • ATTRIBUTED</span>
             </div>
           </div>
         }
       />
 
-      {/* NSA ADMIN LEVEL WHITE HOUSE DIGITAL TWIN 3D WORKSTATION */}
-      <WhiteHouseDigitalTwin3D />
+      <LidarGlobe />
 
       {/* LUCID-1 REAL 3D MODEL VIEWER (VERIFIED EXTERNAL ASSETS) */}
       <WhiteHouseReal3DViewer />

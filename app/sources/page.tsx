@@ -95,7 +95,7 @@ export default function SourcesPage() {
     active: "bg-emerald-500/20 text-emerald-400 border-emerald-500/40",
     candidate: "bg-sky-500/20 text-sky-400 border-sky-500/40",
     validating: "bg-sky-500/20 text-sky-400 border-sky-500/40",
-    stale: "bg-orange-500/20 text-orange-400 border-orange-500/40",
+    stale: "bg-pink-500/20 text-pink-400 border-pink-500/40",
     deprecated: "bg-rose-500/20 text-rose-400 border-rose-500/40",
     reject: "bg-red-500/20 text-red-400 border-red-500/40",
   };
