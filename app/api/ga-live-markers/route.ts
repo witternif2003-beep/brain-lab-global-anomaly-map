@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { gunzipSync } from "node:zlib";
-import { NextResponse, type NextRequest } from "next/server";
+import { after, NextResponse, type NextRequest } from "next/server";
 import {
   atlasMarkers,
   augusta911Markers,
@@ -89,24 +89,48 @@ async function gaAircraft(): Promise<LiveMarker[]> {
 }
 
 const AIS_URL = "wss://stream.aisstream.io/v0/stream";
-const AIS_LISTEN_MS = 45_000;
+/** A cold instance waits this long before answering: moored Class A ships report only every 3 min. */
+const AIS_FIRST_MS = 45_000;
+/** Each connection stays open after the response (kept alive with `after`) so later refreshes see a fuller picture; within maxDuration. */
+const AIS_SESSION_MS = 110_000;
 /** Georgia's coast and tidal rivers, clipped to GA_BBOX (aisstream.io boxes are [[lat, lon], [lat, lon]]). */
 const AIS_BOX = [[[GA_BBOX.south, -82.0], [32.3, GA_BBOX.east]]];
 const aisSeen = new Map<number, AisStreamMessage>();
-let aisListening: Promise<void> | null = null;
+let aisSession: { started: number; done: Promise<void> } | null = null;
+let aisHeardUntil = 0;
+let aisError: string | null = null;
 
-/** Listens to aisstream.io for AIS_LISTEN_MS (one connection per instance), then merges with positions this instance heard in the last 15 min (moored Class A ships report only every 3 min). */
+/** One aisstream.io connection per instance; returns the latest position per vessel this instance heard in the last 15 min. */
 async function gaVessels(): Promise<LiveMarker[]> {
   const key = process.env.AISSTREAM_API_KEY;
   if (!key) throw new Error("AISSTREAM_API_KEY is not configured (free key: https://aisstream.io/apikeys)");
-  aisListening ??= listenAis(key).finally(() => (aisListening = null));
-  await aisListening;
+  const cold = Date.now() - aisHeardUntil > AIS_MAX_AGE_S * 1000;
+  if (!aisSession) {
+    const done = listenAis(key, AIS_SESSION_MS).then(
+      () => void (aisError = null),
+      (err: unknown) => {
+        aisError = String(err instanceof Error ? err.message : err);
+        throw err;
+      },
+    ).finally(() => {
+      aisSession = null;
+      aisHeardUntil = Date.now();
+    });
+    done.catch(() => {});
+    aisSession = { started: Date.now(), done };
+    after(() => done.catch(() => {}));
+  }
+  if (cold) {
+    const wait = aisSession.started + AIS_FIRST_MS - Date.now();
+    await Promise.race([aisSession.done, new Promise((r) => setTimeout(r, Math.max(0, wait)))]);
+  }
   const cutoff = Date.now() - AIS_MAX_AGE_S * 1000;
   for (const [mmsi, m] of aisSeen) if ((aisTimeMs(m.MetaData?.time_utc) ?? 0) < cutoff) aisSeen.delete(mmsi);
+  if (!aisSeen.size && aisError) throw new Error(aisError);
   return parseAisStream([...aisSeen.values()]);
 }
 
-function listenAis(key: string): Promise<void> {
+function listenAis(key: string, listenMs: number): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     const ws = new WebSocket(AIS_URL);
     let failed: string | null = null;
@@ -115,8 +139,8 @@ function listenAis(key: string): Promise<void> {
       closing = true;
       ws.close();
     };
-    const timer = setTimeout(stop, AIS_LISTEN_MS);
-    const hardStop = setTimeout(() => (failed ? reject(new Error(failed)) : resolve()), AIS_LISTEN_MS + 3_000);
+    const timer = setTimeout(stop, listenMs);
+    const hardStop = setTimeout(() => (failed ? reject(new Error(failed)) : resolve()), listenMs + 3_000);
     ws.onopen = () => ws.send(JSON.stringify({ APIKey: key, BoundingBoxes: AIS_BOX, FilterMessageTypes: ["PositionReport", "StandardClassBPositionReport", "ExtendedClassBPositionReport"] }));
     ws.onmessage = async (e) => {
       const m = JSON.parse(typeof e.data === "string" ? e.data : await new Response(e.data as Blob).text()) as AisStreamMessage & { error?: string };
