@@ -89,16 +89,25 @@ async function gaAircraft(): Promise<LiveMarker[]> {
 }
 
 const AIS_URL = "wss://stream.aisstream.io/v0/stream";
-const AIS_LISTEN_MS = 12_000;
+const AIS_LISTEN_MS = 45_000;
 /** Georgia's coast and tidal rivers, clipped to GA_BBOX (aisstream.io boxes are [[lat, lon], [lat, lon]]). */
 const AIS_BOX = [[[GA_BBOX.south, -82.0], [32.3, GA_BBOX.east]]];
 const aisSeen = new Map<number, AisStreamMessage>();
+let aisListening: Promise<void> | null = null;
 
-/** Listens to aisstream.io for AIS_LISTEN_MS, then merges with positions this instance heard in the last 15 min (Class A ships report every few seconds to 3 min). */
+/** Listens to aisstream.io for AIS_LISTEN_MS (one connection per instance), then merges with positions this instance heard in the last 15 min (moored Class A ships report only every 3 min). */
 async function gaVessels(): Promise<LiveMarker[]> {
   const key = process.env.AISSTREAM_API_KEY;
   if (!key) throw new Error("AISSTREAM_API_KEY is not configured (free key: https://aisstream.io/apikeys)");
-  await new Promise<void>((resolve, reject) => {
+  aisListening ??= listenAis(key).finally(() => (aisListening = null));
+  await aisListening;
+  const cutoff = Date.now() - AIS_MAX_AGE_S * 1000;
+  for (const [mmsi, m] of aisSeen) if ((aisTimeMs(m.MetaData?.time_utc) ?? 0) < cutoff) aisSeen.delete(mmsi);
+  return parseAisStream([...aisSeen.values()]);
+}
+
+function listenAis(key: string): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
     const ws = new WebSocket(AIS_URL);
     let failed: string | null = null;
     let closing = false;
@@ -126,9 +135,6 @@ async function gaVessels(): Promise<LiveMarker[]> {
       else resolve();
     };
   });
-  const cutoff = Date.now() - AIS_MAX_AGE_S * 1000;
-  for (const [mmsi, m] of aisSeen) if ((aisTimeMs(m.MetaData?.time_utc) ?? 0) < cutoff) aisSeen.delete(mmsi);
-  return parseAisStream([...aisSeen.values()]);
 }
 
 const OSM_TTL_S = 6 * 3600;
