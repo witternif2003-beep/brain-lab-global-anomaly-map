@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { aisTimeMs, parseAisStream, type AisStreamMessage } from "../../lib/ga-live-markers/parse";
+import { aisTimeMs, mergeVessels, parseAisStream, type AisStreamMessage, type LiveMarker } from "../../lib/ga-live-markers/parse";
 
 const NOW = Date.parse("2026-10-21T14:20:00Z");
 const pos = (mmsi: number, type: string, time: string, lat: number, lon: number, r: Record<string, number | boolean> = {}): AisStreamMessage => ({
@@ -35,4 +35,19 @@ test("Class B craft get no name, stale and unavailable values are dropped", () =
   assert.equal(ms.length, 1);
   assert.equal(ms[0].label, "small craft");
   assert.deepEqual(ms[0].props, { aisClass: "B", sogKt: null, cog: null, heading: null, navStatus: null });
+});
+
+test("vesselId adds an opaque vid, never the MMSI", () => {
+  const [m] = parseAisStream([pos(366999001, "PositionReport", "2026-10-21 14:19:00.0", 32.08, -81.09)], NOW, (n) => `v${n % 7}`);
+  assert.equal(m.props.vid, `v${366999001 % 7}`);
+  assert.ok(!Object.values(m.props).includes(366999001) && !JSON.stringify(m.props).includes("366999001"));
+});
+
+test("mergeVessels keeps vessels missing from a refresh until they are 15 min old, newest position wins", () => {
+  const mk = (vid: string | null, t: string, lat = 31.1): LiveMarker => ({ lon: -81.5, lat, observedAt: t, label: "x", props: vid ? { vid } : {} });
+  const prev = [mk("a", "2026-10-21T14:10:00Z"), mk("b", "2026-10-21T14:04:00Z"), mk("c", "2026-10-21T14:12:00Z", 31.0), mk(null, "2026-10-21T14:15:00Z")];
+  const next = [mk("c", "2026-10-21T14:19:00Z", 31.2), mk(null, "2026-10-21T14:19:30Z")];
+  const out = mergeVessels(prev, next, NOW);
+  assert.deepEqual(out.map((m) => [m.props.vid ?? null, m.lat]).sort(), [["a", 31.1], ["c", 31.2], [null, 31.1]].sort());
+  assert.equal(out.find((m) => !m.props.vid)?.observedAt, "2026-10-21T14:19:30Z");
 });

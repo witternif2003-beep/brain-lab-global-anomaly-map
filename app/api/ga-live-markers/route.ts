@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { gunzipSync } from "node:zlib";
@@ -127,7 +128,8 @@ async function gaVessels(): Promise<LiveMarker[]> {
   const cutoff = Date.now() - AIS_MAX_AGE_S * 1000;
   for (const [mmsi, m] of aisSeen) if ((aisTimeMs(m.MetaData?.time_utc) ?? 0) < cutoff) aisSeen.delete(mmsi);
   if (!aisSeen.size && aisError) throw new Error(aisError);
-  return parseAisStream([...aisSeen.values()]);
+  const day = new Date().toISOString().slice(0, 10);
+  return parseAisStream([...aisSeen.values()], Date.now(), (mmsi) => createHmac("sha256", key).update(`vessel:${day}:${mmsi}`).digest("base64url").slice(0, 12));
 }
 
 function listenAis(key: string, listenMs: number): Promise<void> {

@@ -832,7 +832,8 @@ export function aisTimeMs(t: string | undefined): number | null {
  * Class A transponders (required on commercial ships) keep their broadcast name; Class B (mostly private boats) get no name.
  * MMSI is used only to merge reports and is never returned.
  */
-export function parseAisStream(msgs: AisStreamMessage[], nowMs = Date.now()): LiveMarker[] {
+/** `vesselId` turns an MMSI into an opaque per-vessel key (`props.vid`) so clients can merge refreshes without seeing the MMSI. */
+export function parseAisStream(msgs: AisStreamMessage[], nowMs = Date.now(), vesselId?: (mmsi: number) => string): LiveMarker[] {
   const latest = new Map<number, { at: number; m: LiveMarker }>();
   for (const msg of msgs) {
     if (!AIS_POSITION_TYPES.has(msg.MessageType ?? "")) continue;
@@ -852,9 +853,28 @@ export function parseAisStream(msgs: AisStreamMessage[], nowMs = Date.now()): Li
       cog: cog !== null && cog < 360 ? cog : null,
       heading: hdg !== null && hdg < 360 ? hdg : null,
       navStatus: nav !== null && nav < AIS_NAV_STATUS.length ? AIS_NAV_STATUS[nav] : null,
+      ...(vesselId ? { vid: vesselId(meta.MMSI) } : {}),
     });
     const prev = latest.get(meta.MMSI);
     if (mk && (!prev || at >= prev.at)) latest.set(meta.MMSI, { at, m: mk });
   }
   return [...latest.values()].map((v) => v.m);
+}
+
+/** Merges a vessel refresh into what the client already shows: newest position per `props.vid`, dropping positions older than AIS_MAX_AGE_S. */
+export function mergeVessels(prev: LiveMarker[], next: LiveMarker[], nowMs = Date.now()): LiveMarker[] {
+  const byId = new Map<string, LiveMarker>();
+  const out: LiveMarker[] = [];
+  for (const m of [...next, ...prev]) {
+    const at = m.observedAt ? Date.parse(m.observedAt) : NaN;
+    if (!(nowMs - at <= AIS_MAX_AGE_S * 1000)) continue;
+    const id = m.props.vid;
+    if (typeof id !== "string") {
+      if (next.includes(m)) out.push(m);
+      continue;
+    }
+    const seen = byId.get(id);
+    if (!seen || at > Date.parse(seen.observedAt ?? "")) byId.set(id, m);
+  }
+  return [...out, ...byId.values()];
 }

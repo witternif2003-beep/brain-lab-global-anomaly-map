@@ -8,7 +8,7 @@ import type { GaIconShape } from './ga-marker-icons';
 import type { GaModelKind } from './ga-mesh-models';
 import { box } from './ga-orbital-layer';
 import { setGaBuildingFlags } from './ga-building-flags';
-import type { LiveLayer, LiveMarker, LiveValue } from './ga-live-markers/parse';
+import { mergeVessels, type LiveLayer, type LiveMarker, type LiveValue } from './ga-live-markers/parse';
 import type { CameraState } from './ga-live-markers/snapshot';
 import { CRIME_STROBE_BLUE, CRIME_STROBE_RED, CRIME_TRIANGLE_LAYERS, hasActiveStrobe, STROBE_MS, strobeKey, strobeSince } from './ga-live-markers/strobe';
 import { LIVE_FEED_LAYERS, liveCeiling } from './ga-live-markers/ceiling';
@@ -651,7 +651,8 @@ export function addGaLiveMarkerLayers(map: MapLibreMap): void {
       const [r, wall] = await Promise.all([fetch(`/api/ga-live-markers?layer=${layer}`), wallP]);
       const d = (await r.json()) as Payload;
       if (!r.ok) throw new Error(d.error ?? `HTTP ${r.status}`);
-      const ms = (d.markers ?? []).filter((m) => !wall.length || insideRing(wall, [m.lon, m.lat]));
+      const fresh = (d.markers ?? []).filter((m) => !wall.length || insideRing(wall, [m.lon, m.lat]));
+      const ms = layer === 'vessels' ? mergeVessels(current.vessels ?? [], fresh) : fresh;
       current[layer] = ms;
       firstSeen[layer] = strobeSince(layer, ms, firstSeen[layer], Date.now());
       render(layer);
