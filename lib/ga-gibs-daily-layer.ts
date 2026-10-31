@@ -8,6 +8,8 @@ const S2_POLL_MS = 15 * 60_000;
 const HLS_DAYS = 6;
 const VIIRS_LOOKBACK = 4;
 const PROBE: [number, number, number] = [-84.39, 33.75, 6];
+// Covers the body read too; slow phones busy decoding other feeds need well over 30 s.
+const FETCH_TIMEOUT_MS = 120_000;
 const GIBS_DOCS = 'https://nasa-gibs.github.io/gibs-api-docs/';
 const S2_DOCS = 'https://registry.opendata.aws/sentinel-2-l2a-cogs/';
 
@@ -27,7 +29,7 @@ function beforeId(map: MapLibreMap): string | undefined {
 }
 
 async function latestDate(p: GibsProduct): Promise<string | null> {
-  const r = await fetch(gibsDomainsUrl(p, isoDay(Date.now() - 20 * 86_400_000)), { signal: AbortSignal.timeout(15_000) });
+  const r = await fetch(gibsDomainsUrl(p, isoDay(Date.now() - 20 * 86_400_000)), { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
   if (!r.ok) throw new Error(`GIBS domains HTTP ${r.status}`);
   return latestDomainDate(await r.text());
 }
@@ -37,7 +39,7 @@ async function newestImagedViirs(end: string): Promise<string | null> {
   const [lng, lat, z] = PROBE;
   const [x, y] = lngLatToTile(lng, lat, z);
   for (const d of daysBack(end, VIIRS_LOOKBACK)) {
-    const r = await fetch(gibsTileTemplate(VIIRS, d).replace('{z}', String(z)).replace('{y}', String(y)).replace('{x}', String(x)), { signal: AbortSignal.timeout(15_000) });
+    const r = await fetch(gibsTileTemplate(VIIRS, d).replace('{z}', String(z)).replace('{y}', String(y)).replace('{x}', String(x)), { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
     if (!r.ok) continue;
     if (!isBlankTile((await r.arrayBuffer()).byteLength)) return d;
   }
@@ -141,7 +143,7 @@ function sceneHtml(p: Record<string, unknown>): HTMLElement {
 async function refreshScenes(map: MapLibreMap) {
   if (!active.get(map)) return;
   try {
-    const r = await fetch('/api/ga/sentinel2', { signal: AbortSignal.timeout(30_000) });
+    const r = await fetch('/api/ga/sentinel2', { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
     const body = (await r.json()) as SceneCollection & { error?: string };
     if (!r.ok || body.error) throw new Error(body.error ?? `HTTP ${r.status}`);
     if (!active.get(map)) return;
