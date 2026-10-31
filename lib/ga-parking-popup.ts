@@ -32,7 +32,7 @@ function nwsStation(at: [number, number]) {
 }
 
 const CSS = {
-  root: 'font:13px/1.5 system-ui,-apple-system,sans-serif;color:#0f172a;min-width:min(300px,82vw);max-height:min(62vh,640px);overflow-y:auto;overscroll-behavior:contain',
+  root: 'font:13px/1.5 system-ui,-apple-system,sans-serif;color:#0f172a;min-width:min(300px,82vw);max-height:min(58vh,640px);overflow-y:auto;overscroll-behavior:contain',
   title: 'font-weight:800;font-size:15px;letter-spacing:.02em;margin:0 18px 2px 0',
   sub: 'font:11px ui-monospace,monospace;color:#475569;margin-bottom:6px',
   head: 'font:700 11px ui-monospace,monospace;letter-spacing:.08em;color:#1d4ed8;margin:8px 0 2px;border-top:1px solid #e2e8f0;padding-top:6px',
@@ -167,6 +167,7 @@ export function openParkingPopup(map: MapLibreMap, f: MapGeoJSONFeature, click: 
   loadStore(section(root, 'NEAREST BIG-BOX STORE'), map, at);
   const stopCam = loadCamera(section(root, 'NEAREST LIVE TRAFFIC CAMERA · GDOT 511GA'), at, isOpen);
   const stopWx = loadWeather(section(root, 'WEATHER NOW · NWS'), at, isOpen);
-  const popup = new Popup({ closeButton: true, maxWidth: 'min(440px, 94vw)' }).setLngLat(at).setDOMContent(root).addTo(map);
+  const popup = new Popup({ closeButton: true, anchor: 'bottom', maxWidth: 'min(440px, 94vw)' }).setLngLat(at).setDOMContent(root).addTo(map);
   popup.on('close', () => { open = false; stopCam(); stopWx(); });
+  map.easeTo({ center: at, offset: [0, Math.round(map.getContainer().clientHeight * 0.3)], duration: 400 });
 }
