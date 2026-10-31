@@ -15,6 +15,7 @@ import { addGaPatrolLayers } from '../lib/ga-patrol-3d';
 import { addUsBorderRunnerLayers } from '../lib/us-border-runners-3d';
 import { addGaLidarLayers } from '../lib/ga-lidar-layer';
 import { addGaRoadOverlay } from '../lib/ga-roads-overlay';
+import { addGaRetailParkingLayers } from '../lib/ga-retail-parking-layer';
 import { addGaCompetitorLayers } from '../lib/ga-competitors';
 import { addDisneyLiveBoard } from '../lib/disney-live';
 import { addGaH3Telemetry } from '../lib/ga-h3-telemetry';
@@ -166,6 +167,34 @@ const BASEMAPS = {
       'terrain-dem': TERRAIN_DEM,
     },
     layers: [{ id: 'sat', type: 'raster', source: 'sat' }],
+    terrain: { source: 'terrain-dem', exaggeration: 1.5 },
+  },
+  naip: {
+    version: 8,
+    projection: { type: 'globe' },
+    sources: {
+      sat: {
+        type: 'raster',
+        tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}?blankTile=false'],
+        tileSize: 256,
+        maxzoom: 21,
+        attribution: '© Esri, Maxar, Earthstar Geographics',
+      },
+      naip: {
+        type: 'raster',
+        tiles: ['https://imagery.nationalmap.gov/arcgis/rest/services/USGSNAIPImagery/ImageServer/exportImage?bbox={bbox-epsg-3857}&bboxSR=3857&imageSR=3857&size=256,256&format=jpgpng&f=image'],
+        tileSize: 256,
+        bounds: [-85.61, 30.35, -80.84, 35.0],
+        minzoom: 11,
+        maxzoom: 18,
+        attribution: 'Georgia aerial photos: <a href="https://imagery.nationalmap.gov/arcgis/rest/services/USGSNAIPImagery/ImageServer" target="_blank" rel="noopener">USDA NAIP 2023, 0.6 m, via USGS The National Map</a> (public domain)',
+      },
+      'terrain-dem': TERRAIN_DEM,
+    },
+    layers: [
+      { id: 'sat', type: 'raster', source: 'sat' },
+      { id: 'naip', type: 'raster', source: 'naip', minzoom: 11, paint: { 'raster-opacity': ['interpolate', ['linear'], ['zoom'], 11, 0, 12, 1] } },
+    ],
     terrain: { source: 'terrain-dem', exaggeration: 1.5 },
   },
   dark: 'https://demotiles.maplibre.org/style.json',
@@ -868,6 +897,7 @@ export default function GodsEyeMap({
     addGaPatrolLayers(map);
     addUsBorderRunnerLayers(map);
     addGaCompetitorLayers(map);
+    addGaRetailParkingLayers(map);
     addDisneyLiveBoard(map);
 
     // 2. Competitor state boundaries
@@ -1658,7 +1688,7 @@ export default function GodsEyeMap({
         addMapLayers(map);
       });
       map.easeTo({ pitch: 60, bearing: -12, duration: 800 });
-    } else if (next === 'satellite' || next === 'topo') {
+    } else if (next === 'satellite' || next === 'topo' || next === 'naip') {
       map.setStyle(BASEMAPS[next] as any);
       map.once('styledata', () => {
         try {
@@ -2055,6 +2085,25 @@ export default function GodsEyeMap({
                 }}
               >
                 SATELLITE
+              </button>
+              <button
+                type="button"
+                onClick={() => switchBasemap('naip')}
+                style={{
+                  padding: '5px 14px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  borderRadius: '9999px',
+                  color: basemap === 'naip' ? '#38bdf8' : '#cbd5e1',
+                  background: basemap === 'naip' ? 'rgba(14, 75, 120, 0.65)' : 'rgba(10, 18, 40, 0.85)',
+                  border: basemap === 'naip' ? '1px solid rgba(56, 189, 248, 0.85)' : '1px solid rgba(30, 58, 95, 0.7)',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  boxShadow: basemap === 'naip' ? '0 0 14px rgba(56, 189, 248, 0.5), inset 0 0 8px rgba(56, 189, 248, 0.25)' : 'none',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                NAIP 2023
               </button>
               <button
                 type="button"
