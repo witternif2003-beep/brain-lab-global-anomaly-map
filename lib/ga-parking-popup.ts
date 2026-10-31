@@ -1,5 +1,6 @@
 import { Popup, type Map as MapLibreMap, type MapGeoJSONFeature } from 'maplibre-gl';
 import { checkCamera } from './ga-live-markers-layer';
+import { GA_STORE_LAYERS } from './ga-retail-parking-layer';
 import type { LiveMarker } from './ga-live-markers/parse';
 import { fmtArea, fmtDistance, nearest, nwsObservationText, osmRefFromPoiId, parkingTagRows, parseOsmElement, ringAreaM2, type OsmRef } from './ga-parking-details';
 const CAMERA_REFRESH_MS = 60_000;
@@ -90,15 +91,15 @@ async function loadOsm(body: HTMLElement, ref: OsmRef | null) {
     fill(body, [
       ...parkingTagRows(e.tags ?? {}),
       ['Lot area', ring ? fmtArea(ringAreaM2(ring)) : ''],
-      ['Last edited', e.timestamp ? `${new Date(e.timestamp).toLocaleDateString()} (v${e.version ?? '?'})` : ''],
-    ], { text: `current OSM record, fetched ${clock()}`, ok: true }, { href: `https://www.openstreetmap.org/${ref.type}/${ref.id}`, text: `OpenStreetMap ${ref.type} ${ref.id} ↗` });
+      ['Last OSM edit', e.timestamp ? `${new Date(e.timestamp).toLocaleDateString()} (v${e.version ?? '?'})` : ''],
+    ], { text: `live OSM record as of ${new Date().toLocaleString()}${e.timestamp ? ` · nobody has changed it since ${new Date(e.timestamp).toLocaleDateString()}` : ''}`, ok: true }, { href: `https://www.openstreetmap.org/${ref.type}/${ref.id}`, text: `OpenStreetMap ${ref.type} ${ref.id} ↗` });
   } catch (err) {
     fill(body, [], { text: `OpenStreetMap API unavailable (${String(err)})`, ok: false }, { href: `https://www.openstreetmap.org/${ref.type}/${ref.id}`, text: 'Open on OpenStreetMap ↗' });
   }
 }
 
 function loadStore(body: HTMLElement, map: MapLibreMap, at: [number, number]) {
-  const stores = map.queryRenderedFeatures({ layers: ['ga-big-box-stores'] })
+  const stores = map.queryRenderedFeatures({ layers: GA_STORE_LAYERS.filter((id) => map.getLayer(id)) })
     .filter((f) => f.geometry.type === 'Point')
     .map((f) => { const [lon, lat] = (f.geometry as GeoJSON.Point).coordinates; return { lon, lat, name: String(f.properties?.name ?? '') }; });
   const hit = nearest(stores, at, STORE_MAX_M);
@@ -153,18 +154,18 @@ function loadWeather(body: HTMLElement, at: [number, number], isOpen: () => bool
 }
 
 /** Parking-lot popup: the lot's current OSM record and area, plus the nearest live GDOT camera, NWS observation and big-box store. */
-export function openParkingPopup(map: MapLibreMap, f: MapGeoJSONFeature, click: [number, number]) {
+export function openParkingPopup(map: MapLibreMap, f: MapGeoJSONFeature, click: [number, number], kind: 'lot' | 'store' = 'lot') {
   const at: [number, number] = f.geometry.type === 'Point' ? ((f.geometry as GeoJSON.Point).coordinates as [number, number]) : click;
   const ref = osmRefFromPoiId(f.id);
   const root = el('div', CSS.root);
   root.append(
-    el('div', CSS.title, `PARKING · ${String(f.properties?.name ?? '') || 'unnamed lot'}`),
-    el('div', CSS.sub, `${at[1].toFixed(5)}, ${at[0].toFixed(5)} · mapped lot, not a live occupancy count`),
+    el('div', CSS.title, `${kind === 'store' ? 'STORE' : 'PARKING'} · ${String(f.properties?.name ?? '') || `unnamed ${kind}`}`),
+    el('div', CSS.sub, `${at[1].toFixed(5)}, ${at[0].toFixed(5)} · ${kind === 'store' ? 'mapped store, not a live shopper count' : 'mapped lot, not a live occupancy count'}`),
   );
   let open = true;
   const isOpen = () => open;
-  void loadOsm(section(root, 'LOT · OPENSTREETMAP'), ref);
-  loadStore(section(root, 'NEAREST BIG-BOX STORE'), map, at);
+  void loadOsm(section(root, `${kind === 'store' ? 'STORE' : 'LOT'} · OPENSTREETMAP`), ref);
+  if (kind === 'lot') loadStore(section(root, 'NEAREST BIG-BOX STORE'), map, at);
   const stopCam = loadCamera(section(root, 'NEAREST LIVE TRAFFIC CAMERA · GDOT 511GA'), at, isOpen);
   const stopWx = loadWeather(section(root, 'WEATHER NOW · NWS'), at, isOpen);
   const popup = new Popup({ closeButton: true, anchor: 'bottom', maxWidth: 'min(440px, 94vw)' }).setLngLat(at).setDOMContent(root).addTo(map);
