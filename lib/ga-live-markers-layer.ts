@@ -1,5 +1,5 @@
 import { Popup } from 'maplibre-gl';
-import { airframeFor } from './ga-live-markers/airframe';
+import { airframeModel, faaSpec, FAA_ACD } from './ga-live-markers/airframe';
 import type { Map as MapLibreMap } from 'maplibre-gl';
 import { insideRing, loadGaWallRing, offset, type LngLat } from './ga-patrol-3d';
 import { reportGaFeed } from './ga-live-status';
@@ -52,6 +52,23 @@ const altTag = (p: Record<string, LiveValue>) => {
   return ft >= 18_000 ? `FL${Math.round(ft / 100)}` : `${(Math.round(ft / 100) * 100).toLocaleString('en-US')} ft`;
 };
 const DEAD_RECKON_MAX_S = 30;
+const finite = (v: LiveValue | undefined) => (v === null || v === undefined || v === '' || !Number.isFinite(Number(v)) ? null : Number(v));
+/** Height above mean sea level: GNSS altitude corrected by the GEOID18 geoid height, else barometric (pressure) altitude. */
+function aircraftMslM(m: LiveMarker): number | null {
+  const msl = finite(m.props.altMslFt);
+  if (msl !== null) return msl * 0.3048;
+  const baro = finite(m.props.altFt);
+  return baro === null ? null : baro * 0.3048;
+}
+const faaRows = (type: LiveValue | undefined): [string, string][] => {
+  const f = faaSpec(type);
+  if (!f) return [['FAA dimensions', 'type not in the FAA Aircraft Characteristics Database; size approximate']];
+  return [
+    ['FAA model', f.model],
+    ['Length · wingspan · tail', `${f.lengthFt} ft · ${f.spanFt} ft · ${f.tailFt} ft (3D model drawn to these)`],
+    ['FAA group · wake', `ADG ${f.adg ?? '—'} · ${f.wake ?? '—'} · ${f.engines ?? '?'}× ${f.engine.toLowerCase()}`],
+  ];
+};
 const STROBE_RECHECK_MS = 60_000;
 const TICK_MS = 1_000;
 const fmt = (v: LiveValue, unit = '') => (v === null || v === undefined || v === '' ? '' : `${v}${unit}`);
@@ -282,14 +299,17 @@ const SPECS: Record<LiveLayer, Spec> = {
     title: (m) => `AIRCRAFT · ${m.label}`,
     rows: (p) => [
       ['Type', fmt(p.type)],
-      ['Altitude', p.onGround ? 'on the ground' : fmt(p.altFt, ' ft')],
+      ['Altitude (GNSS, above sea level)', p.onGround ? 'on the ground' : fmt(p.altMslFt, ' ft (GNSS height − GEOID18)')],
+      ['Pressure altitude', p.onGround ? 'on the ground' : fmt(p.altFt, ' ft')],
       ['Ground speed', fmt(p.gsKt, ' kt')],
       ['Track', fmt(p.track, '°')],
       ['Emergency', fmt(p.emergency)],
       ['GPS accuracy (NACp)', fmt(p.gpsNacp)],
       ['Position', 'moved forward each second from the last report using speed and track'],
+      ...faaRows(p.type),
+      ['Colour', 'not published by the FAA or ADS-B; the model uses one neutral colour'],
     ],
-    detail: (ms) => `${ms.filter((m) => !m.props.onGround).length} airborne · ${ms.filter((m) => m.props.onGround).length} on ground · ${ms.filter(lowGps).length} with low GPS accuracy · PIA/LADD aircraft removed`,
+    detail: (ms) => `${ms.filter((m) => !m.props.onGround).length} airborne · ${ms.filter((m) => m.props.onGround).length} on ground · ${ms.filter(lowGps).length} with low GPS accuracy · PIA/LADD aircraft removed · 3D sizes from ${FAA_ACD.source} (retrieved ${FAA_ACD.retrievedAt.slice(0, 10)}), height above sea level from GNSS altitude`,
   },
   vessels: {
     label: 'Ships and boats (AIS, aisstream.io)', color: '#2dd4bf', stroke: '#134e4a', radiusPx: 4, z: 32, refreshMs: 60_000,
@@ -382,9 +402,9 @@ const STATIC_MODEL: Partial<Record<LiveLayer, GaModelKind>> = {
 };
 function modelFor(layer: LiveLayer, m: LiveMarker): GaDeckItem['model'] {
   if (layer === 'aircraft') {
-    const [kind, s] = airframeFor(m.props.type, m.props.category);
-    const ft = Number(m.props.altFt);
-    return { kind, scale: [s, s, s], elevM: m.props.onGround || !Number.isFinite(ft) ? 0 : Math.max(0, ft * FT_TO_M) };
+    const { kind, scale } = airframeModel(m.props.type, m.props.category);
+    const mslM = aircraftMslM(m);
+    return { kind, scale, elevM: m.props.onGround || mslM === null ? 0 : Math.max(0, mslM), msl: true };
   }
   if (layer === 'towers') {
     const h = Number(m.props.heightM);

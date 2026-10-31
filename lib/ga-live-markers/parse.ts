@@ -1,3 +1,4 @@
+import { mslFromGeometricFt } from "./geoid";
 export const GA_BBOX = { west: -85.7, south: 30.3, east: -80.8, north: 35.1 };
 
 export type OsmInfraKind = "signals" | "towers" | "police" | "firestations" | "sirens" | "speedcams" | "alpr";
@@ -21,6 +22,10 @@ function marker(lon: number | null, lat: number | null, observedAt: string | nul
   return { lon: round(lon), lat: round(lat), observedAt, label, props };
 }
 
+/** GNSS (ellipsoid) altitude in feet → feet above mean sea level via GEOID18. */
+const mslFt = (geomFt: number | null, lat: number | null, lon: number | null) =>
+  geomFt === null || lat === null || lon === null ? null : Math.round(mslFromGeometricFt(geomFt, lat, lon) / 0.3048);
+
 const keep = (m: LiveMarker | null): m is LiveMarker => m !== null;
 
 /** adsb.lol dbFlags bits for aircraft whose owners opted out of public display (FAA PIA and LADD programmes). */
@@ -28,7 +33,7 @@ const PRIVACY_FLAGS = 4 | 8;
 const MAX_POSITION_AGE_S = 60;
 
 interface AdsbAircraft {
-  flight?: string; t?: string; lat?: number; lon?: number; alt_baro?: number | "ground"; gs?: number; track?: number;
+  flight?: string; t?: string; lat?: number; lon?: number; alt_baro?: number | "ground"; alt_geom?: number; gs?: number; track?: number;
   seen_pos?: number; category?: string; emergency?: string; dbFlags?: number; type?: string; nac_p?: number;
 }
 
@@ -41,6 +46,8 @@ export function parseAdsbLol(json: { ac?: AdsbAircraft[]; now?: number }, nowMs 
       marker(num(a.lon), num(a.lat), new Date(now - (a.seen_pos ?? 0) * 1000).toISOString(), a.flight?.trim() || "no callsign", {
         type: a.t ?? null,
         altFt: a.alt_baro === "ground" ? 0 : num(a.alt_baro),
+        altGeomFt: a.alt_baro === "ground" ? null : num(a.alt_geom),
+        altMslFt: a.alt_baro === "ground" ? null : mslFt(num(a.alt_geom), num(a.lat), num(a.lon)),
         onGround: a.alt_baro === "ground",
         gsKt: num(a.gs),
         track: num(a.track),
@@ -85,10 +92,13 @@ export function parseOpenSky(json: { time?: number; states?: unknown[][] | null 
     .map((s) => {
       const t = num(s[3]) ?? json.time ?? null;
       const altM = num(s[7]);
+      const geoM = num(s[13]);
       const v = num(s[9]);
       return marker(num(s[5]), num(s[6]), t === null ? null : new Date(t * 1000).toISOString(), String(s[1] ?? "").trim() || "no callsign", {
         type: null,
         altFt: altM === null ? null : Math.round(altM * 3.28084),
+        altGeomFt: geoM === null ? null : Math.round(geoM * 3.28084),
+        altMslFt: mslFt(geoM === null ? null : geoM * 3.28084, num(s[6]), num(s[5])),
         onGround: s[8] === true,
         gsKt: v === null ? null : round(v * 1.943844, 1),
         track: num(s[10]),

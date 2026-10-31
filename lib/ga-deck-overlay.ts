@@ -30,7 +30,7 @@ export interface GaDeckItem {
   /** Short see-through tag drawn under the marker once zoomed in to the group's `labelMinZoom`. */
   label?: string;
   /** 3D model drawn in place of the glyph from `GA_MODEL_MIN_ZOOM`; `elevM` lifts it above the ground point (the glyph stays as its ground marker). */
-  model?: { kind: GaModelKind; scale?: [number, number, number]; elevM?: number };
+  model?: { kind: GaModelKind; scale?: [number, number, number]; elevM?: number; msl?: boolean };
   props: Record<string, unknown>;
 }
 export interface GaDeckGroup {
@@ -303,6 +303,17 @@ function groundM(state: DeckState, coord: LngLat): number {
 
 /** Position on the terrain surface, optionally lifted `upM` above it, so markers sit on their exact ground point in 3D. */
 const anchored = (state: DeckState, coord: LngLat, upM = 0): [number, number, number] => [coord[0], coord[1], groundM(state, coord) + upM];
+/**
+ * Model position. `msl` heights are metres above sea level: the true height above the ground is kept and stacked on
+ * the (exaggerated) terrain surface, so a plane on final sits just above the runway, not under 1.5× hills.
+ */
+function modelAt(state: DeckState, item: GaDeckItem): [number, number, number] {
+  const m = item.model!;
+  if (!m.msl || !m.elevM) return anchored(state, item.coord, m.elevM ?? 0);
+  const g = groundM(state, item.coord);
+  const ex = (state.map.getTerrain() as { exaggeration?: number } | null)?.exaggeration ?? 1;
+  return [item.coord[0], item.coord[1], g + Math.max(0, m.elevM - g / (ex || 1))];
+}
 
 function reground(state: DeckState): void {
   state.ground.clear();
@@ -550,7 +561,7 @@ function createLayers(state: DeckState): Layer[] {
         id: `ga-deck-${key}-drop`,
         data: views.elevated,
         getSourcePosition: (item) => anchored(state, item.coord),
-        getTargetPosition: (item) => anchored(state, item.coord, item.model!.elevM!),
+        getTargetPosition: (item) => modelAt(state, item),
         updateTriggers: { getSourcePosition: state.groundVersion, getTargetPosition: state.groundVersion },
         getColor: (item) => [item.fill[0], item.fill[1], item.fill[2], 150],
         getWidth: 1,
@@ -565,7 +576,7 @@ function createLayers(state: DeckState): Layer[] {
           id: `ga-deck-${key}-model-${kind}`,
           data: items,
           mesh: gaMesh(kind),
-          getPosition: (item) => anchored(state, item.coord, item.model!.elevM ?? 0),
+          getPosition: (item) => modelAt(state, item),
           updateTriggers: { getPosition: state.groundVersion },
           getOrientation: (item) => [0, item.angle === undefined ? 0 : 90 - item.angle, 0],
           getScale: (item) => item.model!.scale ?? [1, 1, 1],

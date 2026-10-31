@@ -1,4 +1,5 @@
-import type { GaModelKind } from '../ga-mesh-models';
+import { gaMesh, type GaModelKind } from '../ga-mesh-models';
+import ACD from './faa-acd.json';
 
 /**
  * ICAO Doc 8643 type designator (readsb/adsb.fi `t`) → low-poly airframe and scale.
@@ -53,4 +54,49 @@ export function airframeFor(type: unknown, category: unknown): Airframe {
 
 export function airframeKnown(type: unknown): boolean {
   return typeof type === 'string' && TYPES.has(type.trim().toUpperCase());
+}
+
+export interface FaaSpec {
+  model: string; lengthFt: number; spanFt: number; tailFt: number; engine: string; engines: number | null; adg: string | null; wake: string | null;
+}
+const FAA = ACD.types as Record<string, FaaSpec>;
+export const FAA_ACD = { source: ACD.source, sourceUrl: ACD.sourceUrl, sha256: ACD.sha256, retrievedAt: ACD.retrievedAt } as const;
+
+const norm = (type: unknown) => (typeof type === 'string' ? type.trim().toUpperCase() : '');
+export const faaSpec = (type: unknown): FaaSpec | null => FAA[norm(type)] ?? null;
+
+const FT_M = 0.3048;
+const extents = new Map<GaModelKind, [number, number, number]>();
+/** Mesh length (x), wingspan (y) and height above its wheels (z), in metres. */
+export function meshExtent(kind: GaModelKind): [number, number, number] {
+  let e = extents.get(kind);
+  if (e) return e;
+  const p = gaMesh(kind).attributes.positions.value;
+  const lo = [Infinity, Infinity, Infinity];
+  const hi = [-Infinity, -Infinity, -Infinity];
+  for (let i = 0; i < p.length; i++) {
+    lo[i % 3] = Math.min(lo[i % 3], p[i]);
+    hi[i % 3] = Math.max(hi[i % 3], p[i]);
+  }
+  extents.set(kind, (e = [hi[0] - lo[0], hi[1] - lo[1], hi[2] - Math.min(0, lo[2])]));
+  return e;
+}
+
+function kindFromFaa(s: FaaSpec): GaModelKind {
+  if (s.engine !== 'Jet') return 'lightplane';
+  return s.spanFt >= 140 ? 'widebody' : s.spanFt >= 100 ? 'airliner' : 'regionaljet';
+}
+
+/**
+ * Shape plus per-axis scale. Types in the FAA Aircraft Characteristics Database are stretched so the mesh's
+ * length, wingspan and tail height equal the FAA figures; other types keep the approximate uniform scale.
+ */
+export function airframeModel(type: unknown, category: unknown): { kind: GaModelKind; scale: [number, number, number]; faa: FaaSpec | null } {
+  const [listed, s] = airframeFor(type, category);
+  const spec = faaSpec(type);
+  if (!spec) return { kind: listed, scale: [s, s, s], faa: null };
+  // Business jets have rear-mounted engines, so the regional-jet mesh is the closer shape than the high-wing prop.
+  const kind = TYPES.has(norm(type)) ? (spec.engine === 'Jet' && listed === 'lightplane' ? 'regionaljet' : listed) : kindFromFaa(spec);
+  const [lx, ly, lz] = meshExtent(kind);
+  return { kind, scale: [(spec.lengthFt * FT_M) / lx, (spec.spanFt * FT_M) / ly, (spec.tailFt * FT_M) / lz], faa: spec };
 }
