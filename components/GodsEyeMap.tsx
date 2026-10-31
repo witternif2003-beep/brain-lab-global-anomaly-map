@@ -1697,7 +1697,8 @@ export default function GodsEyeMap({
       map.easeTo({ pitch: 60, bearing: -12, duration: 800 });
     } else if (next === 'satellite' || next === 'topo' || next === 'naip' || next === 'nasa') {
       map.setStyle(BASEMAPS[next] as any, { diff: !fullReload });
-      map.once('styledata', () => {
+      // A full reload can't use 'styledata': it also fires for the outgoing style before the new one replaces it.
+      map.once(fullReload ? 'style.load' : 'styledata', () => {
         try {
           (map as any).setTerrain?.({ source: 'terrain-dem', exaggeration: 1.5 });
         } catch {}
