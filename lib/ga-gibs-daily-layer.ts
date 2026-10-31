@@ -8,7 +8,8 @@ const S2_POLL_MS = 15 * 60_000;
 const HLS_DAYS = 6;
 const VIIRS_LOOKBACK = 4;
 const PROBE: [number, number, number] = [-84.39, 33.75, 6];
-// Covers the body read too; slow phones busy decoding other feeds need well over 30 s.
+// Covers the body read too; slow phones busy decoding other feeds need well over 30 s. GIBS calls get no timeout:
+// they queue behind the map's own GIBS tile requests, and a stuck call only delays this feed.
 const FETCH_TIMEOUT_MS = 120_000;
 const GIBS_DOCS = 'https://nasa-gibs.github.io/gibs-api-docs/';
 const S2_DOCS = 'https://registry.opendata.aws/sentinel-2-l2a-cogs/';
@@ -29,7 +30,7 @@ function beforeId(map: MapLibreMap): string | undefined {
 }
 
 async function latestDate(p: GibsProduct): Promise<string | null> {
-  const r = await fetch(gibsDomainsUrl(p, isoDay(Date.now() - 20 * 86_400_000)), { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+  const r = await fetch(gibsDomainsUrl(p, isoDay(Date.now() - 20 * 86_400_000)));
   if (!r.ok) throw new Error(`GIBS domains HTTP ${r.status}`);
   return latestDomainDate(await r.text());
 }
@@ -39,7 +40,7 @@ async function newestImagedViirs(end: string): Promise<string | null> {
   const [lng, lat, z] = PROBE;
   const [x, y] = lngLatToTile(lng, lat, z);
   for (const d of daysBack(end, VIIRS_LOOKBACK)) {
-    const r = await fetch(gibsTileTemplate(VIIRS, d).replace('{z}', String(z)).replace('{y}', String(y)).replace('{x}', String(x)), { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+    const r = await fetch(gibsTileTemplate(VIIRS, d).replace('{z}', String(z)).replace('{y}', String(y)).replace('{x}', String(x)));
     if (!r.ok) continue;
     if (!isBlankTile((await r.arrayBuffer()).byteLength)) return d;
   }
