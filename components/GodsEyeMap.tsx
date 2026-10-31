@@ -1682,6 +1682,8 @@ export default function GodsEyeMap({
     const map = mapRef.current;
     if (!map) return;
     setBasemap(next);
+    // NASA DAILY shares the satellite style object, so a diffed setStyle would be a no-op that never fires styledata.
+    const fullReload = next === 'nasa' || !!map.getSource('gibs-viirs');
     setGibsDailyActive(map, next === 'nasa');
 
     if (next === 'terrain') {
@@ -1694,7 +1696,7 @@ export default function GodsEyeMap({
       });
       map.easeTo({ pitch: 60, bearing: -12, duration: 800 });
     } else if (next === 'satellite' || next === 'topo' || next === 'naip' || next === 'nasa') {
-      map.setStyle(BASEMAPS[next] as any);
+      map.setStyle(BASEMAPS[next] as any, { diff: !fullReload });
       map.once('styledata', () => {
         try {
           (map as any).setTerrain?.({ source: 'terrain-dem', exaggeration: 1.5 });
