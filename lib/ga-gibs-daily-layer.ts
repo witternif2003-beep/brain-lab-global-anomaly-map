@@ -1,5 +1,5 @@
 import { Popup, type GeoJSONSource, type Map as MapLibreMap, type MapLayerMouseEvent, type RasterTileSource } from 'maplibre-gl';
-import { HLS, VIIRS, daysBack, gibsDomainsUrl, gibsTileTemplate, isUnimaged, latestDomainDate, lngLatToTile, type GibsProduct } from './ga-gibs-daily/gibs';
+import { HLS, VIIRS, daysBack, gibsDomainsUrl, gibsTileTemplate, isBlankTile, latestDomainDate, lngLatToTile, type GibsProduct } from './ga-gibs-daily/gibs';
 import type { SceneCollection } from './ga-gibs-daily/sentinel2';
 import { reportGaFeed } from './ga-live-status';
 
@@ -27,7 +27,7 @@ function beforeId(map: MapLibreMap): string | undefined {
 }
 
 async function latestDate(p: GibsProduct): Promise<string | null> {
-  const r = await fetch(gibsDomainsUrl(p, isoDay(Date.now() - 20 * 86_400_000)));
+  const r = await fetch(gibsDomainsUrl(p, isoDay(Date.now() - 20 * 86_400_000)), { signal: AbortSignal.timeout(15_000) });
   if (!r.ok) throw new Error(`GIBS domains HTTP ${r.status}`);
   return latestDomainDate(await r.text());
 }
@@ -37,17 +37,9 @@ async function newestImagedViirs(end: string): Promise<string | null> {
   const [lng, lat, z] = PROBE;
   const [x, y] = lngLatToTile(lng, lat, z);
   for (const d of daysBack(end, VIIRS_LOOKBACK)) {
-    const r = await fetch(gibsTileTemplate(VIIRS, d).replace('{z}', String(z)).replace('{y}', String(y)).replace('{x}', String(x)));
+    const r = await fetch(gibsTileTemplate(VIIRS, d).replace('{z}', String(z)).replace('{y}', String(y)).replace('{x}', String(x)), { signal: AbortSignal.timeout(15_000) });
     if (!r.ok) continue;
-    const bmp = await createImageBitmap(await r.blob());
-    const c = document.createElement('canvas');
-    c.width = bmp.width;
-    c.height = bmp.height;
-    const ctx = c.getContext('2d', { willReadFrequently: true });
-    if (!ctx) return d;
-    ctx.drawImage(bmp, 0, 0);
-    bmp.close();
-    if (!isUnimaged(ctx.getImageData(0, 0, c.width, c.height).data)) return d;
+    if (!isBlankTile((await r.arrayBuffer()).byteLength)) return d;
   }
   return null;
 }
@@ -149,7 +141,7 @@ function sceneHtml(p: Record<string, unknown>): HTMLElement {
 async function refreshScenes(map: MapLibreMap) {
   if (!active.get(map)) return;
   try {
-    const r = await fetch('/api/ga/sentinel2');
+    const r = await fetch('/api/ga/sentinel2', { signal: AbortSignal.timeout(30_000) });
     const body = (await r.json()) as SceneCollection & { error?: string };
     if (!r.ok || body.error) throw new Error(body.error ?? `HTTP ${r.status}`);
     if (!active.get(map)) return;
@@ -183,7 +175,8 @@ export function setGibsDailyActive(map: MapLibreMap, on: boolean): void {
 /** NASA GIBS daily VIIRS + 30 m HLS imagery and recent Sentinel-2 scene outlines, used by the NASA DAILY basemap. */
 export function addGibsDailyLayers(map: MapLibreMap): void {
   active.set(map, true);
-  void refreshGibs(map).then(() => refreshScenes(map));
+  void refreshGibs(map);
+  void refreshScenes(map);
   if (bound.has(map)) return;
   bound.add(map);
   map.on('click', `${S2_ID}-fill`, (e: MapLayerMouseEvent) => {

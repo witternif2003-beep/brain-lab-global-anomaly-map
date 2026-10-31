@@ -53,9 +53,9 @@ export function lngLatToTile(lng: number, lat: number, z: number): [number, numb
 }
 
 /** GIBS serves an all-black tile for a day the satellite has not yet imaged or processed. */
-export function isUnimaged(px: Uint8ClampedArray, maxDarkFrac = 0.6): boolean {
-  let dark = 0;
-  const n = px.length / 4;
-  for (let i = 0; i < px.length; i += 4) if (px[i] + px[i + 1] + px[i + 2] < 24) dark++;
-  return n === 0 || dark / n > maxDarkFrac;
+/** GIBS answers an unprocessed day with one canned all-black JPEG (1,665 B on 2026-10-31); real VIIRS tiles over land are ~13 KB+. */
+export const GIBS_BLANK_MAX_BYTES = 4000;
+
+export function isBlankTile(bytes: number): boolean {
+  return bytes <= GIBS_BLANK_MAX_BYTES;
 }

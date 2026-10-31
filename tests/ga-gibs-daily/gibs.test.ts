@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { HLS, VIIRS, daysBack, gibsDomainsUrl, gibsTileTemplate, isUnimaged, latestDomainDate, lngLatToTile } from "../../lib/ga-gibs-daily/gibs";
+import { HLS, VIIRS, daysBack, gibsDomainsUrl, gibsTileTemplate, isBlankTile, latestDomainDate, lngLatToTile } from "../../lib/ga-gibs-daily/gibs";
 import { trimStacItems } from "../../lib/ga-gibs-daily/sentinel2";
 
 test("gibsTileTemplate builds the GIBS REST WMTS path with date and {z}/{y}/{x}", () => {
@@ -28,13 +28,9 @@ test("lngLatToTile puts Atlanta in the expected z6 tile", () => {
   assert.deepEqual(lngLatToTile(-84.39, 33.75, 6), [16, 25]);
 });
 
-test("isUnimaged flags all-black tiles and passes real imagery", () => {
-  const black = new Uint8ClampedArray(4 * 100).fill(0);
-  for (let i = 3; i < black.length; i += 4) black[i] = 255;
-  assert.equal(isUnimaged(black), true);
-  const land = new Uint8ClampedArray(4 * 100);
-  for (let i = 0; i < land.length; i += 4) land.set([60, 90, 50, 255], i);
-  assert.equal(isUnimaged(land), false);
+test("isBlankTile separates GIBS's canned unprocessed tile from real VIIRS tiles", () => {
+  assert.equal(isBlankTile(1665), true);
+  assert.equal(isBlankTile(13297), false);
 });
 
 test("trimStacItems keeps footprint, time, cloud and links, newest first, and drops broken items", () => {
