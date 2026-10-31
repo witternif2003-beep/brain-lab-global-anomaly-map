@@ -1,4 +1,5 @@
 import { Popup } from 'maplibre-gl';
+import { airframeFor } from './ga-live-markers/airframe';
 import type { Map as MapLibreMap } from 'maplibre-gl';
 import { insideRing, loadGaWallRing, offset, type LngLat } from './ga-patrol-3d';
 import { reportGaFeed } from './ga-live-status';
@@ -379,14 +380,9 @@ const STATIC_MODEL: Partial<Record<LiveLayer, GaModelKind>> = {
   transit: 'bus', micromobility: 'scooter', stations: 'weather', streamgauges: 'gauge', signals: 'signal',
   police: 'police', firestations: 'firestation', sirens: 'siren', speedcams: 'speedcam', alpr: 'alpr', gdotcams: 'speedcam',
 };
-/** ADS-B emitter category → generic airframe model and scale (DO-260B: A1 light, A2 small, A3 large, A4 high-vortex, A5 heavy, A6 high-performance, A7 rotorcraft). */
-const AIRFRAME: Record<string, [GaModelKind, number]> = {
-  A1: ['lightplane', 1], A2: ['lightplane', 1.6], A3: ['airliner', 0.9], A4: ['airliner', 1.1], A5: ['airliner', 1.7], A6: ['lightplane', 1.4], A7: ['helicopter', 1],
-};
-
 function modelFor(layer: LiveLayer, m: LiveMarker): GaDeckItem['model'] {
   if (layer === 'aircraft') {
-    const [kind, s] = AIRFRAME[String(m.props.category)] ?? ['airliner', 0.8];
+    const [kind, s] = airframeFor(m.props.type, m.props.category);
     const ft = Number(m.props.altFt);
     return { kind, scale: [s, s, s], elevM: m.props.onGround || !Number.isFinite(ft) ? 0 : Math.max(0, ft * FT_TO_M) };
   }
@@ -427,7 +423,7 @@ const cameraStatus = new Map<string, { state: CameraState; at: number }>();
 const cameraState = (m: LiveMarker): CameraState | null => (typeof m.props.imageUrl === 'string' ? cameraStatus.get(m.props.imageUrl)?.state ?? null : 'offline');
 
 /** Asks /api/ga-camera for a fresh 511GA picture; it answers with the image only when it is a real frame, not a "no live feed" placeholder. */
-async function checkCamera(url: string): Promise<{ state: CameraState; blob: Blob | null }> {
+export async function checkCamera(url: string): Promise<{ state: CameraState; blob: Blob | null }> {
   let state: CameraState = 'offline';
   let blob: Blob | null = null;
   try {

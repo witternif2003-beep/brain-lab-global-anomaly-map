@@ -40,7 +40,7 @@ export function addGaRetailParkingLayers(map: MapLibreMap): void {
         'circle-color': '#2563eb',
         'circle-radius': ['interpolate', ['linear'], ['zoom'], 14, 2.5, 18, 6] as never,
         'circle-stroke-color': '#e2e8f0',
-        'circle-stroke-width': 1,
+        'circle-stroke-width': ['interpolate', ['linear'], ['zoom'], 14, 1, 18, 2] as never,
         'circle-opacity': 0.85,
       },
     });
@@ -61,4 +61,12 @@ export function addGaRetailParkingLayers(map: MapLibreMap): void {
       },
     });
   }
+  if (!bound.has(map)) {
+    bound.add(map);
+    map.on('click', 'ga-parking-lots', (e) => { const f = e.features?.[0]; if (f) void import('./ga-parking-popup').then((m) => m.openParkingPopup(map, f, [e.lngLat.lng, e.lngLat.lat])); });
+    map.on('mouseenter', 'ga-parking-lots', () => { map.getCanvas().style.cursor = 'pointer'; });
+    map.on('mouseleave', 'ga-parking-lots', () => { map.getCanvas().style.cursor = ''; });
+  }
 }
+
+const bound = new WeakSet<MapLibreMap>();

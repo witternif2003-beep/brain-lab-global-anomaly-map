@@ -1,6 +1,6 @@
 /** Low-poly 3D models (metres; +x forward, +y left, +z up) for the GA live-marker layers, drawn with deck.gl SimpleMeshLayer at street zoom. */
 export type GaModelKind =
-  | 'airliner' | 'lightplane' | 'helicopter' | 'bus' | 'scooter' | 'signal' | 'tower'
+  | 'airliner' | 'regionaljet' | 'widebody' | 'lightplane' | 'helicopter' | 'bus' | 'scooter' | 'signal' | 'tower'
   | 'police' | 'firestation' | 'siren' | 'speedcam' | 'alpr' | 'weather' | 'gauge';
 
 export interface GaMesh {
@@ -103,6 +103,30 @@ const BUILD: Record<GaModelKind, () => GaMesh> = {
       .cylinder([0, 7, 1.2], 1.2, 4.5, 'x', 0.35)
       .cylinder([0, -7, 1.2], 1.2, 4.5, 'x', 0.35)
       .box([15.5, 0, 3.9], [1.6, 3, 0.6], 0.15)
+      .build(),
+  regionaljet: () =>
+    new MeshBuilder()
+      .cylinder([-14, 0, 2.5], 1.35, 27, 'x')
+      .cylinder([13, 0, 2.5], 1.35, 4, 'x', 1, 0.2)
+      .cylinder([-18, 0, 2.5], 0.5, 4, 'x', 0.9, 1.35)
+      .box([1, 0, 1.7], [5, 25, 0.35], 0.8)
+      .cylinder([-14, 2.4, 3.2], 0.75, 4, 'x', 0.35)
+      .cylinder([-14, -2.4, 3.2], 0.75, 4, 'x', 0.35)
+      .box([-15.5, 0, 5.5], [4, 0.35, 5], 0.95)
+      .box([-16.5, 0, 8], [3, 8.5, 0.3], 0.8)
+      .box([13.7, 0, 3.1], [1.2, 2, 0.4], 0.15)
+      .build(),
+  widebody: () =>
+    new MeshBuilder()
+      .cylinder([-27, 0, 4.5], 3, 50, 'x')
+      .cylinder([23, 0, 4.5], 3, 6, 'x', 1, 0.4)
+      .cylinder([-31, 0, 4.5], 1, 4, 'x', 0.9, 3)
+      .box([0, 0, 3.4], [11, 60, 0.7], 0.8)
+      .cylinder([-1, 10, 1.5], 2, 6.5, 'x', 0.35)
+      .cylinder([-1, -10, 1.5], 2, 6.5, 'x', 0.35)
+      .box([-27, 0, 5.5], [5, 20, 0.45], 0.8)
+      .box([-26.5, 0, 10], [7, 0.5, 10], 0.95)
+      .box([24.5, 0, 5.8], [2, 4, 0.8], 0.15)
       .build(),
   lightplane: () =>
     new MeshBuilder()
@@ -223,7 +247,7 @@ const BUILD: Record<GaModelKind, () => GaMesh> = {
 
 /** Radius in metres used for tapping a model at street zoom. */
 export const GA_MODEL_REACH_M: Record<GaModelKind, number> = {
-  airliner: 20, lightplane: 6, helicopter: 6, bus: 6.5, scooter: 1, signal: 4, tower: 4,
+  airliner: 20, regionaljet: 18, widebody: 32, lightplane: 6, helicopter: 6, bus: 6.5, scooter: 1, signal: 4, tower: 4,
   police: 16, firestation: 14, siren: 1.5, speedcam: 1, alpr: 1, weather: 1.2, gauge: 1.2,
 };
 
