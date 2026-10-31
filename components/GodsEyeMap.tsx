@@ -26,6 +26,7 @@ import { addGaAnomalyBulbs } from '../lib/ga-anomaly-bulbs';
 import { addGaChangeLayer } from '../lib/ga-change-layer';
 import { addGaOrbitalLayers } from '../lib/ga-orbital-layer';
 import { addGaCloudLayers } from '../lib/ga-clouds-layer';
+import { addGibsDailyLayers, setGibsDailyActive } from '../lib/ga-gibs-daily-layer';
 import { addTerminatorLayers } from '../lib/terminator-layer';
 import { addGaLiveMarkerLayers } from '../lib/ga-live-markers-layer';
 import { addGaFbiFeeds } from '../lib/ga-fbi-feed';
@@ -196,6 +197,9 @@ const BASEMAPS = {
       { id: 'naip', type: 'raster', source: 'naip', minzoom: 11, paint: { 'raster-opacity': ['interpolate', ['linear'], ['zoom'], 11, 0, 12, 1] } },
     ],
     terrain: { source: 'terrain-dem', exaggeration: 1.5 },
+  },
+  get nasa() {
+    return BASEMAPS.satellite;
   },
   dark: 'https://demotiles.maplibre.org/style.json',
   terrain: {
@@ -1678,6 +1682,7 @@ export default function GodsEyeMap({
     const map = mapRef.current;
     if (!map) return;
     setBasemap(next);
+    setGibsDailyActive(map, next === 'nasa');
 
     if (next === 'terrain') {
       map.setStyle(BASEMAPS.terrain as any);
@@ -1688,13 +1693,14 @@ export default function GodsEyeMap({
         addMapLayers(map);
       });
       map.easeTo({ pitch: 60, bearing: -12, duration: 800 });
-    } else if (next === 'satellite' || next === 'topo' || next === 'naip') {
+    } else if (next === 'satellite' || next === 'topo' || next === 'naip' || next === 'nasa') {
       map.setStyle(BASEMAPS[next] as any);
       map.once('styledata', () => {
         try {
           (map as any).setTerrain?.({ source: 'terrain-dem', exaggeration: 1.5 });
         } catch {}
         addMapLayers(map);
+        if (next === 'nasa') addGibsDailyLayers(map);
       });
     } else {
       map.setStyle(BASEMAPS[next] as string);
@@ -2104,6 +2110,26 @@ export default function GodsEyeMap({
                 }}
               >
                 NAIP 2023
+              </button>
+              <button
+                type="button"
+                title="NASA GIBS daily VIIRS and 30 m HLS imagery plus Sentinel-2 scene outlines from the last 6 days"
+                onClick={() => switchBasemap('nasa')}
+                style={{
+                  padding: '5px 14px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  borderRadius: '9999px',
+                  color: basemap === 'nasa' ? '#38bdf8' : '#cbd5e1',
+                  background: basemap === 'nasa' ? 'rgba(14, 75, 120, 0.65)' : 'rgba(10, 18, 40, 0.85)',
+                  border: basemap === 'nasa' ? '1px solid rgba(56, 189, 248, 0.85)' : '1px solid rgba(30, 58, 95, 0.7)',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  boxShadow: basemap === 'nasa' ? '0 0 14px rgba(56, 189, 248, 0.5), inset 0 0 8px rgba(56, 189, 248, 0.25)' : 'none',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                NASA DAILY
               </button>
               <button
                 type="button"

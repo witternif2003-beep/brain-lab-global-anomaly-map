@@ -18,6 +18,8 @@ export interface GaFeedStatus {
   swatches?: { label: string; color: string; count?: number | null }[];
   /** Epoch ms until which the feed's dot flashes the police light-bar pattern (new data). */
   strobeUntil?: number;
+  /** Minutes before the data counts as stale; defaults to 90. Daily/multi-day sources set their own cadence. */
+  staleAfterMin?: number;
 }
 
 interface CustodyEntry {
@@ -30,16 +32,16 @@ interface CustodyEntry {
 const CUSTODY_MAX = 20;
 
 const STALE_MIN = 90;
-const order = ['anomalies', 'live-ceiling', 'aircraft', 'vessels', 'transit', 'micromobility', 'stations', 'streamgauges', 'quakes', 'tfr', 'pireps', 'augusta911', 'athens911', 'policereports', 'policetech', 'gdotcams', 'webcams', 'police', 'firestations', 'sirens', 'speedcams', 'alpr', 'towers', 'signals', 'equipment', 'gps-integrity', 'satellites', 'radar-clouds', 'clouds', 'terminator', 'fires', 'imagery', 'traffic', 'traffic-counts', 'ble-vehicles', 'moving-tracks', 'alerts', 'gauges', 'crime', 'fbi-wanted', 'fbi-cde', 'fbi-agencies', 'fbi-osint', 'renderer', 'gpu-memory', 'bench'];
+const order = ['anomalies', 'live-ceiling', 'aircraft', 'vessels', 'transit', 'micromobility', 'stations', 'streamgauges', 'quakes', 'tfr', 'pireps', 'augusta911', 'athens911', 'policereports', 'policetech', 'gdotcams', 'webcams', 'police', 'firestations', 'sirens', 'speedcams', 'alpr', 'towers', 'signals', 'equipment', 'gps-integrity', 'satellites', 'radar-clouds', 'clouds', 'terminator', 'fires', 'imagery', 'nasa-daily', 'sentinel2', 'traffic', 'traffic-counts', 'ble-vehicles', 'moving-tracks', 'alerts', 'gauges', 'crime', 'fbi-wanted', 'fbi-cde', 'fbi-agencies', 'fbi-osint', 'renderer', 'gpu-memory', 'bench'];
 const feeds = new WeakMap<MapLibreMap, Map<string, GaFeedStatus>>();
 const controls = new WeakMap<MapLibreMap, GaLiveLegend>();
 const custody = new WeakMap<MapLibreMap, Map<string, CustodyEntry[]>>();
 
-function age(iso: string | null): { text: string; stale: boolean } {
+function age(iso: string | null, staleAfterMin = STALE_MIN): { text: string; stale: boolean } {
   if (!iso) return { text: 'no timestamp', stale: true };
   const min = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 60_000));
   const text = min < 1 ? 'just now' : min < 60 ? `${min} min ago` : min < 2880 ? `${Math.round(min / 60)} h ago` : `${Math.round(min / 1440)} d ago`;
-  return { text, stale: min > STALE_MIN };
+  return { text, stale: min > staleAfterMin };
 }
 
 /** Collapsible in-map legend listing each live Georgia feed with its record count, data age and source. */
@@ -97,13 +99,13 @@ class GaLiveLegend implements IControl {
       const n = document.createElement('span');
       n.textContent = f.count === null ? '—' : f.count.toLocaleString();
       n.style.cssText = 'margin-left:auto;font-weight:800;color:#f8fafc';
-      const state = integrityState(f, Date.now(), STALE_MIN);
+      const state = integrityState(f, Date.now(), f.staleAfterMin ?? STALE_MIN);
       const badge = document.createElement('span');
       badge.textContent = state;
       badge.title = custodyText(this.map, f.id);
       badge.style.cssText = `flex:none;border:1px solid ${INTEGRITY_COLORS[state]};color:${INTEGRITY_COLORS[state]};border-radius:6px;padding:0 4px;font-size:8px;font-weight:800;letter-spacing:.04em;cursor:help`;
       head.append(dot, name, badge, n);
-      const a = age(f.updatedAt);
+      const a = age(f.updatedAt, f.staleAfterMin);
       const sub = document.createElement('div');
       sub.style.cssText = `padding-left:14px;color:${f.error ? '#f87171' : a.stale ? '#fbbf24' : '#94a3b8'}`;
       sub.textContent = f.error ? `feed error: ${f.error}` : [f.detail, `data ${a.text}`].filter(Boolean).join(' · ');
@@ -198,7 +200,7 @@ export function reportGaFeed(map: MapLibreMap, status: GaFeedStatus): void {
   let c = custody.get(map);
   if (!c) custody.set(map, (c = new Map()));
   const log = c.get(status.id) ?? [];
-  const state = integrityState(status, Date.now(), STALE_MIN);
+  const state = integrityState(status, Date.now(), status.staleAfterMin ?? STALE_MIN);
   const last = log.at(-1);
   if (!last || last.state !== state || last.count !== status.count || last.sha256 !== status.sha256) {
     log.push({ at: new Date().toISOString(), state, count: status.count, sha256: status.sha256 });
