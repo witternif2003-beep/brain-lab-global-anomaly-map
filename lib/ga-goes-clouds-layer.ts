@@ -78,12 +78,12 @@ export function addGoesCloudLayer(map: MapLibreMap): void {
   for (const k of KINDS) {
     const id = sourceId(k);
     if (!map.getSource(id)) {
-      map.addSource(id, { type: 'raster', tiles: tiles(k, scanTimes.get(k) ?? 'current'), tileSize: 256, minzoom: 3, maxzoom: GOES_BANDS[k].maxzoom, attribution: 'Clouds: NOAA GOES via nowCOAST' });
+      map.addSource(id, { type: 'raster', tiles: tiles(k, scanTimes.get(k) ?? 'current'), tileSize: 256, minzoom: 0, maxzoom: GOES_BANDS[k].maxzoom, attribution: 'Clouds: NOAA GOES via nowCOAST' });
     }
     if (!map.getLayer(id)) {
       map.addLayer({
         id, type: 'raster', source: id, layout: { visibility: k === kind ? 'visible' : 'none' },
-        paint: { 'raster-opacity': ['interpolate', ['linear'], ['zoom'], 3, 0.9, 11, 0.85, 14, 0.3], 'raster-fade-duration': 0, 'raster-resampling': 'linear' },
+        paint: { 'raster-opacity': ['interpolate', ['linear'], ['zoom'], 0, 0.9, 11, 0.85, 14, 0.3], 'raster-fade-duration': 0, 'raster-resampling': 'linear' },
       }, before);
     }
   }
