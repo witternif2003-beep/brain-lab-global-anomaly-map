@@ -152,8 +152,8 @@ async function refreshScenes(map: MapLibreMap) {
     if (src) src.setData(body as never);
     else {
       map.addSource(S2_ID, { type: 'geojson', data: body as never, attribution: 'Scenes: Copernicus Sentinel-2 via Element 84 Earth Search' });
-      map.addLayer({ id: `${S2_ID}-fill`, type: 'fill', source: S2_ID, minzoom: 5, paint: { 'fill-color': '#22d3ee', 'fill-opacity': 0.02 } });
-      map.addLayer({ id: `${S2_ID}-line`, type: 'line', source: S2_ID, minzoom: 5, paint: { 'line-color': '#22d3ee', 'line-width': 1, 'line-opacity': 0.7, 'line-dasharray': [2, 2] } });
+      map.addLayer({ id: `${S2_ID}-fill`, type: 'fill', source: S2_ID, minzoom: 5, paint: { 'fill-color': '#22d3ee', 'fill-opacity': 0.05 } });
+      map.addLayer({ id: `${S2_ID}-line`, type: 'line', source: S2_ID, minzoom: 5, paint: { 'line-color': '#22d3ee', 'line-width': 1.5, 'line-opacity': 0.85, 'line-dasharray': [2, 2] } });
       map.addLayer({
         id: `${S2_ID}-label`, type: 'symbol', source: S2_ID, minzoom: 7,
         layout: { 'text-field': ['concat', 'S2 ', ['slice', ['get', 'datetime'], 5, 10], ' · ', ['case', ['==', ['get', 'cloud'], null], '?', ['to-string', ['get', 'cloud']]], '% cloud'], 'text-size': 10, 'symbol-placement': 'point' },

@@ -1705,6 +1705,8 @@ export default function GodsEyeMap({
         addMapLayers(map);
         if (next === 'nasa') addGibsDailyLayers(map);
       });
+      // NASA pixels are 30–375 m, so the layers fade out past z14 (VIIRS past z11); zoom out so the tap shows them.
+      if (next === 'nasa' && map.getZoom() > 11) map.easeTo({ zoom: 9.5, duration: 1200 });
     } else {
       map.setStyle(BASEMAPS[next] as string);
       map.once('styledata', () => {
