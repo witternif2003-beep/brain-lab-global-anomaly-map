@@ -1,6 +1,7 @@
 import type { Layer } from '@deck.gl/core';
 import type { MapLibreOverlay } from '@deck.gl/maplibre';
 import type { Map as MapLibreMap } from 'maplibre-gl';
+import { deckGlobeActive, meshYaw } from './ga-deck-heading';
 import { insideRing, loadGaWallRing, type LngLat } from './ga-patrol-3d';
 import { reportGaFeed } from './ga-live-status';
 import { GA_MARKER_SCALE, gaGlowMultiplier } from './ga-marker-scale';
@@ -103,6 +104,8 @@ interface DeckState {
   published: DeckSnapshot | null;
   zoom: number;
   bearing: number;
+  /** Whether the last model layers were built for deck.gl's GlobeView. */
+  meshGlobe: boolean;
   atlas: GaIconAtlas | null;
   afterRender: Set<(canvas: HTMLCanvasElement) => void>;
   /** Labels kept by the last `declutterLabels` pass; null until the first pass. */
@@ -152,6 +155,14 @@ const modelScale = (zoom: number) => (zoom < GA_MODEL_MIN_ZOOM ? 0 : 2 ** Math.m
 const metresPerPixel = (lat: number, zoom: number) => (EARTH_CIRCUMFERENCE_M * Math.cos((lat * Math.PI) / 180)) / (512 * 2 ** zoom);
 /** Models drawn at every zoom (`model.always`) are at least this many CSS pixels across a ~40 m airframe; true size once that is larger. */
 export const GA_ALWAYS_MODEL_MIN_PX = 36;
+const mapProjection = (map: MapLibreMap): string | undefined => {
+  try {
+    return (map as unknown as { getProjection?: () => { type?: string } | undefined }).getProjection?.()?.type;
+  } catch {
+    return undefined;
+  }
+};
+const isDeckGlobe = (map: MapLibreMap): boolean => deckGlobeActive(mapProjection(map), map.getZoom());
 export const alwaysModelScale = (lat: number, zoom: number): number => Math.max(1, (GA_ALWAYS_MODEL_MIN_PX * metresPerPixel(lat, zoom)) / 40);
 
 function getState(map: MapLibreMap): DeckState {
@@ -182,6 +193,7 @@ function getState(map: MapLibreMap): DeckState {
     published: null,
     zoom: map.getZoom(),
     bearing: map.getBearing(),
+    meshGlobe: false,
     atlas: null,
     afterRender: new Set(),
     labelShown: null,
@@ -212,6 +224,12 @@ function getState(map: MapLibreMap): DeckState {
   map.on('zoomend', () => {
     state!.zoom = map.getZoom();
   });
+  const reorientIfViewChanged = () => {
+    if (isDeckGlobe(map) !== state!.meshGlobe) updateLayers(state!);
+  };
+  map.on('zoom', reorientIfViewChanged);
+  map.on('projectiontransition', reorientIfViewChanged);
+  map.on('style.load', reorientIfViewChanged);
   map.on('moveend', () => {
     declutterLabels(state!);
     updateLayers(state!);
@@ -598,6 +616,8 @@ function createLayers(state: DeckState): Layer[] {
     }
     {
       const aloftScale = alwaysModelScale(state.map.getCenter().lat, state.zoom);
+      const globe = isDeckGlobe(state.map);
+      state.meshGlobe = globe;
       for (const [kind, items] of views.models) {
         const always = !!items[0]?.model?.always;
         const kindScale = always ? aloftScale : scale;
@@ -609,8 +629,8 @@ function createLayers(state: DeckState): Layer[] {
           data: items,
           mesh,
           getPosition: (item) => modelAt(state, item),
-          updateTriggers: { getPosition: state.groundVersion },
-          getOrientation: (item) => [0, item.angle === undefined ? 0 : 90 - item.angle, 0],
+          updateTriggers: { getPosition: state.groundVersion, getOrientation: globe },
+          getOrientation: (item) => [0, meshYaw(item.angle, globe), 0],
           getScale: (item) => item.model!.scale ?? [1, 1, 1],
           getColor: (item) => [item.fill[0], item.fill[1], item.fill[2], 255],
           sizeScale: kindScale,
