@@ -2,6 +2,13 @@
 
 /** LiDAR GPU bytes per point: Float32 xyz position (12) + Uint8 rgb colour (3). */
 export const LIDAR_BYTES_PER_POINT = 15;
+/** JavaScript bytes per point kept after upload: Float32 x, y, height above ground (12) + Uint8 class and intensity (2). */
+export const LIDAR_JS_BYTES_PER_POINT = 14;
+
+/** Bytes to budget per point. Phones share one memory pool between the GPU and JavaScript, so both copies count there. */
+export function lidarBytesPerPoint(touch: boolean): number {
+  return touch ? LIDAR_BYTES_PER_POINT + LIDAR_JS_BYTES_PER_POINT : LIDAR_BYTES_PER_POINT;
+}
 /** Never plan fewer points than this, so the layer still shows something under pressure. */
 export const LIDAR_MIN_POINTS = 250_000;
 const MB = 1024 * 1024;

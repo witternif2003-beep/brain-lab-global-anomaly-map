@@ -1,12 +1,11 @@
 import {
+  BufferAttribute,
   BufferGeometry,
   Camera,
-  Float32BufferAttribute,
   Matrix4,
   Points,
   Scene,
   ShaderMaterial,
-  Uint8BufferAttribute,
   Vector2,
   Vector3,
   WebGLRenderer,
@@ -28,10 +27,11 @@ import {
   targetDepthFor,
 } from './ga-lidar/ept';
 import type { EptProject, Hierarchy, LidarNodeData } from './ga-lidar/ept';
+import { fullArray, releaseAfterUpload } from './ga-lidar/gpu-upload';
 import { GpuPassTimer } from './ga-lidar/gpu-timer';
 import { isTouchDevice, lidarBudget } from './map/touch-gpu-budget';
 import { gpuCrashCount, gpuSafeMode } from './map/crash-guard';
-import { drawingBufferBytes, LIDAR_MIN_POINTS, lidarPointBudget, vramTargetBytes } from './map/vram-budget';
+import { drawingBufferBytes, LIDAR_BYTES_PER_POINT, LIDAR_MIN_POINTS, lidarBytesPerPoint, lidarPointBudget, vramTargetBytes } from './map/vram-budget';
 import { vramMeterInstalled, vramSnapshot } from './map/vram-meter';
 import { reportGaFeed } from './ga-live-status';
 import { raiseGaRoadOverlay } from './ga-roads-overlay';
@@ -348,7 +348,7 @@ export class GaLidar3DLayer implements CustomLayerInterface {
   /** GPU bytes of the LiDAR points currently uploaded. */
   private lidarBytes(): number {
     let b = 0;
-    for (const n of this.drawn.values()) for (const a of Object.values(n.points.geometry.attributes)) b += (a.array as ArrayBufferView).byteLength;
+    for (const n of this.drawn.values()) b += n.data.count * LIDAR_BYTES_PER_POINT;
     return b;
   }
 
@@ -367,7 +367,7 @@ export class GaLidar3DLayer implements CustomLayerInterface {
   private pointBudget(): number {
     const ceiling = lidarBudget(isTouchDevice(), gpuCrashCount()).points;
     const used = this.measuredVram();
-    const budget = used === null ? ceiling : lidarPointBudget({ ceiling, targetBytes: this.vramTarget(), otherBytes: used - this.lidarBytes() });
+    const budget = used === null ? ceiling : lidarPointBudget({ ceiling, targetBytes: this.vramTarget(), otherBytes: used - this.lidarBytes(), bytesPerPoint: lidarBytesPerPoint(isTouchDevice()) });
     this.stats.pointBudget = budget;
     this.stats.vramLimited = budget < ceiling;
     return budget;
@@ -402,22 +402,10 @@ export class GaLidar3DLayer implements CustomLayerInterface {
 
   private addNode(key: string, data: LidarNodeData): void {
     const n = data.count;
-    const k = this.metresPer3857();
-    const pos = new Float32Array(n * 3);
-    const col = new Uint8Array(n * 3);
-    const dx = data.minX - this.originXY[0];
-    const dy = data.minY - this.originXY[1];
-    for (let i = 0; i < n; i++) {
-      pos[i * 3] = (dx + data.x[i]) * k;
-      pos[i * 3 + 1] = (dy + data.y[i]) * k;
-      const [r, g, b] = lidarColor(data.cls[i], data.hag[i], data.intensity[i]);
-      col[i * 3] = r;
-      col[i * 3 + 1] = g;
-      col[i * 3 + 2] = b;
-    }
     const geometry = new BufferGeometry();
-    geometry.setAttribute('position', new Float32BufferAttribute(pos, 3));
-    geometry.setAttribute('aColor', new Uint8BufferAttribute(col, 3, true));
+    // WebGL keeps its own copy of each buffer, so the JavaScript arrays are freed after upload and rebuilt from `data` on change.
+    geometry.setAttribute('position', releaseAfterUpload(new BufferAttribute(new Float32Array(n * 3), 3)));
+    geometry.setAttribute('aColor', releaseAfterUpload(new BufferAttribute(classColors(data), 3, true)));
     const points = new Points(geometry, this.material);
     points.frustumCulled = false;
     const node: DrawnNode = { points, data, terrainStale: false, trueColor: false };
@@ -471,8 +459,8 @@ export class GaLidar3DLayer implements CustomLayerInterface {
       }),
     );
     if (this.drawn.get(key) !== node) return;
-    const attr = node.points.geometry.getAttribute('aColor');
-    const col = attr.array as Uint8Array;
+    const attr = node.points.geometry.getAttribute('aColor') as BufferAttribute;
+    const col = attr.array.length === data.count * 3 ? (attr.array as Uint8Array) : classColors(data);
     let hits = 0;
     for (let i = 0; i < data.count; i++) {
       const p = imageryPixel(data.minX + data.x[i], data.minY + data.y[i], z);
@@ -485,6 +473,7 @@ export class GaLidar3DLayer implements CustomLayerInterface {
       hits++;
     }
     if (!hits) return;
+    attr.array = col;
     attr.needsUpdate = true;
     node.trueColor = true;
     this.setStatus(this.stats.status);
@@ -510,9 +499,14 @@ export class GaLidar3DLayer implements CustomLayerInterface {
         }
       }
     }
-    const pos = node.points.geometry.getAttribute('position');
-    const arr = pos.array as Float32Array;
+    const pos = node.points.geometry.getAttribute('position') as BufferAttribute;
+    const arr = fullArray<Float32Array>(pos);
+    const k = this.metresPer3857();
+    const dx = data.minX - this.originXY[0];
+    const dy = data.minY - this.originXY[1];
     for (let p = 0; p < data.count; p++) {
+      arr[p * 3] = (dx + data.x[p]) * k;
+      arr[p * 3 + 1] = (dy + data.y[p]) * k;
       let z = data.hag[p] + SURFACE_LIFT_M;
       if (terrain) {
         const fx = (data.x[p] / data.width) * g;
@@ -529,6 +523,7 @@ export class GaLidar3DLayer implements CustomLayerInterface {
       }
       arr[p * 3 + 2] = z;
     }
+    pos.array = arr;
     pos.needsUpdate = true;
     node.terrainStale = missing;
     return true;
@@ -564,6 +559,18 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     this.gpuTimer?.end();
     if (this.gpuTimer) this.stats.gpuMsP95 = this.gpuTimer.poll();
   }
+}
+
+/** Classification/height colours for every return (RGB, 3 bytes each). */
+function classColors(data: LidarNodeData): Uint8Array {
+  const col = new Uint8Array(data.count * 3);
+  for (let i = 0; i < data.count; i++) {
+    const [r, g, b] = lidarColor(data.cls[i], data.hag[i], data.intensity[i]);
+    col[i * 3] = r;
+    col[i * 3 + 1] = g;
+    col[i * 3 + 2] = b;
+  }
+  return col;
 }
 
 const ATTRIBUTION_SOURCE = 'ga-lidar-attribution';
