@@ -105,14 +105,40 @@ export type FgAirframe = (typeof FG.models)[number];
 /** FlightGear (GPL) airframe mesh for this ICAO type, if one was converted by scripts/build-fg-airframes.py. */
 export const fgAirframe = (type: unknown): FgAirframe | null => FG.models.find((m) => m.types.includes(norm(type))) ?? null;
 
+const TWIN_TURBOPROPS = new Set(['AT43', 'AT45', 'AT72', 'AT75', 'AT76', 'DH8A', 'DH8B', 'DH8C', 'DH8D', 'SF34', 'JS41', 'E120', 'D328', 'SW4', 'B190', 'BE20', 'BE9L', 'BE9T', 'A400', 'C130', 'C30J']);
+const SINGLE_TURBOPROPS = new Set(['C208', 'P208', 'PC12', 'TBM7', 'TBM9']);
+const QUADS = /^(A34|A38|B74|IL96|C5|A124|AN12|AN22|B52|K35|E3)/;
+
+/**
+ * FlightGear shape for any aircraft: its own converted mesh, else the closest verified one by layout
+ * (rotorcraft, four-engine or twin widebody, Airbus or Boeing narrowbody, rear-engine jet, turboprop, light single).
+ */
+export function fgAirframeId(type: unknown, category: unknown, spec: FaaSpec | null = faaSpec(type)): string {
+  const own = fgAirframe(type);
+  if (own) return own.id;
+  const t = norm(type);
+  const [listed] = airframeFor(type, category);
+  const known = TYPES.has(t);
+  if (spec?.rotor || listed === 'helicopter') return 'ec135';
+  const kind = known || !spec ? listed : kindFromFaa(spec);
+  if (TWIN_TURBOPROPS.has(t) || (spec && spec.engine !== 'Jet' && (spec.engines ?? 1) >= 2 && spec.spanFt >= 50)) return 'q400';
+  if (kind === 'widebody') return spec?.engines === 4 || QUADS.test(t) ? 'b748' : t.startsWith('A3') ? 'a330' : 'b788';
+  if (kind === 'airliner') return /^(A3|A2|BCS|C919)/.test(t) ? 'a320' : 'b739';
+  if (kind === 'regionaljet' || spec?.engine === 'Jet') return 'citationx';
+  if (known && !SINGLE_TURBOPROPS.has(t)) return 'citationx';
+  if (!known && !spec && (category === 'A2' || category === 'A6')) return 'citationx';
+  return 'c182';
+}
+
 export function airframeModel(type: unknown, category: unknown): { kind: GaModelKind; scale: [number, number, number]; faa: FaaSpec | null } {
   const [listed, s] = airframeFor(type, category);
   const spec = faaSpec(type);
-  if (!spec) return { kind: listed, scale: [s, s, s], faa: null };
-  // Business jets have rear-mounted engines, so the regional-jet mesh is the closer shape than the high-wing prop.
-  const kind = spec.rotor ? 'helicopter' : TYPES.has(norm(type)) ? (spec.engine === 'Jet' && listed === 'lightplane' ? 'regionaljet' : listed) : kindFromFaa(spec);
-  const fg = fgAirframe(type);
-  const drawn: GaModelKind = fg ? `fg-${fg.id}` : kind;
+  const drawn: GaModelKind = `fg-${fgAirframeId(type, category, spec)}`;
   const [lx, ly, lz] = meshExtent(drawn);
+  if (!spec) {
+    // No FAA figures: keep the approximate overall length of the type's class.
+    const u = (s * meshExtent(listed)[0]) / lx;
+    return { kind: drawn, scale: [u, u, u], faa: null };
+  }
   return { kind: drawn, scale: [(spec.lengthFt * FT_M) / lx, (spec.spanFt * FT_M) / ly, (spec.tailFt * FT_M) / lz], faa: spec };
 }

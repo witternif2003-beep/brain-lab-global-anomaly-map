@@ -10,6 +10,8 @@ import hashlib, json, math, re, struct, subprocess, sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+from PIL import Image
+
 ROOT = Path(__file__).resolve().parent.parent
 OUT_DIR = ROOT / "public/models/airframes"
 MANIFEST = ROOT / "lib/ga-live-markers/fg-airframes.json"
@@ -24,8 +26,16 @@ AIRFRAMES = [
     {"id": "b788", "repo": "787", "files": ["Models/787-8.ac"], "types": ["B788", "B789", "B78X"]},
     {"id": "e170", "repo": "E-jet-family", "files": ["Models/erj170.ac"], "types": ["E170", "E75L", "E75S"]},
     {"id": "e190", "repo": "E-jet-family", "files": ["Models/erj190.ac"], "types": ["E190", "E195", "E290", "E295"]},
+    # pw4000.xml engine offsets.
+    {"id": "a330", "repo": "A330-200", "files": ["Models/a330-200-main.ac", ("Models/pw4000.ac", [-2.7034, -9.4014, -2.6508]), ("Models/pw4000.ac", [-2.7034, 9.4014, -2.6508])],
+     "types": ["A332", "A333", "A338", "A339", "A337"]},
+    {"id": "q400", "repo": "Q400", "files": ["Models/q400.ac"], "types": ["DH8D"]},
+    {"id": "citationx", "repo": "CitationX", "files": ["Models/CitationX.ac"], "types": ["C750"]},
+    {"id": "c182", "repo": "c182s", "files": ["Models/c182s.ac"], "types": ["C182", "C82R", "C82T"]},
+    # ec135.xml main-rotor offset (rotor pitch of -5 deg ignored).
+    {"id": "ec135", "repo": "ec135", "files": ["Models/ec135.ac", ("Models/rotors/mainrotor.ac", [3.023, 0, 1.801])], "types": ["EC35"]},
 ]
-BUDGET = 6000
+BUDGET = 16000
 
 
 def parse_ac(path):
@@ -34,7 +44,7 @@ def parse_ac(path):
 
     def obj(parent_m, parent_t):
         nonlocal i
-        name, loc, rot, verts, kids = "", [0, 0, 0], [1, 0, 0, 0, 1, 0, 0, 0, 1], [], 0
+        name, loc, rot, verts, kids, tex = "", [0, 0, 0], [1, 0, 0, 0, 1, 0, 0, 0, 1], [], 0, None
         surfs = []
         i += 1
         while i < len(lines):
@@ -46,7 +56,8 @@ def parse_ac(path):
             elif k == "loc": loc = list(map(float, t[1:4]))
             elif k == "rot": rot = list(map(float, t[1:10]))
             elif k == "data": i += 1
-            elif k == "texture" or k == "texrep" or k == "crease" or k == "url" or k == "texoff" or k == "subdiv": pass
+            elif k == "texture": tex = " ".join(t[1:]).strip('"')
+            elif k == "texrep" or k == "crease" or k == "url" or k == "texoff" or k == "subdiv": pass
             elif k == "numvert":
                 n = int(t[1])
                 verts = [list(map(float, lines[i + 1 + j].split()[:3])) for j in range(n)]
@@ -58,9 +69,11 @@ def parse_ac(path):
                     i += 1
                     if lines[i].startswith("mat"): mat = int(lines[i].split()[1]); i += 1
                     nref = int(lines[i].split()[1])
-                    refs = [int(lines[i + 1 + j].split()[0]) for j in range(nref)]
+                    rl = [lines[i + 1 + j].split() for j in range(nref)]
+                    refs = [int(r[0]) for r in rl]
+                    uvs = [(float(r[1]), float(r[2])) if len(r) >= 3 else (0.0, 0.0) for r in rl]
                     i += nref
-                    if flags & 0xF == 0 and nref >= 3: surfs.append((mat, refs))
+                    if flags & 0xF == 0 and nref >= 3: surfs.append((mat, refs, uvs))
             elif k == "kids":
                 kids = int(t[1]); i += 1; break
             i += 1
@@ -70,9 +83,9 @@ def parse_ac(path):
         keep = not DROP.search(name)
         if keep:
             w = [[sum(m[r * 3 + c] * v[c] for c in range(3)) + tr[r] for r in range(3)] for v in verts]
-            for mat, refs in surfs:
+            for mat, refs, uvs in surfs:
                 for j in range(1, len(refs) - 1):
-                    tris.append((w[refs[0]], w[refs[j]], w[refs[j + 1]], mat))
+                    tris.append((w[refs[0]], w[refs[j]], w[refs[j + 1]], mat, tex, (uvs[0], uvs[j], uvs[j + 1])))
         for _ in range(kids):
             while i < len(lines) and not lines[i].startswith("OBJECT"): i += 1
             if keep: obj(m, tr)
@@ -110,11 +123,43 @@ def parse_ac(path):
     return mats, tris
 
 
+_textures = {}
+
+
+def texture(folder, name):
+    """The object's paint texture (PNG/SGI/DDS), searched next to the .ac file and up to the repo's Models folder."""
+    if not name: return None
+    key = (folder, name)
+    if key not in _textures:
+        img = None
+        for d in (folder, folder.parent, folder.parent.parent):
+            fpath = d / name
+            if fpath.exists():
+                try: img = Image.open(fpath).convert("RGBA")
+                except Exception: img = None
+                break
+        _textures[key] = img
+    return _textures[key]
+
+
+def sample(img, uv):
+    """Average texture colour at four points inside the triangle (centroid and halfway to each corner); None if mostly transparent."""
+    w, h = img.size
+    cu = sum(p[0] for p in uv) / 3; cv = sum(p[1] for p in uv) / 3
+    acc, alpha = [0.0, 0.0, 0.0], 0.0
+    pts = [(cu, cv)] + [((cu + p[0]) / 2, (cv + p[1]) / 2) for p in uv]
+    for u, v in pts:
+        r, g, b, a = img.getpixel((int((u % 1) * w) % w, int((1 - v % 1) * h) % h))
+        acc[0] += r; acc[1] += g; acc[2] += b; alpha += a
+    if alpha / len(pts) < 128: return None
+    return [x / len(pts) / 255 for x in acc]
+
+
 def cluster(tris, budget):
     """Vertex clustering: snap to a grid whose cell grows until the triangle count fits the budget."""
     xs = [c for t in tris for v in t[:3] for c in v]
     span = max(max(xs[k::3]) - min(xs[k::3]) for k in range(3))
-    cell = span / 400
+    cell = span / 1200
     while True:
         seen, out = set(), []
         for a, b, c, col in tris:
@@ -135,10 +180,15 @@ def build(af, src):
         f, off = f if isinstance(f, tuple) else (f, [0, 0, 0])
         mats, ts = parse_ac(repo / f)
         # FlightGear offsets are x aft, y right, z up; AC3D vertices are x aft, y up, z right... converted below via ac (x, y, z) = (x+ox, y+oz, z+oy)
-        ts = [tuple([v[0] + off[0], v[1] + off[2], v[2] + off[1]] for v in t[:3]) + (t[3],) for t in ts]
-        for a, b, c, mat in ts:
+        ts = [tuple([v[0] + off[0], v[1] + off[2], v[2] + off[1]] for v in t[:3]) + t[3:] for t in ts]
+        for a, b, c, mat, tex, uv in ts:
             rgb, trans = mats[mat] if mat < len(mats) else ([0.8] * 3, 0)
             if trans > 0.5: continue
+            img = texture((repo / f).parent, tex)
+            if img is not None:
+                px = sample(img, uv)
+                if px is None: continue  # transparent part of the texture (windows, blur discs)
+                rgb = [min(1.0, m * p) for m, p in zip(rgb, px)]
             # AC3D is y-up with the nose toward -x in FlightGear models -> map mesh axes (+x forward, +y left, +z up).
             tris.append(tuple([-v[0], -v[2], v[1]] for v in (a, b, c)) + (tuple(round(x, 2) for x in rgb),))
     raw = len(tris)
@@ -158,7 +208,7 @@ def build(af, src):
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     (OUT_DIR / f"{af['id']}.bin").write_bytes(blob)
     sha = subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
-    lic_file = next(f for f in ("COPYING", "COPYING.txt", "LICENSE", "License.txt") if (repo / f).exists())
+    lic_file = next(f for f in ("COPYING", "COPYING.txt", "LICENSE", "LICENSE.txt", "License.txt") if (repo / f).exists())
     lic = (repo / lic_file).read_text(errors="replace")[:200]
     assert "GNU GENERAL PUBLIC LICENSE" in lic, f"{af['repo']}: {lic_file} is not a GPL licence"
     return {"id": af["id"], "types": af["types"], "repo": f"https://github.com/FGMEMBERS/{af['repo']}", "commit": sha,

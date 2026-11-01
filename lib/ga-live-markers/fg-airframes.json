@@ -1,6 +1,6 @@
 {
  "source": "FlightGear FGMEMBERS aircraft models (GPL)",
- "builtAt": "2026-11-01T09:30:17+00:00",
+ "builtAt": "2026-11-01T10:00:11+00:00",
  "models": [
   {
    "id": "b739",
@@ -18,14 +18,14 @@
     "Models/737-900.ac"
    ],
    "license": "GPL-2.0",
-   "triangles": 5950,
+   "triangles": 9343,
    "sourceTriangles": 10283,
    "extentM": [
     40.354,
-    29.95,
-    12.453
+    29.862,
+    12.409
    ],
-   "sha256": "c887a525d5523e67e79da01e8461d77612dda69c050d1e942c1576c5498f41c4"
+   "sha256": "10225b51fa30aeea898d87422bfae78e35a3e093d93a7ae1619afa0e951277e6"
   },
   {
    "id": "a320",
@@ -48,14 +48,14 @@
     "Models/a320.vstab.ac"
    ],
    "license": "GPL-2.0",
-   "triangles": 5610,
+   "triangles": 9323,
    "sourceTriangles": 10767,
    "extentM": [
-    37.61,
-    34.124,
-    10.457
+    37.573,
+    34.066,
+    10.364
    ],
-   "sha256": "9ed96a9074c0ac84e33186b70cbfd47f88efee4cc10bcd632b022cfedc2d3389"
+   "sha256": "b506087108a0a34b85a63ea383250fc8780b03c37ef7c7fb08fead5c660facb5"
   },
   {
    "id": "b748",
@@ -69,14 +69,14 @@
     "Models/747-8F.ac"
    ],
    "license": "GPL-2.0",
-   "triangles": 5418,
+   "triangles": 15750,
    "sourceTriangles": 21936,
    "extentM": [
-    75.927,
-    68.626,
-    18.982
+    76.628,
+    68.529,
+    18.534
    ],
-   "sha256": "ec41d8f5c0b2ac1e40e33df2d2fe466343c0217efb6d0266a247ab86beca7a5c"
+   "sha256": "07a0be7a15ef0f277b0dbd96ff2f72868b97f02d8166fd914faf09caf76f9c77"
   },
   {
    "id": "b788",
@@ -91,14 +91,14 @@
     "Models/787-8.ac"
    ],
    "license": "GPL-2.0",
-   "triangles": 5290,
-   "sourceTriangles": 19090,
+   "triangles": 14979,
+   "sourceTriangles": 19070,
    "extentM": [
-    56.786,
-    59.058,
-    15.9
+    56.667,
+    59.545,
+    16.424
    ],
-   "sha256": "008c92711b3f61b286f1f4ada74f59c694c76683a3162e173a2a80008d059ceb"
+   "sha256": "1b5d35d9f52dd2ec7417ce74451aaa2b94eda19632a1cb35a5c3a3cd18b770a6"
   },
   {
    "id": "e170",
@@ -113,14 +113,14 @@
     "Models/erj170.ac"
    ],
    "license": "GPL-2.0",
-   "triangles": 5355,
-   "sourceTriangles": 38280,
+   "triangles": 14626,
+   "sourceTriangles": 38244,
    "extentM": [
     29.494,
-    25.41,
-    9.756
+    25.561,
+    9.907
    ],
-   "sha256": "eeaf6104533dcf65583290eb71707bffbac83e8be3509ce7147f764a449cfef7"
+   "sha256": "4373966c0647190479474e71d8ef74d3f1b157b0c50c51fe60a094f070fcdf11"
   },
   {
    "id": "e190",
@@ -136,14 +136,123 @@
     "Models/erj190.ac"
    ],
    "license": "GPL-2.0",
-   "triangles": 5000,
+   "triangles": 15936,
    "sourceTriangles": 38446,
    "extentM": [
-    35.555,
-    28.013,
+    35.34,
+    28.157,
     10.774
    ],
-   "sha256": "be14d5bc5da1076b9fb980908fbc0264b75036643c928002c965cf49000c81cc"
+   "sha256": "d6c119a66359d078d6c6eebefbadf4e2009cbf292a3d748cebc48e1109ceeacc"
+  },
+  {
+   "id": "a330",
+   "types": [
+    "A332",
+    "A333",
+    "A338",
+    "A339",
+    "A337"
+   ],
+   "repo": "https://github.com/FGMEMBERS/A330-200",
+   "commit": "59a22737e419783523554fe9123191a7eec721ce",
+   "files": [
+    "Models/a330-200-main.ac",
+    "Models/pw4000.ac",
+    "Models/pw4000.ac"
+   ],
+   "license": "GPL-2.0",
+   "triangles": 13948,
+   "sourceTriangles": 35015,
+   "extentM": [
+    58.328,
+    59.995,
+    18.808
+   ],
+   "sha256": "f02d906ff959c26a7254f26ae1681d85915fdf8d622219da30a0f4d80115e30e"
+  },
+  {
+   "id": "q400",
+   "types": [
+    "DH8D"
+   ],
+   "repo": "https://github.com/FGMEMBERS/Q400",
+   "commit": "ccf6336558a19e18b60e916ad1eb0f2fb2faa26f",
+   "files": [
+    "Models/q400.ac"
+   ],
+   "license": "GPL-2.0",
+   "triangles": 15842,
+   "sourceTriangles": 18167,
+   "extentM": [
+    32.591,
+    28.449,
+    8.284
+   ],
+   "sha256": "cb229fb88348140616684826f85054bb14ad01c437a8d7a3a7a8471ae64793ef"
+  },
+  {
+   "id": "citationx",
+   "types": [
+    "C750"
+   ],
+   "repo": "https://github.com/FGMEMBERS/CitationX",
+   "commit": "e497ad98591fa8d441eba188517b7238d6b1f85d",
+   "files": [
+    "Models/CitationX.ac"
+   ],
+   "license": "GPL-2.0",
+   "triangles": 7274,
+   "sourceTriangles": 7612,
+   "extentM": [
+    21.944,
+    19.64,
+    6.309
+   ],
+   "sha256": "3875d31eaaffce71e0dab4b1752576acdfb231109885da310d064c2e1920b215"
+  },
+  {
+   "id": "c182",
+   "types": [
+    "C182",
+    "C82R",
+    "C82T"
+   ],
+   "repo": "https://github.com/FGMEMBERS/c182s",
+   "commit": "ef35ae89b422b4f78c0f6125035681b0eb41dd3c",
+   "files": [
+    "Models/c182s.ac"
+   ],
+   "license": "GPL-2.0",
+   "triangles": 14985,
+   "sourceTriangles": 26277,
+   "extentM": [
+    8.499,
+    11.833,
+    3.276
+   ],
+   "sha256": "d50c2bb46851165d0284610f03573918e43985362030530e6946182f812cda92"
+  },
+  {
+   "id": "ec135",
+   "types": [
+    "EC35"
+   ],
+   "repo": "https://github.com/FGMEMBERS/ec135",
+   "commit": "6c649b38108170cf91bc2ed14c20606a0640fa42",
+   "files": [
+    "Models/ec135.ac",
+    "Models/rotors/mainrotor.ac"
+   ],
+   "license": "GPL-2.0",
+   "triangles": 13768,
+   "sourceTriangles": 45242,
+   "extentM": [
+    11.924,
+    10.221,
+    4.296
+   ],
+   "sha256": "7f3a61cc0eb79a88e04e2d29e30072c301e156837d3f4fc49a61124325e8586d"
   }
  ]
 }

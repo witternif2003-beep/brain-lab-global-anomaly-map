@@ -13,17 +13,19 @@ for (const m of FG.models) {
     const mesh = parseAirframeBin(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength));
     const p = mesh.attributes.positions.value;
     assert.equal(p.length / 9, m.triangles);
-    assert.ok(m.triangles <= 6000);
+    assert.ok(m.triangles <= 16000);
     for (let k = 0; k < 3; k++) {
       let lo = Infinity, hi = -Infinity;
       for (let i = k; i < p.length; i += 3) { lo = Math.min(lo, p[i]); hi = Math.max(hi, p[i]); }
       assert.ok(Math.abs(hi - lo - m.extentM[k]) < 0.01);
       if (k < 2) assert.ok(Math.abs(hi + lo) < 0.01, `${m.id} is centred on its position along axis ${k}`);
     }
-    // Nose toward +x: the tail fin (top quarter of the height) is in the rear half.
-    let finX = 0, finN = 0;
-    for (let i = 0; i < p.length; i += 3) if (p[i + 2] > 0.75 * m.extentM[2]) { finX += p[i]; finN++; }
-    assert.ok(finN > 0 && finX / finN < 0, `${m.id} nose points along +x`);
+    // Nose toward +x: the tail fin (top quarter of the height) is in the rear half. Helicopters have the rotor on top,
+    // so there the cabin (most of the body below the rotor) must sit in the front half instead.
+    const rotor = m.types.some((t) => faaSpec(t)?.rotor);
+    let sumX = 0, n = 0;
+    for (let i = 0; i < p.length; i += 3) if (rotor ? p[i + 2] < 0.6 * m.extentM[2] : p[i + 2] > 0.75 * m.extentM[2]) { sumX += p[i]; n++; }
+    assert.ok(n > 0 && (rotor ? sumX / n > 0 : sumX / n < 0), `${m.id} nose points along +x`);
     assert.match(m.license, /^GPL-[23]\.0$/);
   });
 }
@@ -38,4 +40,25 @@ test("FlightGear meshes are stretched to FAA length, span and tail height", () =
     assert.ok(Math.abs(scale[1] * fg.extentM[1] - f.spanFt * 0.3048) < 1e-6);
   }
   assert.equal(fgAirframe("C172"), null);
+});
+
+test("every aircraft gets a verified FlightGear shape, never a generic one", async () => {
+  const { airframeModel, fgAirframeId } = await import("../../lib/ga-live-markers/airframe");
+  const FGM = (await import("../../lib/ga-live-markers/fg-airframes.json")).default;
+  const ACDT = (await import("../../lib/ga-live-markers/faa-acd.json")).default;
+  const HELIT = (await import("../../lib/ga-live-markers/faa-heli.json")).default;
+  const ids = new Set(FGM.models.map((m: { id: string }) => m.id));
+  const types = [...Object.keys(ACDT.types), ...Object.keys(HELIT.types), "A339", "C172", "CRJ9", "PC12", "BE20", "GLF5", "ZZZZ", "", undefined];
+  for (const t of types) for (const c of [undefined, "A1", "A2", "A3", "A5", "A7", "B1"]) {
+    const { kind, scale } = airframeModel(t, c);
+    assert.ok(kind.startsWith("fg-") && ids.has(kind.slice(3)), `${t}/${c} -> ${kind}`);
+    assert.ok(scale.every((x) => Number.isFinite(x) && x > 0), `${t}/${c} scale`);
+  }
+  assert.equal(fgAirframeId("A339", "A5"), "a330");
+  assert.equal(fgAirframeId("R44", "A7"), "ec135");
+  assert.equal(fgAirframeId("C172", "A1"), "c182");
+  assert.equal(fgAirframeId("CRJ9", "A3"), "citationx");
+  assert.equal(fgAirframeId("AT76", "A2"), "q400");
+  assert.equal(fgAirframeId("B77W", "A5"), "b788");
+  assert.equal(fgAirframeId("A388", "A5"), "b748");
 });

@@ -1,5 +1,7 @@
 import { Popup } from 'maplibre-gl';
-import { airframeModel, faaSpec, fgAirframe, FAA_ACD, FAA_HELI } from './ga-live-markers/airframe';
+import { airframeModel, faaSpec, fgAirframe, fgAirframeId, FAA_ACD, FAA_HELI } from './ga-live-markers/airframe';
+import FG_AIRFRAMES from './ga-live-markers/fg-airframes.json';
+const FG_MODELS = FG_AIRFRAMES.models;
 import type { Map as MapLibreMap } from 'maplibre-gl';
 import { insideRing, loadGaWallRing, offset, type LngLat } from './ga-patrol-3d';
 import { reportGaFeed } from './ga-live-status';
@@ -60,20 +62,27 @@ function aircraftMslM(m: LiveMarker): number | null {
   const baro = finite(m.props.altFt);
   return baro === null ? null : baro * 0.3048;
 }
-const faaRows = (type: LiveValue | undefined): [string, string][] => {
+const shapeRow = (type: LiveValue | undefined, category: LiveValue | undefined, sized: string): [string, string] => {
+  const id = fgAirframeId(type, category);
+  const fg = FG_MODELS.find((m) => m.id === id);
+  const own = fgAirframe(type)?.id === id;
+  const name = fg ? fg.repo.split('/').pop() : id;
+  return ['3D shape', `FlightGear ${name} model (volunteer-built, ${fg?.license ?? 'GPL'})${own ? '' : ', closest verified shape for this type'}, ${sized}; not a manufacturer drawing`];
+};
+const faaRows = (type: LiveValue | undefined, category?: LiveValue): [string, string][] => {
   const f = faaSpec(type);
-  if (!f) return [['FAA dimensions', 'type not in the FAA Aircraft Characteristics Database or heliport table; size approximate']];
+  if (!f) return [['FAA dimensions', 'type not in the FAA Aircraft Characteristics Database or heliport table; size approximate'], shapeRow(type, category, 'at its class\'s typical length')];
   if (f.rotor) return [
     ['FAA model', `${f.model} (${FAA_HELI.source})`],
     ['Length · rotor · height', `${f.lengthFt} ft · ${f.spanFt} ft · ${f.tailFt} ft (3D model drawn to these)`],
     ['Engines', `${f.engines ?? '?'}× ${f.engine.toLowerCase()}`],
+    shapeRow(type, category, 'stretched to the FAA size above'),
   ];
-  const fg = fgAirframe(type);
   return [
     ['FAA model', f.model],
     ['Length · wingspan · tail', `${f.lengthFt} ft · ${f.spanFt} ft · ${f.tailFt} ft (3D model drawn to these)`],
     ['FAA group · wake', `ADG ${f.adg ?? '—'} · ${f.wake ?? '—'} · ${f.engines ?? '?'}× ${f.engine.toLowerCase()}`],
-    ['3D shape', fg ? `FlightGear ${fg.repo.split('/').pop()} model (volunteer-built, ${fg.license}), stretched to the FAA size above; not a manufacturer drawing` : 'generic shape for its class'],
+    shapeRow(type, category, 'stretched to the FAA size above'),
   ];
 };
 const STROBE_RECHECK_MS = 60_000;
@@ -313,7 +322,7 @@ const SPECS: Record<LiveLayer, Spec> = {
       ['Emergency', fmt(p.emergency)],
       ['GPS accuracy (NACp)', fmt(p.gpsNacp)],
       ['Position', 'moved forward each second from the last report using speed and track'],
-      ...faaRows(p.type),
+      ...faaRows(p.type, p.category),
       ['Colour', 'not published by the FAA or ADS-B; the model uses one neutral colour'],
     ],
     detail: (ms) => `${ms.filter((m) => !m.props.onGround).length} airborne · ${ms.filter((m) => m.props.onGround).length} on ground · ${ms.filter(lowGps).length} with low GPS accuracy · PIA/LADD aircraft removed · 3D sizes from ${FAA_ACD.source} (retrieved ${FAA_ACD.retrievedAt.slice(0, 10)}) and ${FAA_HELI.source}, height above sea level from GNSS altitude`,

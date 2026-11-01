@@ -9,6 +9,14 @@
 - `b788.bin`: https://github.com/FGMEMBERS/787 (GPL-2.0), `Models/787-8.ac`
 - `e170.bin`: https://github.com/FGMEMBERS/E-jet-family (GPL-2.0), `Models/erj170.ac`
 - `e190.bin`: https://github.com/FGMEMBERS/E-jet-family (GPL-2.0), `Models/erj190.ac`
+- `a330.bin`: https://github.com/FGMEMBERS/A330-200 (GPL-2.0), `Models/a330-200-main.ac` + `Models/pw4000.ac`
+- `q400.bin`: https://github.com/FGMEMBERS/Q400 (GPL-2.0), `Models/q400.ac`
+- `citationx.bin`: https://github.com/FGMEMBERS/CitationX (GPL-2.0), `Models/CitationX.ac`
+- `c182.bin`: https://github.com/FGMEMBERS/c182s (GPL-2.0), `Models/c182s.ac`
+- `ec135.bin`: https://github.com/FGMEMBERS/ec135 (GPL-2.0), `Models/ec135.ac` + `Models/rotors/mainrotor.ac`
+
+Vertex colours are sampled from each model's default FlightGear paint texture (a sample livery, not the real
+operator's colours).
 
 Source commits, triangle counts and SHA-256 hashes are in `lib/ga-live-markers/fg-airframes.json`.
 The corresponding source is the upstream repositories above plus the conversion script.

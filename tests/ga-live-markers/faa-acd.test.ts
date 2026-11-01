@@ -18,8 +18,8 @@ test("FAA-listed types are drawn at the FAA length, wingspan and tail height", (
     close(lz * scale[2], f.tailFt * FT);
   }
   assert.deepEqual(faaSpec(" b763 ")?.lengthFt, 180.3);
-  assert.equal(airframeModel("GLF5", "A3").kind, "regionaljet");
-  assert.equal(airframeModel("B763", "A5").kind, "widebody");
+  assert.equal(airframeModel("GLF5", "A3").kind, "fg-citationx");
+  assert.equal(airframeModel("B763", "A5").kind, "fg-b788");
 });
 
 test("helicopters are drawn at FAA AC 150/5390-2D length, rotor diameter and height", () => {
@@ -27,7 +27,7 @@ test("helicopters are drawn at FAA AC 150/5390-2D length, rotor diameter and hei
     const f = faaSpec(t)!;
     assert.ok(f?.rotor, t);
     const { kind, scale } = airframeModel(t, "A7");
-    assert.equal(kind, "helicopter");
+    assert.equal(kind, "fg-ec135");
     const [lx, ly, lz] = meshExtent(kind);
     close(lx * scale[0], f.lengthFt * FT);
     close(ly * scale[1], f.spanFt * FT);
@@ -39,7 +39,7 @@ test("helicopters are drawn at FAA AC 150/5390-2D length, rotor diameter and hei
 test("types missing from the FAA database keep the approximate uniform scale", () => {
   const m = airframeModel("G2CA", "A7");
   assert.equal(m.faa, null);
-  assert.equal(m.kind, "helicopter");
+  assert.equal(m.kind, "fg-ec135");
   assert.equal(m.scale[0], m.scale[1]);
 });
 

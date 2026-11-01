@@ -6,7 +6,7 @@ import { insideRing, loadGaWallRing, type LngLat } from './ga-patrol-3d';
 import { reportGaFeed } from './ga-live-status';
 import { GA_MARKER_SCALE, gaGlowMultiplier } from './ga-marker-scale';
 import { GA_ICON_CELL_SCALE, gaIconAtlas, gaIconKey, type GaIconAtlas, type GaIconShape } from './ga-marker-icons';
-import { gaMeshIfReady, gaModelReach, type GaModelKind } from './ga-mesh-models';
+import { gaMeshIfReady, gaModelReach, isFgKind, type GaModelKind } from './ga-mesh-models';
 import { cappedPixelRatio, isTouchDevice, LIDAR_POINT_CEILING } from './map/touch-gpu-budget';
 import type { CloudPuff } from './ga-clouds/cloud-puffs';
 import { puffAtlas } from './ga-clouds/puff-texture';
@@ -632,7 +632,8 @@ function createLayers(state: DeckState): Layer[] {
           updateTriggers: { getPosition: state.groundVersion, getOrientation: globe },
           getOrientation: (item) => [0, meshYaw(item.angle, globe), 0],
           getScale: (item) => item.model!.scale ?? [1, 1, 1],
-          getColor: (item) => [item.fill[0], item.fill[1], item.fill[2], 255],
+          // FlightGear meshes carry their paint colours per vertex; deck.gl multiplies them by this colour.
+          getColor: isFgKind(kind) ? [255, 255, 255, 255] : (item) => [item.fill[0], item.fill[1], item.fill[2], 255],
           sizeScale: kindScale,
           pickable: always,
           parameters: MESH_PARAMETERS,
