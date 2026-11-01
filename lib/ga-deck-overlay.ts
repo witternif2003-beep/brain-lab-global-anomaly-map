@@ -30,7 +30,7 @@ export interface GaDeckItem {
   /** Short see-through tag drawn under the marker once zoomed in to the group's `labelMinZoom`. */
   label?: string;
   /** 3D model drawn in place of the glyph from `GA_MODEL_MIN_ZOOM`; `elevM` lifts it above the ground point (the glyph stays as its ground marker). */
-  model?: { kind: GaModelKind; scale?: [number, number, number]; elevM?: number; msl?: boolean };
+  model?: { kind: GaModelKind; scale?: [number, number, number]; elevM?: number; msl?: boolean; always?: boolean };
   props: Record<string, unknown>;
 }
 export interface GaDeckGroup {
@@ -147,6 +147,9 @@ export const GA_MODEL_MIN_ZOOM = 15;
 /** Models are true scale from zoom 19 and enlarged by up to 16× below it so they stay visible. */
 const modelScale = (zoom: number) => (zoom < GA_MODEL_MIN_ZOOM ? 0 : 2 ** Math.min(4, Math.max(0, Math.floor(19 - zoom))));
 const metresPerPixel = (lat: number, zoom: number) => (EARTH_CIRCUMFERENCE_M * Math.cos((lat * Math.PI) / 180)) / (512 * 2 ** zoom);
+/** Models drawn at every zoom (`model.always`) are at least this many CSS pixels across a ~40 m airframe; true size once that is larger. */
+export const GA_ALWAYS_MODEL_MIN_PX = 36;
+export const alwaysModelScale = (lat: number, zoom: number): number => Math.max(1, (GA_ALWAYS_MODEL_MIN_PX * metresPerPixel(lat, zoom)) / 40);
 
 function getState(map: MapLibreMap): DeckState {
   let state = states.get(map);
@@ -346,7 +349,22 @@ function publishState(map: MapLibreMap, state: DeckState): void {
   });
 }
 
+function pickAlways(state: DeckState, point: Point): { group: GaDeckGroup; item: GaDeckItem } | null {
+  let picked: { object?: unknown } | null = null;
+  try {
+    picked = state.overlay?.pickObject({ x: point.x, y: point.y, radius: HIT_BOX_PX }) ?? null;
+  } catch {
+    return null;
+  }
+  const item = picked?.object as GaDeckItem | undefined;
+  if (!item?.model?.always) return null;
+  for (const group of state.groups.values()) if (group.items.includes(item)) return { group, item };
+  return null;
+}
+
 function hitAt(map: MapLibreMap, state: DeckState, point: Point): { group: GaDeckGroup; item: GaDeckItem } | null {
+  const aloft = pickAlways(state, point);
+  if (aloft) return aloft;
   const groups = [...state.groups.values()].sort((a, b) => b.z - a.z);
   const corners = [[-HIT_BOX_PX, -HIT_BOX_PX], [HIT_BOX_PX, -HIT_BOX_PX], [HIT_BOX_PX, HIT_BOX_PX], [-HIT_BOX_PX, HIT_BOX_PX]].map(([dx, dy]) =>
     map.unproject([point.x + dx, point.y + dy]),
@@ -360,6 +378,7 @@ function hitAt(map: MapLibreMap, state: DeckState, point: Point): { group: GaDec
     let closest: GaDeckItem | null = null;
     let closestDistance = Infinity;
     for (const item of group.items) {
+      if (item.model?.always) continue;
       if (bounds && (item.coord[0] < bounds.w || item.coord[0] > bounds.e || item.coord[1] < bounds.s || item.coord[1] > bounds.n)) continue;
       const projected = map.project(item.coord);
       const distance = Math.hypot(projected.x - point.x, projected.y - point.y);
@@ -424,11 +443,11 @@ function groupViews(group: GaDeckGroup): GroupViews {
       pulse: group.items.filter((item) => !!item.pulse),
       lightBar: group.items.some((item) => !!item.pulse && !!item.strobeColors),
       dots: group.items.filter((item) => !item.icon),
-      icons: group.items.filter((item) => !!item.icon),
-      streetIcons: group.items.filter((item) => !!item.icon && (!item.model || !!item.model.elevM)),
+      icons: group.items.filter((item) => !!item.icon && !item.model?.always),
+      streetIcons: group.items.filter((item) => !!item.icon && !item.model?.always && (!item.model || !!item.model.elevM)),
       labels: group.items.filter((item) => !!item.label),
       models: new Map(),
-      elevated: group.items.filter((item) => !!item.model?.elevM),
+      elevated: group.items.filter((item) => !!item.model?.elevM && !item.model.always),
     };
     for (const item of group.items) {
       if (!item.model) continue;
@@ -574,8 +593,12 @@ function createLayers(state: DeckState): Layer[] {
         parameters: DEPTH_PARAMETERS,
       }));
     }
-    if (scale) {
+    {
+      const aloftScale = alwaysModelScale(state.map.getCenter().lat, state.zoom);
       for (const [kind, items] of views.models) {
+        const always = !!items[0]?.model?.always;
+        const kindScale = always ? aloftScale : scale;
+        if (!kindScale) continue;
         const mesh = gaMeshIfReady(kind, () => updateLayers(state));
         if (!mesh) continue;
         layers.push(new SimpleMeshLayer<GaDeckItem>({
@@ -587,8 +610,8 @@ function createLayers(state: DeckState): Layer[] {
           getOrientation: (item) => [0, item.angle === undefined ? 0 : 90 - item.angle, 0],
           getScale: (item) => item.model!.scale ?? [1, 1, 1],
           getColor: (item) => [item.fill[0], item.fill[1], item.fill[2], 255],
-          sizeScale: scale,
-          pickable: false,
+          sizeScale: kindScale,
+          pickable: always,
           parameters: MESH_PARAMETERS,
         }));
       }
@@ -616,7 +639,7 @@ function createLayers(state: DeckState): Layer[] {
       labelLayers.push(new TextLayer<GaDeckItem>({
         id: `ga-deck-${key}-label`,
         data: placed,
-        getPosition: (item) => anchored(state, item.coord),
+        getPosition: (item) => (item.model?.always ? modelAt(state, item) : anchored(state, item.coord)),
         getText: (item) => item.label!,
         updateTriggers: { getPosition: state.groundVersion },
         getColor: (item) => [Math.min(255, item.fill[0] + 30), Math.min(255, item.fill[1] + 30), Math.min(255, item.fill[2] + 30), 240],

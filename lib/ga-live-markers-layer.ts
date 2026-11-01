@@ -300,7 +300,7 @@ const SPECS: Record<LiveLayer, Spec> = {
   },
   aircraft: {
     label: 'Aircraft (ADS-B)', color: '#e0f2fe', stroke: '#0369a1', radiusPx: 4.5, z: 33, refreshMs: 10_000,
-    iconPx: 26, labelMinZoom: 7,
+    iconPx: 26, labelMinZoom: 0,
     icon: (m) => ({ shape: 'aircraft', angle: heading(m.props.track) }),
     tag: (m) => [m.label === 'no callsign' ? '' : m.label, altTag(m.props)].filter(Boolean).join(' · '),
     title: (m) => `AIRCRAFT · ${m.label}`,
@@ -411,7 +411,7 @@ function modelFor(layer: LiveLayer, m: LiveMarker): GaDeckItem['model'] {
   if (layer === 'aircraft') {
     const { kind, scale } = airframeModel(m.props.type, m.props.category);
     const mslM = aircraftMslM(m);
-    return { kind, scale, elevM: m.props.onGround || mslM === null ? 0 : Math.max(0, mslM), msl: true };
+    return { kind, scale, elevM: m.props.onGround || mslM === null ? 0 : Math.max(0, mslM), msl: true, always: true };
   }
   if (layer === 'towers') {
     const h = Number(m.props.heightM);
@@ -529,8 +529,8 @@ function stopFollowing(map: MapLibreMap): void {
   map.setCenterClampedToGround(true);
 }
 
-/** Moves the camera up to the aircraft's drawn altitude, at the zoom where its model is drawn true to FAA size. */
-function followAircraft(map: MapLibreMap, m: LiveMarker, details: HTMLElement): void {
+/** Details of an airborne aircraft in a corner panel (a map popup would sit at its ground point, far below the model). */
+function showAircraftPanel(map: MapLibreMap, m: LiveMarker, details: HTMLElement): void {
   stopFollowing(map);
   const panel = document.createElement('div');
   panel.style.cssText = 'position:absolute;left:8px;bottom:8px;z-index:5;max-width:min(300px,80vw);max-height:38%;overflow:auto;background:#fff;color:#0f172a;border-radius:6px;padding:8px 10px;box-shadow:0 2px 10px rgba(0,0,0,.4)';
@@ -543,17 +543,6 @@ function followAircraft(map: MapLibreMap, m: LiveMarker, details: HTMLElement): 
   panel.append(close, details);
   map.getContainer().appendChild(panel);
   followPanels.set(map, panel);
-  const [lng, lat, z] = gaModelPosition(map, { coord: aircraftCoord(m, Date.now()), model: modelFor('aircraft', m) });
-  following.set(map, strobeKey('aircraft', m));
-  map.setCenterClampedToGround(false);
-  const track = Number(m.props.track);
-  map.easeTo({ center: [lng, lat], elevation: z, zoom: 19, pitch: 62, bearing: Number.isFinite(track) ? track : map.getBearing(), duration: 1800 });
-  const events = ['dragstart', 'zoomstart', 'rotatestart', 'pitchstart'] as const;
-  const stop = (e: { originalEvent?: unknown }) => {
-    if (e.originalEvent) stopFollowing(map);
-  };
-  events.forEach((t) => map.on(t, stop));
-  followUnsub.set(map, () => events.forEach((t) => map.off(t, stop)));
 }
 
 function popupFor(layer: LiveLayer, onCameraChecked?: () => void) {
@@ -606,7 +595,7 @@ function popupFor(layer: LiveLayer, onCameraChecked?: () => void) {
       el.insertBefore(img, stamp);
     }
     if (layer === 'aircraft' && (modelFor(layer, m)?.elevM ?? 0) > 0) {
-      followAircraft(map, m, el);
+      showAircraftPanel(map, m, el);
       return;
     }
     popup.setDOMContent(el).addTo(map);
