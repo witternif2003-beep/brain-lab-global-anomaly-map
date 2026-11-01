@@ -1425,6 +1425,7 @@ export default function GodsEyeMap({
       new maplibregl.ScaleControl({ maxWidth: 120, unit: 'imperial' }),
       'bottom-left'
     );
+    map.addControl(new maplibregl.ScaleControl({ maxWidth: 120, unit: 'metric' }), 'bottom-left');
 
     // Configure projection safely once style loads (per official MapLibre specification)
     map.on('style.load', () => {
@@ -1974,10 +1975,12 @@ export default function GodsEyeMap({
           right: 14px !important;
         }
         .maplibregl-ctrl-group {
-          background: rgba(255, 255, 255, 0.95) !important;
-          border-radius: 8px !important;
-          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35) !important;
-          border: 1px solid rgba(203, 213, 225, 0.7) !important;
+          background: rgba(8, 14, 26, 0.22) !important;
+          backdrop-filter: blur(14px) saturate(160%) !important;
+          -webkit-backdrop-filter: blur(14px) saturate(160%) !important;
+          border-radius: 12px !important;
+          border: 1px solid rgba(56, 189, 248, 0.45) !important;
+          box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.25) !important;
           overflow: hidden !important;
         }
         .maplibregl-ctrl-group button {
@@ -1991,24 +1994,38 @@ export default function GodsEyeMap({
           cursor: pointer !important;
           transition: background-color 0.15s ease !important;
         }
+        .maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+          filter: invert(1) drop-shadow(0 0 2px rgba(56, 189, 248, 0.9)) !important;
+        }
         .maplibregl-ctrl-group button:hover {
-          background-color: rgba(226, 232, 240, 0.9) !important;
+          background-color: rgba(56, 189, 248, 0.18) !important;
         }
         .maplibregl-ctrl-group button + button {
-          border-top: 1px solid rgba(226, 232, 240, 0.9) !important;
+          border-top: 1px solid rgba(56, 189, 248, 0.25) !important;
         }
         .maplibregl-ctrl-scale {
-          background: rgba(255, 255, 255, 0.88) !important;
-          backdrop-filter: blur(8px) !important;
-          border: 2px solid #0f172a !important;
+          background: rgba(8, 14, 26, 0.3) !important;
+          backdrop-filter: blur(12px) saturate(160%) !important;
+          -webkit-backdrop-filter: blur(12px) saturate(160%) !important;
+          border: 1.5px solid #38bdf8 !important;
           border-top: none !important;
-          color: #0f172a !important;
+          border-radius: 0 0 6px 6px !important;
+          color: #e0f2fe !important;
           font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
           font-size: 11px !important;
           font-weight: 700 !important;
-          padding: 2px 6px !important;
-          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3) !important;
+          letter-spacing: 0.06em !important;
+          text-shadow: 0 0 6px rgba(56, 189, 248, 0.8) !important;
+          padding: 1px 6px !important;
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35), 0 0 8px rgba(56, 189, 248, 0.25) !important;
           margin-left: 14px !important;
+          margin-bottom: 0 !important;
+        }
+        .maplibregl-ctrl-scale + .maplibregl-ctrl-scale {
+          border-top: 1.5px solid #38bdf8 !important;
+          border-bottom: none !important;
+          border-radius: 6px 6px 0 0 !important;
+          margin-top: 0 !important;
           margin-bottom: 14px !important;
         }
       `}</style>

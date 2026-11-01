@@ -615,6 +615,7 @@ export default function StateMap({
       new maplibregl.ScaleControl({ maxWidth: 100, unit: 'imperial' }),
       'bottom-left'
     );
+    map.addControl(new maplibregl.ScaleControl({ maxWidth: 100, unit: 'metric' }), 'bottom-left');
 
     map.on('style.load', () => {
       try {
