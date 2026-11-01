@@ -22,6 +22,7 @@ import { useTelemetryStore } from "../lib/telemetry-store";
 import styles from "./LidarGlobe.module.css";
 import { GaWall3DLayer } from "../lib/ga-wall-3d";
 import { addGaLidarLayers } from "../lib/ga-lidar-layer";
+import { installVramMeter } from "../lib/map/vram-meter";
 import { addGaPatrolLayers } from "../lib/ga-patrol-3d";
 import { addGaCompetitorLayers } from "../lib/ga-competitors";
 import { CreditsControl } from "../lib/map/credits-control";
@@ -151,6 +152,7 @@ export default function LidarGlobe() {
     maplibregl.setWorkerUrl(`/maplibre-gl-worker.mjs?v=${maplibregl.getVersion()}`);
 
     const initial = useTelemetryStore.getState();
+    installVramMeter();
     const map = new maplibregl.Map({
       container: mapElRef.current,
       center: PRESETS[0].center,

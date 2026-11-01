@@ -683,12 +683,12 @@ export default function GodsEyeMap({
         type: 'fill-extrusion',
         source: 'ofm-buildings',
         'source-layer': 'building',
-        minzoom: 14,
+        minzoom: 13,
         paint: {
           'fill-extrusion-color': ['interpolate', ['linear'], ['coalesce', ['get', 'render_height'], 5], 0, '#cbd5e1', 40, '#93c5fd', 150, '#3b82f6'],
           'fill-extrusion-height': ['coalesce', ['get', 'render_height'], 5],
           'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0],
-          'fill-extrusion-opacity': ['interpolate', ['linear'], ['zoom'], 14, 0, 15, 0.8],
+          'fill-extrusion-opacity': ['interpolate', ['linear'], ['zoom'], 13, 0, 14, 0.8],
           'fill-extrusion-vertical-gradient': true,
         },
       });

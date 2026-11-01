@@ -69,6 +69,12 @@ export function gpuSafeMode(): boolean {
   return !!s && recentCrashes(s, Date.now()).length > 0;
 }
 
+/** Crashes and GPU context losses on this device in the last 30 minutes. */
+export function gpuCrashCount(): number {
+  const s = browserStore();
+  return s ? recentCrashes(s, Date.now()).length : 0;
+}
+
 export function noteContextLost(): void {
   const s = browserStore();
   if (s) recordCrash(s, 'context-lost', Date.now());

@@ -30,7 +30,7 @@ import {
 import type { EptProject, Hierarchy, LidarNodeData } from './ga-lidar/ept';
 import { GpuPassTimer } from './ga-lidar/gpu-timer';
 import { isTouchDevice, lidarBudget } from './map/touch-gpu-budget';
-import { gpuSafeMode } from './map/crash-guard';
+import { gpuCrashCount, gpuSafeMode } from './map/crash-guard';
 import { drawingBufferBytes, LIDAR_MIN_POINTS, lidarPointBudget, vramTargetBytes } from './map/vram-budget';
 import { vramMeterInstalled, vramSnapshot } from './map/vram-meter';
 import { reportGaFeed } from './ga-live-status';
@@ -38,8 +38,10 @@ import { raiseGaRoadOverlay } from './ga-roads-overlay';
 import { raiseGaTrafficCountLayers } from './ga-traffic-counts-layer';
 
 export const GA_LIDAR_MIN_ZOOM = 10;
-/** Zoom from which LiDAR replaces the OSM 3D buildings (below it both stay on the map). */
+/** Zoom from which the OSM 3D buildings turn see-through so the measured LiDAR roofs show inside them. */
 const GA_LIDAR_BUILDINGS_ZOOM = 15;
+/** OSM building opacity under LiDAR: every footprint stays visible (surveys are 2009–2018 and may miss newer buildings or unloaded tiles). */
+export const GA_LIDAR_OSM_BUILDING_OPACITY = 0.35;
 const VIEW_TILES = 3.5;
 const POINT_MAX_CSS_PX = 6;
 /** Point diameter as a fraction of the node's point spacing on screen. */
@@ -224,12 +226,19 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     this.stats.nodesTrueColor = [...this.drawn.values()].filter((n) => n.trueColor).length;
   }
 
-  /** OSM extruded footprints would hide the measured roofs, so they step aside while LiDAR is drawn. */
-  private setOsmBuildings(visible: boolean): void {
+  private osmOpacity: unknown = undefined;
+
+  /** OSM extrusions go see-through (never hidden) while LiDAR is drawn, so no building disappears where points are missing. */
+  private setOsmBuildings(solid: boolean): void {
     const map = this.map;
     if (!map?.getLayer('buildings-3d')) return;
-    const want = visible ? 'visible' : 'none';
-    if (map.getLayoutProperty('buildings-3d', 'visibility') !== want) map.setLayoutProperty('buildings-3d', 'visibility', want);
+    if (!solid && this.osmOpacity === undefined) {
+      this.osmOpacity = map.getPaintProperty('buildings-3d', 'fill-extrusion-opacity') ?? null;
+      map.setPaintProperty('buildings-3d', 'fill-extrusion-opacity', GA_LIDAR_OSM_BUILDING_OPACITY);
+    } else if (solid && this.osmOpacity !== undefined) {
+      map.setPaintProperty('buildings-3d', 'fill-extrusion-opacity', this.osmOpacity as never);
+      this.osmOpacity = undefined;
+    }
   }
 
   private async hierarchy(project: EptProject, file: string): Promise<void> {
@@ -329,7 +338,7 @@ export class GaLidar3DLayer implements CustomLayerInterface {
         }
       }
     };
-    await Promise.all(Array.from({ length: lidarBudget(isTouchDevice(), gpuSafeMode()).fetchParallel }, worker));
+    await Promise.all(Array.from({ length: lidarBudget(isTouchDevice(), gpuCrashCount()).fetchParallel }, worker));
     if (gen === this.generation) this.setStatus('ready');
   }
 
@@ -353,7 +362,7 @@ export class GaLidar3DLayer implements CustomLayerInterface {
 
   /** LiDAR point budget: the 5,000,000 ceiling, lowered to what fits in the GPU-memory target next to everything else on the map. */
   private pointBudget(): number {
-    const ceiling = lidarBudget(isTouchDevice(), gpuSafeMode()).points;
+    const ceiling = lidarBudget(isTouchDevice(), gpuCrashCount()).points;
     const used = this.measuredVram();
     const budget = used === null ? ceiling : lidarPointBudget({ ceiling, targetBytes: this.vramTarget(), otherBytes: used - this.lidarBytes() });
     this.stats.pointBudget = budget;
@@ -440,7 +449,7 @@ export class GaLidar3DLayer implements CustomLayerInterface {
       }
     })();
     this.imagery.set(id, load);
-    if (this.imagery.size > lidarBudget(isTouchDevice(), gpuSafeMode()).imageryTiles) this.imagery.delete(this.imagery.keys().next().value as string);
+    if (this.imagery.size > lidarBudget(isTouchDevice(), gpuCrashCount()).imageryTiles) this.imagery.delete(this.imagery.keys().next().value as string);
     return load;
   }
 
