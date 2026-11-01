@@ -36,6 +36,7 @@ import { addMovingTrackLayers } from '../lib/moving-tracks-layer';
 import FbiOsintPopup from './FbiOsintPopup';
 import { glowRadius, scaleMarkersInsideGaWall, type RadiusExpression } from '../lib/ga-marker-scale';
 import { exportMapAt8k } from '../lib/map-8k-export';
+import { attachSolarSky } from '../lib/ga-sky';
 import { SKY_PHOTO_SOURCE_URL, SkyPhotoRenderer, projectRaDec, skyBasis, skyBodyPositions, type SkyBodyPosition } from '../lib/sky-photo';
 import { AWS_TERRARIUM_TILES, OPENFREEMAP_PLANET } from '../lib/lidar-globe-sources';
 import { CreditsControl } from '../lib/map/credits-control';
@@ -1433,6 +1434,8 @@ export default function GodsEyeMap({
         console.warn('[Map] Globe projection deferred:', err);
       }
     });
+    // Sky colour follows the real sun elevation at the map centre (USNO twilight bands)
+    attachSolarSky(map);
 
     // Viewport telemetry
     map.on('zoom', () => setZoom(map.getZoom()));

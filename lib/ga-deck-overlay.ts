@@ -315,6 +315,10 @@ function modelAt(state: DeckState, item: GaDeckItem): [number, number, number] {
   return [item.coord[0], item.coord[1], g + Math.max(0, m.elevM - g / (ex || 1))];
 }
 
+/** Where a 3D model is drawn (lng, lat, metres on the map's terrain scale), for cameras that follow it. */
+export const gaModelPosition = (map: MapLibreMap, item: Pick<GaDeckItem, 'coord' | 'model'>): [number, number, number] =>
+  item.model ? modelAt(getState(map), item as GaDeckItem) : [item.coord[0], item.coord[1], 0];
+
 function reground(state: DeckState): void {
   state.ground.clear();
   state.groundVersion += 1;

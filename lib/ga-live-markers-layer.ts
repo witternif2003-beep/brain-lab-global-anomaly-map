@@ -1,9 +1,9 @@
 import { Popup } from 'maplibre-gl';
-import { airframeModel, faaSpec, FAA_ACD } from './ga-live-markers/airframe';
+import { airframeModel, faaSpec, FAA_ACD, FAA_HELI } from './ga-live-markers/airframe';
 import type { Map as MapLibreMap } from 'maplibre-gl';
 import { insideRing, loadGaWallRing, offset, type LngLat } from './ga-patrol-3d';
 import { reportGaFeed } from './ga-live-status';
-import { setGaDeckGroup, type GaDeckItem, type RGBA } from './ga-deck-overlay';
+import { gaModelPosition, setGaDeckGroup, type GaDeckItem, type RGBA } from './ga-deck-overlay';
 import { hexToRgba } from './ga-point-colors';
 import type { GaIconShape } from './ga-marker-icons';
 import type { GaModelKind } from './ga-mesh-models';
@@ -62,7 +62,12 @@ function aircraftMslM(m: LiveMarker): number | null {
 }
 const faaRows = (type: LiveValue | undefined): [string, string][] => {
   const f = faaSpec(type);
-  if (!f) return [['FAA dimensions', 'type not in the FAA Aircraft Characteristics Database; size approximate']];
+  if (!f) return [['FAA dimensions', 'type not in the FAA Aircraft Characteristics Database or heliport table; size approximate']];
+  if (f.rotor) return [
+    ['FAA model', `${f.model} (${FAA_HELI.source})`],
+    ['Length · rotor · height', `${f.lengthFt} ft · ${f.spanFt} ft · ${f.tailFt} ft (3D model drawn to these)`],
+    ['Engines', `${f.engines ?? '?'}× ${f.engine.toLowerCase()}`],
+  ];
   return [
     ['FAA model', f.model],
     ['Length · wingspan · tail', `${f.lengthFt} ft · ${f.spanFt} ft · ${f.tailFt} ft (3D model drawn to these)`],
@@ -309,7 +314,7 @@ const SPECS: Record<LiveLayer, Spec> = {
       ...faaRows(p.type),
       ['Colour', 'not published by the FAA or ADS-B; the model uses one neutral colour'],
     ],
-    detail: (ms) => `${ms.filter((m) => !m.props.onGround).length} airborne · ${ms.filter((m) => m.props.onGround).length} on ground · ${ms.filter(lowGps).length} with low GPS accuracy · PIA/LADD aircraft removed · 3D sizes from ${FAA_ACD.source} (retrieved ${FAA_ACD.retrievedAt.slice(0, 10)}), height above sea level from GNSS altitude`,
+    detail: (ms) => `${ms.filter((m) => !m.props.onGround).length} airborne · ${ms.filter((m) => m.props.onGround).length} on ground · ${ms.filter(lowGps).length} with low GPS accuracy · PIA/LADD aircraft removed · 3D sizes from ${FAA_ACD.source} (retrieved ${FAA_ACD.retrievedAt.slice(0, 10)}) and ${FAA_HELI.source}, height above sea level from GNSS altitude`,
   },
   vessels: {
     label: 'Ships and boats (AIS, aisstream.io)', color: '#2dd4bf', stroke: '#134e4a', radiusPx: 4, z: 32, refreshMs: 60_000,
@@ -507,6 +512,48 @@ function webcamPlayer(el: HTMLElement, url: string, kind: 'iframe' | 'hls', labe
   return stop;
 }
 
+/** Aircraft the camera is riding with, by strobe key; cleared by any user drag, zoom or rotate. */
+const following = new WeakMap<MapLibreMap, string>();
+
+const followPanels = new WeakMap<MapLibreMap, HTMLElement>();
+const followUnsub = new WeakMap<MapLibreMap, () => void>();
+
+function stopFollowing(map: MapLibreMap): void {
+  followPanels.get(map)?.remove();
+  followPanels.delete(map);
+  followUnsub.get(map)?.();
+  followUnsub.delete(map);
+  if (!following.delete(map)) return;
+  map.setCenterClampedToGround(true);
+}
+
+/** Moves the camera up to the aircraft's drawn altitude, at the zoom where its model is drawn true to FAA size. */
+function followAircraft(map: MapLibreMap, m: LiveMarker, details: HTMLElement): void {
+  stopFollowing(map);
+  const panel = document.createElement('div');
+  panel.style.cssText = 'position:absolute;left:8px;bottom:8px;z-index:5;max-width:min(300px,80vw);max-height:38%;overflow:auto;background:#fff;color:#0f172a;border-radius:6px;padding:8px 10px;box-shadow:0 2px 10px rgba(0,0,0,.4)';
+  const close = document.createElement('button');
+  close.type = 'button';
+  close.setAttribute('aria-label', 'Stop following');
+  close.textContent = '×';
+  close.style.cssText = 'float:right;border:0;background:none;font:16px sans-serif;cursor:pointer;color:#334155';
+  close.onclick = () => stopFollowing(map);
+  panel.append(close, details);
+  map.getContainer().appendChild(panel);
+  followPanels.set(map, panel);
+  const [lng, lat, z] = gaModelPosition(map, { coord: aircraftCoord(m, Date.now()), model: modelFor('aircraft', m) });
+  following.set(map, strobeKey('aircraft', m));
+  map.setCenterClampedToGround(false);
+  const track = Number(m.props.track);
+  map.easeTo({ center: [lng, lat], elevation: z, zoom: 19, pitch: 62, bearing: Number.isFinite(track) ? track : map.getBearing(), duration: 1800 });
+  const events = ['dragstart', 'zoomstart', 'rotatestart', 'pitchstart'] as const;
+  const stop = (e: { originalEvent?: unknown }) => {
+    if (e.originalEvent) stopFollowing(map);
+  };
+  events.forEach((t) => map.on(t, stop));
+  followUnsub.set(map, () => events.forEach((t) => map.off(t, stop)));
+}
+
 function popupFor(layer: LiveLayer, onCameraChecked?: () => void) {
   return (map: MapLibreMap, lngLat: LngLat, props: Record<string, unknown>) => {
     const m = props.marker as LiveMarker;
@@ -556,6 +603,10 @@ function popupFor(layer: LiveLayer, onCameraChecked?: () => void) {
       el.insertBefore(stamp, el.children[1] ?? null);
       el.insertBefore(img, stamp);
     }
+    if (layer === 'aircraft' && (modelFor(layer, m)?.elevM ?? 0) > 0) {
+      followAircraft(map, m, el);
+      return;
+    }
     popup.setDOMContent(el).addTo(map);
   };
 }
@@ -602,6 +653,15 @@ export function addGaLiveMarkerLayers(map: MapLibreMap): void {
       };
     });
     setGaDeckGroup(map, layer, { z: spec.z, labelMinZoom: spec.labelMinZoom, items, onClick: popupFor(layer, layer === 'gdotcams' ? camerasChanged : undefined) });
+    const ride = layer === 'aircraft' ? following.get(map) : undefined;
+    if (ride && !map.isMoving()) {
+      const it = items.find((x) => strobeKey('aircraft', (x.props as { marker: LiveMarker }).marker) === ride);
+      if (!it || !it.model?.elevM) stopFollowing(map);
+      else {
+        const [lng, lat, z] = gaModelPosition(map, it);
+        map.jumpTo({ center: [lng, lat], elevation: z });
+      }
+    }
     if (layer === 'police' || layer === 'firestations') setGaBuildingFlags(map, [
         ...(current.police ?? []).map((x) => ({ coord: [x.lon, x.lat] as [number, number], roofM: 7.3 })),
         ...(current.firestations ?? []).map((x) => ({ coord: [x.lon, x.lat] as [number, number], roofM: 14 })),

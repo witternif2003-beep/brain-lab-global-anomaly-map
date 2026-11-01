@@ -1,5 +1,6 @@
 import { gaMesh, type GaModelKind } from '../ga-mesh-models';
 import ACD from './faa-acd.json';
+import HELI from './faa-heli.json';
 
 /**
  * ICAO Doc 8643 type designator (readsb/adsb.fi `t`) → low-poly airframe and scale.
@@ -58,9 +59,12 @@ export function airframeKnown(type: unknown): boolean {
 
 export interface FaaSpec {
   model: string; lengthFt: number; spanFt: number; tailFt: number; engine: string; engines: number | null; adg: string | null; wake: string | null;
+  /** Helicopter: `spanFt` is the main-rotor diameter and `tailFt` the overall height (FAA AC 150/5390-2D Table C-1). */
+  rotor?: boolean;
 }
-const FAA = ACD.types as Record<string, FaaSpec>;
+const FAA = { ...(HELI.types as Record<string, FaaSpec>), ...(ACD.types as Record<string, FaaSpec>) };
 export const FAA_ACD = { source: ACD.source, sourceUrl: ACD.sourceUrl, sha256: ACD.sha256, retrievedAt: ACD.retrievedAt } as const;
+export const FAA_HELI = { source: HELI.source, sourceUrl: HELI.sourceUrl, sha256: HELI.sha256, retrievedAt: HELI.retrievedAt } as const;
 
 const norm = (type: unknown) => (typeof type === 'string' ? type.trim().toUpperCase() : '');
 export const faaSpec = (type: unknown): FaaSpec | null => FAA[norm(type)] ?? null;
@@ -96,7 +100,7 @@ export function airframeModel(type: unknown, category: unknown): { kind: GaModel
   const spec = faaSpec(type);
   if (!spec) return { kind: listed, scale: [s, s, s], faa: null };
   // Business jets have rear-mounted engines, so the regional-jet mesh is the closer shape than the high-wing prop.
-  const kind = TYPES.has(norm(type)) ? (spec.engine === 'Jet' && listed === 'lightplane' ? 'regionaljet' : listed) : kindFromFaa(spec);
+  const kind = spec.rotor ? 'helicopter' : TYPES.has(norm(type)) ? (spec.engine === 'Jet' && listed === 'lightplane' ? 'regionaljet' : listed) : kindFromFaa(spec);
   const [lx, ly, lz] = meshExtent(kind);
   return { kind, scale: [(spec.lengthFt * FT_M) / lx, (spec.spanFt * FT_M) / ly, (spec.tailFt * FT_M) / lz], faa: spec };
 }

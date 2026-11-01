@@ -22,8 +22,22 @@ test("FAA-listed types are drawn at the FAA length, wingspan and tail height", (
   assert.equal(airframeModel("B763", "A5").kind, "widebody");
 });
 
+test("helicopters are drawn at FAA AC 150/5390-2D length, rotor diameter and height", () => {
+  for (const t of ["R44", "B407", "EC35", "H60"]) {
+    const f = faaSpec(t)!;
+    assert.ok(f?.rotor, t);
+    const { kind, scale } = airframeModel(t, "A7");
+    assert.equal(kind, "helicopter");
+    const [lx, ly, lz] = meshExtent(kind);
+    close(lx * scale[0], f.lengthFt * FT);
+    close(ly * scale[1], f.spanFt * FT);
+    close(lz * scale[2], f.tailFt * FT);
+  }
+  assert.equal(faaSpec("R44")!.spanFt, 33);
+});
+
 test("types missing from the FAA database keep the approximate uniform scale", () => {
-  const m = airframeModel("R44", "A7");
+  const m = airframeModel("G2CA", "A7");
   assert.equal(m.faa, null);
   assert.equal(m.kind, "helicopter");
   assert.equal(m.scale[0], m.scale[1]);
