@@ -1,0 +1,61 @@
+{
+ "source": "FlightGear FGMEMBERS aircraft models (GPL)",
+ "builtAt": "2026-11-01T09:09:22+00:00",
+ "models": [
+  {
+   "id": "b739",
+   "types": [
+    "B739",
+    "B738",
+    "B737",
+    "B38M",
+    "B39M",
+    "B37M"
+   ],
+   "repo": "https://github.com/FGMEMBERS/737-900ER",
+   "commit": "faabcc2e18866f56d109b58b9593a55e31705a49",
+   "files": [
+    "Models/737-900.ac"
+   ],
+   "license": "GPL-2.0",
+   "triangles": 5950,
+   "sourceTriangles": 10283,
+   "extentM": [
+    40.354,
+    29.95,
+    12.453
+   ],
+   "sha256": "b2af70b4ed9e21a4db0c41528bfe34c23cf5a93f5d574cc660e7fc70ecc54e1f"
+  },
+  {
+   "id": "a320",
+   "types": [
+    "A320",
+    "A20N",
+    "A319",
+    "A19N",
+    "A318",
+    "A321",
+    "A21N"
+   ],
+   "repo": "https://github.com/FGMEMBERS/A320-family",
+   "commit": "00038142d3443d7f4aec9410520df608e8ae7ba8",
+   "files": [
+    "Models/a320.fuselage.ac",
+    "Models/Wings/a320.wings.ac",
+    "Models/Wings/a320.winglets.ac",
+    "Models/a320.hstab.ac",
+    "Models/a320.vstab.ac"
+   ],
+   "license": "GPL-2.0",
+   "triangles": 5610,
+   "sourceTriangles": 10767,
+   "extentM": [
+    37.61,
+    34.124,
+    10.457
+   ],
+   "sha256": "bc8492944f5cb5e5d9f43a4c360911e36ccaa51e373834d6781c1ff4b3e82ab8"
+  }
+ ]
+}

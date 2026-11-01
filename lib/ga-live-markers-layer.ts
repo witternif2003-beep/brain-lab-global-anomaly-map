@@ -1,5 +1,5 @@
 import { Popup } from 'maplibre-gl';
-import { airframeModel, faaSpec, FAA_ACD, FAA_HELI } from './ga-live-markers/airframe';
+import { airframeModel, faaSpec, fgAirframe, FAA_ACD, FAA_HELI } from './ga-live-markers/airframe';
 import type { Map as MapLibreMap } from 'maplibre-gl';
 import { insideRing, loadGaWallRing, offset, type LngLat } from './ga-patrol-3d';
 import { reportGaFeed } from './ga-live-status';
@@ -68,10 +68,12 @@ const faaRows = (type: LiveValue | undefined): [string, string][] => {
     ['Length · rotor · height', `${f.lengthFt} ft · ${f.spanFt} ft · ${f.tailFt} ft (3D model drawn to these)`],
     ['Engines', `${f.engines ?? '?'}× ${f.engine.toLowerCase()}`],
   ];
+  const fg = fgAirframe(type);
   return [
     ['FAA model', f.model],
     ['Length · wingspan · tail', `${f.lengthFt} ft · ${f.spanFt} ft · ${f.tailFt} ft (3D model drawn to these)`],
     ['FAA group · wake', `ADG ${f.adg ?? '—'} · ${f.wake ?? '—'} · ${f.engines ?? '?'}× ${f.engine.toLowerCase()}`],
+    ['3D shape', fg ? `FlightGear ${fg.repo.split('/').pop()} model (volunteer-built, ${fg.license}), stretched to the FAA size above; not a manufacturer drawing` : 'generic shape for its class'],
   ];
 };
 const STROBE_RECHECK_MS = 60_000;

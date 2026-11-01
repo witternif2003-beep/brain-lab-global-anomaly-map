@@ -1,4 +1,5 @@
-import { gaMesh, type GaModelKind } from '../ga-mesh-models';
+import { gaMesh, isFgKind, type GaModelKind } from '../ga-mesh-models';
+import FG from './fg-airframes.json';
 import ACD from './faa-acd.json';
 import HELI from './faa-heli.json';
 
@@ -75,7 +76,12 @@ const extents = new Map<GaModelKind, [number, number, number]>();
 export function meshExtent(kind: GaModelKind): [number, number, number] {
   let e = extents.get(kind);
   if (e) return e;
-  const p = gaMesh(kind).attributes.positions.value;
+  if (isFgKind(kind)) {
+    const fg = FG.models.find((m) => `fg-${m.id}` === kind);
+    if (fg) return fg.extentM as [number, number, number];
+    kind = 'airliner';
+  }
+  const p = gaMesh(kind as Exclude<GaModelKind, `fg-${string}`>).attributes.positions.value;
   const lo = [Infinity, Infinity, Infinity];
   const hi = [-Infinity, -Infinity, -Infinity];
   for (let i = 0; i < p.length; i++) {
@@ -95,12 +101,18 @@ function kindFromFaa(s: FaaSpec): GaModelKind {
  * Shape plus per-axis scale. Types in the FAA Aircraft Characteristics Database are stretched so the mesh's
  * length, wingspan and tail height equal the FAA figures; other types keep the approximate uniform scale.
  */
+export type FgAirframe = (typeof FG.models)[number];
+/** FlightGear (GPL) airframe mesh for this ICAO type, if one was converted by scripts/build-fg-airframes.py. */
+export const fgAirframe = (type: unknown): FgAirframe | null => FG.models.find((m) => m.types.includes(norm(type))) ?? null;
+
 export function airframeModel(type: unknown, category: unknown): { kind: GaModelKind; scale: [number, number, number]; faa: FaaSpec | null } {
   const [listed, s] = airframeFor(type, category);
   const spec = faaSpec(type);
   if (!spec) return { kind: listed, scale: [s, s, s], faa: null };
   // Business jets have rear-mounted engines, so the regional-jet mesh is the closer shape than the high-wing prop.
   const kind = spec.rotor ? 'helicopter' : TYPES.has(norm(type)) ? (spec.engine === 'Jet' && listed === 'lightplane' ? 'regionaljet' : listed) : kindFromFaa(spec);
-  const [lx, ly, lz] = meshExtent(kind);
-  return { kind, scale: [(spec.lengthFt * FT_M) / lx, (spec.spanFt * FT_M) / ly, (spec.tailFt * FT_M) / lz], faa: spec };
+  const fg = fgAirframe(type);
+  const drawn: GaModelKind = fg ? `fg-${fg.id}` : kind;
+  const [lx, ly, lz] = meshExtent(drawn);
+  return { kind: drawn, scale: [(spec.lengthFt * FT_M) / lx, (spec.spanFt * FT_M) / ly, (spec.tailFt * FT_M) / lz], faa: spec };
 }

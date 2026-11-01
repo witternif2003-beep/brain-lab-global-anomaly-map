@@ -5,7 +5,7 @@ import { insideRing, loadGaWallRing, type LngLat } from './ga-patrol-3d';
 import { reportGaFeed } from './ga-live-status';
 import { GA_MARKER_SCALE, gaGlowMultiplier } from './ga-marker-scale';
 import { GA_ICON_CELL_SCALE, gaIconAtlas, gaIconKey, type GaIconAtlas, type GaIconShape } from './ga-marker-icons';
-import { GA_MODEL_REACH_M, gaMesh, type GaModelKind } from './ga-mesh-models';
+import { gaMeshIfReady, gaModelReach, type GaModelKind } from './ga-mesh-models';
 import { cappedPixelRatio, isTouchDevice, LIDAR_POINT_CEILING } from './map/touch-gpu-budget';
 import type { CloudPuff } from './ga-clouds/cloud-puffs';
 import { puffAtlas } from './ga-clouds/puff-texture';
@@ -366,7 +366,7 @@ function hitAt(map: MapLibreMap, state: DeckState, point: Point): { group: GaDec
       const iconReach = item.icon ? (item.iconPx ?? 0) * GA_MARKER_SCALE / 2 : item.radiusPx * GA_MARKER_SCALE + item.strokePx;
       const scale = item.model && !item.model.elevM ? modelScale(state.zoom) : 0;
       const reach = scale
-        ? Math.max(iconReach, (GA_MODEL_REACH_M[item.model!.kind] * Math.max(...(item.model!.scale ?? [1, 1, 1]).slice(0, 2)) * scale) / metresPerPixel(item.coord[1], state.zoom))
+        ? Math.max(iconReach, (gaModelReach(item.model!.kind) * Math.max(...(item.model!.scale ?? [1, 1, 1]).slice(0, 2)) * scale) / metresPerPixel(item.coord[1], state.zoom))
         : iconReach;
       if (distance <= Math.max(reach, 8) && distance < closestDistance) {
         closest = item;
@@ -576,10 +576,12 @@ function createLayers(state: DeckState): Layer[] {
     }
     if (scale) {
       for (const [kind, items] of views.models) {
+        const mesh = gaMeshIfReady(kind, () => updateLayers(state));
+        if (!mesh) continue;
         layers.push(new SimpleMeshLayer<GaDeckItem>({
           id: `ga-deck-${key}-model-${kind}`,
           data: items,
-          mesh: gaMesh(kind),
+          mesh,
           getPosition: (item) => modelAt(state, item),
           updateTriggers: { getPosition: state.groundVersion },
           getOrientation: (item) => [0, item.angle === undefined ? 0 : 90 - item.angle, 0],

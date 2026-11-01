@@ -1,7 +1,9 @@
 /** Low-poly 3D models (metres; +x forward, +y left, +z up) for the GA live-marker layers, drawn with deck.gl SimpleMeshLayer at street zoom. */
-export type GaModelKind =
+export type BaseModelKind =
   | 'airliner' | 'regionaljet' | 'widebody' | 'lightplane' | 'helicopter' | 'bus' | 'scooter' | 'signal' | 'tower'
   | 'police' | 'firestation' | 'siren' | 'speedcam' | 'alpr' | 'weather' | 'gauge';
+/** `fg-<id>`: a FlightGear airframe mesh from public/models/airframes, listed in lib/ga-live-markers/fg-airframes.json. */
+export type GaModelKind = BaseModelKind | `fg-${string}`;
 
 export interface GaMesh {
   attributes: {
@@ -91,7 +93,7 @@ class MeshBuilder {
   }
 }
 
-const BUILD: Record<GaModelKind, () => GaMesh> = {
+const BUILD: Record<BaseModelKind, () => GaMesh> = {
   airliner: () =>
     new MeshBuilder()
       .cylinder([-17, 0, 3], 2, 31, 'x')
@@ -246,13 +248,41 @@ const BUILD: Record<GaModelKind, () => GaMesh> = {
 };
 
 /** Radius in metres used for tapping a model at street zoom. */
-export const GA_MODEL_REACH_M: Record<GaModelKind, number> = {
+export const GA_MODEL_REACH_M: Record<BaseModelKind, number> = {
   airliner: 20, regionaljet: 18, widebody: 32, lightplane: 6, helicopter: 6, bus: 6.5, scooter: 1, signal: 4, tower: 4,
   police: 16, firestation: 14, siren: 1.5, speedcam: 1, alpr: 1, weather: 1.2, gauge: 1.2,
 };
 
-const meshes = new Map<GaModelKind, GaMesh>();
-export function gaMesh(kind: GaModelKind): GaMesh {
+export const isFgKind = (kind: GaModelKind): kind is `fg-${string}` => kind.startsWith('fg-');
+export const gaModelReach = (kind: GaModelKind): number => (isFgKind(kind) ? GA_MODEL_REACH_M.airliner : GA_MODEL_REACH_M[kind]);
+
+/** Parses an airframe .bin (u32 vertex count, then float32 positions, normals and colours; one flat-shaded triangle per 3 vertices). */
+export function parseAirframeBin(buf: ArrayBuffer): GaMesh {
+  const n = new DataView(buf).getUint32(0, true);
+  const f = (k: number) => new Float32Array(buf.slice(4 + k * n * 12, 4 + (k + 1) * n * 12));
+  return {
+    attributes: { positions: { value: f(0), size: 3 }, normals: { value: f(1), size: 3 }, colors: { value: f(2), size: 3 } },
+    indices: { value: Uint32Array.from({ length: n }, (_, i) => i), size: 1 },
+  };
+}
+
+const fgMeshes = new Map<string, GaMesh | Promise<void> | null>();
+/** Mesh for any kind; FlightGear meshes load once on first use and call `onReady`, returning null until then (or if the file fails). */
+export function gaMeshIfReady(kind: GaModelKind, onReady: () => void): GaMesh | null {
+  if (!isFgKind(kind)) return gaMesh(kind);
+  const m = fgMeshes.get(kind);
+  if (m && !(m instanceof Promise)) return m;
+  if (m === undefined) {
+    fgMeshes.set(kind, fetch(`/models/airframes/${kind.slice(3)}.bin`)
+      .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((b) => { fgMeshes.set(kind, parseAirframeBin(b)); onReady(); })
+      .catch(() => { fgMeshes.set(kind, null); }));
+  }
+  return null;
+}
+
+const meshes = new Map<BaseModelKind, GaMesh>();
+export function gaMesh(kind: BaseModelKind): GaMesh {
   let mesh = meshes.get(kind);
   if (!mesh) meshes.set(kind, (mesh = BUILD[kind]()));
   return mesh;
