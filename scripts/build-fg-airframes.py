@@ -36,6 +36,20 @@ AIRFRAMES = [
     {"id": "ec135", "repo": "ec135", "files": ["Models/ec135.ac", ("Models/rotors/mainrotor.ac", [3.023, 0, 1.801])], "types": ["EC35"]},
 ]
 BUDGET = 16000
+# Livery folders and which base texture each livery XML key replaces. Liveries named by a 3-letter ICAO airline designator
+# (FlightGear's naming convention) are matched at runtime to the operator code that starts the ADS-B callsign.
+LIVERIES = {
+    "b739": (["Models/Liveries"], {"livery": "JA.png"}),
+    "a320": (["Models/Liveries/A320-211", "Models/Liveries/A320-231", "Models/Liveries/A320-111", "Models/Liveries/A319-111", "Models/Liveries/A319-131",
+              "Models/Liveries/A321-211", "Models/Liveries/A318-111", "Models/Liveries"], {"livery": "A320-NWA.png"}),
+    "b748": (["Models/Liveries/748F", "Models/Liveries/748I"], {"livery": "freighter.png", "turbofans": "turbofan.png", "wings": "wings.png"}),
+    "b788": (["Models/Liveries"], {"livery": "BCA-Livery.png"}),
+    "e170": (["Models/Liveries/ERJ170", "Models/Liveries/ERJ175"], {"livery": "blank.png"}),
+    "e190": (["Models/Liveries/ERJ190", "Models/Liveries/ERJ195"], {"livery": "blank190.png"}),
+    "a330": (["Models/Liveries/A330-223"], {"livery": "223_blank.png"}),
+    "q400": (["Models/Liveries"], {"livery": "Q400_House.png"}),
+}
+ICAO = re.compile(r"^[A-Za-z]{3}$")
 
 
 def parse_ac(path):
@@ -173,31 +187,78 @@ def cluster(tris, budget):
         cell *= 1.25
 
 
+def tri_colour(folder, mat, mats, tex, uv, swap=None):
+    """Triangle colour from its AC3D material times its texture; `swap` maps a base texture name to a livery image. None = transparent."""
+    rgb, trans = mats[mat] if mat < len(mats) else ([0.8] * 3, 0)
+    if trans > 0.5: return None
+    img = (swap or {}).get(Path(tex).name) if tex else None
+    if img is None: img = texture(folder, tex)
+    if img is not None:
+        px = sample(img, uv)
+        if px is None: return None
+        rgb = [min(1.0, m * p) for m, p in zip(rgb, px)]
+    return rgb
+
+
+def liveries(af, repo, kept, meta):
+    """Per-triangle RGB (u8) for every ICAO-coded livery: public/models/airframes/liveries/<id>/<CODE>.bin."""
+    if af["id"] not in LIVERIES: return {}
+    dirs, keys = LIVERIES[af["id"]]
+    out_dir = OUT_DIR / "liveries" / af["id"]
+    out_dir.mkdir(parents=True, exist_ok=True)
+    found = {}
+    for d in dirs:
+        for x in sorted((repo / d).glob("*.xml")):
+            code = x.stem.upper()
+            if not ICAO.match(x.stem) or code in found: continue
+            xml = x.read_text(errors="replace")
+            swap, name = {}, None
+            for key, base in keys.items():
+                m = re.search(rf"<{key}>(.*?)</{key}>", xml, re.S)
+                if not m: continue
+                t = re.search(r"<texture>\s*(.*?)\s*</texture>", m.group(1), re.S)
+                if key == "livery":
+                    n = re.search(r"<name[^>]*>\s*(.*?)\s*</name>", m.group(1), re.S)
+                    name = n.group(1) if n else code
+                if not t: continue
+                for cand in (repo / "Models" / t.group(1), x.parent / Path(t.group(1)).name):
+                    if cand.exists():
+                        try: swap[base] = Image.open(cand).convert("RGBA")
+                        except Exception: pass
+                        break
+            if keys["livery"] not in swap: continue
+            blob = bytearray()
+            for idx, base_rgb in kept:
+                folder, mat, mats, tex, uv = meta[idx]
+                rgb = tri_colour(folder, mat, mats, tex, uv, swap) or base_rgb
+                blob += bytes(max(0, min(255, round(c * 255))) for c in rgb)
+            (out_dir / f"{code}.bin").write_bytes(bytes(blob))
+            found[code] = {"name": name, "file": f"{x.relative_to(repo)}", "sha256": hashlib.sha256(bytes(blob)).hexdigest()}
+    return found
+
+
 def build(af, src):
     repo = src / af["repo"]
-    tris, colours = [], []
+    tris, colours, meta = [], [], []
     for f in af["files"]:
         f, off = f if isinstance(f, tuple) else (f, [0, 0, 0])
         mats, ts = parse_ac(repo / f)
         # FlightGear offsets are x aft, y right, z up; AC3D vertices are x aft, y up, z right... converted below via ac (x, y, z) = (x+ox, y+oz, z+oy)
         ts = [tuple([v[0] + off[0], v[1] + off[2], v[2] + off[1]] for v in t[:3]) + t[3:] for t in ts]
         for a, b, c, mat, tex, uv in ts:
-            rgb, trans = mats[mat] if mat < len(mats) else ([0.8] * 3, 0)
-            if trans > 0.5: continue
-            img = texture((repo / f).parent, tex)
-            if img is not None:
-                px = sample(img, uv)
-                if px is None: continue  # transparent part of the texture (windows, blur discs)
-                rgb = [min(1.0, m * p) for m, p in zip(rgb, px)]
+            rgb = tri_colour((repo / f).parent, mat, mats, tex, uv)
+            if rgb is None: continue  # see-through material or transparent texture (windows, blur discs)
+            meta.append(((repo / f).parent, mat, mats, tex, uv))
             # AC3D is y-up with the nose toward -x in FlightGear models -> map mesh axes (+x forward, +y left, +z up).
-            tris.append(tuple([-v[0], -v[2], v[1]] for v in (a, b, c)) + (tuple(round(x, 2) for x in rgb),))
+            tris.append(tuple([-v[0], -v[2], v[1]] for v in (a, b, c)) + ((tuple(round(x, 2) for x in rgb), len(meta) - 1),))
     raw = len(tris)
     out, cell = cluster(tris, BUDGET)
     zmin = min(v[2] for t, _ in out for v in t)
     # Centre length and span on the origin so the reported position is the middle of the airframe and it turns about that point.
     mid = [(min(v[k] for t, _ in out for v in t) + max(v[k] for t, _ in out for v in t)) / 2 for k in range(2)]
     pos, nor, col = [], [], []
-    for t, c in out:
+    kept = [(c[1], c[0]) for _, c in out]
+    for t, (c, _) in out:
         t = [[v[0] - mid[0], v[1] - mid[1], v[2] - zmin] for v in t]
         u = [t[1][k] - t[0][k] for k in range(3)]; w = [t[2][k] - t[0][k] for k in range(3)]
         n = [u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0]]
@@ -213,7 +274,8 @@ def build(af, src):
     assert "GNU GENERAL PUBLIC LICENSE" in lic, f"{af['repo']}: {lic_file} is not a GPL licence"
     return {"id": af["id"], "types": af["types"], "repo": f"https://github.com/FGMEMBERS/{af['repo']}", "commit": sha,
             "files": [f if isinstance(f, str) else f[0] for f in af["files"]], "license": "GPL-3.0" if "Version 3" in lic else "GPL-2.0", "triangles": len(out),
-            "sourceTriangles": raw, "extentM": [round(x, 3) for x in ext], "sha256": hashlib.sha256(blob).hexdigest()}
+            "sourceTriangles": raw, "extentM": [round(x, 3) for x in ext], "sha256": hashlib.sha256(blob).hexdigest(),
+            "liveries": liveries(af, repo, kept, meta)}
 
 
 if __name__ == "__main__":

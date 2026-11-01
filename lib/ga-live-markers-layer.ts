@@ -1,5 +1,5 @@
 import { Popup } from 'maplibre-gl';
-import { airframeModel, faaSpec, fgAirframe, fgAirframeId, FAA_ACD, FAA_HELI } from './ga-live-markers/airframe';
+import { airframeModel, faaSpec, fgAirframe, fgAirframeId, fgLivery, FAA_ACD, FAA_HELI } from './ga-live-markers/airframe';
 import FG_AIRFRAMES from './ga-live-markers/fg-airframes.json';
 import { aircraftAltitude, altTag, vRateTag } from './ga-live-markers/altitude';
 const FG_MODELS = FG_AIRFRAMES.models;
@@ -318,7 +318,7 @@ const SPECS: Record<LiveLayer, Spec> = {
       ['GPS accuracy (NACp)', fmt(p.gpsNacp)],
       ['Position', 'moved forward each second from the last report using speed and track'],
       ...faaRows(p.type, p.category),
-      ['Colour', "FlightGear model's sample paint; the FAA and ADS-B don't publish an aircraft's real colours"],
+      ['Colour', "the airline's FlightGear livery when the callsign starts with an ICAO airline code that has one (e.g. DAL, UAL, CLX), otherwise the model's sample paint; volunteer-painted, and the FAA and ADS-B don't publish an aircraft's real colours"],
     ],
     detail: (ms) => `${ms.filter((m) => !m.props.onGround).length} airborne · ${ms.filter((m) => m.props.onGround).length} on ground · ${ms.filter(lowGps).length} with low GPS accuracy · PIA/LADD aircraft removed · 3D sizes from ${FAA_ACD.source} (retrieved ${FAA_ACD.retrievedAt.slice(0, 10)}) and ${FAA_HELI.source}, height above sea level from GNSS altitude`,
   },
@@ -415,7 +415,8 @@ function modelFor(layer: LiveLayer, m: LiveMarker): GaDeckItem['model'] {
   if (layer === 'aircraft') {
     const { kind, scale } = airframeModel(m.props.type, m.props.category);
     const mslM = aircraftMslM(m);
-    return { kind, scale, elevM: m.props.onGround || mslM === null ? 0 : Math.max(0, mslM), msl: true, always: true };
+    const livery = fgLivery(String(kind).replace(/^fg-/, ''), m.label)?.code;
+    return { kind, livery, scale, elevM: m.props.onGround || mslM === null ? 0 : Math.max(0, mslM), msl: true, always: true };
   }
   if (layer === 'towers') {
     const h = Number(m.props.heightM);

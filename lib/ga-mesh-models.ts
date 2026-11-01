@@ -281,6 +281,35 @@ export function gaMeshIfReady(kind: GaModelKind, onReady: () => void): GaMesh | 
   return null;
 }
 
+/** A FlightGear mesh repainted with a livery: shares positions/normals, colours from u8 RGB per triangle. */
+export function applyLiveryColours(base: GaMesh, rgb: Uint8Array): GaMesh {
+  const n = base.attributes.positions.value.length / 3;
+  if (rgb.length * 3 !== n * 3) return base;
+  const c = new Float32Array(n * 3);
+  for (let v = 0; v < n; v++) {
+    const t = Math.floor(v / 3) * 3;
+    c[v * 3] = rgb[t] / 255; c[v * 3 + 1] = rgb[t + 1] / 255; c[v * 3 + 2] = rgb[t + 2] / 255;
+  }
+  return { ...base, attributes: { ...base.attributes, colors: { value: c, size: 3 } } };
+}
+
+const liveryMeshes = new Map<string, GaMesh | Promise<void> | null>();
+/** FlightGear mesh in an airline livery; falls back to the base paint until loaded or if the file is missing. */
+export function gaLiveryMeshIfReady(kind: GaModelKind, livery: string | undefined, onReady: () => void): GaMesh | null {
+  const base = gaMeshIfReady(kind, onReady);
+  if (!base || !livery || !isFgKind(kind)) return base;
+  const key = `${kind}|${livery}`;
+  const m = liveryMeshes.get(key);
+  if (m && !(m instanceof Promise)) return m;
+  if (m === undefined) {
+    liveryMeshes.set(key, fetch(`/models/airframes/liveries/${kind.slice(3)}/${livery}.bin`)
+      .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((b) => { liveryMeshes.set(key, applyLiveryColours(base, new Uint8Array(b))); onReady(); })
+      .catch(() => { liveryMeshes.set(key, base); }));
+  }
+  return base;
+}
+
 const meshes = new Map<BaseModelKind, GaMesh>();
 export function gaMesh(kind: BaseModelKind): GaMesh {
   let mesh = meshes.get(kind);

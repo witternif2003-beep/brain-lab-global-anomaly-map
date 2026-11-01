@@ -6,7 +6,7 @@ import { insideRing, loadGaWallRing, type LngLat } from './ga-patrol-3d';
 import { reportGaFeed } from './ga-live-status';
 import { GA_MARKER_SCALE, gaGlowMultiplier } from './ga-marker-scale';
 import { GA_ICON_CELL_SCALE, gaIconAtlas, gaIconKey, type GaIconAtlas, type GaIconShape } from './ga-marker-icons';
-import { gaMeshIfReady, gaModelReach, isFgKind, type GaModelKind } from './ga-mesh-models';
+import { gaMeshIfReady, gaLiveryMeshIfReady, gaModelReach, isFgKind, type GaModelKind } from './ga-mesh-models';
 import { cappedPixelRatio, isTouchDevice, LIDAR_POINT_CEILING } from './map/touch-gpu-budget';
 import type { CloudPuff } from './ga-clouds/cloud-puffs';
 import { puffAtlas } from './ga-clouds/puff-texture';
@@ -31,7 +31,7 @@ export interface GaDeckItem {
   /** Short see-through tag drawn under the marker once zoomed in to the group's `labelMinZoom`. */
   label?: string;
   /** 3D model drawn in place of the glyph from `GA_MODEL_MIN_ZOOM`; `elevM` lifts it above the ground point (the glyph stays as its ground marker). */
-  model?: { kind: GaModelKind; scale?: [number, number, number]; elevM?: number; msl?: boolean; always?: boolean };
+  model?: { kind: GaModelKind; livery?: string; scale?: [number, number, number]; elevM?: number; msl?: boolean; always?: boolean };
   props: Record<string, unknown>;
 }
 export interface GaDeckGroup {
@@ -120,7 +120,7 @@ interface DeckState {
 }
 
 const states = new WeakMap<MapLibreMap, DeckState>();
-type GroupViews = { glow: GaDeckItem[]; pulse: GaDeckItem[]; lightBar: boolean; dots: GaDeckItem[]; icons: GaDeckItem[]; streetIcons: GaDeckItem[]; labels: GaDeckItem[]; models: Map<GaModelKind, GaDeckItem[]>; elevated: GaDeckItem[] };
+type GroupViews = { glow: GaDeckItem[]; pulse: GaDeckItem[]; lightBar: boolean; dots: GaDeckItem[]; icons: GaDeckItem[]; streetIcons: GaDeckItem[]; labels: GaDeckItem[]; models: Map<string, GaDeckItem[]>; elevated: GaDeckItem[] };
 const viewsByGroup = new WeakMap<GaDeckGroup, GroupViews>();
 const DEPTH_PARAMETERS = { depthCompare: 'always', depthWriteEnabled: false, cullMode: 'none' } as const;
 const ADDITIVE_PARAMETERS = {
@@ -472,9 +472,10 @@ function groupViews(group: GaDeckGroup): GroupViews {
     };
     for (const item of group.items) {
       if (!item.model) continue;
-      const list = views.models.get(item.model.kind);
+      const key = item.model.livery ? `${item.model.kind}|${item.model.livery}` : item.model.kind;
+      const list = views.models.get(key);
       if (list) list.push(item);
-      else views.models.set(item.model.kind, [item]);
+      else views.models.set(key, [item]);
     }
     viewsByGroup.set(group, views);
   }
@@ -618,14 +619,15 @@ function createLayers(state: DeckState): Layer[] {
       const aloftScale = alwaysModelScale(state.map.getCenter().lat, state.zoom);
       const globe = isDeckGlobe(state.map);
       state.meshGlobe = globe;
-      for (const [kind, items] of views.models) {
+      for (const [modelKey, items] of views.models) {
+        const kind = items[0].model!.kind;
         const always = !!items[0]?.model?.always;
         const kindScale = always ? aloftScale : scale;
         if (!kindScale) continue;
-        const mesh = gaMeshIfReady(kind, () => updateLayers(state));
+        const mesh = gaLiveryMeshIfReady(kind, items[0].model!.livery, () => updateLayers(state));
         if (!mesh) continue;
         layers.push(new SimpleMeshLayer<GaDeckItem>({
-          id: `ga-deck-${key}-model-${kind}`,
+          id: `ga-deck-${key}-model-${modelKey}`,
           data: items,
           mesh,
           getPosition: (item) => modelAt(state, item),

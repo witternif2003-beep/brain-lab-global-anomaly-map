@@ -142,3 +142,13 @@ export function airframeModel(type: unknown, category: unknown): { kind: GaModel
   }
   return { kind: drawn, scale: [(spec.lengthFt * FT_M) / lx, (spec.spanFt * FT_M) / ly, (spec.tailFt * FT_M) / lz], faa: spec };
 }
+
+type FgLiveryInfo = { name: string | null; file: string; sha256: string };
+/** FlightGear livery for an airline flight: the 3-letter ICAO operator code that starts the callsign (e.g. DAL1234 → DAL), if that shape has one. */
+export function fgLivery(modelId: string, callsign: unknown): { code: string; name: string } | null {
+  const m = /^([A-Z]{3})\d/.exec(String(callsign ?? '').trim().toUpperCase());
+  if (!m) return null;
+  const model = (FG.models as unknown as { id: string; liveries?: Record<string, FgLiveryInfo> }[]).find((x) => x.id === modelId);
+  const l = model?.liveries?.[m[1]];
+  return l ? { code: m[1], name: l.name ?? m[1] } : null;
+}
