@@ -45,6 +45,7 @@ import { useAnomalyStream, AnomalyFeature } from '../hooks/useAnomalyStream';
 import { registerGeoJSONVTSource, shouldUseTiledRendering } from '../lib/geojson-vt-protocol';
 import MapDebugOverlay from './MapDebugOverlay';
 import { AWS_TERRARIUM_TILES } from '../lib/lidar-globe-sources';
+import { attachSolarSky } from '../lib/ga-sky';
 
 interface StateMapProps {
   anomalies: AnomalyItem[];
@@ -616,6 +617,7 @@ export default function StateMap({
       'bottom-left'
     );
     map.addControl(new maplibregl.ScaleControl({ maxWidth: 100, unit: 'metric' }), 'bottom-left');
+    attachSolarSky(map);
 
     map.on('style.load', () => {
       try {
