@@ -20,6 +20,10 @@ AIRFRAMES = [
     {"id": "a320", "repo": "A320-family", "files": [("Models/a320.fuselage.ac", [0, 0, 0]), ("Models/Wings/a320.wings.ac", [15.28, 0, -1.06019]),
         ("Models/Wings/a320.winglets.ac", [15.28, 0, -1.06019]), ("Models/a320.hstab.ac", [34.1512207, 0, 0]), ("Models/a320.vstab.ac", [32.2535728, 0, 0])],
      "types": ["A320", "A20N", "A319", "A19N", "A318", "A321", "A21N"]},
+    {"id": "b748", "repo": "747-8i", "files": ["Models/747-8F.ac"], "types": ["B748", "B744"]},
+    {"id": "b788", "repo": "787", "files": ["Models/787-8.ac"], "types": ["B788", "B789", "B78X"]},
+    {"id": "e170", "repo": "E-jet-family", "files": ["Models/erj170.ac"], "types": ["E170", "E75L", "E75S"]},
+    {"id": "e190", "repo": "E-jet-family", "files": ["Models/erj190.ac"], "types": ["E190", "E195", "E290", "E295"]},
 ]
 BUDGET = 6000
 
@@ -140,9 +144,11 @@ def build(af, src):
     raw = len(tris)
     out, cell = cluster(tris, BUDGET)
     zmin = min(v[2] for t, _ in out for v in t)
+    # Centre length and span on the origin so the reported position is the middle of the airframe and it turns about that point.
+    mid = [(min(v[k] for t, _ in out for v in t) + max(v[k] for t, _ in out for v in t)) / 2 for k in range(2)]
     pos, nor, col = [], [], []
     for t, c in out:
-        t = [[v[0], v[1], v[2] - zmin] for v in t]
+        t = [[v[0] - mid[0], v[1] - mid[1], v[2] - zmin] for v in t]
         u = [t[1][k] - t[0][k] for k in range(3)]; w = [t[2][k] - t[0][k] for k in range(3)]
         n = [u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0]]
         l = math.sqrt(sum(x * x for x in n)) or 1
@@ -152,7 +158,9 @@ def build(af, src):
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     (OUT_DIR / f"{af['id']}.bin").write_bytes(blob)
     sha = subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
-    lic = (repo / "COPYING").read_text(errors="replace")[:200]
+    lic_file = next(f for f in ("COPYING", "COPYING.txt", "LICENSE", "License.txt") if (repo / f).exists())
+    lic = (repo / lic_file).read_text(errors="replace")[:200]
+    assert "GNU GENERAL PUBLIC LICENSE" in lic, f"{af['repo']}: {lic_file} is not a GPL licence"
     return {"id": af["id"], "types": af["types"], "repo": f"https://github.com/FGMEMBERS/{af['repo']}", "commit": sha,
             "files": [f if isinstance(f, str) else f[0] for f in af["files"]], "license": "GPL-3.0" if "Version 3" in lic else "GPL-2.0", "triangles": len(out),
             "sourceTriangles": raw, "extentM": [round(x, 3) for x in ext], "sha256": hashlib.sha256(blob).hexdigest()}

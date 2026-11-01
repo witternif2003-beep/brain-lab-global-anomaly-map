@@ -1,6 +1,6 @@
 {
  "source": "FlightGear FGMEMBERS aircraft models (GPL)",
- "builtAt": "2026-11-01T09:09:22+00:00",
+ "builtAt": "2026-11-01T09:30:17+00:00",
  "models": [
   {
    "id": "b739",
@@ -25,7 +25,7 @@
     29.95,
     12.453
    ],
-   "sha256": "b2af70b4ed9e21a4db0c41528bfe34c23cf5a93f5d574cc660e7fc70ecc54e1f"
+   "sha256": "c887a525d5523e67e79da01e8461d77612dda69c050d1e942c1576c5498f41c4"
   },
   {
    "id": "a320",
@@ -55,7 +55,95 @@
     34.124,
     10.457
    ],
-   "sha256": "bc8492944f5cb5e5d9f43a4c360911e36ccaa51e373834d6781c1ff4b3e82ab8"
+   "sha256": "9ed96a9074c0ac84e33186b70cbfd47f88efee4cc10bcd632b022cfedc2d3389"
+  },
+  {
+   "id": "b748",
+   "types": [
+    "B748",
+    "B744"
+   ],
+   "repo": "https://github.com/FGMEMBERS/747-8i",
+   "commit": "6f010e51868bfebfda5d7bebcdd329fdb0167f3b",
+   "files": [
+    "Models/747-8F.ac"
+   ],
+   "license": "GPL-2.0",
+   "triangles": 5418,
+   "sourceTriangles": 21936,
+   "extentM": [
+    75.927,
+    68.626,
+    18.982
+   ],
+   "sha256": "ec41d8f5c0b2ac1e40e33df2d2fe466343c0217efb6d0266a247ab86beca7a5c"
+  },
+  {
+   "id": "b788",
+   "types": [
+    "B788",
+    "B789",
+    "B78X"
+   ],
+   "repo": "https://github.com/FGMEMBERS/787",
+   "commit": "d979e8b3bba60e010b7ce0922fceadd82449ae96",
+   "files": [
+    "Models/787-8.ac"
+   ],
+   "license": "GPL-2.0",
+   "triangles": 5290,
+   "sourceTriangles": 19090,
+   "extentM": [
+    56.786,
+    59.058,
+    15.9
+   ],
+   "sha256": "008c92711b3f61b286f1f4ada74f59c694c76683a3162e173a2a80008d059ceb"
+  },
+  {
+   "id": "e170",
+   "types": [
+    "E170",
+    "E75L",
+    "E75S"
+   ],
+   "repo": "https://github.com/FGMEMBERS/E-jet-family",
+   "commit": "45be9f83c479c5df6a03b117513aae740ffe9cc3",
+   "files": [
+    "Models/erj170.ac"
+   ],
+   "license": "GPL-2.0",
+   "triangles": 5355,
+   "sourceTriangles": 38280,
+   "extentM": [
+    29.494,
+    25.41,
+    9.756
+   ],
+   "sha256": "eeaf6104533dcf65583290eb71707bffbac83e8be3509ce7147f764a449cfef7"
+  },
+  {
+   "id": "e190",
+   "types": [
+    "E190",
+    "E195",
+    "E290",
+    "E295"
+   ],
+   "repo": "https://github.com/FGMEMBERS/E-jet-family",
+   "commit": "45be9f83c479c5df6a03b117513aae740ffe9cc3",
+   "files": [
+    "Models/erj190.ac"
+   ],
+   "license": "GPL-2.0",
+   "triangles": 5000,
+   "sourceTriangles": 38446,
+   "extentM": [
+    35.555,
+    28.013,
+    10.774
+   ],
+   "sha256": "be14d5bc5da1076b9fb980908fbc0264b75036643c928002c965cf49000c81cc"
   }
  ]
 }

@@ -18,7 +18,12 @@ for (const m of FG.models) {
       let lo = Infinity, hi = -Infinity;
       for (let i = k; i < p.length; i += 3) { lo = Math.min(lo, p[i]); hi = Math.max(hi, p[i]); }
       assert.ok(Math.abs(hi - lo - m.extentM[k]) < 0.01);
+      if (k < 2) assert.ok(Math.abs(hi + lo) < 0.01, `${m.id} is centred on its position along axis ${k}`);
     }
+    // Nose toward +x: the tail fin (top quarter of the height) is in the rear half.
+    let finX = 0, finN = 0;
+    for (let i = 0; i < p.length; i += 3) if (p[i + 2] > 0.75 * m.extentM[2]) { finX += p[i]; finN++; }
+    assert.ok(finN > 0 && finX / finN < 0, `${m.id} nose points along +x`);
     assert.match(m.license, /^GPL-[23]\.0$/);
   });
 }
