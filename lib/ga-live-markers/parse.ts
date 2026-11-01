@@ -34,6 +34,7 @@ const MAX_POSITION_AGE_S = 60;
 
 interface AdsbAircraft {
   flight?: string; t?: string; lat?: number; lon?: number; alt_baro?: number | "ground"; alt_geom?: number; gs?: number; track?: number;
+  baro_rate?: number; geom_rate?: number;
   seen_pos?: number; category?: string; emergency?: string; dbFlags?: number; type?: string; nac_p?: number;
 }
 
@@ -48,6 +49,7 @@ export function parseAdsbLol(json: { ac?: AdsbAircraft[]; now?: number }, nowMs 
         altFt: a.alt_baro === "ground" ? 0 : num(a.alt_baro),
         altGeomFt: a.alt_baro === "ground" ? null : num(a.alt_geom),
         altMslFt: a.alt_baro === "ground" ? null : mslFt(num(a.alt_geom), num(a.lat), num(a.lon)),
+        vRateFpm: a.alt_baro === "ground" ? null : num(a.baro_rate) ?? num(a.geom_rate),
         onGround: a.alt_baro === "ground",
         gsKt: num(a.gs),
         track: num(a.track),
@@ -99,6 +101,7 @@ export function parseOpenSky(json: { time?: number; states?: unknown[][] | null 
         altFt: altM === null ? null : Math.round(altM * 3.28084),
         altGeomFt: geoM === null ? null : Math.round(geoM * 3.28084),
         altMslFt: mslFt(geoM === null ? null : geoM * 3.28084, num(s[6]), num(s[5])),
+        vRateFpm: num(s[11]) === null ? null : Math.round(num(s[11])! * 196.850394),
         onGround: s[8] === true,
         gsKt: v === null ? null : round(v * 1.943844, 1),
         track: num(s[10]),

@@ -1,6 +1,7 @@
 import { Popup } from 'maplibre-gl';
 import { airframeModel, faaSpec, fgAirframe, fgAirframeId, FAA_ACD, FAA_HELI } from './ga-live-markers/airframe';
 import FG_AIRFRAMES from './ga-live-markers/fg-airframes.json';
+import { aircraftAltitude, altTag, vRateTag } from './ga-live-markers/altitude';
 const FG_MODELS = FG_AIRFRAMES.models;
 import type { Map as MapLibreMap } from 'maplibre-gl';
 import { insideRing, loadGaWallRing, offset, type LngLat } from './ga-patrol-3d';
@@ -47,20 +48,12 @@ interface Spec {
 const KT_TO_MS = 0.514444;
 const heading = (v: LiveValue) => (v === null || v === undefined || v === '' || !Number.isFinite(Number(v)) ? undefined : Number(v));
 const toIcon = ({ shape, angle }: { shape: GaIconShape; angle?: number }) => ({ icon: shape, angle });
-const altTag = (p: Record<string, LiveValue>) => {
-  if (p.onGround) return 'GND';
-  const ft = Number(p.altFt);
-  if (p.altFt === null || p.altFt === undefined || !Number.isFinite(ft)) return '';
-  return ft >= 18_000 ? `FL${Math.round(ft / 100)}` : `${(Math.round(ft / 100) * 100).toLocaleString('en-US')} ft`;
-};
 const DEAD_RECKON_MAX_S = 30;
 const finite = (v: LiveValue | undefined) => (v === null || v === undefined || v === '' || !Number.isFinite(Number(v)) ? null : Number(v));
-/** Height above mean sea level: GNSS altitude corrected by the GEOID18 geoid height, else barometric (pressure) altitude. */
+/** Same height the label shows (feet → metres), so the model and its altitude readout always agree. */
 function aircraftMslM(m: LiveMarker): number | null {
-  const msl = finite(m.props.altMslFt);
-  if (msl !== null) return msl * 0.3048;
-  const baro = finite(m.props.altFt);
-  return baro === null ? null : baro * 0.3048;
+  const a = aircraftAltitude(m.props);
+  return a === null ? null : a.ft * 0.3048;
 }
 const shapeRow = (type: LiveValue | undefined, category: LiveValue | undefined, sized: string): [string, string] => {
   const id = fgAirframeId(type, category);
@@ -317,13 +310,15 @@ const SPECS: Record<LiveLayer, Spec> = {
       ['Type', fmt(p.type)],
       ['Altitude (GNSS, above sea level)', p.onGround ? 'on the ground' : fmt(p.altMslFt, ' ft (GNSS height − GEOID18)')],
       ['Pressure altitude', p.onGround ? 'on the ground' : fmt(p.altFt, ' ft')],
+      ['Vertical rate', p.onGround ? 'on the ground' : vRateTag(p) || (finite(p.vRateFpm) === null ? '—' : 'level (under 100 fpm)')],
+      ['3D model and label height', p.onGround ? 'on the ground' : ((a) => (a ? `${a.ft.toLocaleString('en-US')} ft ${a.ref === 'MSL' ? 'above mean sea level (GNSS − GEOID18)' : 'pressure altitude (no GNSS altitude reported)'}` : '—'))(aircraftAltitude(p))],
       ['Ground speed', fmt(p.gsKt, ' kt')],
       ['Track', fmt(p.track, '°')],
       ['Emergency', fmt(p.emergency)],
       ['GPS accuracy (NACp)', fmt(p.gpsNacp)],
       ['Position', 'moved forward each second from the last report using speed and track'],
       ...faaRows(p.type, p.category),
-      ['Colour', 'not published by the FAA or ADS-B; the model uses one neutral colour'],
+      ['Colour', "FlightGear model's sample paint; the FAA and ADS-B don't publish an aircraft's real colours"],
     ],
     detail: (ms) => `${ms.filter((m) => !m.props.onGround).length} airborne · ${ms.filter((m) => m.props.onGround).length} on ground · ${ms.filter(lowGps).length} with low GPS accuracy · PIA/LADD aircraft removed · 3D sizes from ${FAA_ACD.source} (retrieved ${FAA_ACD.retrievedAt.slice(0, 10)}) and ${FAA_HELI.source}, height above sea level from GNSS altitude`,
   },
