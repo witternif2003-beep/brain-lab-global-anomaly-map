@@ -136,6 +136,9 @@ const HIT_BOX_PX = 24;
 /** Strobe period for new/alerting markers: on for half, off for half (~4 blinks per second). */
 const PULSE_BLINK_MS = 240;
 
+/** Ground point, or the model itself for models drawn aloft at every zoom, so glows and strobes flash on the aircraft. */
+const markerAt = (state: DeckState, item: GaDeckItem): [number, number, number] =>
+  item.model?.always ? modelAt(state, item) : anchored(state, item.coord);
 const strobeFill = (state: DeckState, item: GaDeckItem): RGBA =>
   item.pulse && item.strobeColors && state.lightBar ? item.strobeColors[state.lightBar - 1] : item.fill;
 const MESH_PARAMETERS = { depthCompare: 'less-equal', depthWriteEnabled: true, cullMode: 'none' } as const;
@@ -555,7 +558,7 @@ function createLayers(state: DeckState): Layer[] {
       layers.push(new ScatterplotLayer({
         id: `ga-deck-${key}-bloom`,
         data: glow,
-        getPosition: (item: GaDeckItem) => anchored(state, item.coord),
+        getPosition: (item: GaDeckItem) => markerAt(state, item),
         updateTriggers: { getPosition: state.groundVersion },
         getRadius: (item: GaDeckItem) => item.radiusPx * GA_MARKER_SCALE * gaGlowMultiplier(3.2),
         getFillColor: (item: GaDeckItem) => [item.stroke[0], item.stroke[1], item.stroke[2], Math.round(255 * 0.18 * Math.max(0, Math.min(1, item.glow ?? 0)))],
@@ -568,7 +571,7 @@ function createLayers(state: DeckState): Layer[] {
       layers.push(new ScatterplotLayer({
         id: `ga-deck-${key}-halo`,
         data: glow,
-        getPosition: (item: GaDeckItem) => anchored(state, item.coord),
+        getPosition: (item: GaDeckItem) => markerAt(state, item),
         updateTriggers: { getPosition: state.groundVersion },
         getRadius: (item: GaDeckItem) => item.radiusPx * GA_MARKER_SCALE * gaGlowMultiplier(2),
         getFillColor: (item: GaDeckItem) => [item.stroke[0], item.stroke[1], item.stroke[2], Math.round(255 * 0.45 * Math.max(0, Math.min(1, item.glow ?? 0)))],
@@ -681,7 +684,7 @@ function createLayers(state: DeckState): Layer[] {
       layers.push(new ScatterplotLayer({
         id: `ga-deck-${key}-pulse`,
         data: pulse,
-        getPosition: (item: GaDeckItem) => anchored(state, item.coord),
+        getPosition: (item: GaDeckItem) => markerAt(state, item),
         updateTriggers: { getPosition: state.groundVersion, getFillColor: views.lightBar ? state.lightBar : 0 },
         getRadius: (item: GaDeckItem) => item.radiusPx * GA_MARKER_SCALE,
         getFillColor: (item: GaDeckItem) => { const f = strobeFill(state, item); return [f[0], f[1], f[2], 120]; },
