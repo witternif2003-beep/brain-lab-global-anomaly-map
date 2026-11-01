@@ -20,6 +20,7 @@ import type { EptProject, RawPoints } from "../../lib/ga-lidar/ept";
 const PROJECT: EptProject = {
   name: "TEST",
   year: 2018,
+  ql: "QL2",
   points: 0,
   bounds: [0, 0, 0, 1024, 1024, 1024],
   boundsConforming: [0, 0, 0, 1024, 1024, 1024],
@@ -28,7 +29,20 @@ const PROJECT: EptProject = {
 
 test("index lists only GA EPT projects in EPSG:3857", () => {
   assert.ok(GA_LIDAR_PROJECTS.length >= 30);
-  assert.ok(GA_LIDAR_PROJECTS.every((p) => p.name.startsWith("GA_") && p.bounds.length === 6));
+  assert.ok(GA_LIDAR_PROJECTS.every((p) => /^(USGS_LPC_)?GA_/.test(p.name) && p.bounds.length === 6));
+  assert.ok(GA_LIDAR_PROJECTS.every((p) => /^(QL[0-3]|other|unknown)$/.test(p.ql) && p.year >= 2000));
+  assert.equal(GA_LIDAR_PROJECTS.find((p) => p.name === "USGS_LPC_GA_Georgia_A1_2016_LAS_2018")?.year, 2016);
+});
+
+test("pickProject prefers the better USGS quality level, then the newer survey", () => {
+  const box = { bounds: [0, 0, 0, 10, 10, 10], boundsConforming: [0, 0, 0, 10, 10, 10], points: 0, span: 128 };
+  const old2 = { ...box, name: "A", year: 2016, ql: "QL2" };
+  const new2 = { ...box, name: "B", year: 2018, ql: "QL2" };
+  const ql1 = { ...box, name: "C", year: 2015, ql: "QL1" };
+  const legacy = { ...box, name: "D", year: 2024, ql: "other" };
+  assert.equal(pickProject(5, 5, [old2, new2, legacy])?.name, "B");
+  assert.equal(pickProject(5, 5, [old2, new2, ql1, legacy])?.name, "C");
+  assert.equal(pickProject(5, 5, [legacy])?.name, "D");
 });
 
 test("lngLat ↔ 3857 round-trips", () => {

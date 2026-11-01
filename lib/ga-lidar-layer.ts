@@ -57,6 +57,7 @@ const WORLD_3857 = 2 * Math.PI * 6378137;
 export interface GaLidarStats {
   project: string | null;
   year: number | null;
+  ql: string | null;
   targetDepth: number;
   nodesPlanned: number;
   nodesDrawn: number;
@@ -158,6 +159,7 @@ export class GaLidar3DLayer implements CustomLayerInterface {
   private readonly stats: GaLidarStats = {
     project: null,
     year: null,
+    ql: null,
     targetDepth: 0,
     nodesPlanned: 0,
     nodesDrawn: 0,
@@ -269,6 +271,7 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     const project = zoom >= GA_LIDAR_MIN_ZOOM ? pickProject(cx, cy) : null;
     this.stats.project = project?.name ?? null;
     this.stats.year = project?.year ?? null;
+    this.stats.ql = project?.ql ?? null;
     if (!project) {
       for (const key of [...this.drawn.keys()]) this.dropNode(key);
       this.setOsmBuildings(true);
@@ -386,7 +389,7 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     const lidarMB = Math.round(this.lidarBytes() / MB);
     reportGaFeed(map, {
       id: 'gpu-memory', label: 'GPU memory (measured)', color: this.stats.vramLimited ? '#f43f5e' : '#22d3ee', count: this.stats.vramMB,
-      detail: `${this.stats.vramMB} MB of ${this.stats.vramTargetMB} MB target · peak ${this.stats.vramPeakMB} MB · LiDAR ${lidarMB} MB, ${this.stats.pointsDrawn.toLocaleString()} of ${this.stats.pointBudget.toLocaleString()} allowed points${this.stats.vramLimited ? ' · LiDAR capped to fit' : ''}${gpuSafeMode() ? ' · safe mode after a recent crash' : ''} · counted from WebGL allocations (estimate)`,
+      detail: `${this.stats.project ? `survey ${this.stats.project} (${this.stats.year}, USGS ${this.stats.ql === 'other' ? 'pre-standard' : this.stats.ql}) · ` : ''}${this.stats.vramMB} MB of ${this.stats.vramTargetMB} MB target · peak ${this.stats.vramPeakMB} MB · LiDAR ${lidarMB} MB, ${this.stats.pointsDrawn.toLocaleString()} of ${this.stats.pointBudget.toLocaleString()} allowed points${this.stats.vramLimited ? ' · LiDAR capped to fit' : ''}${gpuSafeMode() ? ' · safe mode after a recent crash' : ''} · counted from WebGL allocations (estimate)`,
       updatedAt: new Date().toISOString(), sourceUrl: '',
     });
   }

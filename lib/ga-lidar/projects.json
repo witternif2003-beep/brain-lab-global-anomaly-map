@@ -1,10 +1,12 @@
 {
  "source": "https://raw.githubusercontent.com/hobuinc/usgs-lidar/master/boundaries/resources.geojson",
- "retrieved": "2026-10-07T17:09:11.844Z",
+ "qlSource": "https://index.nationalmap.gov/arcgis/rest/services/3DEPElevationIndex/MapServer/8/query",
+ "retrieved": "2026-11-01T11:03:41.396Z",
  "projects": [
   {
    "name": "GA_Central_1_2018",
    "year": 2018,
+   "ql": "QL2",
    "points": 59159976532,
    "bounds": [
     -9422133,
@@ -27,6 +29,7 @@
   {
    "name": "GA_Central_2_2018",
    "year": 2018,
+   "ql": "QL2",
    "points": 38135978872,
    "bounds": [
     -9540929,
@@ -49,6 +52,7 @@
   {
    "name": "GA_Central_3_2018",
    "year": 2018,
+   "ql": "QL2",
    "points": 82336635439,
    "bounds": [
     -9509667,
@@ -71,6 +75,7 @@
   {
    "name": "GA_Central_4_2018",
    "year": 2018,
+   "ql": "QL2",
    "points": 29229794477,
    "bounds": [
     -9565847,
@@ -93,6 +98,7 @@
   {
    "name": "GA_Central_5_2018",
    "year": 2018,
+   "ql": "QL2",
    "points": 39481432268,
    "bounds": [
     -9418978,
@@ -115,6 +121,7 @@
   {
    "name": "GA_Central_6_2018",
    "year": 2018,
+   "ql": "QL2",
    "points": 23379174789,
    "bounds": [
     -9501069,
@@ -137,6 +144,7 @@
   {
    "name": "GA_Statewide_10_2018",
    "year": 2018,
+   "ql": "QL2",
    "points": 31444277321,
    "bounds": [
     -9296766,
@@ -159,6 +167,7 @@
   {
    "name": "GA_Statewide_11_2018",
    "year": 2018,
+   "ql": "QL2",
    "points": 33030721667,
    "bounds": [
     -9295994,
@@ -181,6 +190,7 @@
   {
    "name": "GA_Statewide_12_2018",
    "year": 2018,
+   "ql": "QL2",
    "points": 32928484587,
    "bounds": [
     -9276736,
@@ -203,6 +213,7 @@
   {
    "name": "GA_Statewide_9_2018",
    "year": 2018,
+   "ql": "QL2",
    "points": 35099632626,
    "bounds": [
     -9285738,
@@ -225,6 +236,7 @@
   {
    "name": "GA_Statewide_B1_2018",
    "year": 2018,
+   "ql": "QL2",
    "points": 32251297168,
    "bounds": [
     -9583830,
@@ -247,6 +259,7 @@
   {
    "name": "GA_Statewide_B2_2018",
    "year": 2018,
+   "ql": "QL2",
    "points": 42678530660,
    "bounds": [
     -9530469,
@@ -269,6 +282,7 @@
   {
    "name": "GA_Statewide_B3_2018",
    "year": 2018,
+   "ql": "QL2",
    "points": 43103638101,
    "bounds": [
     -9458571,
@@ -291,6 +305,7 @@
   {
    "name": "GA_Statewide_B4_2018",
    "year": 2018,
+   "ql": "QL2",
    "points": 21844083675,
    "bounds": [
     -9364580,
@@ -313,6 +328,7 @@
   {
    "name": "GA_Statewide_B5_2018",
    "year": 2018,
+   "ql": "QL2",
    "points": 27587433357,
    "bounds": [
     -9180031,
@@ -335,6 +351,7 @@
   {
    "name": "GA_Statewide_B6_2018",
    "year": 2018,
+   "ql": "QL2",
    "points": 33188546755,
    "bounds": [
     -9156247,
@@ -357,6 +374,7 @@
   {
    "name": "GA_Statewide_B7_2018",
    "year": 2018,
+   "ql": "QL2",
    "points": 13356481893,
    "bounds": [
     -9251757,
@@ -379,6 +397,7 @@
   {
    "name": "GA_Statewide_B8_2018",
    "year": 2018,
+   "ql": "QL2",
    "points": 36451418654,
    "bounds": [
     -9285911,
@@ -401,6 +420,7 @@
   {
    "name": "GA_SW_Georgia_B1a_2017",
    "year": 2017,
+   "ql": "QL2",
    "points": 6415722864,
    "bounds": [
     -9490370,
@@ -423,6 +443,7 @@
   {
    "name": "GA_SW_Georgia_B1b_2017",
    "year": 2017,
+   "ql": "QL2",
    "points": 13239227109,
    "bounds": [
     -9488609,
@@ -445,6 +466,7 @@
   {
    "name": "GA_SW_Georgia_B2_2017",
    "year": 2017,
+   "ql": "QL2",
    "points": 21925714249,
    "bounds": [
     -9475109,
@@ -467,6 +489,7 @@
   {
    "name": "GA_SW_Georgia_B4_2017",
    "year": 2017,
+   "ql": "QL2",
    "points": 60326605817,
    "bounds": [
     -9405836,
@@ -489,6 +512,7 @@
   {
    "name": "GA_SW_Georgia_B5_2017",
    "year": 2017,
+   "ql": "QL2",
    "points": 17292173767,
    "bounds": [
     -9285402,
@@ -509,8 +533,78 @@
    "span": 128
   },
   {
+   "name": "USGS_LPC_GA_Georgia_A1_2016_LAS_2018",
+   "year": 2016,
+   "ql": "QL2",
+   "points": 93476094866,
+   "bounds": [
+    -9523395,
+    3584770,
+    -169419,
+    -9184079,
+    3924086,
+    169897
+   ],
+   "boundsConforming": [
+    -9429782,
+    3584771,
+    -275,
+    -9277691,
+    3924084,
+    753
+   ],
+   "span": 128
+  },
+  {
+   "name": "USGS_LPC_GA_Georgia_A2_2016_LAS_2018",
+   "year": 2016,
+   "ql": "QL2",
+   "points": 21454775427,
+   "bounds": [
+    -9167315,
+    3842061,
+    -46336,
+    -9074313,
+    3935063,
+    46666
+   ],
+   "boundsConforming": [
+    -9165299,
+    3842062,
+    -232,
+    -9076329,
+    3935061,
+    562
+   ],
+   "span": 256
+  },
+  {
+   "name": "USGS_LPC_GA_Georgia_A3_2016_LAS_2018",
+   "year": 2016,
+   "ql": "QL2",
+   "points": 5271760204,
+   "bounds": [
+    -9443284,
+    3678208,
+    -23992,
+    -9394942,
+    3726550,
+    24350
+   ],
+   "boundsConforming": [
+    -9443282,
+    3687424,
+    -194,
+    -9394943,
+    3717334,
+    552
+   ],
+   "span": 256
+  },
+  {
    "name": "GA_Bibb_Jasper_Jones_Monroe_2010",
    "year": 2010,
+   "ql": "other",
    "points": 11630630878,
    "bounds": [
     -9379944,
@@ -533,6 +627,7 @@
   {
    "name": "GA_Bryan_County_2010",
    "year": 2010,
+   "ql": "other",
    "points": 1090890472,
    "bounds": [
     -9065200,
@@ -555,6 +650,7 @@
   {
    "name": "GA_Camden_County_2010",
    "year": 2010,
+   "ql": "other",
    "points": 5906951536,
    "bounds": [
     -9112425,
@@ -577,6 +673,7 @@
   {
    "name": "GA_Charlton_Brantley_Camden_2010",
    "year": 2010,
+   "ql": "other",
    "points": 8255823271,
    "bounds": [
     -9193736,
@@ -599,6 +696,7 @@
   {
    "name": "GA_Effingham_Screven_Bulloch_2010",
    "year": 2010,
+   "ql": "other",
    "points": 15654047821,
    "bounds": [
     -10423149,
@@ -621,6 +719,7 @@
   {
    "name": "GA_Harris_County_2010",
    "year": 2010,
+   "ql": "other",
    "points": 5636767975,
    "bounds": [
     -9482935,
@@ -643,6 +742,7 @@
   {
    "name": "GA_Heard_County_2010",
    "year": 2010,
+   "ql": "other",
    "points": 2477891377,
    "bounds": [
     -9495531,
@@ -665,6 +765,7 @@
   {
    "name": "GA_McIntosh_County_2010",
    "year": 2010,
+   "ql": "other",
    "points": 4707021224,
    "bounds": [
     -9088117,
@@ -687,6 +788,7 @@
   {
    "name": "GA_Walton_County_2010",
    "year": 2010,
+   "ql": "other",
    "points": 4665506342,
    "bounds": [
     -9348669,
@@ -709,6 +811,7 @@
   {
    "name": "GA_Wayne_Long_McIntosh_2010",
    "year": 2010,
+   "ql": "other",
    "points": 6585271598,
    "bounds": [
     -9165199,
@@ -731,6 +834,7 @@
   {
    "name": "GA_WayneCo_2010",
    "year": 2010,
+   "ql": "other",
    "points": 3053472482,
    "bounds": [
     -9153659,
@@ -753,6 +857,7 @@
   {
    "name": "GA_PotatoCreek_2009",
    "year": 2009,
+   "ql": "other",
    "points": 5900498693,
    "bounds": [
     -9416157,

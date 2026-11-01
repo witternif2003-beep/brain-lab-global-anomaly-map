@@ -3,7 +3,10 @@ import projectsJson from './projects.json';
 /** One USGS 3DEP LiDAR point-cloud project published as Entwine Point Tiles (EPT) on AWS Open Data. */
 export interface EptProject {
   name: string;
+  /** Collection year. */
   year: number;
+  /** USGS 3DEP quality level from the WESM index: QL0–QL3 (QL0/QL1 ≥ 8 pts/m², QL2 ≥ 2), 'other' (pre-standard) or 'unknown'. */
+  ql: string;
   points: number;
   /** EPT octree cube, EPSG:3857 metres: [minX, minY, minZ, maxX, maxY, maxZ]. */
   bounds: number[];
@@ -44,13 +47,19 @@ export function findProject(name: string): EptProject | null {
   return GA_LIDAR_PROJECTS.find((p) => p.name === name) ?? null;
 }
 
-/** Newest project whose points cover the EPSG:3857 location (x, y). */
+/** Lower is better: QL0 < QL1 < QL2 < QL3 < pre-standard < unknown. */
+export const qlRank = (ql: string): number => {
+  const m = /^QL(\d)$/.exec(ql);
+  return m ? Number(m[1]) : ql === 'other' ? 8 : 9;
+};
+
+/** Best-quality project covering the EPSG:3857 location (x, y); the newest survey wins between equal quality levels. */
 export function pickProject(x: number, y: number, projects: EptProject[] = GA_LIDAR_PROJECTS): EptProject | null {
   let best: EptProject | null = null;
   for (const p of projects) {
     const b = p.boundsConforming;
     if (x < b[0] || x > b[3] || y < b[1] || y > b[4]) continue;
-    if (!best || p.year > best.year) best = p;
+    if (!best || qlRank(p.ql) < qlRank(best.ql) || (qlRank(p.ql) === qlRank(best.ql) && p.year > best.year)) best = p;
   }
   return best;
 }
