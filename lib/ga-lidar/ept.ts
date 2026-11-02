@@ -154,6 +154,25 @@ export function planNodes(project: EptProject, hierarchy: Hierarchy, view: Lidar
   return { nodes, points, pendingHierarchy };
 }
 
+/**
+ * Deepest planned level covering each planned node (itself or a planned descendant). Points of every level
+ * there together are about as dense as that level, so it sets how large each node's points must be drawn
+ * for the cloud to close up: coarse far-away nodes get bigger points instead of leaving gaps.
+ */
+export function leafDepths(nodes: readonly PlannedNode[]): Map<string, number> {
+  const out = new Map<string, number>(nodes.map((n) => [n.key, n.depth]));
+  for (const n of nodes) {
+    const [d, x, y, z] = n.key.split('-').map(Number);
+    for (let k = d - 1; k >= 0; k--) {
+      const s = d - k;
+      const a = `${k}-${x >> s}-${y >> s}-${z >> s}`;
+      const cur = out.get(a);
+      if (cur !== undefined && cur < d) out.set(a, d);
+    }
+  }
+  return out;
+}
+
 // ── Node payload (/api/ga-lidar) ──────────────────────────────────────────
 // 32-byte header, then per point: u16 x, u16 y (fraction of node width), u16 height above ground
 // (centimetres + 10 m), u8 ASPRS class, u8 intensity (normalised per node).

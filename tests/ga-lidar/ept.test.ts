@@ -12,6 +12,7 @@ import {
   lngLatTo3857,
   nodeBox,
   pickProject,
+  leafDepths,
   planNodes,
   targetDepthFor,
 } from "../../lib/ga-lidar/ept";
@@ -75,6 +76,16 @@ test("planNodes keeps intersecting nodes up to the target depth, reports sub-hie
   const tight = planNodes(PROJECT, hierarchy, { ...view, pointBudget: 30 });
   assert.equal(tight.points, 30);
   assert.deepEqual(tight.nodes.map((n) => n.key), ["0-0-0-0", "1-0-0-0"]);
+});
+
+test("leafDepths gives each planned node the deepest planned level under it", () => {
+  const n = (key: string) => ({ key, depth: Number(key.split("-")[0]), count: 1, dist: 0 });
+  const d = leafDepths([n("0-0-0-0"), n("1-0-0-0"), n("1-1-1-0"), n("2-0-0-0"), n("3-1-1-0")]);
+  assert.equal(d.get("0-0-0-0"), 3);
+  assert.equal(d.get("1-0-0-0"), 3);
+  assert.equal(d.get("1-1-1-0"), 1);
+  assert.equal(d.get("2-0-0-0"), 3);
+  assert.equal(d.get("3-1-1-0"), 3);
 });
 
 test("targetDepthFor picks nodes about a sixth of the view", () => {

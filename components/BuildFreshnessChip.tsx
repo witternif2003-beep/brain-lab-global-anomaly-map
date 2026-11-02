@@ -66,7 +66,7 @@ export default function BuildFreshnessChip({ buildSha }: { buildSha: string }) {
     );
   }
   return (
-    <div className="fixed bottom-3 right-3 z-[60] font-mono text-[9px] font-bold px-2.5 py-1 rounded-full bg-[#020b18]/90 text-[#69f0ae] border border-[#00ff88]/40 pointer-events-none flex items-center gap-1.5">
+    <div className="fixed bottom-3 right-3 z-[60] font-mono text-[9px] font-bold px-2.5 py-1 rounded-full bg-[#020b18]/90 text-[#69f0ae] border border-[#00ff88]/40 pointer-events-none hidden md:flex items-center gap-1.5">
       <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88] animate-pulse" />
       BUILD {short} • LIVE
     </div>

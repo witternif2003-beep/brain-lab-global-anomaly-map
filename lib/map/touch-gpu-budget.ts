@@ -16,7 +16,7 @@ export interface LidarBudget {
 }
 
 /** Hard ceiling on LiDAR points drawn at once on any device. */
-export const LIDAR_POINT_CEILING = 5_000_000;
+export const LIDAR_POINT_CEILING = 20_000_000;
 
 const LIDAR_TOUCH: LidarBudget = { points: LIDAR_POINT_CEILING, fetchParallel: 3, imageryTiles: 48 };
 const LIDAR_DESKTOP: LidarBudget = { points: LIDAR_POINT_CEILING, fetchParallel: 6, imageryTiles: 96 };
@@ -25,8 +25,8 @@ const LIDAR_DESKTOP: LidarBudget = { points: LIDAR_POINT_CEILING, fetchParallel:
 export const LIDAR_CRASH_FLOOR = 1_000_000;
 
 /**
- * Per-device LiDAR budget. With no recent crash every device draws up to the 5,000,000 ceiling. Each crash or GPU
- * context loss on this device in the last 30 min halves the ceiling (5M → 2.5M → 1.25M → 1M floor), halves downloads
+ * Per-device LiDAR budget. With no recent crash every device draws up to the 20,000,000 ceiling (lower if the GPU-memory target is reached first). Each crash or GPU
+ * context loss on this device in the last 30 min halves the ceiling (20M → 10M → 5M → 2.5M → 1.25M → 1M floor), halves downloads
  * and the imagery cache, so a phone that ran out of memory comes back lighter instead of crashing again.
  */
 export function lidarBudget(touch: boolean, crashes: number | boolean = 0): LidarBudget {

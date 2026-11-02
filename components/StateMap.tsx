@@ -605,7 +605,8 @@ export default function StateMap({
 
     map.addControl(
       new maplibregl.NavigationControl({
-        visualizePitch: true,
+        // Pitch squashes the compass needle to a flat line in steep 3D views; keep it readable.
+        visualizePitch: false,
         showCompass: true,
         showZoom: true,
       }),

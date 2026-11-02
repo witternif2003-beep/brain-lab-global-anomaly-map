@@ -27,6 +27,7 @@ import {
   targetDepthFor,
 } from './ga-lidar/ept';
 import type { EptProject, Hierarchy, LidarNodeData } from './ga-lidar/ept';
+import { leafDepths } from './ga-lidar/ept';
 import { fullArray, releaseAfterUpload } from './ga-lidar/gpu-upload';
 import { GpuPassTimer } from './ga-lidar/gpu-timer';
 import { isTouchDevice, lidarBudget } from './map/touch-gpu-budget';
@@ -43,10 +44,15 @@ const GA_LIDAR_BUILDINGS_ZOOM = 15;
 /** OSM building opacity under LiDAR: every footprint stays visible (surveys are 2009–2018 and may miss newer buildings or unloaded tiles). */
 export const GA_LIDAR_OSM_BUILDING_OPACITY = 0.35;
 const VIEW_TILES = 3.5;
-const POINT_MAX_CSS_PX = 6;
-/** Point diameter as a fraction of the node's point spacing on screen. */
-const POINT_SPACING_FRACTION = 0.45;
+const POINT_MAX_CSS_PX = 12;
+/** Point diameter as a fraction of the point spacing on screen: 1.5 also covers the diagonal gap so the surface reads as continuous. */
+const POINT_SPACING_FRACTION = 1.5;
 const POINT_MIN_PX = 1;
+/**
+ * Points whose ground patch is squashed on screen below this fraction (about 80° from straight down) are
+ * dropped: at the horizon the patch shrinks to a sliver, so the points only sparkle as a grainy line.
+ */
+const HORIZON_MIN_FORESHORTENING = 0.17;
 /** Extra octree levels so the points still close up at street zoom. */
 const EXTRA_DEPTH = 1;
 const TERRAIN_GRID = 8;
@@ -74,7 +80,7 @@ export interface GaLidarStats {
   vramMB: number | null;
   vramPeakMB: number | null;
   vramTargetMB: number;
-  /** Points the layer may hold after the GPU-memory budget (≤ the 5,000,000 ceiling). */
+  /** Points the layer may hold after the GPU-memory budget (≤ the 20,000,000 ceiling). */
   pointBudget: number;
   /** True when loading stopped early because measured GPU memory reached the target. */
   vramLimited: boolean;
@@ -87,6 +93,7 @@ const VERTEX = /* glsl */ `
   uniform float uMaxPx;
   uniform float uMinPx;
   uniform float uSpacingFraction;
+  uniform float uHorizon;
   varying vec3 vColor;
   void main() {
     mat4 mvp = projectionMatrix * modelViewMatrix;
@@ -94,9 +101,14 @@ const VERTEX = /* glsl */ `
     vec4 px = mvp * vec4(position + vec3(uSpacing, 0.0, 0.0), 1.0);
     vec4 py = mvp * vec4(position + vec3(0.0, uSpacing, 0.0), 1.0);
     vec2 s0 = p0.xy / p0.w;
-    float spacingPx = max(length((px.xy / px.w - s0) * uViewport), length((py.xy / py.w - s0) * uViewport));
+    vec2 ex = (px.xy / px.w - s0) * uViewport;
+    vec2 ey = (py.xy / py.w - s0) * uViewport;
+    float spacingPx = max(length(ex), length(ey));
+    // Screen area of the point's ground patch over its square: 1 looking straight down, 0 edge-on.
+    float foreshortening = abs(ex.x * ey.y - ex.y * ey.x) / max(spacingPx * spacingPx, 1e-12);
     gl_PointSize = clamp(spacingPx * uSpacingFraction, uMinPx, uMaxPx);
-    gl_Position = p0;
+    // Outside the clip volume, so the GPU skips it.
+    gl_Position = foreshortening < uHorizon ? vec4(2.0, 2.0, 2.0, 1.0) : p0;
     vColor = aColor;
   }
 `;
@@ -107,8 +119,7 @@ const FRAGMENT = /* glsl */ `
     vec2 c = gl_PointCoord * 2.0 - 1.0;
     float r = dot(c, c);
     if (r > 1.0) discard;
-    float dome = sqrt(1.0 - r);
-    gl_FragColor = vec4(vColor * (0.5 + 0.5 * dome), 1.0);
+    gl_FragColor = vec4(vColor, 1.0);
   }
 `;
 
@@ -143,6 +154,7 @@ export class GaLidar3DLayer implements CustomLayerInterface {
       uMaxPx: { value: POINT_MAX_CSS_PX },
       uMinPx: { value: POINT_MIN_PX },
       uSpacingFraction: { value: POINT_SPACING_FRACTION },
+      uHorizon: { value: HORIZON_MIN_FORESHORTENING },
     },
   });
   private origin: MercatorCoordinate | null = null;
@@ -307,10 +319,11 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     if (gen !== this.generation) return;
 
     const cube = project.bounds[3] - project.bounds[0];
-    const nodeWidth = cube / 2 ** targetDepth;
-    this.material.uniforms.uSpacing.value = (nodeWidth / project.span) * this.metresPer3857();
+    const leaf = leafDepths(plan.nodes);
+    this.spacingFor = (key) => (cube / 2 ** (leaf.get(key) ?? targetDepth) / project.span) * this.metresPer3857();
     const wanted = new Set(plan.nodes.map((n) => n.key));
     for (const key of [...this.drawn.keys()]) if (!wanted.has(key)) this.dropNode(key);
+    for (const [key, n] of this.drawn) (n.points.material as ShaderMaterial).uniforms.uSpacing.value = this.spacingFor(key);
     this.stats.nodesPlanned = plan.nodes.length;
     const queue = plan.nodes.filter((n) => !this.drawn.has(n.key) && !this.inflight.has(n.key));
     this.setStatus(queue.length ? 'loading points' : 'ready');
@@ -363,7 +376,7 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     return vramTargetBytes(isTouchDevice(), gpuSafeMode());
   }
 
-  /** LiDAR point budget: the 5,000,000 ceiling, lowered to what fits in the GPU-memory target next to everything else on the map. */
+  /** LiDAR point budget: the 20,000,000 ceiling, lowered to what fits in the GPU-memory target next to everything else on the map. */
   private pointBudget(): number {
     const ceiling = lidarBudget(isTouchDevice(), gpuCrashCount()).points;
     const used = this.measuredVram();
@@ -394,6 +407,9 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     });
   }
 
+  /** Ground spacing (metres) of the points drawn for a node: the spacing of the deepest level planned over it. */
+  private spacingFor: (key: string) => number = () => 1;
+
   /** Real-world metres per EPSG:3857 metre at the layer origin. */
   private metresPer3857(): number {
     const s = this.origin?.meterInMercatorCoordinateUnits() ?? 1;
@@ -406,7 +422,10 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     // WebGL keeps its own copy of each buffer, so the JavaScript arrays are freed after upload and rebuilt from `data` on change.
     geometry.setAttribute('position', releaseAfterUpload(new BufferAttribute(new Float32Array(n * 3), 3)));
     geometry.setAttribute('aColor', releaseAfterUpload(new BufferAttribute(classColors(data), 3, true)));
-    const points = new Points(geometry, this.material);
+    // Own material per node (same compiled shader) so each node's point size follows its own detail level.
+    const material = this.material.clone();
+    material.uniforms = { ...this.material.uniforms, uSpacing: { value: this.spacingFor(key) } };
+    const points = new Points(geometry, material);
     points.frustumCulled = false;
     const node: DrawnNode = { points, data, terrainStale: false, trueColor: false };
     this.applySurface(node);
@@ -534,6 +553,7 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     if (!node) return;
     this.scene.remove(node.points);
     node.points.geometry.dispose();
+    (node.points.material as ShaderMaterial).dispose();
     this.drawn.delete(key);
   }
 
