@@ -13,6 +13,7 @@ import {
   nodeBox,
   pickProject,
   leafDepths,
+  nodeSpacings,
   planNodes,
   targetDepthFor,
 } from "../../lib/ga-lidar/ept";
@@ -86,6 +87,14 @@ test("leafDepths gives each planned node the deepest planned level under it", ()
   assert.equal(d.get("1-1-1-0"), 1);
   assert.equal(d.get("2-0-0-0"), 3);
   assert.equal(d.get("3-1-1-0"), 3);
+});
+
+test("nodeSpacings uses real point counts and gives ancestors the finest spacing below them", () => {
+  const n = (key: string, count: number) => ({ key, depth: Number(key.split("-")[0]), count, dist: 0 });
+  const s = nodeSpacings(PROJECT, [n("0-0-0-0", 4), n("1-0-0-0", 100), n("1-1-1-0", 16)]);
+  assert.deepEqual(s.get("1-0-0-0"), { own: 512 / Math.sqrt(101), fine: 512 / Math.sqrt(101) });
+  assert.deepEqual(s.get("1-1-1-0"), { own: 512 / Math.sqrt(17), fine: 512 / Math.sqrt(17) });
+  assert.deepEqual(s.get("0-0-0-0"), { own: 512, fine: 512 / Math.sqrt(101) });
 });
 
 test("targetDepthFor picks nodes about a sixth of the view", () => {

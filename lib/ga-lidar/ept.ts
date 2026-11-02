@@ -173,6 +173,42 @@ export function leafDepths(nodes: readonly PlannedNode[]): Map<string, number> {
   return out;
 }
 
+/** Ground spacing (EPSG:3857 metres) of a planned node's points: `own` where nothing finer is planned, `fine` under its finest planned descendant. */
+export interface NodeSpacing {
+  own: number;
+  fine: number;
+}
+
+/**
+ * Point spacing per planned node from the real counts. EPT leaf nodes keep every remaining point, often several
+ * times span², so `own` is the node width over √(its points + its planned ancestors' share of its area).
+ */
+export function nodeSpacings(project: EptProject, nodes: readonly PlannedNode[]): Map<string, NodeSpacing> {
+  const cube = project.bounds[3] - project.bounds[0];
+  const counts = new Map<string, number>(nodes.map((n) => [n.key, n.count]));
+  const out = new Map<string, NodeSpacing>();
+  const ancestors = (key: string): [string, number][] => {
+    const [d, x, y, z] = key.split('-').map(Number);
+    const a: [string, number][] = [];
+    for (let k = d - 1; k >= 0; k--) a.push([`${k}-${x >> (d - k)}-${y >> (d - k)}-${z >> (d - k)}`, d - k]);
+    return a;
+  };
+  for (const n of nodes) {
+    let cum = n.count;
+    for (const [a, up] of ancestors(n.key)) cum += (counts.get(a) ?? 0) / 4 ** up;
+    const own = cube / 2 ** n.depth / Math.sqrt(Math.max(cum, 1));
+    out.set(n.key, { own, fine: own });
+  }
+  for (const n of nodes) {
+    const own = out.get(n.key)!.own;
+    for (const [a] of ancestors(n.key)) {
+      const cur = out.get(a);
+      if (cur && own < cur.fine) cur.fine = own;
+    }
+  }
+  return out;
+}
+
 // ── Node payload (/api/ga-lidar) ──────────────────────────────────────────
 // 32-byte header, then per point: u16 x, u16 y (fraction of node width), u16 height above ground
 // (centimetres + 10 m), u8 ASPRS class, u8 intensity (normalised per node).

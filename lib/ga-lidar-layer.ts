@@ -27,7 +27,7 @@ import {
   targetDepthFor,
 } from './ga-lidar/ept';
 import type { EptProject, Hierarchy, LidarNodeData } from './ga-lidar/ept';
-import { leafDepths } from './ga-lidar/ept';
+import { nodeSpacings } from './ga-lidar/ept';
 import { fullArray, releaseAfterUpload } from './ga-lidar/gpu-upload';
 import { GpuPassTimer } from './ga-lidar/gpu-timer';
 import { isTouchDevice, lidarBudget } from './map/touch-gpu-budget';
@@ -89,6 +89,10 @@ export interface GaLidarStats {
 const VERTEX = /* glsl */ `
   attribute vec3 aColor;
   uniform float uSpacing;
+  uniform float uSpacingOwn;
+  uniform vec2 uCentre;
+  uniform float uHalf;
+  uniform float uSpacingCentre;
   uniform vec2 uViewport;
   uniform float uMaxPx;
   uniform float uMinPx;
@@ -98,8 +102,12 @@ const VERTEX = /* glsl */ `
   void main() {
     mat4 mvp = projectionMatrix * modelViewMatrix;
     vec4 p0 = mvp * vec4(position, 1.0);
-    vec4 px = mvp * vec4(position + vec3(uSpacing, 0.0, 0.0), 1.0);
-    vec4 py = mvp * vec4(position + vec3(0.0, uSpacing, 0.0), 1.0);
+    // Planned detail falls off one level per doubling of distance past half the view radius, so the spacing
+    // grows with distance from the view centre: between the node's finest-below and own spacing.
+    float falloff = max(1.0, 2.0 * length(position.xy - uCentre) / uHalf);
+    float spacing = clamp(uSpacingCentre * falloff, uSpacing, uSpacingOwn);
+    vec4 px = mvp * vec4(position + vec3(spacing, 0.0, 0.0), 1.0);
+    vec4 py = mvp * vec4(position + vec3(0.0, spacing, 0.0), 1.0);
     vec2 s0 = p0.xy / p0.w;
     vec2 ex = (px.xy / px.w - s0) * uViewport;
     vec2 ey = (py.xy / py.w - s0) * uViewport;
@@ -150,6 +158,10 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     fragmentShader: FRAGMENT,
     uniforms: {
       uSpacing: { value: 1 },
+      uSpacingOwn: { value: 1 },
+      uCentre: { value: new Vector2(0, 0) },
+      uHalf: { value: 1 },
+      uSpacingCentre: { value: 1 },
       uViewport: { value: new Vector2(1, 1) },
       uMaxPx: { value: POINT_MAX_CSS_PX },
       uMinPx: { value: POINT_MIN_PX },
@@ -319,11 +331,26 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     if (gen !== this.generation) return;
 
     const cube = project.bounds[3] - project.bounds[0];
-    const leaf = leafDepths(plan.nodes);
-    this.spacingFor = (key) => (cube / 2 ** (leaf.get(key) ?? targetDepth) / project.span) * this.metresPer3857();
+    const spacing = nodeSpacings(project, plan.nodes);
+    const k = this.metresPer3857();
+    const fallback = cube / 2 ** targetDepth / project.span;
+    this.spacingFor = (key) => {
+      const s = spacing.get(key);
+      return { own: (s?.own ?? fallback) * k, fine: (s?.fine ?? fallback) * k };
+    };
+    const centre = plan.nodes.filter((n) => n.dist === 0).sort((a, b) => b.depth - a.depth)[0];
+    const u = this.material.uniforms;
+    u.uSpacingCentre.value = (centre ? spacing.get(centre.key)!.own : fallback) * k;
+    u.uCentre.value.set((cx - this.originXY[0]) * k, (cy - this.originXY[1]) * k);
+    u.uHalf.value = half * k;
     const wanted = new Set(plan.nodes.map((n) => n.key));
     for (const key of [...this.drawn.keys()]) if (!wanted.has(key)) this.dropNode(key);
-    for (const [key, n] of this.drawn) (n.points.material as ShaderMaterial).uniforms.uSpacing.value = this.spacingFor(key);
+    for (const [key, n] of this.drawn) {
+      const { uniforms } = n.points.material as ShaderMaterial;
+      const s = this.spacingFor(key);
+      uniforms.uSpacing.value = s.fine;
+      uniforms.uSpacingOwn.value = s.own;
+    }
     this.stats.nodesPlanned = plan.nodes.length;
     const queue = plan.nodes.filter((n) => !this.drawn.has(n.key) && !this.inflight.has(n.key));
     this.setStatus(queue.length ? 'loading points' : 'ready');
@@ -407,8 +434,8 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     });
   }
 
-  /** Ground spacing (metres) of the points drawn for a node: the spacing of the deepest level planned over it. */
-  private spacingFor: (key: string) => number = () => 1;
+  /** Ground spacing (metres) of a node's points where nothing finer is planned (own) and under its finest planned descendant (fine). */
+  private spacingFor: (key: string) => { own: number; fine: number } = () => ({ own: 1, fine: 1 });
 
   /** Real-world metres per EPSG:3857 metre at the layer origin. */
   private metresPer3857(): number {
@@ -424,7 +451,8 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     geometry.setAttribute('aColor', releaseAfterUpload(new BufferAttribute(classColors(data), 3, true)));
     // Own material per node (same compiled shader) so each node's point size follows its own detail level.
     const material = this.material.clone();
-    material.uniforms = { ...this.material.uniforms, uSpacing: { value: this.spacingFor(key) } };
+    const s = this.spacingFor(key);
+    material.uniforms = { ...this.material.uniforms, uSpacing: { value: s.fine }, uSpacingOwn: { value: s.own } };
     const points = new Points(geometry, material);
     points.frustumCulled = false;
     const node: DrawnNode = { points, data, terrainStale: false, trueColor: false };
