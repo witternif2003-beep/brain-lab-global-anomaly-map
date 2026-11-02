@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { aggregate, cellsToGeoJSON, dateFmt, H3_RESOLUTIONS, K_MIN, WEEKDAYS, weekdayFmt, type IncidentPoint } from "../../../lib/ga-telemetry/aggregate";
+import { DEFAULT_DRILL, drillDown } from "../../../lib/geo/h3-drilldown";
 import { bayesianChangePoint, cellCentroids, cellCounts, getisOrd, poissonForecast, voronoiCounts, type Site } from "../../../lib/ga-telemetry/models";
 
 export const dynamic = "force-dynamic";
@@ -206,6 +207,7 @@ async function build() {
     suppressed: agg.suppressed,
     hex: { 7: cellsToGeoJSON(agg.cells[7]), 8: hex8 },
     density: cellCentroids(published),
+    drillDown: { method: "H3 coarse-to-fine drill-down (res 5 → 7 → 8), Poisson z ≥ 3 vs mean occupied-cell count, after arXiv:2608.22648", ...drillDown(points, { ...DEFAULT_DRILL, minCount: K_MIN }) },
     recent: { lagMinutes: lagMin, last15m: ago(15), last30m: ago(30), last60m: ago(60), last24h: ago(1440) },
     models: {
       days: series.length,
