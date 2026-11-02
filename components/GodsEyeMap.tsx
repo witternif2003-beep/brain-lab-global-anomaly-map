@@ -45,6 +45,7 @@ import { markerPixelRatio } from '../lib/map/touch-gpu-budget';
 import { sharpenBasemap } from '../lib/map/sharp-raster';
 import { installVramMeter } from '../lib/map/vram-meter';
 import { governDrapeMemory } from '../lib/map/terrain-rtt';
+import { applyHorizonLod, horizonLod } from '../lib/map/horizon-lod';
 
 const ALLY_STATE_CODES = ['AL', 'FL', 'NC', 'SC', 'TN', 'TX', 'VA'];
 const STARMAP_8K_MIN_DEVICE_PX = 1920;
@@ -1450,6 +1451,7 @@ export default function GodsEyeMap({
 
     const stopDrapeGovernor = governDrapeMemory(map);
     map.once('remove', stopDrapeGovernor);
+    map.once('remove', applyHorizonLod(map, horizonLod(isTouchDevice(), gpuCrashCount())));
     const gpu = { contextLost: 0, contextRestored: 0 };
     (window as unknown as { __gaGpu?: typeof gpu }).__gaGpu = gpu;
     map.on('webglcontextlost', () => {

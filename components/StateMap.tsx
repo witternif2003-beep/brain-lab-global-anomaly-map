@@ -46,6 +46,9 @@ import { registerGeoJSONVTSource, shouldUseTiledRendering } from '../lib/geojson
 import MapDebugOverlay from './MapDebugOverlay';
 import { AWS_TERRARIUM_TILES } from '../lib/lidar-globe-sources';
 import { attachSolarSky } from '../lib/ga-sky';
+import { applyHorizonLod, horizonLod } from '../lib/map/horizon-lod';
+import { gpuCrashCount } from '../lib/map/crash-guard';
+import { isTouchDevice as isTouchScreen } from '../lib/map/touch-gpu-budget';
 
 interface StateMapProps {
   anomalies: AnomalyItem[];
@@ -619,6 +622,7 @@ export default function StateMap({
     );
     map.addControl(new maplibregl.ScaleControl({ maxWidth: 100, unit: 'metric' }), 'bottom-left');
     attachSolarSky(map);
+    map.once('remove', applyHorizonLod(map, horizonLod(isTouchScreen(), gpuCrashCount())));
 
     map.on('style.load', () => {
       try {

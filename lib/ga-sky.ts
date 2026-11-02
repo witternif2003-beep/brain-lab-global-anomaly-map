@@ -51,8 +51,9 @@ export function skyFor(elev: number, relAzDeg = 90): SkySpecification {
     'fog-color': rgba(c.fog, 1),
     'sky-horizon-blend': 0.5,
     'horizon-fog-blend': 0.6,
-    'fog-ground-blend': ['interpolate', ['linear'], ['zoom'], 6, 1, 14, 0.35 + 0.45 * (1 - day)],
-    'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 0.35 + 0.5 * day, 10, 0.2 + 0.6 * day, 12, 0],
+    // Fog starts at the horizon (1 = horizon) so the ground stays sharp; atmosphere glow at its maximum (1) at every zoom.
+    'fog-ground-blend': 1,
+    'atmosphere-blend': 1,
   };
 }
 
