@@ -50,3 +50,31 @@ test("NOAA refraction, sun azimuth and sun-driven 3D light", async () => {
   assert.match(String(dusk.color), /^#ff/);
   assert.ok(Number(lightFor(-30, 0).intensity) < Number(noon.intensity));
 });
+
+const rgbOf = (s: unknown) => String(s).match(/[\d.]+/g)!.map(Number);
+
+// Single scattering with Bruneton's Earth constants (lib/ga-sky-scatter.ts).
+test("scattering sky: blue noon sky, orange horizon toward a setting sun, dimmer away from it", async () => {
+  const { skyRadiance } = await import("../lib/ga-sky-scatter");
+  const zen = skyRadiance(60, 35, 90);
+  assert.ok(zen[2] > zen[1] && zen[1] > zen[0], `noon sky ${zen}`);
+  const toward = skyRadiance(0.5, 2, 0), away = skyRadiance(0.5, 2, 180);
+  assert.ok(toward[0] > 4 * toward[2], `sunset toward sun ${toward}`);
+  assert.ok(toward[0] > away[0] * 3, `toward ${toward} away ${away}`);
+  const [r, g, b] = rgbOf(skyFor(0.5, 0)["horizon-color"]);
+  assert.ok(r > g && g > b, `display horizon ${r},${g},${b}`);
+  const [ar, , ab] = rgbOf(skyFor(0.5, 180)["horizon-color"]);
+  assert.ok(ar < r && ab / ar > b / r, "away from the sun is dimmer and bluer");
+  const shadow = rgbOf(skyFor(-2, 180)["horizon-color"]);
+  assert.ok(shadow[0] + shadow[1] + shadow[2] > 30, `Earth's-shadow side not black: ${shadow}`);
+});
+
+test("scattering sky: opacity falls monotonically through twilight to 0 at −18°", () => {
+  const alpha = (e: number) => rgbOf(skyFor(e)["sky-color"])[3];
+  const es = [10, 2, 0, -2, -4, -6, -9, -12, -15, -18, -25];
+  const a = es.map(alpha);
+  for (let i = 1; i < a.length; i++) assert.ok(a[i] <= a[i - 1], `${es[i]}: ${a[i]} > ${a[i - 1]}`);
+  assert.equal(a[0], 1);
+  assert.equal(alpha(-18), 0);
+  assert.ok(alpha(-6) > 0 && alpha(-6) < 0.5, `${alpha(-6)}`);
+});

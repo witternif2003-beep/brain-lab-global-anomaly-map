@@ -1,5 +1,6 @@
 import type { LightSpecification, Map as MapLibreMap, SkySpecification } from 'maplibre-gl';
 import { subsolarPoint, sunAltitudeDeg } from './terminator/solar';
+import { skyColours } from './ga-sky-scatter';
 
 /** Sun elevation above the horizon in degrees (geometric, no refraction), from the map's existing Astronomical Almanac solar model. */
 export const sunElevationDeg = (date: Date, lat: number, lon: number): number => sunAltitudeDeg(subsolarPoint(date), lon, lat);
@@ -32,42 +33,22 @@ export const skyPhase = (elev: number): SkyPhase =>
   elev >= 6 ? 'day' : elev >= 0 ? 'golden' : elev >= -6 ? 'civil' : elev >= -12 ? 'nautical' : elev >= -18 ? 'astronomical' : 'night';
 
 type RGBA = [number, number, number, number];
-/** Sun elevation (°) → sky, horizon and fog colour. Night sky is transparent so the NASA star map behind the map shows. */
-const KEYS: [number, RGBA, RGBA, RGBA][] = [
-  [-18, [2, 4, 14, 0], [8, 12, 30, 0.3], [6, 8, 18, 1]],
-  [-15, [4, 8, 24, 0.2], [14, 18, 46, 0.45], [10, 12, 28, 1]],
-  [-12, [8, 14, 40, 0.4], [30, 34, 82, 0.6], [16, 18, 42, 1]],
-  [-9, [14, 26, 70, 0.6], [70, 52, 110, 0.78], [36, 34, 66, 1]],
-  [-6, [22, 42, 100, 0.78], [150, 78, 120, 0.9], [70, 56, 96, 1]],
-  [-4, [32, 58, 128, 0.86], [214, 98, 96, 0.96], [120, 80, 106, 1]],
-  [-2, [46, 80, 156, 0.92], [246, 128, 74, 1], [176, 112, 108, 1]],
-  [0, [62, 104, 180, 0.97], [255, 150, 70, 1], [214, 140, 116, 1]],
-  [2, [78, 128, 200, 1], [255, 176, 100, 1], [232, 178, 148, 1]],
-  [4, [88, 142, 214, 1], [252, 204, 150, 1], [230, 206, 190, 1]],
-  [6, [92, 150, 220, 1], [214, 226, 240, 1], [216, 228, 240, 1]],
-  [12, [70, 142, 224, 1], [198, 222, 250, 1], [208, 226, 244, 1]],
-  [25, [52, 128, 222, 1], [186, 218, 255, 1], [202, 224, 246, 1]],
-  [50, [38, 112, 214, 1], [176, 212, 255, 1], [196, 220, 246, 1]],
-];
 
-const mix = (a: RGBA, b: RGBA, t: number): string => {
-  const c = a.map((v, i) => v + (b[i] - v) * t);
-  return `rgba(${Math.round(c[0])},${Math.round(c[1])},${Math.round(c[2])},${c[3].toFixed(3)})`;
-};
+const rgba = (c: [number, number, number], a: number) => `rgba(${c[0]},${c[1]},${c[2]},${a.toFixed(3)})`;
 
-/** Apparent sun elevation (°) → sky, horizon and fog colours. */
-export function skyFor(elev: number): SkySpecification {
-  const e = Math.max(KEYS[0][0], Math.min(KEYS[KEYS.length - 1][0], elev));
-  let i = 0;
-  while (i < KEYS.length - 2 && e > KEYS[i + 1][0]) i++;
-  const [e0, s0, h0, f0] = KEYS[i];
-  const [e1, s1, h1, f1] = KEYS[i + 1];
-  const t = (e - e0) / (e1 - e0);
+/**
+ * Apparent sun elevation (°) and camera bearing relative to the sun's azimuth (°) → sky,
+ * horizon and fog colours from single Rayleigh/Mie/ozone scattering (lib/ga-sky-scatter.ts).
+ * Looking toward the sun at sunset gives an orange horizon, looking away a dimmer blue-pink one.
+ * Night sky is transparent so the NASA star map behind the map shows.
+ */
+export function skyFor(elev: number, relAzDeg = 90): SkySpecification {
+  const c = skyColours(elev, relAzDeg);
   const day = Math.max(0, Math.min(1, (elev + 12) / 18));
   return {
-    'sky-color': mix(s0, s1, t),
-    'horizon-color': mix(h0, h1, t),
-    'fog-color': mix(f0, f1, t),
+    'sky-color': rgba(c.sky, c.alpha),
+    'horizon-color': rgba(c.horizon, Math.min(1, c.alpha * 1.15)),
+    'fog-color': rgba(c.fog, 1),
     'sky-horizon-blend': 0.5,
     'horizon-fog-blend': 0.6,
     'fog-ground-blend': ['interpolate', ['linear'], ['zoom'], 6, 1, 14, 0.35 + 0.45 * (1 - day)],
@@ -91,7 +72,7 @@ export function lightFor(elev: number, azimuth: number): LightSpecification {
   };
 }
 
-/** Keeps the map's sky and 3D lighting on the real sun position at the map centre; re-evaluated every 15 s and after each move. */
+/** Keeps the map's sky and 3D lighting on the real sun position at the map centre and the camera's bearing; re-evaluated every 15 s and after each move or rotation. */
 export function attachSolarSky(map: MapLibreMap, now: () => Date = () => new Date()): () => void {
   let last = '';
   const apply = () => {
@@ -100,16 +81,17 @@ export function attachSolarSky(map: MapLibreMap, now: () => Date = () => new Dat
     const geo = sunElevationDeg(at, c.lat, c.lng);
     const elev = apparentElevationDeg(geo);
     const az = sunAzimuthDeg(at, c.lat, c.lng);
-    const key = `${elev.toFixed(2)}|${az.toFixed(0)}`;
+    const rel = (((map.getBearing() - az) % 360) + 360) % 360;
+    const key = `${elev.toFixed(2)}|${az.toFixed(0)}|${Math.round(rel / 5)}`;
     if (key === last) return;
     try {
-      map.setSky(skyFor(elev));
+      map.setSky(skyFor(elev, rel));
       map.setLight(lightFor(elev, az));
     } catch {
       return; // style still parsing; style.load retries
     }
     last = key;
-    (window as unknown as { __sky?: unknown }).__sky = { elevDeg: Number(elev.toFixed(2)), geometricDeg: Number(geo.toFixed(2)), azimuthDeg: Number(az.toFixed(1)), phase: skyPhase(geo), at: at.toISOString() };
+    (window as unknown as { __sky?: unknown }).__sky = { elevDeg: Number(elev.toFixed(2)), geometricDeg: Number(geo.toFixed(2)), azimuthDeg: Number(az.toFixed(1)), viewFromSunDeg: Math.round(rel), phase: skyPhase(geo), at: at.toISOString() };
   };
   const reset = () => { last = ''; apply(); };
   map.on('style.load', reset);
