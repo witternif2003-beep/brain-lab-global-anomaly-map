@@ -783,6 +783,9 @@ async function addRenderer(map: MapLibreMap, state: DeckState, renderer: Rendere
     layers: [],
     useDevicePixels: defaultDevicePixels(),
     ...(deviceProps ? { deviceProps } : {}),
+    _onMetrics: (m: { gpuTimePerFrame: number; cpuTimePerFrame: number }) => {
+      if (state.overlay === overlay) window.__gaDeckMetrics = { gpuMsPerFrame: m.gpuTimePerFrame, cpuMsPerFrame: m.cpuTimePerFrame, renderer };
+    },
     onAfterRender: () => {
       if (state.overlay === overlay) {
         const container = overlay.getCanvas()?.parentElement;
@@ -1018,4 +1021,8 @@ export function setGaDeckGroup(map: MapLibreMap, key: GroupKey, group: GaDeckGro
   publishState(map, state);
   if (state.overlay) updateLayers(state);
   if (!state.initPromise) state.initPromise = initialize(map, state);
+}
+
+declare global {
+  interface Window { __gaDeckMetrics?: { gpuMsPerFrame: number; cpuMsPerFrame: number; renderer: Renderer } }
 }

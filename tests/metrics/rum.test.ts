@@ -69,3 +69,25 @@ test("RUM counts page crashes and safe-mode devices", () => {
   assert.equal(g.find((x) => x.name === "map_gpu_safe_mode_ratio")?.values[0].value, 0.5);
   assert.equal(parseRumSample({ ...base, pageCrashes: -2 })?.pageCrashes, null);
 });
+
+test('main-thread blocking and deck.gl frame-time fields: range checks, Safari nulls and gauges', () => {
+  const now = 1_000_000;
+  const w = new RumWindow();
+  w.add(parseRumSample({ ...base, touch: false, blockingMs: 120, longTasks: 3, deckGpuMsPerFrame: 2.5, deckCpuMsPerFrame: 1.25 })!, now);
+  w.add(parseRumSample({ ...base, touch: false, blockingMs: 0, longTasks: 0, deckGpuMsPerFrame: 0, deckCpuMsPerFrame: 0.5 })!, now);
+  w.add(parseRumSample({ ...base, touch: false, blockingMs: null, longTasks: null })!, now);
+  const g = w.gauges(now);
+  const v = (name: string) => g.find((x) => x.name === name)?.values[0]?.value;
+  assert.equal(v('main_thread_blocking_ms_p95'), 120);
+  assert.equal(v('main_thread_long_tasks'), 3);
+  assert.equal(v('deck_gpu_ms_per_frame_p95'), 2.5);
+  assert.equal(v('deck_cpu_ms_per_frame_p95'), 1.25);
+  assert.equal(parseRumSample({ ...base, blockingMs: -1 })?.blockingMs, null);
+  assert.equal(parseRumSample({ ...base, blockingMs: 31_000 })?.blockingMs, null);
+  assert.equal(parseRumSample({ ...base, deckGpuMsPerFrame: Number.NaN })?.deckGpuMsPerFrame, null);
+  const safari = new RumWindow();
+  safari.add(parseRumSample({ ...base, blockingMs: null, longTasks: null })!, now);
+  const sg = safari.gauges(now);
+  assert.equal(sg.find((x) => x.name === 'main_thread_blocking_ms_p95')?.values[0]?.value, null);
+  assert.equal(sg.find((x) => x.name === 'main_thread_long_tasks')?.values[0]?.value, null);
+});

@@ -36,6 +36,20 @@ export default function RenderMetricsProbe() {
     });
     po.observe({ type: "resource", buffered: false });
 
+    // Long Tasks API: Chromium only (MDN browser-compat-data); Safari and Firefox report null.
+    const longTaskSupported = PerformanceObserver.supportedEntryTypes?.includes("longtask") ?? false;
+    let blockingMs = 0;
+    let longTasks = 0;
+    const lt = longTaskSupported
+      ? new PerformanceObserver((list) => {
+          for (const e of list.getEntries()) {
+            longTasks++;
+            blockingMs += Math.max(0, e.duration - 50);
+          }
+        })
+      : null;
+    lt?.observe({ type: "longtask", buffered: true });
+
     let lossesSeen = 0;
     let crashesUnreported = startCrashTracking();
     const report = () => {
@@ -45,6 +59,7 @@ export default function RenderMetricsProbe() {
       const mean = f.reduce((a, b) => a + b, 0) / f.length;
       const path = location.pathname;
       const lidar = (window as unknown as { __gaLidar?: { pointsDrawn?: number; status?: string; gpuMsP95?: number | null } }).__gaLidar;
+      const deck = window.__gaDeckMetrics;
       const s: RumSample = {
         page: path === "/godseye-telemetry" || path === "/threat-globe" || path === "/lidar-splat" ? path : "/other",
         fps: Math.round(1_000 / mean),
@@ -60,6 +75,10 @@ export default function RenderMetricsProbe() {
         gpuSafeMode: gpuSafeMode(),
         bleDiffSize: window.__gaBle?.diffSize ?? null,
         bleFlushMs: window.__gaBle?.flushMs ?? null,
+        blockingMs: longTaskSupported ? Math.round(blockingMs) : null,
+        longTasks: longTaskSupported ? longTasks : null,
+        deckGpuMsPerFrame: deck ? Math.round(deck.gpuMsPerFrame * 100) / 100 : null,
+        deckCpuMsPerFrame: deck ? Math.round(deck.cpuMsPerFrame * 100) / 100 : null,
         ...vitals,
         touch: navigator.maxTouchPoints > 0,
       };
@@ -71,6 +90,8 @@ export default function RenderMetricsProbe() {
       crashesUnreported = 0;
       bytes = 0;
       busyMs = 0;
+      blockingMs = 0;
+      longTasks = 0;
       (window as unknown as { __gaPerf?: RumSample }).__gaPerf = s;
       navigator.sendBeacon("/api/metrics/rum", new Blob([JSON.stringify(s)], { type: "application/json" }));
     };
@@ -79,6 +100,7 @@ export default function RenderMetricsProbe() {
       cancelAnimationFrame(raf);
       window.clearInterval(timer);
       po.disconnect();
+      lt?.disconnect();
     };
   }, []);
   return null;

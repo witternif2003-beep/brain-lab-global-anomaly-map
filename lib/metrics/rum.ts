@@ -24,6 +24,14 @@ export interface RumSample {
   bleDiffSize?: number | null;
   /** Time to apply that flush, ms. */
   bleFlushMs?: number | null;
+  /** Sum over Long Tasks in this report of (duration − 50 ms), the Total Blocking Time formula; null where the browser lacks the longtask entry type (Safari, Firefox). */
+  blockingMs?: number | null;
+  /** Long Tasks (≥ 50 ms on the main thread) in this report; null where unsupported. */
+  longTasks?: number | null;
+  /** deck.gl GPU time per frame from Deck _onMetrics (luma.gl timer query), ms; 0 or null where GPU timers are hidden. */
+  deckGpuMsPerFrame?: number | null;
+  /** deck.gl CPU time per frame from Deck _onMetrics, ms. */
+  deckCpuMsPerFrame?: number | null;
   lcpMs: number | null;
   inpMs: number | null;
   cls: number | null;
@@ -61,6 +69,10 @@ export function parseRumSample(raw: unknown): RumSample | null {
     gpuSafeMode: r.gpuSafeMode === true,
     bleDiffSize: num(r.bleDiffSize, 1e6),
     bleFlushMs: num(r.bleFlushMs, 600_000),
+    blockingMs: num(r.blockingMs, RUM_INTERVAL_MS),
+    longTasks: num(r.longTasks, 10_000),
+    deckGpuMsPerFrame: num(r.deckGpuMsPerFrame, 60_000),
+    deckCpuMsPerFrame: num(r.deckCpuMsPerFrame, 60_000),
     lcpMs: num(r.lcpMs, 600_000),
     inpMs: num(r.inpMs, 600_000),
     cls: num(r.cls, 100),
@@ -132,6 +144,21 @@ export class RumWindow {
       },
       { name: 'ble_update_diff_size_p95', help: 'p95 features changed per Bluetooth vehicle layer updateData flush.', values: series(pct((s) => s.bleDiffSize ?? null, 0.95)) },
       { name: 'ble_flush_ms_p95', help: 'p95 time to apply a Bluetooth vehicle layer updateData flush.', values: series(pct((s) => s.bleFlushMs ?? null, 0.95)) },
+      {
+        name: 'main_thread_blocking_ms_p95',
+        help: 'p95 per-report blocking time: sum of (Long Task duration - 50 ms) per 30 s report (Long Tasks API; Chromium only, absent on Safari/Firefox).',
+        values: series(pct((s) => s.blockingMs ?? null, 0.95)),
+      },
+      {
+        name: 'main_thread_long_tasks',
+        help: 'Long Tasks (>= 50 ms) reported in the last 5 min (Long Tasks API; Chromium only).',
+        values: series((xs) => {
+          const v = xs.map((s) => s.longTasks ?? null).filter((x): x is number => x !== null);
+          return v.length ? v.reduce((a, b) => a + b, 0) : null;
+        }),
+      },
+      { name: 'deck_gpu_ms_per_frame_p95', help: 'p95 deck.gl GPU time per frame (Deck _onMetrics, experimental API; absent where GPU timer queries are unavailable).', values: series(pct((s) => (s.deckGpuMsPerFrame ? s.deckGpuMsPerFrame : null), 0.95)) },
+      { name: 'deck_cpu_ms_per_frame_p95', help: 'p95 deck.gl CPU time per frame (Deck _onMetrics, experimental API).', values: series(pct((s) => s.deckCpuMsPerFrame ?? null, 0.95)) },
       { name: 'web_vitals_lcp_ms_p75', help: 'p75 Largest Contentful Paint.', values: series(pct((s) => s.lcpMs, 0.75)) },
       { name: 'web_vitals_inp_ms_p75', help: 'p75 Interaction to Next Paint.', values: series(pct((s) => s.inpMs, 0.75)) },
       { name: 'web_vitals_cls_p75', help: 'p75 Cumulative Layout Shift.', values: series(pct((s) => s.cls, 0.75)) },
