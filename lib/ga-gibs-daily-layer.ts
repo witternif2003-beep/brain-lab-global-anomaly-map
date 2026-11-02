@@ -25,7 +25,6 @@ const dates = new WeakMap<MapLibreMap, { viirs: string | null; hls: (string | nu
 const isoDay = (t = Date.now()) => new Date(t).toISOString().slice(0, 10);
 
 function beforeId(map: MapLibreMap): string | undefined {
-  if (map.getLayer('goes-clouds-vis')) return 'goes-clouds-vis';
   return map.getStyle().layers.find((l) => !['background', 'raster', 'hillshade', 'color-relief'].includes(l.type))?.id;
 }
 
