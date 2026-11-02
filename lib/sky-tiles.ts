@@ -3,7 +3,7 @@ import type { SkyBasis } from './sky-photo';
 /** 512 px JPEG tiles cut from the NASA SVS 4851 16K and 32K EXRs by scripts/build-nasa-sky-tiles.py. */
 export const SKY_TILE_PX = 512;
 export const SKY_TILE_LEVELS = [16384, 32768] as const;
-export const SKY_TILE_BASE_URL = 'https://cdn.jsdelivr.net/gh/witternif2003-beep/brain-lab-global-anomaly-map@f9f4399b4118b32e786f948bc2e2f10def3fbdbc';
+export const SKY_TILE_BASE_URL = 'https://cdn.jsdelivr.net/gh/witternif2003-beep/brain-lab-global-anomaly-map@9c321c87fe566e4ed46a23dc292bc38f888c7ea8';
 export const skyTileUrl = (levelWidth: number, row: number, col: number) => `${SKY_TILE_BASE_URL}/${levelWidth / 1024}k/${row}/${col}.jpg`;
 
 /** A tile of one level and the device-pixel rectangle (y down) of the screen it covers. */

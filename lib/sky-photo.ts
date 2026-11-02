@@ -108,6 +108,9 @@ void main() {
   gl_FragColor = vec4(c, 1.0);
 }`;
 
+/** Loads per tile before it stays on the base map (retries after 4, 8, 16 and 32 s: jsDelivr answers 403 to some first requests for a commit). */
+const SKY_TILE_ATTEMPTS = 5;
+
 /** Renders the NASA star map as the true sky behind the camera, in a WebGL canvas meant to be drawn onto a 2D canvas each frame. */
 export class SkyPhotoRenderer {
   readonly canvas: HTMLCanvasElement;
@@ -116,7 +119,7 @@ export class SkyPhotoRenderer {
   private gl: WebGLRenderingContext | null;
   private uniforms: Record<string, WebGLUniformLocation | null> = {};
   private baseTexture: WebGLTexture | null = null;
-  private tiles = new Map<string, { tex: WebGLTexture | null; usedAt: number; failed?: boolean }>();
+  private tiles = new Map<string, { tex: WebGLTexture | null; usedAt: number; failed?: boolean; attempts: number; retryAt?: number }>();
   private loading = 0;
   private frame = 0;
   /** Tiles with textures, from the frames that drew them. */
@@ -206,22 +209,24 @@ export class SkyPhotoRenderer {
     return true;
   }
 
-  /** Sharper 16K/32K tiles over the base map, only where the screen needs more pixels than the base texture has. */
+  /** Sharper 16K/32K tiles over the base map, only where the screen needs more pixels than the base texture has.
+   * No horizon cull: from altitude the map's horizon sits far below the astronomical one, and the base is built from
+   * the same 32K source, so views over the tile cap just stay at base sharpness. */
   private drawTiles(gl: WebGLRenderingContext, basis: SkyBasis, pixelWidth: number, pixelHeight: number): void {
     this.frame++;
     let level = skyTileLevel(skyPxPerDeg(basis, pixelHeight), this.textureWidth);
-    let visible: SkyTile[] = level ? visibleSkyTiles(basis, pixelWidth, pixelHeight, level, basis.zenith) : [];
+    let visible: SkyTile[] = level ? visibleSkyTiles(basis, pixelWidth, pixelHeight, level) : [];
     if (visible.length > this.maxTiles && level > 16384) {
       level = 16384;
-      visible = visibleSkyTiles(basis, pixelWidth, pixelHeight, level, basis.zenith);
+      visible = visibleSkyTiles(basis, pixelWidth, pixelHeight, level);
     }
     if (visible.length > this.maxTiles) visible = [];
     let drawn = 0;
     gl.enable(gl.SCISSOR_TEST);
     for (const t of visible) {
       const entry = this.tiles.get(t.key);
-      if (!entry) {
-        this.load(t);
+      if (!entry || (entry.failed && entry.attempts < SKY_TILE_ATTEMPTS && performance.now() >= (entry.retryAt ?? 0))) {
+        this.load(t, entry?.attempts ?? 0);
         continue;
       }
       entry.usedAt = this.frame;
@@ -241,9 +246,9 @@ export class SkyPhotoRenderer {
     this.stats = { level, visible: visible.length, drawn, cached: this.tiles.size - failed, failed };
   }
 
-  private load(t: SkyTile): void {
+  private load(t: SkyTile, attempts: number): void {
     if (this.loading >= 6) return;
-    const entry: { tex: WebGLTexture | null; usedAt: number; failed?: boolean } = { tex: null, usedAt: this.frame };
+    const entry: { tex: WebGLTexture | null; usedAt: number; failed?: boolean; attempts: number; retryAt?: number } = { tex: null, usedAt: this.frame, attempts: attempts + 1 };
     this.tiles.set(t.key, entry);
     this.loading++;
     const img = new Image();
@@ -266,6 +271,7 @@ export class SkyPhotoRenderer {
     img.onerror = () => {
       this.loading--;
       entry.failed = true;
+      entry.retryAt = performance.now() + 2000 * 2 ** entry.attempts;
     };
     img.src = skyTileUrl(t.width, t.row, t.col);
   }

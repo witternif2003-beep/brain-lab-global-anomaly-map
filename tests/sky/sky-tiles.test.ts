@@ -54,5 +54,5 @@ test("tiles entirely below the horizon are skipped", () => {
   const down = skyBasis(view(0, 0, w, h));
   assert.equal(visibleSkyTiles(down, w, h, 16384, down.zenith).length, 0);
   const up = skyBasis(view(0, 80, w, h));
-  assert.ok(visibleSkyTiles(up, w, h, 16384, up.zenith).length <= 24, "phone view fits the touch tile cap");
+  assert.ok(visibleSkyTiles(up, w, h, 16384).length <= 24, "phone view over the horizon fits the touch tile cap without culling");
 });
