@@ -4,7 +4,7 @@ import { hitsGaDeck, setGaDeckClouds } from './ga-deck-overlay';
 import { radarCloudPuffs } from './ga-clouds/cloud-puffs';
 import { gpuSafeMode } from './map/crash-guard';
 import { reportGaFeed } from './ga-live-status';
-import { addGoesCloudLayer } from './ga-goes-clouds-layer';
+import { addGoesCloudLayer, setGoesCloudBases } from './ga-goes-clouds-layer';
 
 const isTouch = () => typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0;
 const SOURCE = 'ga-clouds';
@@ -239,6 +239,7 @@ export function addGaCloudLayers(map: MapLibreMap): void {
       const fc = d.geojson ?? EMPTY;
       latest.set(map, fc);
       (map.getSource(SOURCE) as GeoJSONSource | undefined)?.setData(fc);
+      setGoesCloudBases(map, fc.features.filter((f) => f.properties?.layer === 0).map((f) => Number(f.properties?.baseM)));
       const mfc = d.model?.geojson ?? EMPTY;
       latestModel.set(map, mfc);
       modelTime.set(map, d.model?.validTime ?? null);

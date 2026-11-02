@@ -36,6 +36,15 @@ export function goesTileUrl(kind: GoesKind, z: number, x: number, y: number, tim
   return `${GOES_WMS}?${q}`;
 }
 
+/** WMS GetMap for an arbitrary EPSG:3857 box and image size. */
+export function goesBoxUrl(kind: GoesKind, bbox3857: [number, number, number, number], width: number, height: number, time: string): string {
+  const q = new URLSearchParams({
+    service: 'WMS', version: '1.3.0', request: 'GetMap', layers: GOES_BANDS[kind].wms, styles: '', format: 'image/png',
+    transparent: 'true', crs: 'EPSG:3857', bbox: bbox3857.join(','), width: String(width), height: String(height), time,
+  });
+  return `${GOES_WMS}?${q}`;
+}
+
 /** Latest scan time per WMS layer, from the GetCapabilities `time` dimension default. */
 export function latestScanTimes(xml: string): Record<string, string> {
   const out: Record<string, string> = {};
