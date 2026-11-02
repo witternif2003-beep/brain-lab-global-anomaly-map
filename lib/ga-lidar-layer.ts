@@ -28,6 +28,7 @@ import {
 } from './ga-lidar/ept';
 import type { EptProject, Hierarchy, LidarNodeData } from './ga-lidar/ept';
 import { nodeSpacings } from './ga-lidar/ept';
+import { cachedFetch } from './ga-lidar/disk-cache';
 import { fullArray, releaseAfterUpload } from './ga-lidar/gpu-upload';
 import { GpuPassTimer } from './ga-lidar/gpu-timer';
 import { isTouchDevice, lidarBudget } from './map/touch-gpu-budget';
@@ -70,6 +71,9 @@ export interface GaLidarStats {
   nodesTrueColor: number;
   loading: number;
   errors: number;
+  /** Hierarchy/node responses served from the on-device disk cache vs fetched from the network this session. */
+  diskHits: number;
+  diskMisses: number;
   status: string;
   /** p95 GPU time of the LiDAR draw (ms); null when EXT_disjoint_timer_query_webgl2 is unavailable. */
   gpuMsP95: number | null;
@@ -185,6 +189,8 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     nodesTrueColor: 0,
     loading: 0,
     errors: 0,
+    diskHits: 0,
+    diskMisses: 0,
     status: 'idle',
     gpuMsP95: null,
     gpuTimer: 'unsupported',
@@ -266,7 +272,7 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     if (this.loadedHierarchyFiles.has(id)) return;
     this.loadedHierarchyFiles.add(id);
     try {
-      const r = await fetch(`${EPT_ROOT}/${project.name}/ept-hierarchy/${file}.json`);
+      const r = await cachedFetch(`${EPT_ROOT}/${project.name}/ept-hierarchy/${file}.json`, this.stats);
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const part = (await r.json()) as Hierarchy;
       const merged = this.hierarchies.get(project.name) ?? {};
@@ -363,7 +369,7 @@ export class GaLidar3DLayer implements CustomLayerInterface {
         this.inflight.add(key);
         this.setStatus('loading points');
         try {
-          const r = await fetch(`/api/ga-lidar?project=${encodeURIComponent(project.name)}&node=${key}`);
+          const r = await cachedFetch(`/api/ga-lidar?project=${encodeURIComponent(project.name)}&node=${key}`, this.stats);
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
           const data = decodeNode(await r.arrayBuffer());
           if (gen === this.generation && this.project?.name === project.name) this.addNode(key, data);
