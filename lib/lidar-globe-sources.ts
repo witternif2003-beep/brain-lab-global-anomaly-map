@@ -72,10 +72,10 @@ export const GLOBE_SOURCES: GlobeSource[] = [
   },
   {
     id: "nasa-svs-deep-star-maps-2020",
-    label: "Deep Star Maps 2020 (4K / 8K star field behind the globe)",
+    label: "Deep Star Maps 2020 (4K / 8K base, 16K / 32K tiles behind the globe)",
     provider: "NASA Scientific Visualization Studio (SVS 4851) — Hipparcos-2, Tycho-2, Gaia DR2",
     url: "https://svs.gsfc.nasa.gov/4851",
-    detail: "Rendered from 1.7 billion catalogued stars; 4096×2048 JPEG (8192×4096 in fullscreen on large displays) converted from the published EXR. Not aligned to the map camera."
+    detail: "Rendered from 1.7 billion catalogued stars; 4096×2048 JPEG (8192×4096 on large displays) converted from the published EXR, plus 512 px tiles of the published 16K and 32K EXRs where the screen has more pixels per degree than the base map."
   },
   {
     id: "loc-habs-dc37",

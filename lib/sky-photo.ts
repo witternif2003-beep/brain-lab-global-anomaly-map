@@ -1,4 +1,5 @@
 import { Body, Equator, Observer } from 'astronomy-engine';
+import { SKY_TILE_PX, skyPxPerDeg, skyTileLevel, skyTileUrl, visibleSkyTiles, type SkyTile } from './sky-tiles';
 
 /** NASA SVS Deep Star Maps 2020 (svs.gsfc.nasa.gov/4851): plate carrée, ICRF/J2000 RA/Dec, 0h RA at centre, RA increasing to the left. */
 export const SKY_PHOTO_SOURCE_URL = 'https://svs.gsfc.nasa.gov/4851';
@@ -15,7 +16,7 @@ export type SkyView = {
 };
 
 /** Maps screen coordinates (1, nx, ny), nx/ny in [-1, 1] with ny up, to J2000 equatorial directions. */
-export type SkyBasis = { forward: Vec3; right: Vec3; up: Vec3; tanX: number; tanY: number };
+export type SkyBasis = { forward: Vec3; right: Vec3; up: Vec3; tanX: number; tanY: number; zenith?: Vec3 };
 type Vec3 = [number, number, number];
 
 const D2R = Math.PI / 180;
@@ -46,6 +47,7 @@ export function skyBasis(view: SkyView): SkyBasis {
     up: toEq([-Math.sin(b) * Math.sin(e), -Math.cos(b) * Math.sin(e), Math.cos(e)]),
     tanX: (tanY * view.width) / Math.max(1, view.height),
     tanY,
+    zenith,
   };
 }
 
@@ -86,12 +88,21 @@ uniform vec2 uTan;
 uniform vec2 uSize;
 uniform float uGain;
 uniform float uNight;
+uniform vec4 uTile;
 void main() {
   vec2 n = gl_FragCoord.xy / uSize * 2.0 - 1.0;
   vec3 d = normalize(uForward + uRight * (n.x * uTan.x) + uUp * (n.y * uTan.y));
   float ra = atan(d.y, d.x);
   float dec = asin(clamp(d.z, -1.0, 1.0));
   vec2 uv = vec2(fract(0.5 - ra / 6.28318530718), 0.5 - dec / 3.14159265359);
+  if (uTile.x > 0.0) {
+    // uTile = (columns, rows, col, row) of a 512 px tile; RA offset wrapped around the tile centre so mip selection is seamless.
+    float du = uv.x - (uTile.z + 0.5) / uTile.x;
+    du -= floor(du + 0.5);
+    vec2 t = vec2(du * uTile.x + 0.5, uv.y * uTile.y - uTile.w);
+    if (t.x < 0.0 || t.x > 1.0 || t.y < 0.0 || t.y > 1.0) discard;
+    uv = clamp(t, ${0.5 / SKY_TILE_PX}, ${1 - 0.5 / SKY_TILE_PX});
+  }
   vec3 c = min(max(texture2D(uSky, uv).rgb - 0.035, 0.0) * uGain, 1.0);
   if (uNight > 0.5) c = vec3(dot(c, vec3(0.3, 0.59, 0.11)), 0.0, 0.0);
   gl_FragColor = vec4(c, 1.0);
@@ -104,8 +115,15 @@ export class SkyPhotoRenderer {
   ready = false;
   private gl: WebGLRenderingContext | null;
   private uniforms: Record<string, WebGLUniformLocation | null> = {};
+  private baseTexture: WebGLTexture | null = null;
+  private tiles = new Map<string, { tex: WebGLTexture | null; usedAt: number; failed?: boolean }>();
+  private loading = 0;
+  private frame = 0;
+  /** Tiles with textures, from the frames that drew them. */
+  stats = { level: 0, visible: 0, drawn: 0, cached: 0, failed: 0 };
 
-  constructor(urls: { url8k: string; url4k: string }, prefer8k: boolean) {
+  /** `maxTiles` caps GPU tile textures (about 1.4 MB each with mipmaps); views needing more fall back to a coarser level. */
+  constructor(urls: { url8k: string; url4k: string }, prefer8k: boolean, private readonly maxTiles = 96) {
     this.canvas = document.createElement('canvas');
     const gl = this.canvas.getContext('webgl', { alpha: false, antialias: false, preserveDrawingBuffer: true });
     this.gl = gl;
@@ -120,6 +138,7 @@ export class SkyPhotoRenderer {
     img.onload = () => {
       if (!this.gl) return;
       const tex = gl.createTexture();
+      this.baseTexture = tex;
       gl.bindTexture(gl.TEXTURE_2D, tex);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, img);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
@@ -154,7 +173,7 @@ export class SkyPhotoRenderer {
     const loc = gl.getAttribLocation(prog, 'aPos');
     gl.enableVertexAttribArray(loc);
     gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-    for (const name of ['uSky', 'uForward', 'uRight', 'uUp', 'uTan', 'uSize', 'uGain', 'uNight']) this.uniforms[name] = gl.getUniformLocation(prog, name);
+    for (const name of ['uSky', 'uForward', 'uRight', 'uUp', 'uTan', 'uSize', 'uGain', 'uNight', 'uTile']) this.uniforms[name] = gl.getUniformLocation(prog, name);
     return true;
   }
 
@@ -180,7 +199,86 @@ export class SkyPhotoRenderer {
     gl.uniform2f(u.uSize, pixelWidth, pixelHeight);
     gl.uniform1f(u.uGain, gain);
     gl.uniform1f(u.uNight, night ? 1 : 0);
+    gl.uniform4f(u.uTile, 0, 0, 0, 0);
+    gl.bindTexture(gl.TEXTURE_2D, this.baseTexture);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    this.drawTiles(gl, basis, pixelWidth, pixelHeight);
     return true;
+  }
+
+  /** Sharper 16K/32K tiles over the base map, only where the screen needs more pixels than the base texture has. */
+  private drawTiles(gl: WebGLRenderingContext, basis: SkyBasis, pixelWidth: number, pixelHeight: number): void {
+    this.frame++;
+    let level = skyTileLevel(skyPxPerDeg(basis, pixelHeight), this.textureWidth);
+    let visible: SkyTile[] = level ? visibleSkyTiles(basis, pixelWidth, pixelHeight, level, basis.zenith) : [];
+    if (visible.length > this.maxTiles && level > 16384) {
+      level = 16384;
+      visible = visibleSkyTiles(basis, pixelWidth, pixelHeight, level, basis.zenith);
+    }
+    if (visible.length > this.maxTiles) visible = [];
+    let drawn = 0;
+    gl.enable(gl.SCISSOR_TEST);
+    for (const t of visible) {
+      const entry = this.tiles.get(t.key);
+      if (!entry) {
+        this.load(t);
+        continue;
+      }
+      entry.usedAt = this.frame;
+      if (!entry.tex) continue;
+      const cols = t.width / SKY_TILE_PX;
+      gl.uniform4f(this.uniforms.uTile, cols, cols / 2, t.col, t.row);
+      gl.bindTexture(gl.TEXTURE_2D, entry.tex);
+      const x0 = Math.floor(t.x0), x1 = Math.ceil(t.x1);
+      gl.scissor(x0, Math.floor(pixelHeight - t.y1), x1 - x0, Math.ceil(t.y1 - t.y0) + 1);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      drawn++;
+    }
+    gl.disable(gl.SCISSOR_TEST);
+    this.evict(gl);
+    let failed = 0;
+    for (const e of this.tiles.values()) if (e.failed) failed++;
+    this.stats = { level, visible: visible.length, drawn, cached: this.tiles.size - failed, failed };
+  }
+
+  private load(t: SkyTile): void {
+    if (this.loading >= 6) return;
+    const entry: { tex: WebGLTexture | null; usedAt: number; failed?: boolean } = { tex: null, usedAt: this.frame };
+    this.tiles.set(t.key, entry);
+    this.loading++;
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.decoding = 'async';
+    img.onload = () => {
+      this.loading--;
+      const gl = this.gl;
+      if (!gl || this.tiles.get(t.key) !== entry) return;
+      const tex = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, img);
+      gl.generateMipmap(gl.TEXTURE_2D);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      entry.tex = tex;
+    };
+    img.onerror = () => {
+      this.loading--;
+      entry.failed = true;
+    };
+    img.src = skyTileUrl(t.width, t.row, t.col);
+  }
+
+  /** Deletes the least recently drawn tile textures beyond `maxTiles`. */
+  private evict(gl: WebGLRenderingContext): void {
+    const live = [...this.tiles.entries()].filter(([, e]) => e.tex);
+    if (live.length <= this.maxTiles) return;
+    live.sort((a, b) => a[1].usedAt - b[1].usedAt);
+    for (const [key, e] of live.slice(0, live.length - this.maxTiles)) {
+      if (e.usedAt === this.frame) break;
+      gl.deleteTexture(e.tex);
+      this.tiles.delete(key);
+    }
   }
 }

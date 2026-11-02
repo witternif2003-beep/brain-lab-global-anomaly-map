@@ -46,6 +46,8 @@ import { governDrapeMemory } from '../lib/map/terrain-rtt';
 
 const ALLY_STATE_CODES = ['AL', 'FL', 'NC', 'SC', 'TN', 'TX', 'VA'];
 const STARMAP_8K_MIN_DEVICE_PX = 1920;
+/** NASA 16K/32K sky tiles kept on the GPU on touch devices (about 1.4 MB each). */
+const TOUCH_SKY_TILES = 24;
 /** Phone/tablet GPU memory guard: device pixel ratio cap for the WebGL map canvas on touch devices. */
 const TOUCH_MAX_PIXEL_RATIO = 2;
 /** Zoom levels of off-screen tiles kept in MapLibre's tile cache on touch devices (MapLibre default 5). */
@@ -497,11 +499,12 @@ export default function GodsEyeMap({
     };
     sizeCanvas();
 
-    // NASA SVS-4851 Deep Star Maps 2020, rendered as the real sky for the camera's location, heading, pitch and time
+    // NASA SVS-4851 Deep Star Maps 2020 (4K/8K base, 16K/32K tiles where the screen needs them), rendered as the real sky for the camera's location, heading, pitch and time
     const devicePx = Math.max(window.screen.width, window.screen.height) * (window.devicePixelRatio || 1);
     const sky = new SkyPhotoRenderer(
       { url8k: '/assets/nasa-svs-starmap-8k.jpg', url4k: '/assets/nasa-svs-starmap.jpg' },
       devicePx >= STARMAP_8K_MIN_DEVICE_PX && !isTouchDevice(),
+      isTouchDevice() ? TOUCH_SKY_TILES : 96,
     );
     let bodies: SkyBodyPosition[] = [];
     let bodiesAt = -Infinity;
