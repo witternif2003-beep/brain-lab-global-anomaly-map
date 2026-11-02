@@ -420,7 +420,7 @@ function modelFor(layer: LiveLayer, m: LiveMarker): GaDeckItem['model'] {
   }
   if (layer === 'towers') {
     const h = Number(m.props.heightM);
-    return { kind: 'tower', scale: [1, 1, Number.isFinite(h) && h > 0 ? Math.min(10, Math.max(0.2, h / 60)) : 1] };
+    return { kind: 'tower', scale: [1, 1, Number.isFinite(h) && h > 0 ? Math.min(10, Math.max(0.2, h / 60)) : 1], trueHeight: true };
   }
   const kind = STATIC_MODEL[layer];
   return kind ? { kind } : undefined;

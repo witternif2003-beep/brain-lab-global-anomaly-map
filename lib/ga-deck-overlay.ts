@@ -6,7 +6,7 @@ import { insideRing, loadGaWallRing, type LngLat } from './ga-patrol-3d';
 import { reportGaFeed } from './ga-live-status';
 import { GA_MARKER_SCALE, gaGlowMultiplier } from './ga-marker-scale';
 import { GA_ICON_CELL_SCALE, gaIconAtlas, gaIconKey, type GaIconAtlas, type GaIconShape } from './ga-marker-icons';
-import { gaMeshIfReady, gaLiveryMeshIfReady, gaModelReach, isFgKind, type GaModelKind } from './ga-mesh-models';
+import { gaMeshIfReady, gaLiveryMeshIfReady, gaMeshScale, gaModelReach, isFgKind, type GaModelKind } from './ga-mesh-models';
 import { cappedPixelRatio, isTouchDevice, LIDAR_POINT_CEILING } from './map/touch-gpu-budget';
 import type { CloudPuff } from './ga-clouds/cloud-puffs';
 import { puffAtlas } from './ga-clouds/puff-texture';
@@ -31,7 +31,7 @@ export interface GaDeckItem {
   /** Short see-through tag drawn under the marker once zoomed in to the group's `labelMinZoom`. */
   label?: string;
   /** 3D model drawn in place of the glyph from `GA_MODEL_MIN_ZOOM`; `elevM` lifts it above the ground point (the glyph stays as its ground marker). */
-  model?: { kind: GaModelKind; livery?: string; scale?: [number, number, number]; elevM?: number; msl?: boolean; always?: boolean };
+  model?: { kind: GaModelKind; livery?: string; scale?: [number, number, number]; elevM?: number; msl?: boolean; always?: boolean; trueHeight?: boolean };
   props: Record<string, unknown>;
 }
 export interface GaDeckGroup {
@@ -631,9 +631,9 @@ function createLayers(state: DeckState): Layer[] {
           data: items,
           mesh,
           getPosition: (item) => modelAt(state, item),
-          updateTriggers: { getPosition: state.groundVersion, getOrientation: globe },
           getOrientation: (item) => [0, meshYaw(item.angle, globe), 0],
-          getScale: (item) => item.model!.scale ?? [1, 1, 1],
+          getScale: (item) => gaMeshScale(item.model!, kindScale),
+          updateTriggers: { getPosition: state.groundVersion, getOrientation: globe, getScale: kindScale },
           // FlightGear meshes carry their paint colours per vertex; deck.gl multiplies them by this colour.
           getColor: isFgKind(kind) ? [255, 255, 255, 255] : (item) => [item.fill[0], item.fill[1], item.fill[2], 255],
           sizeScale: kindScale,

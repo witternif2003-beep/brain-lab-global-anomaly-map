@@ -253,6 +253,15 @@ export const GA_MODEL_REACH_M: Record<BaseModelKind, number> = {
   police: 16, firestation: 14, siren: 1.5, speedcam: 1, alpr: 1, weather: 1.2, gauge: 1.2,
 };
 
+/**
+ * Per-axis scale for a live model mesh drawn with `sizeScale`. Street-zoom enlargement (up to 16×) keeps small models
+ * visible, but a mast with a mapped height must keep that height or it stands kilometres above the horizon.
+ */
+export function gaMeshScale(model: { scale?: [number, number, number]; trueHeight?: boolean }, sizeScale: number): [number, number, number] {
+  const [x, y, z] = model.scale ?? [1, 1, 1];
+  return model.trueHeight && sizeScale > 0 ? [x, y, z / sizeScale] : [x, y, z];
+}
+
 export const isFgKind = (kind: GaModelKind): kind is `fg-${string}` => kind.startsWith('fg-');
 export const gaModelReach = (kind: GaModelKind): number => (isFgKind(kind) ? GA_MODEL_REACH_M.airliner : GA_MODEL_REACH_M[kind]);
 
