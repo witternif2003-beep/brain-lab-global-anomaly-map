@@ -44,10 +44,8 @@ const GA_LIDAR_BUILDINGS_ZOOM = 15;
 /** OSM building opacity under LiDAR: every footprint stays visible (surveys are 2009–2018 and may miss newer buildings or unloaded tiles). */
 export const GA_LIDAR_OSM_BUILDING_OPACITY = 0.35;
 const VIEW_TILES = 3.5;
-const POINT_MAX_CSS_PX = 12;
-/** Point diameter as a fraction of the point spacing on screen: 1.5 also covers the diagonal gap so the surface reads as continuous. */
-const POINT_SPACING_FRACTION = 1.5;
-const POINT_MIN_PX = 1;
+/** Fixed point diameter (CSS px): sharp micro-dots; at low altitude the imagery shows between them. */
+const POINT_CSS_PX = 1.5;
 /**
  * Points whose ground patch is squashed on screen below this fraction (about 80° from straight down) are
  * dropped: at the horizon the patch shrinks to a sliver, so the points only sparkle as a grainy line.
@@ -94,9 +92,7 @@ const VERTEX = /* glsl */ `
   uniform float uHalf;
   uniform float uSpacingCentre;
   uniform vec2 uViewport;
-  uniform float uMaxPx;
-  uniform float uMinPx;
-  uniform float uSpacingFraction;
+  uniform float uPointPx;
   uniform float uHorizon;
   varying vec3 vColor;
   void main() {
@@ -114,7 +110,7 @@ const VERTEX = /* glsl */ `
     float spacingPx = max(length(ex), length(ey));
     // Screen area of the point's ground patch over its square: 1 looking straight down, 0 edge-on.
     float foreshortening = abs(ex.x * ey.y - ex.y * ey.x) / max(spacingPx * spacingPx, 1e-12);
-    gl_PointSize = clamp(spacingPx * uSpacingFraction, uMinPx, uMaxPx);
+    gl_PointSize = uPointPx;
     // Outside the clip volume, so the GPU skips it.
     gl_Position = foreshortening < uHorizon ? vec4(2.0, 2.0, 2.0, 1.0) : p0;
     vColor = aColor;
@@ -163,9 +159,7 @@ export class GaLidar3DLayer implements CustomLayerInterface {
       uHalf: { value: 1 },
       uSpacingCentre: { value: 1 },
       uViewport: { value: new Vector2(1, 1) },
-      uMaxPx: { value: POINT_MAX_CSS_PX },
-      uMinPx: { value: POINT_MIN_PX },
-      uSpacingFraction: { value: POINT_SPACING_FRACTION },
+      uPointPx: { value: POINT_CSS_PX },
       uHorizon: { value: HORIZON_MIN_FORESHORTENING },
     },
   });
@@ -598,8 +592,7 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     this.camera.projectionMatrixInverse.copy(mvp).invert();
     this.material.uniforms.uViewport.value.set(gl.drawingBufferWidth, gl.drawingBufferHeight);
     const dpr = Math.min(3, this.map?.getPixelRatio() ?? (window.devicePixelRatio || 1));
-    this.material.uniforms.uMaxPx.value = POINT_MAX_CSS_PX * dpr;
-    this.material.uniforms.uMinPx.value = POINT_MIN_PX * dpr;
+    this.material.uniforms.uPointPx.value = POINT_CSS_PX * dpr;
     renderer.resetState();
     renderer.setViewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
     this.gpuTimer?.begin();
