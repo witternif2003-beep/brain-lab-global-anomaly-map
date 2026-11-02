@@ -7,7 +7,9 @@ import { reportGaFeed } from './ga-live-status';
 import { GA_MARKER_SCALE, gaGlowMultiplier } from './ga-marker-scale';
 import { GA_ICON_CELL_SCALE, gaIconAtlas, gaIconKey, type GaIconAtlas, type GaIconShape } from './ga-marker-icons';
 import { gaMeshIfReady, gaLiveryMeshIfReady, gaMeshScale, gaModelReach, isFgKind, type GaModelKind } from './ga-mesh-models';
-import { cappedPixelRatio, isTouchDevice, LIDAR_POINT_CEILING } from './map/touch-gpu-budget';
+import { isTouchDevice, LIDAR_POINT_CEILING, markerPixelRatio } from './map/touch-gpu-budget';
+import { gpuCrashCount } from './map/crash-guard';
+import { declutterMarkers, type DeclutterCandidate } from './ga-marker-declutter';
 import type { CloudPuff } from './ga-clouds/cloud-puffs';
 import { puffAtlas } from './ga-clouds/puff-texture';
 import { crimeStrobePhase } from './ga-live-markers/strobe';
@@ -61,6 +63,8 @@ type DeckSnapshot = {
   fallbackReason: string | null;
   counts: Record<GroupKey, number>;
   labelsShown: number | null;
+  /** Marker declutter: markers drawn and hidden in view after the last pass, and how long it took. */
+  markers: { shown: number; hidden: number; ms: number } | null;
   pulse: { radiusScale: number; opacity: number };
   ground: { terrain: boolean; version: number; anchored: number };
   clouds: number;
@@ -111,6 +115,10 @@ interface DeckState {
   /** Labels kept by the last `declutterLabels` pass; null until the first pass. */
   labelShown: Set<GaDeckItem> | null;
   labelVersion: number;
+  /** Markers kept by the last `declutterGroups` pass; null shows every marker (`?declutter=0`). */
+  markerShown: Set<GaDeckItem> | null;
+  markerVersion: number;
+  markerStats: { shown: number; hidden: number; ms: number } | null;
   /** Terrain elevation (m, exaggerated as drawn) per coordinate; cleared when DEM tiles change. */
   ground: Map<string, number>;
   groundVersion: number;
@@ -198,6 +206,9 @@ function getState(map: MapLibreMap): DeckState {
     afterRender: new Set(),
     labelShown: null,
     labelVersion: 0,
+    markerShown: null,
+    markerVersion: 0,
+    markerStats: null,
     ground: new Map(),
     groundVersion: 0,
     clouds: [],
@@ -231,6 +242,7 @@ function getState(map: MapLibreMap): DeckState {
   map.on('projectiontransition', reorientIfViewChanged);
   map.on('style.load', reorientIfViewChanged);
   map.on('moveend', () => {
+    declutterGroups(state!);
     declutterLabels(state!);
     updateLayers(state!);
   });
@@ -277,6 +289,7 @@ function snapshot(state: DeckState): DeckSnapshot {
     renderer: state.renderer,
     fallbackReason: state.fallbackReason,
     labelsShown: state.labelShown?.size ?? null,
+    markers: state.markerStats,
     counts: {
       bulbs: state.groups.get('bulbs')?.items.length ?? 0,
       traffic: state.groups.get('traffic')?.items.length ?? 0,
@@ -400,6 +413,7 @@ function hitAt(map: MapLibreMap, state: DeckState, point: Point): { group: GaDec
     let closestDistance = Infinity;
     for (const item of group.items) {
       if (item.model?.always) continue;
+      if (state.markerShown && !state.markerShown.has(item)) continue;
       if (bounds && (item.coord[0] < bounds.w || item.coord[0] > bounds.e || item.coord[1] < bounds.s || item.coord[1] > bounds.n)) continue;
       const projected = map.project(item.coord);
       const distance = Math.hypot(projected.x - point.x, projected.y - point.y);
@@ -442,9 +456,9 @@ export function onNextGaDeckFrame(map: MapLibreMap, draw: (canvas: HTMLCanvasEle
   });
 }
 
-/** Default deck.gl drawing-buffer pixel ratio: the device ratio, capped on touch devices. */
+/** Default deck.gl drawing-buffer pixel ratio: the device ratio, capped at 3× on touch devices (2× after a recent GPU crash). */
 const defaultDevicePixels = (): number | true =>
-  isTouchDevice() ? cappedPixelRatio(window.devicePixelRatio || 1, true) : true;
+  isTouchDevice() ? markerPixelRatio(window.devicePixelRatio || 1, true, gpuCrashCount()) : true;
 
 /** Sets the deck.gl drawing-buffer pixel ratio (`true` restores the default ratio). */
 export function setGaDeckPixelRatio(map: MapLibreMap, ratio: number | true): void {
@@ -506,6 +520,7 @@ function declutterLabels(state: DeckState): void {
     const labels = groupViews(group).labels;
     const ordered = labels.some((item) => item.model?.elevM) ? [...labels].sort((a, b2) => (b2.model?.elevM ? 1 : 0) - (a.model?.elevM ? 1 : 0)) : labels;
     for (const item of ordered) {
+      if (state.markerShown && !state.markerShown.has(item)) continue;
       const [lng, lat] = item.coord;
       if (lng < west || lng > east || lat < south || lat > north) continue;
       const p = map.project(item.coord);
@@ -529,6 +544,62 @@ function declutterLabels(state: DeckState): void {
   }
   state.labelShown = shown;
   state.labelVersion++;
+}
+
+/** Live aircraft are never hidden by the declutter pass; they still hide lower markers under them. */
+const DECLUTTER_KEEP: ReadonlySet<GroupKey> = new Set(['aircraft']);
+const declutterOff = () => typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('declutter') === '0';
+
+/**
+ * Hides markers that sit on top of a higher-priority marker on screen (group `z`, aircraft first), like MapLibre's symbol
+ * collision. Markers outside the padded view are kept so they appear while panning; the pass reruns on every `moveend`.
+ */
+function declutterGroups(state: DeckState): void {
+  if (declutterOff()) {
+    state.markerShown = null;
+    state.markerStats = null;
+    state.markerVersion++;
+    return;
+  }
+  const t0 = performance.now();
+  const { map } = state;
+  const b = map.getBounds();
+  const padLng = (b.getEast() - b.getWest()) * 0.1;
+  const padLat = (b.getNorth() - b.getSouth()) * 0.1;
+  const [west, east, south, north] = [b.getWest() - padLng, b.getEast() + padLng, b.getSouth() - padLat, b.getNorth() + padLat];
+  const shown = new Set<GaDeckItem>();
+  const candidates: DeclutterCandidate<GaDeckItem>[] = [];
+  const entries = [...state.groups.entries()].sort((a, b2) => (DECLUTTER_KEEP.has(b2[0]) ? 1 : 0) - (DECLUTTER_KEEP.has(a[0]) ? 1 : 0) || b2[1].z - a[1].z);
+  for (const [key, group] of entries) {
+    const keep = DECLUTTER_KEEP.has(key);
+    for (const item of group.items) {
+      const [lng, lat] = item.coord;
+      if (item.model?.always || lng < west || lng > east || lat < south || lat > north) {
+        shown.add(item);
+        continue;
+      }
+      const p = map.project(item.coord);
+      const half = item.icon ? ((item.iconPx ?? 12) * GA_MARKER_SCALE) / 2 : item.radiusPx * GA_MARKER_SCALE + item.strokePx;
+      candidates.push({ item, x: p.x, y: p.y, half, keep });
+    }
+  }
+  const placed = declutterMarkers(candidates);
+  for (const item of placed) shown.add(item);
+  state.markerShown = shown;
+  state.markerStats = { shown: placed.size, hidden: candidates.length - placed.size, ms: Math.round((performance.now() - t0) * 10) / 10 };
+  state.markerVersion++;
+}
+
+const shownByList = new WeakMap<GaDeckItem[], { version: number; items: GaDeckItem[] }>();
+/** `list` without the markers the last declutter pass hid. */
+function shownOf(state: DeckState, list: GaDeckItem[]): GaDeckItem[] {
+  const shown = state.markerShown;
+  if (!shown || !list.length) return list;
+  const cached = shownByList.get(list);
+  if (cached?.version === state.markerVersion) return cached.items;
+  const items = list.filter((item) => shown.has(item));
+  shownByList.set(list, { version: state.markerVersion, items });
+  return items;
 }
 
 const placedByGroup = new WeakMap<GaDeckGroup, { version: number; items: GaDeckItem[] }>();
@@ -571,8 +642,11 @@ function createLayers(state: DeckState): Layer[] {
   }
   for (const [key, group] of [...state.groups.entries()].sort((a, b) => a[1].z - b[1].z)) {
     const views = groupViews(group);
-    const { glow, pulse, dots, labels } = views;
-    const icons = scale && views.models.size ? views.streetIcons : views.icons;
+    const { labels } = views;
+    const glow = shownOf(state, views.glow);
+    const pulse = shownOf(state, views.pulse);
+    const dots = shownOf(state, views.dots);
+    const icons = shownOf(state, scale && views.models.size ? views.streetIcons : views.icons);
     if (glow.length) {
       layers.push(new ScatterplotLayer({
         id: `ga-deck-${key}-bloom`,
@@ -1017,6 +1091,7 @@ export function setGaDeckGroup(map: MapLibreMap, key: GroupKey, group: GaDeckGro
   const state = getState(map);
   state.groups.set(key, group);
   state.atlas = gaIconAtlas(group.items.flatMap((item) => [item, ...(item.strobeColors ?? []).map((fill) => ({ icon: item.icon, fill, stroke: item.stroke }))]));
+  declutterGroups(state);
   if (group.labelMinZoom !== undefined) declutterLabels(state);
   publishState(map, state);
   if (state.overlay) updateLayers(state);

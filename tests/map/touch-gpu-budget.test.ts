@@ -40,3 +40,13 @@ test("lidarBudget halves downloads and imagery cache in crash safe mode", () => 
   assert.ok(t.fetchParallel >= 1 && t.fetchParallel < lidarBudget(true).fetchParallel);
   assert.equal(t.imageryTiles, lidarBudget(true).imageryTiles / 2);
 });
+
+test("marker canvas uses the full 3× ratio on touch devices until a recent GPU crash", async () => {
+  const { markerPixelRatio, TOUCH_FULL_PIXEL_RATIO } = await import("../../lib/map/touch-gpu-budget");
+  assert.equal(markerPixelRatio(3, true), TOUCH_FULL_PIXEL_RATIO);
+  assert.equal(markerPixelRatio(3, true, 1), TOUCH_MAX_PIXEL_RATIO);
+  assert.equal(markerPixelRatio(4, true), 3);
+  assert.equal(markerPixelRatio(2, true), 2);
+  assert.equal(markerPixelRatio(4, false), 4);
+  assert.equal(markerPixelRatio(0, true), 1);
+});

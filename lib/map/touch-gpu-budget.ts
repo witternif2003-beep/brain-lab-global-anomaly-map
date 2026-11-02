@@ -15,6 +15,16 @@ export interface LidarBudget {
   imageryTiles: number;
 }
 
+/** Touch devices with no recent GPU crash draw markers and labels at up to this ratio (iPhone Pro screens are 3×). */
+export const TOUCH_FULL_PIXEL_RATIO = 3;
+
+/** Marker-canvas pixel ratio: full device ratio (≤3) on touch devices, falling back to the 2× cap after a recent GPU crash. */
+export function markerPixelRatio(devicePixelRatio: number, touch: boolean, crashes = 0): number {
+  const dpr = devicePixelRatio > 0 ? devicePixelRatio : 1;
+  if (!touch) return dpr;
+  return Math.min(crashes > 0 ? TOUCH_MAX_PIXEL_RATIO : TOUCH_FULL_PIXEL_RATIO, dpr);
+}
+
 /** Hard ceiling on LiDAR points drawn at once on any device. */
 export const LIDAR_POINT_CEILING = 20_000_000;
 
