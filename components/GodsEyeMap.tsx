@@ -40,7 +40,9 @@ import { attachSolarSky } from '../lib/ga-sky';
 import { SKY_PHOTO_SOURCE_URL, SkyPhotoRenderer, projectRaDec, skyBasis, skyBodyPositions, type SkyBodyPosition } from '../lib/sky-photo';
 import { AWS_TERRARIUM_TILES, OPENFREEMAP_PLANET } from '../lib/lidar-globe-sources';
 import { CreditsControl } from '../lib/map/credits-control';
-import { noteContextLost } from '../lib/map/crash-guard';
+import { gpuCrashCount, noteContextLost } from '../lib/map/crash-guard';
+import { markerPixelRatio } from '../lib/map/touch-gpu-budget';
+import { sharpenBasemap } from '../lib/map/sharp-raster';
 import { installVramMeter } from '../lib/map/vram-meter';
 import { governDrapeMemory } from '../lib/map/terrain-rtt';
 
@@ -48,8 +50,6 @@ const ALLY_STATE_CODES = ['AL', 'FL', 'NC', 'SC', 'TN', 'TX', 'VA'];
 const STARMAP_8K_MIN_DEVICE_PX = 1920;
 /** NASA 16K/32K sky tiles kept on the GPU on touch devices (about 1.4 MB each). */
 const TOUCH_SKY_TILES = 24;
-/** Phone/tablet GPU memory guard: device pixel ratio cap for the WebGL map canvas on touch devices. */
-const TOUCH_MAX_PIXEL_RATIO = 2;
 /** Zoom levels of off-screen tiles kept in MapLibre's tile cache on touch devices (MapLibre default 5). */
 const TOUCH_TILE_CACHE_ZOOM_LEVELS = 3;
 const MAP_CREDITS = [
@@ -65,10 +65,8 @@ const MAP_CREDITS = [
   'Cesium Man © Cesium (CC BY 4.0)',
 ].join(' | ');
 const isTouchDevice = () => typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0;
-const mapPixelRatio = () => {
-  const dpr = window.devicePixelRatio || 1;
-  return isTouchDevice() ? Math.min(TOUCH_MAX_PIXEL_RATIO, dpr) : dpr;
-};
+/** Full device ratio (≤3× on touch devices), 2× on touch after a recent GPU crash. */
+const mapPixelRatio = () => markerPixelRatio(window.devicePixelRatio || 1, isTouchDevice(), gpuCrashCount());
 
 function makeSteelPanelImage(size = 128, scale = 1): ImageData | null {
   const canvas = document.createElement('canvas');
@@ -1370,7 +1368,7 @@ export default function GodsEyeMap({
     installVramMeter();
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: BASEMAPS.satellite as any,
+      style: sharpenBasemap(BASEMAPS.satellite, mapPixelRatio(), gpuCrashCount()) as any,
       projection: { type: 'globe' } as any,
       bounds: GA_BOUNDS,
       fitBoundsOptions: { padding: 40 },
@@ -1695,7 +1693,7 @@ export default function GodsEyeMap({
     setGibsDailyActive(map, next === 'nasa');
 
     if (next === 'terrain') {
-      map.setStyle(BASEMAPS.terrain as any);
+      map.setStyle(sharpenBasemap(BASEMAPS.terrain, mapPixelRatio(), gpuCrashCount()) as any);
       map.once('styledata', () => {
         try {
           (map as any).setTerrain?.({ source: 'terrain-dem', exaggeration: 1.5 });
@@ -1704,7 +1702,7 @@ export default function GodsEyeMap({
       });
       map.easeTo({ pitch: 60, bearing: -12, duration: 800 });
     } else if (next === 'satellite' || next === 'topo' || next === 'naip' || next === 'nasa') {
-      map.setStyle(BASEMAPS[next] as any, { diff: !fullReload });
+      map.setStyle(sharpenBasemap(BASEMAPS[next], mapPixelRatio(), gpuCrashCount()) as any, { diff: !fullReload });
       // A full reload can't use 'styledata': it also fires for the outgoing style before the new one replaces it.
       map.once(fullReload ? 'style.load' : 'styledata', () => {
         try {
