@@ -40,10 +40,13 @@ import { raiseGaRoadOverlay } from './ga-roads-overlay';
 import { raiseGaTrafficCountLayers } from './ga-traffic-counts-layer';
 
 export const GA_LIDAR_MIN_ZOOM = 10;
-/** Zoom from which the OSM 3D buildings turn see-through so the measured LiDAR roofs show inside them. */
+/** Zoom from which the OSM 3D buildings are hidden so only the measured LiDAR buildings show. */
 const GA_LIDAR_BUILDINGS_ZOOM = 15;
-/** OSM building opacity under LiDAR: every footprint stays visible (surveys are 2009–2018 and may miss newer buildings or unloaded tiles). */
-export const GA_LIDAR_OSM_BUILDING_OPACITY = 0.35;
+/**
+ * OSM building opacity under LiDAR: 0, so only LiDAR buildings show (user choice). Opacity rather than visibility, so
+ * the user's own building toggle is left alone; the previous opacity is restored when LiDAR turns off or zooms out.
+ */
+export const GA_LIDAR_OSM_BUILDING_OPACITY = 0;
 const VIEW_TILES = 3.5;
 /** Fixed point diameter (CSS px): sharp micro-dots; at low altitude the imagery shows between them. */
 const POINT_CSS_PX = 1.5;
@@ -254,7 +257,7 @@ export class GaLidar3DLayer implements CustomLayerInterface {
 
   private osmOpacity: unknown = undefined;
 
-  /** OSM extrusions go see-through (never hidden) while LiDAR is drawn, so no building disappears where points are missing. */
+  /** OSM extrusions are hidden while LiDAR is drawn and restored afterwards. Buildings newer than the 2009–2018 surveys only show once LiDAR is off. */
   private setOsmBuildings(solid: boolean): void {
     const map = this.map;
     if (!map?.getLayer('buildings-3d')) return;
