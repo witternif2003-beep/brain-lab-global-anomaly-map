@@ -2,7 +2,7 @@ import { gunzipSync } from "node:zlib";
 import { NextResponse } from "next/server";
 import type { Metar } from "../../../lib/ga-clouds/metar-clouds";
 import { readMrmsGrib2, type MrmsGrid } from "../../../lib/ga-clouds/mrms";
-import { BASE_SEARCH_KM, RADAR_BBOX, radarCloudBlocks } from "../../../lib/ga-clouds/radar-clouds";
+import { BASE_SEARCH_KM, CELL_STRIDE, RADAR_BBOX, radarCloudCells } from "../../../lib/ga-clouds/radar-clouds";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -43,16 +43,14 @@ async function loadMetars() {
     const r = await fetch(AWC, { signal: AbortSignal.timeout(15_000), headers: { ...HEADERS, Accept: "application/json" }, cache: "no-store" });
     if (r.ok) metars = { at: Date.now(), list: (await r.json()) as Metar[] };
   } catch {
-    /* bases fall back to ground level; reported per block via baseStation = null */
+    /* without METAR bases every cell is top-only; reported as noBase */
   }
 }
 
-export async function GET(req: Request) {
+export async function GET() {
   await Promise.all([loadGrids(), loadMetars()]);
   if (!grids) return NextResponse.json({ error: gridError ?? "MRMS unavailable", generatedAt: new Date().toISOString() }, { status: 502 });
-  const lite = new URL(req.url).searchParams.get("lite") === "1";
-  const opts = lite ? { factor: 2, topStepM: 500 } : { factor: 1, topStepM: 250 };
-  const geojson = radarCloudBlocks(grids.top, grids.dbz, metars?.list ?? [], { ...opts, now: new Date() });
+  const cells = radarCloudCells(grids.top, grids.dbz, metars?.list ?? []);
   return NextResponse.json(
     {
       generatedAt: new Date().toISOString(),
@@ -61,12 +59,13 @@ export async function GET(req: Request) {
       observedAt: grids.top.time,
       reflectivityAt: grids.dbz.time,
       fetchedAt: new Date(grids.at).toISOString(),
-      cellDeg: grids.top.stepDeg * opts.factor,
-      topStepM: opts.topStepM,
-      baseRule: `nearest METAR lowest cloud base within ${BASE_SEARCH_KM} km (NOAA AWC); ground if none`,
+      cellDeg: grids.top.stepDeg,
+      cellStride: CELL_STRIDE,
+      cellFields: ["column", "row", "echoTopMsl_m", "peak_dBZ", "stationIndex"],
+      baseRule: `lowest cloud base at the nearest METAR within ${BASE_SEARCH_KM} km (NOAA AWC), metres above ground; cells without one are drawn as their measured top only`,
       metarStations: metars?.list.length ?? 0,
       error: gridError,
-      geojson,
+      ...cells,
     },
     { headers: { "Cache-Control": "public, s-maxage=120, stale-while-revalidate=60" } },
   );

@@ -10,8 +10,7 @@ import { gaMeshIfReady, gaLiveryMeshIfReady, gaMeshScale, gaModelReach, isFgKind
 import { isTouchDevice, LIDAR_POINT_CEILING, markerPixelRatio } from './map/touch-gpu-budget';
 import { gpuCrashCount } from './map/crash-guard';
 import { declutterMarkers, type DeclutterCandidate } from './ga-marker-declutter';
-import type { CloudPuff } from './ga-clouds/cloud-puffs';
-import { puffAtlas } from './ga-clouds/puff-texture';
+import type { CloudBox } from './ga-clouds/radar-boxes';
 import { crimeStrobePhase } from './ga-live-markers/strobe';
 
 export type RGBA = [number, number, number, number];
@@ -52,6 +51,7 @@ type DeckModules = {
   IconLayer: typeof import('@deck.gl/layers').IconLayer;
   TextLayer: typeof import('@deck.gl/layers').TextLayer;
   LineLayer: typeof import('@deck.gl/layers').LineLayer;
+  SolidPolygonLayer: typeof import('@deck.gl/layers').SolidPolygonLayer;
   SimpleMeshLayer: typeof import('@deck.gl/mesh-layers').SimpleMeshLayer;
 };
 type BenchData = {
@@ -123,8 +123,8 @@ interface DeckState {
   ground: Map<string, number>;
   groundVersion: number;
   groundTimer: ReturnType<typeof setTimeout> | null;
-  /** Radar cloud puffs; z in metres above sea level before terrain exaggeration. */
-  clouds: CloudPuff[];
+  /** Radar cloud boxes; heights in metres above sea level before terrain exaggeration. */
+  clouds: CloudBox[];
 }
 
 const states = new WeakMap<MapLibreMap, DeckState>();
@@ -154,7 +154,7 @@ const strobeFill = (state: DeckState, item: GaDeckItem): RGBA =>
   item.pulse && item.strobeColors && state.lightBar ? item.strobeColors[state.lightBar - 1] : item.fill;
 const MESH_PARAMETERS = { depthCompare: 'less-equal', depthWriteEnabled: true, cullMode: 'none' } as const;
 const EARTH_CIRCUMFERENCE_M = 40_075_016.686;
-/** Cloud sprites test depth against terrain but don't write it, so overlapping puffs blend instead of clipping. */
+/** Cloud boxes test depth against terrain but don't write it, so overlapping translucent boxes blend instead of clipping. */
 const CLOUD_PARAMETERS = { depthCompare: 'less-equal', depthWriteEnabled: false, cullMode: 'none' } as const;
 /** Zoom from which live markers with a `model` draw as 3D models. */
 export const GA_MODEL_MIN_ZOOM = 15;
@@ -384,13 +384,13 @@ function publishState(map: MapLibreMap, state: DeckState): void {
 }
 
 function pickAlways(state: DeckState, point: Point): { group: GaDeckGroup; item: GaDeckItem } | null {
-  let picked: { object?: unknown } | null = null;
+  let picked: { object?: unknown }[] = [];
   try {
-    picked = state.overlay?.pickObject({ x: point.x, y: point.y, radius: HIT_BOX_PX }) ?? null;
+    picked = state.overlay?.pickMultipleObjects({ x: point.x, y: point.y, radius: HIT_BOX_PX, depth: 4 }) ?? [];
   } catch {
     return null;
   }
-  const item = picked?.object as GaDeckItem | undefined;
+  const item = picked.map((p) => p.object as GaDeckItem | undefined).find((o) => o?.model?.always);
   if (!item?.model?.always) return null;
   for (const group of state.groups.values()) if (group.items.includes(item)) return { group, item };
   return null;
@@ -621,22 +621,16 @@ function createLayers(state: DeckState): Layer[] {
   const layers: Layer[] = [];
   const labelLayers: Layer[] = [];
   if (state.clouds.length) {
-    const exaggeration = state.map.getTerrain()?.exaggeration ?? 1;
-    const atlas = puffAtlas();
-    layers.push(new IconLayer<CloudPuff>({
-      id: 'ga-deck-clouds',
+    const ex = state.map.getTerrain()?.exaggeration ?? 1;
+    layers.push(new state.modules.SolidPolygonLayer<CloudBox>({
+      id: GA_CLOUD_LAYER_ID,
       data: state.clouds,
-      iconAtlas: atlas.url,
-      iconMapping: atlas.mapping,
-      getIcon: () => 'puff',
-      getPosition: (p) => [p.position[0], p.position[1], p.position[2] * exaggeration],
-      getSize: (p) => 2.2 * p.scale[0],
-      getColor: (p) => p.color,
-      updateTriggers: { getPosition: exaggeration },
-      sizeUnits: 'meters',
-      billboard: true,
-      alphaCutoff: 0.01,
-      pickable: false,
+      getPolygon: (b) => b.polygon.map(([lng, lat]) => [lng, lat, b.baseMsl * ex] as [number, number, number]),
+      getElevation: (b) => (b.topMsl - b.baseMsl) * ex,
+      getFillColor: (b) => b.color,
+      updateTriggers: { getPolygon: ex, getElevation: ex },
+      extruded: true,
+      pickable: true,
       parameters: CLOUD_PARAMETERS,
     }));
   }
@@ -847,6 +841,7 @@ async function loadModules(): Promise<DeckModules> {
     IconLayer: layers.IconLayer,
     TextLayer: layers.TextLayer,
     LineLayer: layers.LineLayer,
+    SolidPolygonLayer: layers.SolidPolygonLayer,
     SimpleMeshLayer: meshLayers.SimpleMeshLayer,
   };
 }
@@ -1078,10 +1073,21 @@ async function initialize(map: MapLibreMap, state: DeckState): Promise<void> {
   }
 }
 
-/** Replaces the radar cloud puffs (drawn under every marker group). */
-export function setGaDeckClouds(map: MapLibreMap, puffs: CloudPuff[]): void {
+const GA_CLOUD_LAYER_ID = 'ga-deck-clouds';
+
+/** The radar cloud box under a screen point, if any. */
+export function pickGaDeckCloud(map: MapLibreMap, point: Point): CloudBox | null {
+  try {
+    return (states.get(map)?.overlay?.pickObject({ x: point.x, y: point.y, radius: 2, layerIds: [GA_CLOUD_LAYER_ID] })?.object as CloudBox | undefined) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Replaces the radar cloud boxes (drawn under every marker group). */
+export function setGaDeckClouds(map: MapLibreMap, boxes: CloudBox[]): void {
   const state = getState(map);
-  state.clouds = puffs;
+  state.clouds = boxes;
   publishState(map, state);
   if (state.overlay) updateLayers(state);
   if (!state.initPromise) state.initPromise = initialize(map, state);
