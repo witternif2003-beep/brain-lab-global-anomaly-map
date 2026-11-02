@@ -38,6 +38,7 @@ import { glowRadius, scaleMarkersInsideGaWall, type RadiusExpression } from '../
 import { exportMapAt8k } from '../lib/map-8k-export';
 import { attachSolarSky } from '../lib/ga-sky';
 import { SKY_PHOTO_SOURCE_URL, SkyPhotoRenderer, projectRaDec, skyBasis, skyBodyPositions, type SkyBodyPosition } from '../lib/sky-photo';
+import { staticRender } from '../lib/static-render';
 import { AWS_TERRARIUM_TILES, OPENFREEMAP_PLANET } from '../lib/lidar-globe-sources';
 import { CreditsControl } from '../lib/map/credits-control';
 import { gpuCrashCount, noteContextLost } from '../lib/map/crash-guard';
@@ -525,7 +526,12 @@ export default function GodsEyeMap({
     // Rigorous astronomical coordinates: Right Ascension (RA in hours 0..24) and Declination (Dec in degrees -90..+90)
     // Twinkling & physical radius calculated from verified Apparent Visual Magnitude (Vmag)
 
+    let lastStatic = -Infinity;
     const render = (time: number) => {
+      if (staticRender()) {
+        if (time - lastStatic < 1000) { animId = requestAnimationFrame(render); return; }
+        lastStatic = time;
+      }
       const m = mapRef.current;
       const center = m ? m.getCenter() : { lng: -83.4, lat: 32.6 };
       const date = new Date(Date.now() + starFinderTimeShiftHours * 3_600_000);
@@ -1543,6 +1549,8 @@ export default function GodsEyeMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
+
+    if (staticRender()) return;
 
     let inFlightPerson: VerifiedPersonLeavingGA | null = null;
     let templateIdx = 0;

@@ -5,6 +5,7 @@ import { reportGaFeed } from './ga-live-status';
 import { hitsGaDeck } from './ga-deck-overlay';
 import { carSpacingM, carsAlong, roadHeadingAt, roadPathFor, type RoadLine } from './ga-traffic-counts/cars';
 import { LEVELS, TADA_PAGE, type CountsPayload, type StationProps } from './ga-traffic-counts/normalize';
+import { staticRender } from './static-render';
 
 const API = '/api/ga-traffic-counts';
 const REFRESH_MS = 5 * 60_000;
@@ -145,7 +146,7 @@ function addTrafficCars(map: MapLibreMap, getStations: () => GeoJSON.Feature<Geo
       },
     }, map.getLayer(DOT) ? DOT : undefined);
   }
-  const reduced = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const reduced = staticRender() || typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   let paths: CarPath[] = [];
   let active = false;
   let raf = 0;

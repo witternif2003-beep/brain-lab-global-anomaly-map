@@ -12,6 +12,7 @@ import { gpuCrashCount } from './map/crash-guard';
 import { declutterMarkers, type DeclutterCandidate } from './ga-marker-declutter';
 import type { CloudBox } from './ga-clouds/radar-boxes';
 import { crimeStrobePhase } from './ga-live-markers/strobe';
+import { staticRender } from './static-render';
 
 export type RGBA = [number, number, number, number];
 export interface GaDeckItem {
@@ -816,6 +817,7 @@ function updateLayers(state: DeckState): void {
 }
 
 function startPulse(map: MapLibreMap, state: DeckState): void {
+  if (staticRender()) return;
   const animate = (now: number) => {
     if (state.removed) return;
     state.pulseFrame = requestAnimationFrame(animate);
