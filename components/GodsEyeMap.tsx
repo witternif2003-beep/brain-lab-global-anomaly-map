@@ -19,12 +19,14 @@ import { attachBuildingEnrichment, type BuildingEnrichStats } from '../lib/ga-bu
 import { attachBuildingLighting } from '../lib/ga-buildings/building-lighting';
 import { addViewshedLayers, clearViewshed, onceOnMapClick, runViewshedAt, type ViewshedResult } from '../lib/ga-viewshed/layer';
 import { exportMap32k, pickPngSink, EXPORT_32K_WIDTH } from '../lib/map/export-32k';
+import { freezeAircraftForExport } from '../lib/ga-live-markers/export-snapshot';
 import { addGaRoadOverlay } from '../lib/ga-roads-overlay';
 import { addGaRetailParkingLayers } from '../lib/ga-retail-parking-layer';
 import { addGaCompetitorLayers } from '../lib/ga-competitors';
 import { addDisneyLiveBoard } from '../lib/disney-live';
 import { addGaH3Telemetry } from '../lib/ga-h3-telemetry';
 import { addGaTrafficLayers } from '../lib/ga-traffic-layer';
+import { addGaTrafficFlowLayer } from '../lib/ga-traffic-flow-layer';
 import { addGaTrafficCountLayers } from '../lib/ga-traffic-counts-layer';
 import { addGaHydrometLayers } from '../lib/ga-hydromet-layer';
 import { addGaAnomalyBulbs } from '../lib/ga-anomaly-bulbs';
@@ -477,7 +479,13 @@ export default function GodsEyeMap({
     setExport32kStatus('preparing…');
     try {
       const { sink, close } = await pickPngSink(`georgia-map-${EXPORT_32K_WIDTH}.png`);
-      const out = await exportMap32k(map, sink, (done, total) => setExport32kStatus(`tile ${done}/${total}`));
+      const thaw = freezeAircraftForExport(map);
+      let out;
+      try {
+        out = await exportMap32k(map, sink, (done, total) => setExport32kStatus(`tile ${done}/${total}`));
+      } finally {
+        thaw();
+      }
       await close();
       setExport32kStatus(`saved ${out.width}×${out.height} in ${Math.round(out.seconds)} s`);
     } catch (err) {
@@ -927,6 +935,7 @@ export default function GodsEyeMap({
     addGaH3Telemetry(map);
     addGaHydrometLayers(map);
     addGaTrafficLayers(map);
+    void addGaTrafficFlowLayer(map);
     addGaTrafficCountLayers(map);
     addBleVehicleLayers(map);
     addMovingTrackLayers(map);

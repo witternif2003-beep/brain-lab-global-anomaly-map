@@ -14,6 +14,9 @@ import { box } from './ga-orbital-layer';
 import { setGaBuildingFlags } from './ga-building-flags';
 import { mergeVessels, type LiveLayer, type LiveMarker, type LiveValue } from './ga-live-markers/parse';
 import type { CameraState } from './ga-live-markers/snapshot';
+import { createAircraftPredictor } from './ga-live-markers/ekf-client';
+import { registerAircraftSnapshot } from './ga-live-markers/export-snapshot';
+import type { EkfMeasurement } from './ga-live-markers/ekf';
 import { CRIME_STROBE_BLUE, CRIME_STROBE_RED, CRIME_TRIANGLE_LAYERS, hasActiveStrobe, STROBE_MS, strobeKey, strobeSince } from './ga-live-markers/strobe';
 import { LIVE_FEED_LAYERS, liveCeiling } from './ga-live-markers/ceiling';
 
@@ -80,6 +83,8 @@ const faaRows = (type: LiveValue | undefined, category?: LiveValue): [string, st
 };
 const STROBE_RECHECK_MS = 60_000;
 const TICK_MS = 1_000;
+/** Aircraft redraw cadence: 4 Hz on desktop, 1 Hz on touch devices (each redraw rebuilds the deck.gl aircraft group). */
+const AIRCRAFT_TICK_MS = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches ? TICK_MS : 250;
 const fmt = (v: LiveValue, unit = '') => (v === null || v === undefined || v === '' ? '' : `${v}${unit}`);
 const countBy = (ms: LiveMarker[], key: string) => {
   const c = new Map<string, number>();
@@ -607,6 +612,16 @@ function popupFor(layer: LiveLayer, onCameraChecked?: () => void) {
   };
 }
 
+/** ADS-B fix for the EKF, or null for ground traffic / fixes without speed, track or time. */
+export function aircraftMeasurement(m: LiveMarker): EkfMeasurement | null {
+  const gs = Number(m.props.gsKt);
+  const track = Number(m.props.track);
+  const t = m.observedAt ? Date.parse(m.observedAt) : NaN;
+  if (m.props.onGround || m.props.gsKt === null || m.props.track === null || !Number.isFinite(gs) || !Number.isFinite(track) || !Number.isFinite(t)) return null;
+  const h = (track * Math.PI) / 180;
+  return { id: strobeKey('aircraft', m), t, lon: m.lon, lat: m.lat, speedMs: gs * KT_TO_MS, headingRad: Math.atan2(Math.sin(h), Math.cos(h)) };
+}
+
 function aircraftCoord(m: LiveMarker, now: number): LngLat {
   const gs = Number(m.props.gsKt);
   const track = Number(m.props.track);
@@ -622,6 +637,11 @@ export function addGaLiveMarkerLayers(map: MapLibreMap): void {
   const wallP = loadGaWallRing().catch(() => [] as LngLat[]);
   const current: Partial<Record<LiveLayer, LiveMarker[]>> = {};
   const firstSeen: Partial<Record<LiveLayer, Map<string, number>>> = {};
+  const predictor = createAircraftPredictor(() => current.aircraft && render('aircraft'));
+  const unregisterSnapshot = registerAircraftSnapshot(map, () => {
+    const now = Date.now();
+    return (current.aircraft ?? []).map((m) => predictor.get(strobeKey('aircraft', m)) ?? aircraftCoord(m, now));
+  });
 
   const render = (layer: LiveLayer) => {
     const spec = SPECS[layer];
@@ -634,7 +654,7 @@ export function addGaLiveMarkerLayers(map: MapLibreMap): void {
     const items: GaDeckItem[] = ms.map((m) => {
       const cam = layer === 'gdotcams' ? cameraState(m) : 'live';
       return {
-      coord: layer === 'aircraft' ? aircraftCoord(m, now) : [m.lon, m.lat],
+      coord: layer === 'aircraft' ? (predictor.get(strobeKey('aircraft', m)) ?? aircraftCoord(m, now)) : [m.lon, m.lat],
       radiusPx: spec.radiusPx,
       ...toIcon(spec.icon(m)),
       iconPx: spec.iconPx,
@@ -727,6 +747,10 @@ export function addGaLiveMarkerLayers(map: MapLibreMap): void {
       const ms = layer === 'vessels' ? mergeVessels(current.vessels ?? [], fresh) : fresh;
       current[layer] = ms;
       firstSeen[layer] = strobeSince(layer, ms, firstSeen[layer], Date.now());
+      if (layer === 'aircraft') {
+        predictor.ingest(ms.map(aircraftMeasurement).filter((x): x is EkfMeasurement => !!x));
+        predictor.predict(Date.now());
+      }
       render(layer);
       const failed = (d.feeds ?? []).filter((f) => f.error);
       const unplaced = (d.feeds ?? []).reduce((a, f) => a + (f.unplaced ?? 0), 0);
@@ -763,11 +787,13 @@ export function addGaLiveMarkerLayers(map: MapLibreMap): void {
   layers.forEach((l) => void load(l));
   const timers = [
     ...layers.map((l) => setInterval(() => void load(l), SPECS[l].refreshMs)),
-    setInterval(() => current.aircraft && render('aircraft'), TICK_MS),
+    setInterval(() => current.aircraft && !predictor.predict(Date.now()) && render('aircraft'), AIRCRAFT_TICK_MS),
     setInterval(() => layers.forEach((l) => current[l] && hasActiveStrobe(firstSeen[l], Date.now(), STROBE_RECHECK_MS) && render(l)), STROBE_RECHECK_MS),
   ];
   map.once('remove', () => {
     timers.forEach(clearInterval);
+    predictor.dispose();
+    unregisterSnapshot();
     map.off('moveend', onMoveEnd);
     bound.delete(map);
   });

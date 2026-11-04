@@ -33,5 +33,5 @@ export function addGaRoadOverlay(map: MapLibreMap): void {
 
 /** Re-stacks the road overlay above layers added later (e.g. LiDAR re-added after a WebGL context restore). */
 export function raiseGaRoadOverlay(map: MapLibreMap): void {
-  for (const id of GA_ROAD_LAYERS) if (map.getLayer(id)) map.moveLayer(id);
+  for (const id of [...GA_ROAD_LAYERS, 'ga-traffic-flow-line']) if (map.getLayer(id)) map.moveLayer(id);
 }
