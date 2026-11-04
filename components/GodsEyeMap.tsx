@@ -1897,11 +1897,9 @@ export default function GodsEyeMap({
                 eye {losResult.observerHeightM.toFixed(1)} m · sees {(losResult.areaM2 / 10000).toFixed(1)} ha of {(losResult.circleAreaM2 / 10000).toFixed(1)} ha · {Math.round(losResult.coverage * 100)}% of the 200 m block · {losResult.buildings} buildings · {Math.round(losResult.viewshedMs)}/{Math.round(losResult.blindspotMs)} ms
               </span>
             )}
-            {overtureState && (
+            {overtureState?.status === 'error' && (
               <span className="text-[10px] text-slate-300 bg-[#070d18]/80 rounded px-1.5 py-0.5">
-                buildings {overtureState.status === 'error' ? `error: ${overtureState.error ?? ''}` : `Overture ${overtureState.release}`}
-                {buildingStats && buildingStats.measured > 0 ? ` · ${buildingStats.measured} LiDAR heights` : ''}
-                {buildingStats && buildingStats.painted > 0 ? ` · ${buildingStats.painted} NAIP roofs` : ''}
+                buildings error: {overtureState.error ?? ''}
               </span>
             )}
           </div>
