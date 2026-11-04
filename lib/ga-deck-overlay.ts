@@ -55,6 +55,8 @@ type DeckModules = {
   TextLayer: typeof import('@deck.gl/layers').TextLayer;
   LineLayer: typeof import('@deck.gl/layers').LineLayer;
   SimpleMeshLayer: typeof import('@deck.gl/mesh-layers').SimpleMeshLayer;
+  CloudSheetLayer: typeof import('@deck.gl/mesh-layers').SimpleMeshLayer;
+  CloudSheetGlobeLayer: typeof import('@deck.gl/mesh-layers').SimpleMeshLayer;
 };
 type BenchData = {
   length: number;
@@ -636,15 +638,17 @@ const LABEL_FONT = '"JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospa
 
 function createLayers(state: DeckState): Layer[] {
   if (!state.modules) return [];
-  const { ScatterplotLayer, IconLayer, TextLayer, LineLayer, SimpleMeshLayer } = state.modules;
+  const { ScatterplotLayer, IconLayer, TextLayer, LineLayer, SimpleMeshLayer, CloudSheetLayer, CloudSheetGlobeLayer } = state.modules;
   const scale = modelScale(state.zoom);
   const layers: Layer[] = [];
   const labelLayers: Layer[] = [];
   const sheet = state.cloudSheet;
   const mesh = sheet && sheetMesh(sheet, state.map.getTerrain()?.exaggeration ?? 1);
   if (sheet && mesh) {
-    layers.push(new SimpleMeshLayer({
-      id: 'ga-deck-cloud-tops',
+    const globe = isDeckGlobe(state.map);
+    const Sheet = globe ? CloudSheetGlobeLayer : CloudSheetLayer;
+    layers.push(new Sheet({
+      id: globe ? 'ga-deck-cloud-tops-globe' : 'ga-deck-cloud-tops',
       data: [0],
       mesh,
       texture: sheet.texture,
@@ -886,7 +890,36 @@ async function loadModules(): Promise<DeckModules> {
     TextLayer: layers.TextLayer,
     LineLayer: layers.LineLayer,
     SimpleMeshLayer: meshLayers.SimpleMeshLayer,
+    CloudSheetLayer: cloudSheetLayer(meshLayers.SimpleMeshLayer) as unknown as typeof meshLayers.SimpleMeshLayer,
+    CloudSheetGlobeLayer: cloudSheetLayer(meshLayers.SimpleMeshLayer, true) as unknown as typeof meshLayers.SimpleMeshLayer,
   };
+}
+
+/** Cloud-top sheet fades out where the view grazes it (far toward the horizon), so distant cloud dissolves into the sky like the near puffs. */
+export const CLOUD_SHEET_GRAZE_FADE = [0.02, 0.25] as const;
+/** Steep mesh walls only join neighbouring cloud tops of different height; they are not cloud, so they fade out instead of showing as grey facets. */
+export const CLOUD_SHEET_WALL_FADE = [0.25, 0.6] as const;
+export function cloudSheetLayer(Base: typeof import('@deck.gl/mesh-layers').SimpleMeshLayer, globe = false) {
+  class CloudSheetLayer extends Base {
+    static layerName = 'CloudSheetLayer';
+    getShaders() {
+      const shaders = super.getShaders();
+      return {
+        ...shaders,
+        inject: {
+          ...(shaders.inject ?? {}),
+          'fs:#main-end': `
+vec3 cloudUp = ${globe ? 'normalize(position_commonspace.xyz)' : 'vec3(0.0, 0.0, 1.0)'};
+float cloudGraze = abs(dot(normalize(position_commonspace.xyz - cameraPosition), cloudUp));
+fragColor.a *= smoothstep(${CLOUD_SHEET_GRAZE_FADE[0].toFixed(3)}, ${CLOUD_SHEET_GRAZE_FADE[1].toFixed(3)}, cloudGraze);
+vec3 cloudNormal = normalize(cross(dFdx(position_commonspace.xyz), dFdy(position_commonspace.xyz)));
+fragColor.a *= smoothstep(${CLOUD_SHEET_WALL_FADE[0].toFixed(3)}, ${CLOUD_SHEET_WALL_FADE[1].toFixed(3)}, abs(dot(cloudNormal, cloudUp)));
+`,
+        },
+      };
+    }
+  }
+  return CloudSheetLayer;
 }
 
 async function addRenderer(map: MapLibreMap, state: DeckState, renderer: Renderer, modules: DeckModules, deviceProps?: Record<string, unknown>): Promise<void> {

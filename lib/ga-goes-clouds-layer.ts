@@ -1,6 +1,7 @@
 import type { Map as MapLibreMap } from 'maplibre-gl';
 import { GOES_BANDS, GOES_WMS, cloudAlphaInPlace, latestScanTimes, sunGainFor, type GoesKind } from './ga-goes-clouds/goes';
 import { coverAt, type CloudTopGrid } from './ga-goes-clouds/cloud-tops';
+import { boxBlur, nightFactor, smooth } from './ga-goes-clouds/soften';
 import { setGaDeckCloudSheet } from './ga-deck-overlay';
 import { reportGaFeed } from './ga-live-status';
 import { subsolarPoint, sunAltitudeDeg } from './terminator/solar';
@@ -11,6 +12,12 @@ const VIS_MIN_SUN_DEG = 8;
 const DOCS = 'https://nowcoast.noaa.gov/';
 const TOPS_DOCS = 'https://registry.opendata.aws/noaa-goes/';
 const MAX_PX = 2048;
+/** Sheet opacity fades to zero over this many degrees inside the box edge, so it never ends in a hard line. */
+const EDGE_FEATHER_DEG = 0.35;
+/** Same colours as the radar puffs (lib/ga-clouds/cloud-puffs.ts), so the two layers read as one cloud deck. */
+const DAY_RGB = [255, 255, 255];
+const NIGHT_RGB = [172, 186, 212];
+const BLUR_PX = 2;
 
 interface TopsPayload { grid?: CloudTopGrid; scanStart?: string; scanEnd?: string; file?: string; measuredVertices?: number; minM?: number | null; maxM?: number | null; error?: string }
 
@@ -37,7 +44,7 @@ function imageUrl(kind: GoesKind, grid: CloudTopGrid, time: string): { url: stri
 }
 
 /** Satellite brightness → cloud opacity, kept only where the cloud-top product found good-quality cloud. */
-async function cloudTexture(kind: GoesKind, grid: CloudTopGrid, time: string): Promise<{ canvas: HTMLCanvasElement; cloudy: number }> {
+export async function cloudTexture(kind: GoesKind, grid: CloudTopGrid, time: string): Promise<{ canvas: HTMLCanvasElement; cloudy: number }> {
   const { url } = imageUrl(kind, grid, time);
   const r = await fetch(url);
   if (!r.ok) throw new Error(`GOES image HTTP ${r.status}`);
@@ -53,13 +60,29 @@ async function cloudTexture(kind: GoesKind, grid: CloudTopGrid, time: string): P
   const { w, s, e, n } = grid.box;
   const gain = kind === 'vis' ? sunGainFor(sunAltitudeDeg(subsolarPoint(new Date(time)), (w + e) / 2, (s + n) / 2)) : 1;
   cloudAlphaInPlace(img.data, GOES_BANDS[kind], gain);
-  let cloudy = 0;
-  for (let y = 0; y < canvas.height; y++) {
-    for (let x = 0; x < canvas.width; x++) {
-      const i = (y * canvas.width + x) * 4 + 3;
-      img.data[i] = Math.round(img.data[i] * coverAt(grid, x, y, canvas.width, canvas.height));
-      if (img.data[i] > 0) cloudy++;
+  const W = canvas.width;
+  const H = canvas.height;
+  const alpha = new Float32Array(W * H);
+  const fx = EDGE_FEATHER_DEG / (e - w);
+  const fy = EDGE_FEATHER_DEG / (n - s);
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const u = x / Math.max(1, W - 1);
+      const v = y / Math.max(1, H - 1);
+      const edge = smooth(Math.min(u, 1 - u) / fx) * smooth(Math.min(v, 1 - v) / fy);
+      alpha[y * W + x] = img.data[(y * W + x) * 4 + 3] * coverAt(grid, x, y, W, H) * edge;
     }
+  }
+  const soft = boxBlur(boxBlur(alpha, W, H, BLUR_PX), W, H, BLUR_PX);
+  const night = nightFactor(sunAltitudeDeg(subsolarPoint(new Date(time)), (w + e) / 2, (s + n) / 2));
+  const rgb = DAY_RGB.map((d, i) => Math.round(d + (NIGHT_RGB[i] - d) * night));
+  let cloudy = 0;
+  for (let i = 0; i < W * H; i++) {
+    img.data[i * 4] = rgb[0];
+    img.data[i * 4 + 1] = rgb[1];
+    img.data[i * 4 + 2] = rgb[2];
+    img.data[i * 4 + 3] = Math.round(soft[i]);
+    if (img.data[i * 4 + 3] > 0) cloudy++;
   }
   ctx.putImageData(img, 0, 0);
   return { canvas, cloudy: cloudy / (canvas.width * canvas.height) };
