@@ -41,6 +41,7 @@ import { vramMeterInstalled, vramSnapshot } from './map/vram-meter';
 import { reportGaFeed } from './ga-live-status';
 import { raiseGaRoadOverlay } from './ga-roads-overlay';
 import { raiseGaTrafficCountLayers } from './ga-traffic-counts-layer';
+import { GA_ROAD_LAYERS } from './ga-roads-overlay';
 
 export const GA_LIDAR_MIN_ZOOM = 10;
 const VIEW_TILES = 3.5;
@@ -134,7 +135,7 @@ const VERTEX = /* glsl */ `
 const FRAGMENT = /* glsl */ `
   varying vec3 vColor;
   void main() {
-    if (distance(gl_PointCoord, vec2(0.5)) > 0.5) discard;
+    if (length(gl_PointCoord - 0.5) > 0.5) discard;
     gl_FragColor = vec4(vColor, 1.0);
   }
 `;
@@ -650,12 +651,12 @@ export function addGaLidarLayers(map: MapLibreMap): void {
   if (!map.getLayer(ATTRIBUTION_SOURCE)) {
     map.addLayer({ id: ATTRIBUTION_SOURCE, type: 'circle', source: ATTRIBUTION_SOURCE, minzoom: GA_LIDAR_MIN_ZOOM });
   }
-  if (!map.getLayer('ga-lidar-3d')) map.addLayer(new GaLidar3DLayer());
+  if (!map.getLayer('ga-lidar-3d')) map.addLayer(new GaLidar3DLayer(), GA_ROAD_LAYERS.find((id) => map.getLayer(id)));
   if (!restoreHooked.has(map)) {
     restoreHooked.add(map);
     map.on('webglcontextrestored', () => {
       map.once('style.load', () => {
-        if (!map.getLayer('ga-lidar-3d')) map.addLayer(new GaLidar3DLayer());
+        if (!map.getLayer('ga-lidar-3d')) map.addLayer(new GaLidar3DLayer(), GA_ROAD_LAYERS.find((id) => map.getLayer(id)));
         raiseGaRoadOverlay(map);
         raiseGaTrafficCountLayers(map);
       });
