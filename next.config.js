@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   poweredByHeader: false,
-  serverExternalPackages: ['laz-perf'],
+  serverExternalPackages: ['laz-perf', 'h5wasm'],
   outputFileTracingIncludes: {
     '/api/ga-live-markers': ['./data/osm/ga-infra-snapshot.json.gz'],
     '/api/fbi-osint': ['./data/geo/ipv4-country.json.gz'],

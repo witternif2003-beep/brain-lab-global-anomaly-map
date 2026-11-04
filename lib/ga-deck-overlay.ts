@@ -12,6 +12,7 @@ import { gpuCrashCount } from './map/crash-guard';
 import { declutterMarkers, type DeclutterCandidate } from './ga-marker-declutter';
 import type { CloudPuff } from './ga-clouds/cloud-puffs';
 import { puffAtlas } from './ga-clouds/puff-texture';
+import { cloudTopMesh, type CloudTopGrid, type CloudTopMesh } from './ga-goes-clouds/cloud-tops';
 import { crimeStrobePhase } from './ga-live-markers/strobe';
 import { staticRender } from './static-render';
 
@@ -69,6 +70,7 @@ type DeckSnapshot = {
   pulse: { radiusScale: number; opacity: number };
   ground: { terrain: boolean; version: number; anchored: number };
   clouds: number;
+  cloudSheet: { vertices: number; measured: number } | null;
 };
 
 declare global {
@@ -126,6 +128,21 @@ interface DeckState {
   groundTimer: ReturnType<typeof setTimeout> | null;
   /** Radar cloud puffs; z in metres above sea level before terrain exaggeration. */
   clouds: CloudPuff[];
+  /** GOES satellite cloud image on the GOES cloud-top-height mesh. */
+  cloudSheet: GaCloudSheet | null;
+}
+
+export interface GaCloudSheet {
+  grid: CloudTopGrid;
+  texture: HTMLCanvasElement;
+}
+const sheetMeshes = new WeakMap<GaCloudSheet, { exaggeration: number; mesh: CloudTopMesh | null }>();
+function sheetMesh(sheet: GaCloudSheet, exaggeration: number): CloudTopMesh | null {
+  const hit = sheetMeshes.get(sheet);
+  if (hit?.exaggeration === exaggeration) return hit.mesh;
+  const mesh = cloudTopMesh(sheet.grid, exaggeration);
+  sheetMeshes.set(sheet, { exaggeration, mesh });
+  return mesh;
 }
 
 const states = new WeakMap<MapLibreMap, DeckState>();
@@ -213,6 +230,7 @@ function getState(map: MapLibreMap): DeckState {
     ground: new Map(),
     groundVersion: 0,
     clouds: [],
+    cloudSheet: null,
     groundTimer: null,
   };
   states.set(map, state);
@@ -324,6 +342,7 @@ function snapshot(state: DeckState): DeckSnapshot {
     pulse: { radiusScale: state.pulseRadiusScale, opacity: state.pulseOpacity },
     ground: { terrain: !!state.map.getTerrain(), version: state.groundVersion, anchored: state.ground.size },
     clouds: state.clouds.length,
+    cloudSheet: state.cloudSheet ? { vertices: state.cloudSheet.grid.cols * state.cloudSheet.grid.rows, measured: state.cloudSheet.grid.heightsM.filter((h) => h !== null).length } : null,
   };
 }
 
@@ -621,6 +640,22 @@ function createLayers(state: DeckState): Layer[] {
   const scale = modelScale(state.zoom);
   const layers: Layer[] = [];
   const labelLayers: Layer[] = [];
+  const sheet = state.cloudSheet;
+  const mesh = sheet && sheetMesh(sheet, state.map.getTerrain()?.exaggeration ?? 1);
+  if (sheet && mesh) {
+    layers.push(new SimpleMeshLayer({
+      id: 'ga-deck-cloud-tops',
+      data: [0],
+      mesh,
+      texture: sheet.texture,
+      _instanced: false,
+      getPosition: () => [0, 0, 0],
+      getColor: [255, 255, 255, 255],
+      material: false,
+      pickable: false,
+      parameters: CLOUD_PARAMETERS,
+    }));
+  }
   if (state.clouds.length) {
     const exaggeration = state.map.getTerrain()?.exaggeration ?? 1;
     const atlas = puffAtlas();
@@ -1079,6 +1114,15 @@ async function initialize(map: MapLibreMap, state: DeckState): Promise<void> {
     console.error('[GaDeck] overlay initialization failed:', error);
     if (!state.renderer && !state.removed) await fallbackToWebGL(map, state, `WebGPU initialization failed: ${error instanceof Error ? error.message : String(error)}`);
   }
+}
+
+/** Replaces the GOES cloud-top sheet (drawn under the radar puffs and every marker group). */
+export function setGaDeckCloudSheet(map: MapLibreMap, sheet: GaCloudSheet | null): void {
+  const state = getState(map);
+  state.cloudSheet = sheet;
+  publishState(map, state);
+  if (state.overlay) updateLayers(state);
+  if (!state.initPromise) state.initPromise = initialize(map, state);
 }
 
 /** Replaces the radar cloud puffs (drawn under every marker group). */

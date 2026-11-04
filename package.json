@@ -42,6 +42,7 @@
     "d3-delaunay": "6.0.4",
     "geojson-vt": "^5.0.2",
     "h3-js": "4.4.0",
+    "h5wasm": "0.10.3",
     "hls.js": "1.7.3",
     "laz-perf": "0.0.7",
     "lucide-react": "^1.48.0",

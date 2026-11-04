@@ -1,110 +1,104 @@
-import { addProtocol, type Map as MapLibreMap, type RasterTileSource } from 'maplibre-gl';
-import { GOES_BANDS, GOES_WMS, cloudAlphaInPlace, goesTileUrl, latestScanTimes, sunGainFor, tileBbox3857, type GoesKind } from './ga-goes-clouds/goes';
+import type { Map as MapLibreMap } from 'maplibre-gl';
+import { GOES_BANDS, GOES_WMS, cloudAlphaInPlace, latestScanTimes, sunGainFor, type GoesKind } from './ga-goes-clouds/goes';
+import { coverAt, type CloudTopGrid } from './ga-goes-clouds/cloud-tops';
+import { setGaDeckCloudSheet } from './ga-deck-overlay';
 import { reportGaFeed } from './ga-live-status';
 import { subsolarPoint, sunAltitudeDeg } from './terminator/solar';
 
-const PROTOCOL = 'goescloud';
 const POLL_MS = 60_000;
-/** Visible imagery is used while the sun is this high at the map centre; infrared otherwise. */
+/** Visible imagery is used while the sun is this high over the box centre; infrared otherwise. */
 const VIS_MIN_SUN_DEG = 8;
 const DOCS = 'https://nowcoast.noaa.gov/';
-const KINDS: GoesKind[] = ['vis', 'ir'];
+const TOPS_DOCS = 'https://registry.opendata.aws/noaa-goes/';
+const MAX_PX = 2048;
 
-const sourceId = (k: GoesKind) => `goes-clouds-${k}`;
-const tiles = (k: GoesKind, time: string) => [`${PROTOCOL}://${k}/{z}/{x}/{y}?t=${encodeURIComponent(time)}`];
-let registered = false;
+interface TopsPayload { grid?: CloudTopGrid; scanStart?: string; scanEnd?: string; file?: string; measuredVertices?: number; minM?: number | null; maxM?: number | null; error?: string }
+
 const bound = new WeakSet<MapLibreMap>();
-const scanTimes = new Map<GoesKind, string>();
+const drawn = new WeakMap<MapLibreMap, string>();
 
-function tileCentre(z: number, x: number, y: number): [number, number] {
-  const [x0, y0, x1, y1] = tileBbox3857(z, x, y);
-  const R = 6_378_137;
-  return [((x0 + x1) / 2 / R) * (180 / Math.PI), (2 * Math.atan(Math.exp((y0 + y1) / 2 / R)) - Math.PI / 2) * (180 / Math.PI)];
+function activeKind(grid: CloudTopGrid): GoesKind {
+  const { w, s, e, n } = grid.box;
+  return sunAltitudeDeg(subsolarPoint(new Date()), (w + e) / 2, (s + n) / 2) >= VIS_MIN_SUN_DEG ? 'vis' : 'ir';
 }
 
-function register(): void {
-  if (registered) return;
-  registered = true;
-  addProtocol(PROTOCOL, async (params, abort) => {
-    const m = /^goescloud:\/\/(vis|ir)\/(\d+)\/(\d+)\/(\d+)\?t=(.+)$/.exec(params.url);
-    if (!m) throw new Error(`bad GOES tile ${params.url}`);
-    const kind = m[1] as GoesKind;
-    const [z, x, y] = [m[2], m[3], m[4]].map(Number);
-    const time = decodeURIComponent(m[5]);
-    const r = await fetch(goesTileUrl(kind, z, x, y, time), { signal: abort.signal });
-    if (!r.ok) throw new Error(`GOES ${r.status}`);
-    const bmp = await createImageBitmap(await r.blob());
-    const canvas = document.createElement('canvas');
-    canvas.width = bmp.width;
-    canvas.height = bmp.height;
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    if (!ctx) throw new Error('2d canvas unavailable');
-    ctx.drawImage(bmp, 0, 0);
-    bmp.close();
-    const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const [lng, lat] = tileCentre(z, x, y);
-    const gain = kind === 'vis' ? sunGainFor(sunAltitudeDeg(subsolarPoint(new Date(time)), lng, lat)) : 1;
-    cloudAlphaInPlace(img.data, GOES_BANDS[kind], gain);
-    ctx.putImageData(img, 0, 0);
-    return { data: await createImageBitmap(canvas) };
+/** Satellite image of the whole box at the band's native pixel size, in lon/lat (CRS:84) so it maps linearly onto the mesh. */
+function imageUrl(kind: GoesKind, grid: CloudTopGrid, time: string): { url: string; width: number; height: number } {
+  const { w, s, e, n } = grid.box;
+  const km = GOES_BANDS[kind].km;
+  const lat = (s + n) / 2;
+  const width = Math.min(MAX_PX, Math.round(((e - w) * 111.32 * Math.cos((lat * Math.PI) / 180)) / km));
+  const height = Math.min(MAX_PX, Math.round(((n - s) * 110.57) / km));
+  const q = new URLSearchParams({
+    service: 'WMS', version: '1.3.0', request: 'GetMap', layers: GOES_BANDS[kind].wms, styles: '', format: 'image/png',
+    transparent: 'true', crs: 'CRS:84', bbox: [w, s, e, n].join(','), width: String(width), height: String(height), time,
   });
+  return { url: `${GOES_WMS}?${q}`, width, height };
 }
 
-function activeKind(map: MapLibreMap): GoesKind {
-  const c = map.getCenter();
-  return sunAltitudeDeg(subsolarPoint(new Date()), c.lng, c.lat) >= VIS_MIN_SUN_DEG ? 'vis' : 'ir';
-}
-
-/** Below the first vector/3D layer, so the cloud image drapes over the basemap and terrain but under markers. */
-function beforeId(map: MapLibreMap): string | undefined {
-  return map.getStyle().layers.find((l) => !['background', 'raster', 'hillshade', 'color-relief'].includes(l.type))?.id;
-}
-
-function report(map: MapLibreMap, kind: GoesKind, error: string | null) {
-  const b = GOES_BANDS[kind];
-  const t = scanTimes.get(kind) ?? null;
-  reportGaFeed(map, {
-    id: 'goes-clouds', label: 'Satellite clouds (NOAA GOES)', color: '#f8fafc', count: t ? 1 : null,
-    detail: `${b.label} · ${b.km} km pixels · new scan every 5 min · drawn at ground position as the satellite sees it (not parallax-corrected, so tall clouds sit a few km off)`,
-    updatedAt: t, sourceUrl: DOCS, error,
-  });
-}
-
-/** Latest GOES East/West cloud image from NOAA nowCOAST (visible by day, infrared at night), refreshed when a new scan lands. */
-export function addGoesCloudLayer(map: MapLibreMap): void {
-  register();
-  const before = beforeId(map);
-  const kind = activeKind(map);
-  for (const k of KINDS) {
-    const id = sourceId(k);
-    if (!map.getSource(id)) {
-      map.addSource(id, { type: 'raster', tiles: tiles(k, scanTimes.get(k) ?? 'current'), tileSize: 256, minzoom: 0, maxzoom: GOES_BANDS[k].maxzoom, attribution: 'Clouds: NOAA GOES via nowCOAST' });
-    }
-    if (!map.getLayer(id)) {
-      map.addLayer({
-        id, type: 'raster', source: id, layout: { visibility: k === kind ? 'visible' : 'none' },
-        paint: { 'raster-opacity': ['interpolate', ['linear'], ['zoom'], 0, 0.9, 11, 0.85, 14, 0.3], 'raster-fade-duration': 0, 'raster-resampling': 'linear' },
-      }, before);
+/** Satellite brightness → cloud opacity, kept only where the cloud-top product found good-quality cloud. */
+async function cloudTexture(kind: GoesKind, grid: CloudTopGrid, time: string): Promise<{ canvas: HTMLCanvasElement; cloudy: number }> {
+  const { url } = imageUrl(kind, grid, time);
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`GOES image HTTP ${r.status}`);
+  const bmp = await createImageBitmap(await r.blob());
+  const canvas = document.createElement('canvas');
+  canvas.width = bmp.width;
+  canvas.height = bmp.height;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) throw new Error('2d canvas unavailable');
+  ctx.drawImage(bmp, 0, 0);
+  bmp.close();
+  const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const { w, s, e, n } = grid.box;
+  const gain = kind === 'vis' ? sunGainFor(sunAltitudeDeg(subsolarPoint(new Date(time)), (w + e) / 2, (s + n) / 2)) : 1;
+  cloudAlphaInPlace(img.data, GOES_BANDS[kind], gain);
+  let cloudy = 0;
+  for (let y = 0; y < canvas.height; y++) {
+    for (let x = 0; x < canvas.width; x++) {
+      const i = (y * canvas.width + x) * 4 + 3;
+      img.data[i] = Math.round(img.data[i] * coverAt(grid, x, y, canvas.width, canvas.height));
+      if (img.data[i] > 0) cloudy++;
     }
   }
+  ctx.putImageData(img, 0, 0);
+  return { canvas, cloudy: cloudy / (canvas.width * canvas.height) };
+}
+
+function report(map: MapLibreMap, detail: string, updatedAt: string | null, error: string | null, count: number | null) {
+  reportGaFeed(map, { id: 'goes-clouds', label: 'Satellite clouds (NOAA GOES)', color: '#f8fafc', count, detail, updatedAt, sourceUrl: DOCS, error });
+}
+
+/**
+ * Latest GOES-19 cloud image from NOAA nowCOAST (visible by day, infrared at night) over all of Georgia, lifted onto
+ * one seamless mesh at the GOES-19 ABI cloud-top heights for the same scan time, parallax-corrected; refreshed per scan.
+ */
+export function addGoesCloudLayer(map: MapLibreMap): void {
   if (bound.has(map)) return;
   bound.add(map);
   const poll = async () => {
-    const k = activeKind(map);
-    for (const o of KINDS) if (map.getLayer(sourceId(o))) map.setLayoutProperty(sourceId(o), 'visibility', o === k ? 'visible' : 'none');
     try {
-      const r = await fetch(`${GOES_WMS}?service=WMS&request=GetCapabilities&version=1.3.0`);
-      if (!r.ok) throw new Error(`capabilities HTTP ${r.status}`);
-      const latest = latestScanTimes(await r.text());
-      for (const o of KINDS) {
-        const t = latest[GOES_BANDS[o].wms];
-        if (!t || t === scanTimes.get(o)) continue;
-        scanTimes.set(o, t);
-        (map.getSource(sourceId(o)) as RasterTileSource | undefined)?.setTiles(tiles(o, t));
+      const [capsRes, topsRes] = await Promise.all([fetch(`${GOES_WMS}?service=WMS&request=GetCapabilities&version=1.3.0`), fetch('/api/ga-cloud-tops')]);
+      if (!capsRes.ok) throw new Error(`nowCOAST capabilities HTTP ${capsRes.status}`);
+      const tops = (await topsRes.json()) as TopsPayload;
+      if (!topsRes.ok || !tops.grid) throw new Error(tops.error ?? `cloud-top heights HTTP ${topsRes.status}`);
+      const grid = tops.grid;
+      const kind = activeKind(grid);
+      const time = latestScanTimes(await capsRes.text())[GOES_BANDS[kind].wms];
+      if (!time) throw new Error('no scan time in nowCOAST capabilities');
+      const key = `${kind}|${time}|${tops.file}`;
+      if (drawn.get(map) !== key) {
+        const { canvas, cloudy } = await cloudTexture(kind, grid, time);
+        setGaDeckCloudSheet(map, { grid, texture: canvas });
+        drawn.set(map, key);
+        const b = GOES_BANDS[kind];
+        const range = tops.minM != null && tops.maxM != null ? `${Math.round(tops.minM).toLocaleString()}–${Math.round(tops.maxM).toLocaleString()} m` : 'none';
+        report(map,
+          `${b.label} image (${b.km} km pixels, scan ${time}) placed at GOES-19 cloud-top height (10 km product, scan ${tops.scanStart ?? '?'}; tops ${range} above sea level), moved back along the satellite's line of sight to remove parallax. ${Math.round(cloudy * 100)}% of the Georgia box is cloud. Cloud bases are not measured by the satellite. Heights: ${TOPS_DOCS}`,
+          tops.scanEnd ?? time, null, tops.measuredVertices ?? null);
       }
-      report(map, k, scanTimes.get(k) ? null : 'no scan time in nowCOAST capabilities');
     } catch (err) {
-      report(map, k, err instanceof Error ? err.message : String(err));
+      report(map, 'GOES-19 image at GOES-19 cloud-top height', null, err instanceof Error ? err.message : String(err), null);
     }
   };
   void poll();
