@@ -54,6 +54,7 @@ type DeckModules = {
   LineLayer: typeof import('@deck.gl/layers').LineLayer;
   SolidPolygonLayer: typeof import('@deck.gl/layers').SolidPolygonLayer;
   SimpleMeshLayer: typeof import('@deck.gl/mesh-layers').SimpleMeshLayer;
+  BitmapLayer: typeof import('@deck.gl/layers').BitmapLayer;
 };
 type BenchData = {
   length: number;
@@ -69,6 +70,7 @@ type DeckSnapshot = {
   pulse: { radiusScale: number; opacity: number };
   ground: { terrain: boolean; version: number; anchored: number };
   clouds: number;
+  cloudSheet: { cells: number; altitudeM: number } | null;
 };
 
 declare global {
@@ -126,6 +128,7 @@ interface DeckState {
   groundTimer: ReturnType<typeof setTimeout> | null;
   /** Radar cloud boxes; heights in metres above sea level before terrain exaggeration. */
   clouds: CloudBox[];
+  cloudSheet: GaCloudSheet | null;
 }
 
 const states = new WeakMap<MapLibreMap, DeckState>();
@@ -213,6 +216,7 @@ function getState(map: MapLibreMap): DeckState {
     ground: new Map(),
     groundVersion: 0,
     clouds: [],
+    cloudSheet: null,
     groundTimer: null,
   };
   states.set(map, state);
@@ -324,6 +328,7 @@ function snapshot(state: DeckState): DeckSnapshot {
     pulse: { radiusScale: state.pulseRadiusScale, opacity: state.pulseOpacity },
     ground: { terrain: !!state.map.getTerrain(), version: state.groundVersion, anchored: state.ground.size },
     clouds: state.clouds.length,
+    cloudSheet: state.cloudSheet ? { cells: state.cloudSheet.cells.length, altitudeM: state.cloudSheet.altitudeM } : null,
   };
 }
 
@@ -617,10 +622,24 @@ const LABEL_FONT = '"JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospa
 
 function createLayers(state: DeckState): Layer[] {
   if (!state.modules) return [];
-  const { ScatterplotLayer, IconLayer, TextLayer, LineLayer, SimpleMeshLayer } = state.modules;
+  const { ScatterplotLayer, IconLayer, TextLayer, LineLayer, SimpleMeshLayer, BitmapLayer } = state.modules;
   const scale = modelScale(state.zoom);
   const layers: Layer[] = [];
   const labelLayers: Layer[] = [];
+  if (state.cloudSheet) {
+    const z = state.cloudSheet.altitudeM * (state.map.getTerrain()?.exaggeration ?? 1);
+    state.cloudSheet.cells.forEach((cell, i) => {
+      const [w, s, e, n] = cell.bounds;
+      layers.push(new BitmapLayer({
+        id: `ga-deck-cloudsheet-${i}`,
+        image: cell.image,
+        bounds: [[w, s, z], [w, n, z], [e, n, z], [e, s, z]],
+        opacity: state.cloudSheet!.opacity,
+        pickable: false,
+        parameters: CLOUD_PARAMETERS,
+      }));
+    });
+  }
   if (state.clouds.length) {
     const ex = state.map.getTerrain()?.exaggeration ?? 1;
     layers.push(new state.modules.SolidPolygonLayer<CloudBox>({
@@ -845,6 +864,7 @@ async function loadModules(): Promise<DeckModules> {
     LineLayer: layers.LineLayer,
     SolidPolygonLayer: layers.SolidPolygonLayer,
     SimpleMeshLayer: meshLayers.SimpleMeshLayer,
+    BitmapLayer: layers.BitmapLayer,
   };
 }
 
@@ -1073,6 +1093,23 @@ async function initialize(map: MapLibreMap, state: DeckState): Promise<void> {
     console.error('[GaDeck] overlay initialization failed:', error);
     if (!state.renderer && !state.removed) await fallbackToWebGL(map, state, `WebGPU initialization failed: ${error instanceof Error ? error.message : String(error)}`);
   }
+}
+
+/** A satellite cloud image cut into cells, drawn flat at one height above the ground (under puffs and markers). */
+export interface GaCloudSheet {
+  cells: { image: HTMLCanvasElement | ImageBitmap; bounds: [number, number, number, number] }[];
+  /** Metres above sea level before terrain exaggeration. */
+  altitudeM: number;
+  opacity: number;
+}
+
+/** Replaces (or with null removes) the lifted satellite cloud sheet. */
+export function setGaDeckCloudSheet(map: MapLibreMap, sheet: GaCloudSheet | null): void {
+  const state = getState(map);
+  state.cloudSheet = sheet;
+  publishState(map, state);
+  if (state.overlay) updateLayers(state);
+  if (!state.initPromise) state.initPromise = initialize(map, state);
 }
 
 const GA_CLOUD_LAYER_ID = 'ga-deck-clouds';

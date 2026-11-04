@@ -4,6 +4,7 @@ import { hitsGaDeck, pickGaDeckCloud, setGaDeckClouds } from './ga-deck-overlay'
 import { radarCloudBoxes, type CloudBox } from './ga-clouds/radar-boxes';
 import { BASE_SEARCH_KM, RADAR_BANDS, type RadarCells } from './ga-clouds/radar-clouds';
 import { reportGaFeed } from './ga-live-status';
+import { addGoesCloudLayer, setGoesCloudBases } from './ga-goes-clouds-layer';
 
 const isTouch = () => typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0;
 const SOURCE = 'ga-clouds';
@@ -117,6 +118,7 @@ function popup(map: MapLibreMap, e: MapLayerMouseEvent) {
 
 /** 3D radar clouds (NOAA MRMS, one box per radar cell) over Georgia; the METAR disc and HRRR grid-cell layers stay loaded but hidden (idempotent). */
 export function addGaCloudLayers(map: MapLibreMap): void {
+  addGoesCloudLayer(map);
   if (!map.getSource(SOURCE)) map.addSource(SOURCE, { type: 'geojson', data: latest.get(map) ?? EMPTY });
   for (const [cover, opacity] of COVER_OPACITY) {
     const id = `${SOURCE}-${cover.toLowerCase()}`;
@@ -203,6 +205,7 @@ export function addGaCloudLayers(map: MapLibreMap): void {
       const fc = d.geojson ?? EMPTY;
       latest.set(map, fc);
       (map.getSource(SOURCE) as GeoJSONSource | undefined)?.setData(fc);
+      setGoesCloudBases(map, fc.features.filter((f) => f.properties?.layer === 0).map((f) => Number(f.properties?.baseM)));
       const mfc = d.model?.geojson ?? EMPTY;
       latestModel.set(map, mfc);
       modelTime.set(map, d.model?.validTime ?? null);
