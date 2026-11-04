@@ -1,4 +1,5 @@
 import type { Map as MapLibreMap, ExpressionSpecification } from 'maplibre-gl';
+import { addFacadePatterns, FACADE_PATTERN_EXPRESSION } from './facades';
 
 /** Overture Maps publishes each monthly release as public PMTiles (CORS *, HTTP range) at no cost to readers. */
 export const OVERTURE_TILES_BUCKET = 'https://overturemaps-extras-us-west-2.s3.us-west-2.amazonaws.com';
@@ -84,6 +85,8 @@ export const ROOF_COLOR_EXPRESSION: ExpressionSpecification = [
 ];
 /** Every 3D building layer, for code that dims buildings while LiDAR points draw. */
 export const BUILDING_3D_LAYERS = ['buildings-3d', 'buildings-3d-shell', 'buildings-roof-3d', 'buildings-parts-3d'] as const;
+/** Roof slab drawn on top of patterned walls so roofs keep their own colour instead of the window grid. */
+export const ROOF_CAP_M = 0.3;
 
 export interface OvertureState {
   release: string;
@@ -158,9 +161,11 @@ export async function addOvertureBuildings(
     'fill-extrusion-color': COLOR_EXPRESSION,
     'fill-extrusion-height': HEIGHT_EXPRESSION,
     'fill-extrusion-base': ['coalesce', ['get', 'min_height'], 0] as ExpressionSpecification,
+    'fill-extrusion-pattern': FACADE_PATTERN_EXPRESSION,
     'fill-extrusion-opacity': opacity,
     'fill-extrusion-vertical-gradient': true,
   });
+  addFacadePatterns(map);
   if (!map.getLayer('buildings-3d')) {
     map.addLayer(
       { id: 'buildings-3d', type: 'fill-extrusion', source: OVERTURE_BUILDINGS_SOURCE, 'source-layer': 'building', minzoom: OVERTURE_FULL_ZOOM, filter: ['all', underground, ['!', hasParts]], paint: { ...extrusion(1), 'fill-extrusion-height': wallTop } },
@@ -198,11 +203,41 @@ export async function addOvertureBuildings(
         filter: underground,
         paint: {
           'fill-extrusion-color': PART_COLOR_EXPRESSION,
+          'fill-extrusion-pattern': FACADE_PATTERN_EXPRESSION,
           'fill-extrusion-height': PART_HEIGHT_EXPRESSION,
           'fill-extrusion-base': PART_BASE_EXPRESSION,
           'fill-extrusion-opacity': 1,
           'fill-extrusion-vertical-gradient': true,
         },
+      },
+      before,
+    );
+  }
+  const capTop = (h: ExpressionSpecification): ExpressionSpecification => ['+', ['to-number', h, DEFAULT_HEIGHT_M], ROOF_CAP_M];
+  if (!map.getLayer('buildings-roof-cap')) {
+    map.addLayer(
+      {
+        id: 'buildings-roof-cap',
+        type: 'fill-extrusion',
+        source: OVERTURE_BUILDINGS_SOURCE,
+        'source-layer': 'building',
+        minzoom: OVERTURE_FULL_ZOOM,
+        filter: ['all', underground, ['!', hasRoof]],
+        paint: { 'fill-extrusion-color': COLOR_EXPRESSION, 'fill-extrusion-base': HEIGHT_EXPRESSION, 'fill-extrusion-height': capTop(HEIGHT_EXPRESSION), 'fill-extrusion-opacity': 1, 'fill-extrusion-vertical-gradient': true },
+      },
+      before,
+    );
+  }
+  if (!map.getLayer('buildings-parts-cap')) {
+    map.addLayer(
+      {
+        id: 'buildings-parts-cap',
+        type: 'fill-extrusion',
+        source: OVERTURE_BUILDINGS_SOURCE,
+        'source-layer': 'building_part',
+        minzoom: OVERTURE_FULL_ZOOM,
+        filter: underground,
+        paint: { 'fill-extrusion-color': PART_COLOR_EXPRESSION, 'fill-extrusion-base': PART_HEIGHT_EXPRESSION, 'fill-extrusion-height': capTop(PART_HEIGHT_EXPRESSION), 'fill-extrusion-opacity': 1, 'fill-extrusion-vertical-gradient': true },
       },
       before,
     );
