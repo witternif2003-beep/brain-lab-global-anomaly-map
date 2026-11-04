@@ -9,21 +9,9 @@ const ROAD_CLASSES = ['motorway', 'trunk'];
 const HALF = { length: 2, width: 1, height: 0.75 };
 const bound = new WeakSet<MapLibreMap>();
 
-/** `?traffic=sim` forces the simulation on and `?traffic=off` forces it off; otherwise it runs only while live TomTom flow is off (no key). */
-export function trafficSimEnabled(search: string, flowMode: string): boolean {
-  const p = new URLSearchParams(search).get(TRAFFIC_SIM_PARAM);
-  if (p === 'sim') return true;
-  if (p === 'off') return false;
-  return flowMode === 'off';
-}
-
-async function currentFlowMode(): Promise<string> {
-  try {
-    const r = await fetch('/api/traffic-flow', { cache: 'no-store' });
-    return r.ok ? String((await r.json()).mode) : 'off';
-  } catch {
-    return 'off';
-  }
+/** SIM vehicles are strictly opt-in: only `?traffic=sim` starts them. */
+export function trafficSimEnabled(search: string): boolean {
+  return new URLSearchParams(search).get(TRAFFIC_SIM_PARAM) === 'sim';
 }
 
 /** Motorway/trunk polylines currently loaded from the OpenFreeMap road tiles, de-duplicated across tiles. */
@@ -47,12 +35,12 @@ function motorwayLines(map: MapLibreMap): LngLat[][] {
 
 /**
  * SIMULATED cars (not real vehicles) on motorways in view, drawn as GPU-instanced boxes in a dedicated deck.gl
- * overlay. Fallback for when live TomTom flow has no key; see `trafficSimEnabled`.
+ * overlay. Only runs with `?traffic=sim`; see `trafficSimEnabled`.
  */
 export async function addGaTrafficSim(map: MapLibreMap): Promise<void> {
   if (typeof window === 'undefined' || bound.has(map)) return;
   bound.add(map);
-  if (!trafficSimEnabled(window.location.search, await currentFlowMode())) {
+  if (!trafficSimEnabled(window.location.search)) {
     bound.delete(map);
     return;
   }

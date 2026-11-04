@@ -1,6 +1,6 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-import { FLOW_COLOR_EXPRESSION, FLOW_COLORS, FLOW_FREE_MIN, FLOW_SLOW_MIN, flowBand, flowMode, mockFlowCollection, tomtomFlowTileUrl, validTile } from '../../lib/ga-traffic-flow/flow';
+import { FLOW_COLOR_EXPRESSION, FLOW_COLORS, flowBand, jamFactor, flowMode, mockFlowCollection, tomtomFlowTileUrl, validTile } from '../../lib/ga-traffic-flow/flow';
 
 test('flow mode: key → live, explicit flag → mock, otherwise off (no invented congestion)', () => {
   assert.equal(flowMode({}), 'off');
@@ -18,17 +18,24 @@ test('tile validation and TomTom relative-flow URL', () => {
   assert.equal(tomtomFlowTileUrl(12, 1, 2, 'a/b'), 'https://api.tomtom.com/traffic/map/4/tile/flow/relative/12/1/2.pbf?key=a%2Fb');
 });
 
-test('congestion bands: green ≥ 0.75, yellow ≥ 0.40, red below, dark red for closures', () => {
+test('jamFactor bands: green 0–3, yellow 4–6, red 7–8, dark red 9–10 or closed', () => {
+  assert.equal(jamFactor(1), 0);
+  assert.equal(jamFactor(0), 10);
+  assert.equal(jamFactor(0.7), 3);
+  assert.equal(jamFactor(null), 0);
+  assert.equal(jamFactor(1.4), 0);
   assert.equal(flowBand(1), 'free');
-  assert.equal(flowBand(FLOW_FREE_MIN), 'free');
+  assert.equal(flowBand(0.7), 'free');
   assert.equal(flowBand(0.6), 'slow');
-  assert.equal(flowBand(FLOW_SLOW_MIN), 'slow');
-  assert.equal(flowBand(0.39), 'jam');
+  assert.equal(flowBand(0.4), 'slow');
+  assert.equal(flowBand(0.3), 'jam');
+  assert.equal(flowBand(0.2), 'jam');
+  assert.equal(flowBand(0.1), 'closed');
   assert.equal(flowBand(0.9, true), 'closed');
   assert.equal(flowBand(null), 'free');
   const flat = JSON.stringify(FLOW_COLOR_EXPRESSION);
   for (const c of Object.values(FLOW_COLORS)) assert.ok(flat.includes(c));
-  assert.ok(flat.includes(String(FLOW_FREE_MIN)) && flat.includes(String(FLOW_SLOW_MIN)));
+  assert.ok(flat.includes('"traffic_level"') && flat.includes('"road_closure"') && flat.includes('[0,1,2,3]') && flat.includes('[7,8]'));
 });
 
 test('mock collection is labelled mock and covers every band', () => {

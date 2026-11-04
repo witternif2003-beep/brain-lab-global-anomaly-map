@@ -11,9 +11,8 @@ export const FLOW_TILE_CACHE_S = 60;
 export type FlowMode = 'live' | 'mock' | 'off';
 export type FlowBand = 'free' | 'slow' | 'jam' | 'closed';
 
-/** Bands on the relative speed ratio: green ≥ 0.75, yellow 0.40–0.75, red < 0.40, dark red = closed. */
-export const FLOW_FREE_MIN = 0.75;
-export const FLOW_SLOW_MIN = 0.4;
+/** jamFactor bands (0 free … 10 standstill): green 0–3, yellow 4–6, red 7–8, dark red 9–10 or closed. */
+export const JAM_BANDS: Record<Exclude<FlowBand, 'closed'>, readonly number[]> = { free: [0, 1, 2, 3], slow: [4, 5, 6], jam: [7, 8] };
 export const FLOW_COLORS: Record<FlowBand, string> = { free: '#22c55e', slow: '#facc15', jam: '#ef4444', closed: '#7f1d1d' };
 
 export interface FlowEnv {
@@ -39,23 +38,32 @@ export function tomtomFlowTileUrl(z: number, x: number, y: number, key: string):
   return `https://api.tomtom.com/traffic/map/4/tile/flow/relative/${z}/${x}/${y}.pbf?key=${encodeURIComponent(key)}`;
 }
 
-export function flowBand(level: number | null | undefined, closed = false): FlowBand {
-  if (closed) return 'closed';
-  const v = typeof level === 'number' && Number.isFinite(level) ? level : 1;
-  if (v >= FLOW_FREE_MIN) return 'free';
-  if (v >= FLOW_SLOW_MIN) return 'slow';
-  return 'jam';
+/** TomTom flow tiles carry `traffic_level` (current / free-flow speed, 0..1), not a jamFactor, so it is derived: round(10 × (1 − level)). */
+export function jamFactor(level: number | null | undefined): number {
+  const v = typeof level === 'number' && Number.isFinite(level) ? Math.min(1, Math.max(0, level)) : 1;
+  return Math.round(10 * (1 - v));
 }
 
-const LEVEL = ['to-number', ['get', 'traffic_level'], 1] as ExpressionSpecification;
+export function flowBand(level: number | null | undefined, closed = false): FlowBand {
+  if (closed) return 'closed';
+  const j = jamFactor(level);
+  if (JAM_BANDS.free.includes(j)) return 'free';
+  if (JAM_BANDS.slow.includes(j)) return 'slow';
+  if (JAM_BANDS.jam.includes(j)) return 'jam';
+  return 'closed';
+}
+
+const JAM_FACTOR = ['round', ['*', 10, ['-', 1, ['min', 1, ['max', 0, ['to-number', ['get', 'traffic_level'], 1]]]]]] as ExpressionSpecification;
 
 export const FLOW_COLOR_EXPRESSION: ExpressionSpecification = [
   'case',
   ['has', 'road_closure'], FLOW_COLORS.closed,
-  ['>=', LEVEL, FLOW_FREE_MIN], FLOW_COLORS.free,
-  ['>=', LEVEL, FLOW_SLOW_MIN], FLOW_COLORS.slow,
-  FLOW_COLORS.jam,
-];
+  ['match', JAM_FACTOR,
+    [...JAM_BANDS.free], FLOW_COLORS.free,
+    [...JAM_BANDS.slow], FLOW_COLORS.slow,
+    [...JAM_BANDS.jam], FLOW_COLORS.jam,
+    FLOW_COLORS.closed],
+] as ExpressionSpecification;
 
 export interface FlowFeature {
   type: 'Feature';

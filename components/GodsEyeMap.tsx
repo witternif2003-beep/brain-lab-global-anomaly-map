@@ -28,6 +28,8 @@ import { addGaH3Telemetry } from '../lib/ga-h3-telemetry';
 import { addGaTrafficLayers } from '../lib/ga-traffic-layer';
 import { addGaTrafficFlowLayer } from '../lib/ga-traffic-flow-layer';
 import { addGaTrafficSim } from '../lib/traffic-overlay';
+import { addGaTrafficIncidents } from '../lib/ga-traffic-incidents-layer';
+import { GaTrafficRouteControl } from '../lib/ga-traffic-route-control';
 import { addGaTrafficCountLayers } from '../lib/ga-traffic-counts-layer';
 import { addGaHydrometLayers } from '../lib/ga-hydromet-layer';
 import { addGaAnomalyBulbs } from '../lib/ga-anomaly-bulbs';
@@ -937,6 +939,7 @@ export default function GodsEyeMap({
     addGaHydrometLayers(map);
     addGaTrafficLayers(map);
     void addGaTrafficFlowLayer(map);
+    void addGaTrafficIncidents(map);
     void addGaTrafficSim(map);
     addGaTrafficCountLayers(map);
     addBleVehicleLayers(map);
@@ -1456,6 +1459,8 @@ export default function GodsEyeMap({
       } as any),
       'top-right'
     );
+
+    map.addControl(new GaTrafficRouteControl(), 'top-right');
 
     // Navigation controls (Zoom +/- and 3D Tilt Compass at bottom right rail)
     map.addControl(
