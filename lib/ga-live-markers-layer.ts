@@ -84,7 +84,8 @@ const faaRows = (type: LiveValue | undefined, category?: LiveValue): [string, st
 const STROBE_RECHECK_MS = 60_000;
 const TICK_MS = 1_000;
 /** Aircraft redraw cadence: 4 Hz on desktop, 1 Hz on touch devices (each redraw rebuilds the deck.gl aircraft group). */
-const AIRCRAFT_TICK_MS = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches ? TICK_MS : 250;
+/** Desktop asks the EKF worker for positions every animation frame; touch devices stay at 1 Hz to spare the GPU. */
+const AIRCRAFT_FRAME_SYNC = !(typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches);
 const fmt = (v: LiveValue, unit = '') => (v === null || v === undefined || v === '' ? '' : `${v}${unit}`);
 const countBy = (ms: LiveMarker[], key: string) => {
   const c = new Map<string, number>();
@@ -785,13 +786,21 @@ export function addGaLiveMarkerLayers(map: MapLibreMap): void {
 
   const layers = Object.keys(SPECS) as LiveLayer[];
   layers.forEach((l) => void load(l));
+  const tickAircraft = () => current.aircraft && !predictor.predict(Date.now()) && render('aircraft');
+  let frame = 0;
+  const onFrame = () => {
+    tickAircraft();
+    frame = requestAnimationFrame(onFrame);
+  };
+  if (AIRCRAFT_FRAME_SYNC) frame = requestAnimationFrame(onFrame);
   const timers = [
     ...layers.map((l) => setInterval(() => void load(l), SPECS[l].refreshMs)),
-    setInterval(() => current.aircraft && !predictor.predict(Date.now()) && render('aircraft'), AIRCRAFT_TICK_MS),
+    ...(AIRCRAFT_FRAME_SYNC ? [] : [setInterval(tickAircraft, TICK_MS)]),
     setInterval(() => layers.forEach((l) => current[l] && hasActiveStrobe(firstSeen[l], Date.now(), STROBE_RECHECK_MS) && render(l)), STROBE_RECHECK_MS),
   ];
   map.once('remove', () => {
     timers.forEach(clearInterval);
+    cancelAnimationFrame(frame);
     predictor.dispose();
     unregisterSnapshot();
     map.off('moveend', onMoveEnd);

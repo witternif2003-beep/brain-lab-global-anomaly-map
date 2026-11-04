@@ -56,8 +56,10 @@ test('agent cap holds and short fragments are skipped', () => {
   assert.ok(sim.agents.length <= MAX_AGENTS_TOUCH);
 });
 
-test('simulation is opt-in via ?traffic=sim', () => {
-  assert.equal(trafficSimEnabled(''), false);
-  assert.equal(trafficSimEnabled('?traffic-sim=1'), false);
-  assert.equal(trafficSimEnabled('?x=1&traffic=sim'), true);
+test('simulation runs only while live flow is off, unless the URL forces it', () => {
+  assert.equal(trafficSimEnabled('', 'off'), true);
+  assert.equal(trafficSimEnabled('', 'live'), false);
+  assert.equal(trafficSimEnabled('', 'mock'), false);
+  assert.equal(trafficSimEnabled('?traffic=off', 'off'), false);
+  assert.equal(trafficSimEnabled('?x=1&traffic=sim', 'live'), true);
 });

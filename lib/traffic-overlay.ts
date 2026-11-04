@@ -9,8 +9,21 @@ const ROAD_CLASSES = ['motorway', 'trunk'];
 const HALF = { length: 2, width: 1, height: 0.75 };
 const bound = new WeakSet<MapLibreMap>();
 
-export function trafficSimEnabled(search: string): boolean {
-  return new URLSearchParams(search).get(TRAFFIC_SIM_PARAM) === 'sim';
+/** `?traffic=sim` forces the simulation on and `?traffic=off` forces it off; otherwise it runs only while live TomTom flow is off (no key). */
+export function trafficSimEnabled(search: string, flowMode: string): boolean {
+  const p = new URLSearchParams(search).get(TRAFFIC_SIM_PARAM);
+  if (p === 'sim') return true;
+  if (p === 'off') return false;
+  return flowMode === 'off';
+}
+
+async function currentFlowMode(): Promise<string> {
+  try {
+    const r = await fetch('/api/traffic-flow', { cache: 'no-store' });
+    return r.ok ? String((await r.json()).mode) : 'off';
+  } catch {
+    return 'off';
+  }
 }
 
 /** Motorway/trunk polylines currently loaded from the OpenFreeMap road tiles, de-duplicated across tiles. */
@@ -34,14 +47,24 @@ function motorwayLines(map: MapLibreMap): LngLat[][] {
 
 /**
  * SIMULATED cars (not real vehicles) on motorways in view, drawn as GPU-instanced boxes in a dedicated deck.gl
- * overlay. Opt-in only: the page URL must carry `?traffic=sim`.
+ * overlay. Fallback for when live TomTom flow has no key; see `trafficSimEnabled`.
  */
 export async function addGaTrafficSim(map: MapLibreMap): Promise<void> {
-  if (typeof window === 'undefined' || !trafficSimEnabled(window.location.search) || bound.has(map)) return;
+  if (typeof window === 'undefined' || bound.has(map)) return;
   bound.add(map);
+  if (!trafficSimEnabled(window.location.search, await currentFlowMode())) {
+    bound.delete(map);
+    return;
+  }
   const cap = window.matchMedia('(pointer: coarse)').matches ? MAX_AGENTS_TOUCH : MAX_AGENTS_DESKTOP;
   const [{ MapLibreOverlay }, { SimpleMeshLayer }, { CubeGeometry }] = await Promise.all([import('@deck.gl/maplibre'), import('@deck.gl/mesh-layers'), import('@luma.gl/engine')]);
   const mesh = new CubeGeometry();
+  const badge = document.createElement('div');
+  badge.className = 'traffic-sim-badge';
+  badge.textContent = '⚠️ SIMULATED TRAFFIC';
+  badge.title = 'Synthetic cars, not real vehicles: live traffic flow has no API key';
+  badge.style.cssText = 'position:absolute;top:10px;right:10px;background:rgba(255,165,0,0.85);color:#000;padding:4px 8px;font:700 12px monospace;border-radius:4px;z-index:10;pointer-events:none;';
+  map.getContainer().appendChild(badge);
   const overlay = new MapLibreOverlay({ interleaved: false, layers: [] });
   map.addControl(overlay);
   let sim = new TrafficSim([], cap);
@@ -102,6 +125,7 @@ export async function addGaTrafficSim(map: MapLibreMap): Promise<void> {
   raf = requestAnimationFrame(draw);
   map.once('remove', () => {
     cancelAnimationFrame(raf);
+    badge.remove();
     clearTimeout(debounce);
     map.off('moveend', onMoveEnd);
     bound.delete(map);
