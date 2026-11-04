@@ -38,7 +38,6 @@ import { addGaFbiFeeds } from '../lib/ga-fbi-feed';
 import { addGaFbiAgencyLayers } from '../lib/ga-fbi-agencies-layer';
 import { addBleVehicleLayers } from '../lib/ble-traffic-layer';
 import { addMovingTrackLayers } from '../lib/moving-tracks-layer';
-import FbiOsintPopup from './FbiOsintPopup';
 import { glowRadius, scaleMarkersInsideGaWall, type RadiusExpression } from '../lib/ga-marker-scale';
 import { exportMapAt8k } from '../lib/map-8k-export';
 import { attachSolarSky } from '../lib/ga-sky';
@@ -1864,32 +1863,6 @@ export default function GodsEyeMap({
             </div>
           )}
           <div className="absolute top-3 right-3 z-20 flex flex-row-reverse items-center gap-2 font-mono">
-            <button
-              type="button"
-              onClick={save8k}
-              disabled={export8kStatus === 'rendering…'}
-              className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold tracking-wider border bg-[#070d18]/90 text-[#38bdf8] border-[#38bdf8]/60 hover:border-[#38bdf8] disabled:opacity-60"
-            >
-              SAVE 8K PNG
-            </button>
-            <button
-              type="button"
-              onClick={save32k}
-              disabled={!!export32kStatus && export32kStatus !== 'export failed' && !export32kStatus.startsWith('saved')}
-              title="One 32,768 px PNG of this exact view, rendered in 2,048 px tiles"
-              className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold tracking-wider border bg-[#070d18]/90 text-[#a78bfa] border-[#a78bfa]/60 hover:border-[#a78bfa] disabled:opacity-60"
-            >
-              SAVE 32K PNG
-            </button>
-            <button
-              type="button"
-              onClick={armLineOfSight}
-              title="Click the map to compute what an observer there can see, from public building heights and terrain"
-              className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold tracking-wider border bg-[#070d18]/90 ${losArmed ? 'text-[#22d3ee] border-[#22d3ee]' : 'text-[#94a3b8] border-[#334155]'}`}
-            >
-              {losArmed ? 'CLICK A SPOT' : 'LINE OF SIGHT'}
-            </button>
-            <FbiOsintPopup />
             {export8kStatus && <span className="text-[10px] text-slate-300 bg-[#070d18]/80 rounded px-1.5 py-0.5">{export8kStatus}</span>}
             {export32kStatus && <span className="text-[10px] text-slate-300 bg-[#070d18]/80 rounded px-1.5 py-0.5">{export32kStatus}</span>}
             {losResult && (
