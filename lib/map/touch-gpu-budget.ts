@@ -28,7 +28,7 @@ export function markerPixelRatio(devicePixelRatio: number, touch: boolean, crash
 /** Hard ceiling on LiDAR points drawn at once on touch devices. */
 export const LIDAR_POINT_CEILING = 20_000_000;
 /** Desktop ceiling; the GPU-memory target usually stops loading first. */
-export const LIDAR_DESKTOP_POINT_CEILING = 40_000_000;
+export const LIDAR_DESKTOP_POINT_CEILING = 80_000_000;
 
 const LIDAR_TOUCH: LidarBudget = { points: LIDAR_POINT_CEILING, fetchParallel: 3, imageryTiles: 48 };
 const LIDAR_DESKTOP: LidarBudget = { points: LIDAR_DESKTOP_POINT_CEILING, fetchParallel: 8, imageryTiles: 128 };

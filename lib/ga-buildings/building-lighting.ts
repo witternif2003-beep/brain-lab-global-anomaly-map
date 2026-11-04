@@ -1,6 +1,6 @@
 import type { GeoJSONSource, LightSpecification, Map as MapLibreMap } from 'maplibre-gl';
-import { sunAzimuthDeg, sunElevationDeg } from '../ga-sky';
-import { DEFAULT_HEIGHT_M, FLOOR_HEIGHT_M } from './overture';
+import { BUILDING_LIGHT } from '../ga-sky';
+import { DEFAULT_HEIGHT_M, FLOOR_HEIGHT_M, OVERTURE_BUILDINGS_SOURCE } from './overture';
 
 export const SHADOW_SOURCE = 'ga-building-shadows';
 export const SHADOW_LAYER = 'buildings-shadow';
@@ -9,23 +9,16 @@ export const SHADOW_MIN_SUN_DEG = 2;
 export const SHADOW_MAX_FEATURES = 4000;
 /** Shadows longer than this many building heights (sun under ~7°) are clipped. */
 export const SHADOW_MAX_RATIO = 8;
-const SUN_REFRESH_MS = 60_000;
 const RAD = Math.PI / 180;
 const M_PER_DEG_LAT = 110_540;
 const M_PER_DEG_LNG = 111_320;
 
 type Pt = [number, number];
 
-/** MapLibre light from the real sun: polar angle 0° is overhead, azimuth clockwise from north (map anchor). */
-export function sunLight(azimuthDeg: number, elevationDeg: number): LightSpecification {
-  const el = Math.max(-6, Math.min(90, elevationDeg));
-  const up = Math.max(0, Math.sin(el * RAD));
-  return {
-    anchor: 'map',
-    position: [1.5, ((azimuthDeg % 360) + 360) % 360, Math.max(0, Math.min(90, 90 - el))],
-    color: el < 10 ? '#ffd7a8' : '#fff7ec',
-    intensity: el <= 0 ? 0.15 : 0.3 + 0.35 * up,
-  };
+/** Sun direction of a MapLibre light: azimuth clockwise from north, elevation = 90° − polar angle. */
+export function lightSun(light: LightSpecification = BUILDING_LIGHT): { azimuthDeg: number; elevationDeg: number } {
+  const p = (Array.isArray(light.position) ? light.position : [1.15, 210, 30]) as number[];
+  return { azimuthDeg: p[1], elevationDeg: 90 - p[2] };
 }
 
 /** Ground offset in metres [east, north] of a roof edge's shadow, cast away from the sun; null when the sun is too low. */
@@ -75,8 +68,9 @@ export function propertyHeightM(props: Record<string, unknown> | null | undefine
 
 const EMPTY: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] };
 
-/** Sun-driven extrusion light plus flat-ground building shadows draped on the terrain; returns a detach function. */
-export function attachBuildingLighting(map: MapLibreMap, now: () => Date = () => new Date(), sourceLayers: string[] = ['buildings-3d', 'buildings-3d-shell']): () => void {
+/** Fixed afternoon extrusion light plus flat-ground building shadows draped on the terrain; returns a detach function. */
+export function attachBuildingLighting(map: MapLibreMap, layerIds: string | string[] = ['buildings-3d', 'buildings-3d-shell']): () => void {
+  const sourceLayers = typeof layerIds === 'string' ? [layerIds] : layerIds;
   let lastKey = '';
   if (!map.getSource(SHADOW_SOURCE)) map.addSource(SHADOW_SOURCE, { type: 'geojson', data: EMPTY });
   if (!map.getLayer(SHADOW_LAYER)) {
@@ -85,14 +79,12 @@ export function attachBuildingLighting(map: MapLibreMap, now: () => Date = () =>
   }
   const update = () => {
     const c = map.getCenter();
-    const at = now();
-    const az = sunAzimuthDeg(at, c.lat, c.lng);
-    const el = sunElevationDeg(at, c.lat, c.lng);
-    const key = `${c.lng.toFixed(4)}|${c.lat.toFixed(4)}|${map.getZoom().toFixed(2)}|${map.getBearing().toFixed(1)}|${Math.floor(at.getTime() / SUN_REFRESH_MS)}`;
+    const { azimuthDeg: az, elevationDeg: el } = lightSun();
+    const key = `${c.lng.toFixed(4)}|${c.lat.toFixed(4)}|${map.getZoom().toFixed(2)}|${map.getBearing().toFixed(1)}`;
     if (key === lastKey) return;
     // Only remember the view once its tiles are in, so the first idle after loading still draws shadows.
     lastKey = map.loaded() ? key : '';
-    map.setLight(sunLight(az, el));
+    map.setLight(BUILDING_LIGHT);
     const src = map.getSource(SHADOW_SOURCE) as GeoJSONSource | undefined;
     if (!src) return;
     const layers = sourceLayers.filter((id) => map.getLayer(id));
@@ -103,26 +95,30 @@ export function attachBuildingLighting(map: MapLibreMap, now: () => Date = () =>
     map.setPaintProperty(SHADOW_LAYER, 'fill-opacity', 0.15 + 0.25 * Math.min(1, el / 30));
     const seen = new Set<string | number>();
     const features: GeoJSON.Feature[] = [];
-    for (const f of map.queryRenderedFeatures({ layers })) {
+    // Loaded source tiles, not rendered pixels: idle can fire before the rendered-feature index is filled.
+    for (const f of map.querySourceFeatures(OVERTURE_BUILDINGS_SOURCE, { sourceLayer: 'building' })) {
       if (features.length >= SHADOW_MAX_FEATURES) break;
+      if (f.properties?.is_underground === true) continue;
       if (f.id !== undefined) {
         if (seen.has(f.id)) continue;
         seen.add(f.id);
       }
-      const h = propertyHeightM(f.properties) - Math.max(0, Number(f.properties?.min_height) || 0);
-      const polys = f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.type === 'MultiPolygon' ? f.geometry.coordinates : [];
-      for (const poly of polys) {
-        const ring = shadowRing(poly[0] as Pt[], h, az, el);
-        if (ring) features.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [ring] }, properties: {} });
+      try {
+        const h = propertyHeightM(f.properties) - Math.max(0, Number(f.properties?.min_height) || 0);
+        const polys = f.geometry.type === 'Polygon' ? [f.geometry.coordinates] : f.geometry.type === 'MultiPolygon' ? f.geometry.coordinates : [];
+        for (const poly of polys) {
+          const ring = shadowRing(poly[0] as Pt[], h, az, el);
+          if (ring) features.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [ring] }, properties: {} });
+        }
+      } catch {
+        // A malformed footprint is skipped so the rest still cast shadows.
       }
     }
     src.setData({ type: 'FeatureCollection', features });
   };
   map.on('idle', update);
-  const timer = setInterval(() => map.triggerRepaint(), SUN_REFRESH_MS);
   update();
   return () => {
     map.off('idle', update);
-    clearInterval(timer);
   };
 }

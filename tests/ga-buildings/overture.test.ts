@@ -34,7 +34,7 @@ test('building parts sit on their recorded base and rise to their recorded heigh
   assert.deepEqual(PART_HEIGHT_EXPRESSION[1], ['get', 'height']);
 });
 
-test('buildings split into parts stay drawn as see-through shells, and LiDAR dims all three layers', () => {
-  assert.ok(SHELL_OPACITY > 0 && SHELL_OPACITY < 1);
-  assert.deepEqual([...BUILDING_3D_LAYERS], ['buildings-3d', 'buildings-3d-shell', 'buildings-parts-3d']);
+test('buildings split into parts stay drawn as solid shells, and LiDAR dims all four layers', () => {
+  assert.equal(SHELL_OPACITY, 1);
+  assert.deepEqual([...BUILDING_3D_LAYERS], ['buildings-3d', 'buildings-3d-shell', 'buildings-roof-3d', 'buildings-parts-3d']);
 });

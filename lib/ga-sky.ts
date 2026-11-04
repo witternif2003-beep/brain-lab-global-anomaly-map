@@ -60,6 +60,9 @@ export function skyFor(elev: number, relAzDeg = 90): SkySpecification {
 const hex = (c: RGBA) => `#${c.slice(0, 3).map((v) => Math.round(v).toString(16).padStart(2, '0')).join('')}`;
 const lerp = (a: RGBA, b: RGBA, t: number): RGBA => a.map((v, i) => v + (b[i] - v) * t) as RGBA;
 /** Light on 3D buildings and clouds: from the sun's real azimuth and elevation by day, warm near the horizon, dim blue moonlight-like fill at night. */
+/** Fixed afternoon light for 3D buildings: sun from the south, 25° up (polar 65°), intensity 0.8. */
+export const BUILDING_LIGHT: LightSpecification = { anchor: 'map', position: [1.5, 180, 65], color: '#ffffff', intensity: 0.8 };
+
 export function lightFor(elev: number, azimuth: number): LightSpecification {
   const day = Math.max(0, Math.min(1, (elev + 6) / 12));
   const warm = Math.max(0, Math.min(1, 1 - Math.abs(elev - 1) / 7));
@@ -87,7 +90,7 @@ export function attachSolarSky(map: MapLibreMap, now: () => Date = () => new Dat
     if (key === last) return;
     try {
       map.setSky(skyFor(elev, rel));
-      map.setLight(lightFor(elev, az));
+      map.setLight(BUILDING_LIGHT);
     } catch {
       return; // style still parsing; style.load retries
     }

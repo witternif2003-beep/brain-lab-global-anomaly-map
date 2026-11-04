@@ -123,7 +123,7 @@ export function targetDepthFor(project: EptProject, half: number, maxDepth = 14)
 /**
  * Nodes to draw for a view. EPT is additive (a child adds points to its parent), so every ancestor of a
  * drawn node is drawn too. Level of detail falls off by one octree level per doubling of distance past
- * half the view radius, and the nearest, shallowest nodes win when the point budget runs out.
+ * the full view radius, and the nearest, shallowest nodes win when the point budget runs out.
  */
 export function planNodes(project: EptProject, hierarchy: Hierarchy, view: LidarView): LidarPlan {
   const candidates: PlannedNode[] = [];
@@ -138,7 +138,7 @@ export function planNodes(project: EptProject, hierarchy: Hierarchy, view: Lidar
     const dx = Math.max(box.minX - view.cx, 0, view.cx - box.maxX);
     const dy = Math.max(box.minY - view.cy, 0, view.cy - box.maxY);
     const dist = Math.hypot(dx, dy);
-    const falloff = dist <= view.half / 2 ? 0 : Math.ceil(Math.log2(dist / (view.half / 2)));
+    const falloff = dist <= view.half ? 0 : Math.ceil(Math.log2(dist / view.half));
     if (box.depth > view.targetDepth - falloff) continue;
     if (count === -1) pendingHierarchy.push(key);
     else if (count > 0) candidates.push({ key, depth: box.depth, count, dist });
@@ -384,6 +384,12 @@ const BUILDING_MID: Rgb = [167, 139, 250];
 const BUILDING_HIGH: Rgb = [244, 114, 182];
 const TREE_LOW: Rgb = [134, 239, 172];
 const TREE_HIGH: Rgb = [21, 128, 61];
+
+/** Vivid ramp on height above ground: 0 m blue #0055ff, 15 m green #00ff55, 30 m and up orange #ffaa00. */
+export function heightRampColor(hagM: number): Rgb {
+  const t = Math.max(0, Math.min(1, hagM / 30));
+  return t < 0.5 ? mix([0, 85, 255], [0, 255, 85], t * 2) : mix([0, 255, 85], [255, 170, 0], (t - 0.5) * 2);
+}
 
 export function lidarColor(cls: number, hag: number, intensity: number): Rgb {
   let base: Rgb;

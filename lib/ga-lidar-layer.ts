@@ -19,7 +19,7 @@ import {
   IMAGERY_ZOOM,
   decodeNode,
   imageryPixel,
-  lidarColor,
+  heightRampColor,
   lngLatFrom3857,
   lngLatTo3857,
   pickProject,
@@ -27,7 +27,6 @@ import {
   targetDepthFor,
 } from './ga-lidar/ept';
 import type { EptProject, Hierarchy, LidarNodeData } from './ga-lidar/ept';
-import { BUILDING_3D_LAYERS } from './ga-buildings/overture';
 import { quantizeUint16 } from './ga-lidar/gpu-upload';
 import { clipW, EDL_RADIUS_CSS_PX, EdlPass } from './ga-lidar/edl';
 import { lidarVramStats, type LidarVramStats } from './map/vram-budget';
@@ -44,14 +43,6 @@ import { raiseGaRoadOverlay } from './ga-roads-overlay';
 import { raiseGaTrafficCountLayers } from './ga-traffic-counts-layer';
 
 export const GA_LIDAR_MIN_ZOOM = 10;
-/** Zoom from which the OSM 3D buildings are hidden so only the measured LiDAR buildings show. */
-const GA_LIDAR_BUILDINGS_ZOOM = 15;
-/**
- * OSM building opacity under LiDAR: 0, so only LiDAR buildings show (user choice). Opacity rather than visibility, so
- * the user's own building toggle is left alone; the previous opacity is restored when LiDAR turns off or zooms out.
- */
-/** Buildings stay visible under the points: airborne LiDAR records roofs but few wall returns. */
-export const GA_LIDAR_OSM_BUILDING_OPACITY = 0.6;
 const VIEW_TILES = 3.5;
 /** Fixed point diameter (CSS px): sharp micro-dots; at low altitude the imagery shows between them. */
 const POINT_CSS_PX = 1.5;
@@ -62,8 +53,10 @@ const POINT_CSS_PX = 1.5;
 const HORIZON_MIN_FORESHORTENING = 0.17;
 /** Extra octree levels so the points still close up at street zoom. */
 const EXTRA_DEPTH = 1;
-/** Desktop GPUs fetch one more octree level, so the nodes around the camera reach full survey density. */
-const EXTRA_DEPTH_DESKTOP = 2;
+/** Desktop GPUs fetch two more octree levels (dot size unchanged), so the nodes around the camera reach full survey density. */
+const EXTRA_DEPTH_DESKTOP = 3;
+/** Deepest octree level requested; USGS EPT leaves end where the survey density runs out. */
+const MAX_EPT_DEPTH = 18;
 /** Dots grow to this multiple of the measured point spacing on screen so neighbouring returns touch. */
 export const POINT_FILL = 1.15;
 /** Largest dot, CSS px, so near-camera points do not become blobs. */
@@ -285,7 +278,6 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     for (const key of [...this.drawn.keys()]) this.dropNode(key);
     this.material.dispose();
     this.edl.dispose();
-    this.setOsmBuildings(true);
     this.map = null;
     this.renderer = null;
   }
@@ -296,23 +288,6 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     this.stats.pointsDrawn = [...this.drawn.values()].reduce((s, n) => s + n.data.count, 0);
     this.stats.loading = this.inflight.size;
     this.stats.nodesTrueColor = [...this.drawn.values()].filter((n) => n.trueColor).length;
-  }
-
-  private osmOpacity: Map<string, unknown> | undefined = undefined;
-
-  /** OSM extrusions are hidden while LiDAR is drawn and restored afterwards. Buildings newer than the 2009–2018 surveys only show once LiDAR is off. */
-  private setOsmBuildings(solid: boolean): void {
-    const map = this.map;
-    if (!map) return;
-    const ids = BUILDING_3D_LAYERS.filter((id) => map.getLayer(id));
-    if (!ids.length) return;
-    if (!solid && this.osmOpacity === undefined) {
-      this.osmOpacity = new Map(ids.map((id) => [id, map.getPaintProperty(id, 'fill-extrusion-opacity') ?? null]));
-      for (const id of ids) map.setPaintProperty(id, 'fill-extrusion-opacity', GA_LIDAR_OSM_BUILDING_OPACITY);
-    } else if (solid && this.osmOpacity !== undefined) {
-      for (const [id, v] of this.osmOpacity) if (map.getLayer(id)) map.setPaintProperty(id, 'fill-extrusion-opacity', v as never);
-      this.osmOpacity = undefined;
-    }
   }
 
   private async hierarchy(project: EptProject, file: string): Promise<void> {
@@ -346,7 +321,6 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     this.stats.ql = project?.ql ?? null;
     if (!project) {
       for (const key of [...this.drawn.keys()]) this.dropNode(key);
-      this.setOsmBuildings(true);
       this.setStatus(zoom >= GA_LIDAR_MIN_ZOOM ? 'no USGS 3DEP LiDAR at this location' : `zoom to ${GA_LIDAR_MIN_ZOOM}+ for LiDAR`);
       map.triggerRepaint();
       return;
@@ -362,7 +336,7 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     }
 
     const half = (VIEW_TILES * WORLD_3857) / 2 ** zoom;
-    const targetDepth = Math.min(14, targetDepthFor(project, half) + (isTouchDevice() ? EXTRA_DEPTH : EXTRA_DEPTH_DESKTOP));
+    const targetDepth = Math.min(MAX_EPT_DEPTH, targetDepthFor(project, half, MAX_EPT_DEPTH) + (isTouchDevice() ? EXTRA_DEPTH : EXTRA_DEPTH_DESKTOP));
     const view = { cx, cy, half, targetDepth, pointBudget: this.pointBudget() };
     this.stats.targetDepth = targetDepth;
     this.setStatus('loading hierarchy');
@@ -402,7 +376,6 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     this.stats.nodesPlanned = plan.nodes.length;
     const queue = plan.nodes.filter((n) => !this.drawn.has(n.key) && !this.inflight.has(n.key));
     this.setStatus(queue.length ? 'loading points' : 'ready');
-    this.setOsmBuildings(zoom < GA_LIDAR_BUILDINGS_ZOOM);
     map.triggerRepaint();
 
     const worker = async () => {
@@ -668,7 +641,7 @@ export class GaLidar3DLayer implements CustomLayerInterface {
 function classColors(data: LidarNodeData): Uint8Array {
   const col = new Uint8Array(data.count * 3);
   for (let i = 0; i < data.count; i++) {
-    const [r, g, b] = lidarColor(data.cls[i], data.hag[i], data.intensity[i]);
+    const [r, g, b] = heightRampColor(data.hag[i]);
     col[i * 3] = r;
     col[i * 3 + 1] = g;
     col[i * 3 + 2] = b;

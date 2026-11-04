@@ -34,17 +34,19 @@ export const HEIGHT_EXPRESSION: ExpressionSpecification = [
   ['case', ['has', 'num_floors'], ['*', ['to-number', ['get', 'num_floors'], 0], FLOOR_HEIGHT_M], DEFAULT_HEIGHT_M],
 ];
 
-/** Colour: NAIP roof pixels (feature-state), else Overture `roof_color`, else a height ramp. */
+/** Overture `facade_material` colours (glass, brick, concrete, else light grey). */
+export const MATERIAL_COLOR_EXPRESSION: ExpressionSpecification = ['match', ['get', 'facade_material'], 'glass', '#88aaff', 'brick', '#aa5533', 'concrete', '#cccccc', '#e0e0e0'];
+/** Colour: `facade_material` first, then NAIP roof pixels, `roof_color`, `facade_color`, subtype. */
 export const COLOR_EXPRESSION: ExpressionSpecification = [
   'case',
+  ['has', 'facade_material'],
+  MATERIAL_COLOR_EXPRESSION,
   ['!=', ['typeof', ['feature-state', 'roofColor']], 'null'],
   ['to-color', ['feature-state', 'roofColor'], '#cbd5e1'],
   ['has', 'roof_color'],
   ['to-color', ['get', 'roof_color'], '#cbd5e1'],
   ['has', 'facade_color'],
   ['to-color', ['get', 'facade_color'], '#cbd5e1'],
-  ['has', 'facade_material'],
-  ['match', ['get', 'facade_material'], 'brick', '#a0624a', 'glass', '#8fa7b8', 'metal', '#9aa3ab', 'stone', '#c2b8a3', 'wood', '#a68a64', 'concrete', '#bdb8ae', 'plaster', '#d8d0c0', '#c9c4ba'],
   ['match', ['get', 'subtype'], 'residential', '#d6cbb8', 'commercial', '#c4c6c8', 'industrial', '#b4b0a8', 'education', '#cdbfa8', 'medical', '#d9dcdf', 'religious', '#d2c6b2', 'civic', '#c9c2b4', 'transportation', '#b9bcbf', 'agricultural', '#b9a88c', '#c9c4ba'],
 ];
 
@@ -61,16 +63,27 @@ export const PART_HEIGHT_EXPRESSION: ExpressionSpecification = [
 ];
 export const PART_COLOR_EXPRESSION: ExpressionSpecification = [
   'case',
+  ['has', 'facade_material'],
+  MATERIAL_COLOR_EXPRESSION,
   ['has', 'facade_color'],
   ['to-color', ['get', 'facade_color'], '#e2e8f0'],
   ['has', 'roof_color'],
   ['to-color', ['get', 'roof_color'], '#e2e8f0'],
   ['interpolate', ['linear'], ['to-number', PART_HEIGHT_EXPRESSION, DEFAULT_HEIGHT_M], 0, '#e2e8f0', 40, '#bfdbfe', 150, '#60a5fa'],
 ];
-/** Outlines of buildings that Overture splits into parts stay drawn, see-through, so no footprint disappears. */
-export const SHELL_OPACITY = 0.3;
+/** Outlines of buildings that Overture splits into parts stay drawn (solid), so no footprint disappears. */
+export const SHELL_OPACITY = 1;
+/** Roof colour for the recorded `roof_height` section: NAIP pixels, else `roof_color`, else slate. */
+export const ROOF_COLOR_EXPRESSION: ExpressionSpecification = [
+  'case',
+  ['!=', ['typeof', ['feature-state', 'roofColor']], 'null'],
+  ['to-color', ['feature-state', 'roofColor'], '#7c838d'],
+  ['has', 'roof_color'],
+  ['to-color', ['get', 'roof_color'], '#7c838d'],
+  '#7c838d',
+];
 /** Every 3D building layer, for code that dims buildings while LiDAR points draw. */
-export const BUILDING_3D_LAYERS = ['buildings-3d', 'buildings-3d-shell', 'buildings-parts-3d'] as const;
+export const BUILDING_3D_LAYERS = ['buildings-3d', 'buildings-3d-shell', 'buildings-roof-3d', 'buildings-parts-3d'] as const;
 
 export interface OvertureState {
   release: string;
@@ -137,6 +150,10 @@ export async function addOvertureBuildings(
   }
   const underground: ExpressionSpecification = ['!=', ['get', 'is_underground'], true];
   const hasParts: ExpressionSpecification = ['==', ['get', 'has_parts'], true];
+  const base: ExpressionSpecification = ['coalesce', ['get', 'min_height'], 0];
+  const hasRoof: ExpressionSpecification = ['>', ['to-number', ['coalesce', ['get', 'roof_height'], 0], 0], 0];
+  // Overture `height` includes the roof, so walls stop `roof_height` below it and the roof section is its own layer.
+  const wallTop: ExpressionSpecification = ['max', base, ['-', ['to-number', HEIGHT_EXPRESSION, DEFAULT_HEIGHT_M], ['to-number', ['coalesce', ['get', 'roof_height'], 0], 0]]];
   const extrusion = (opacity: number) => ({
     'fill-extrusion-color': COLOR_EXPRESSION,
     'fill-extrusion-height': HEIGHT_EXPRESSION,
@@ -146,13 +163,27 @@ export async function addOvertureBuildings(
   });
   if (!map.getLayer('buildings-3d')) {
     map.addLayer(
-      { id: 'buildings-3d', type: 'fill-extrusion', source: OVERTURE_BUILDINGS_SOURCE, 'source-layer': 'building', minzoom: OVERTURE_FULL_ZOOM, filter: ['all', underground, ['!', hasParts]], paint: extrusion(0.9) },
+      { id: 'buildings-3d', type: 'fill-extrusion', source: OVERTURE_BUILDINGS_SOURCE, 'source-layer': 'building', minzoom: OVERTURE_FULL_ZOOM, filter: ['all', underground, ['!', hasParts]], paint: { ...extrusion(1), 'fill-extrusion-height': wallTop } },
       before,
     );
   }
   if (!map.getLayer('buildings-3d-shell')) {
     map.addLayer(
       { id: 'buildings-3d-shell', type: 'fill-extrusion', source: OVERTURE_BUILDINGS_SOURCE, 'source-layer': 'building', minzoom: OVERTURE_FULL_ZOOM, filter: ['all', underground, hasParts], paint: extrusion(SHELL_OPACITY) },
+      before,
+    );
+  }
+  if (!map.getLayer('buildings-roof-3d')) {
+    map.addLayer(
+      {
+        id: 'buildings-roof-3d',
+        type: 'fill-extrusion',
+        source: OVERTURE_BUILDINGS_SOURCE,
+        'source-layer': 'building',
+        minzoom: OVERTURE_FULL_ZOOM,
+        filter: ['all', underground, ['!', hasParts], hasRoof],
+        paint: { 'fill-extrusion-color': ROOF_COLOR_EXPRESSION, 'fill-extrusion-base': wallTop, 'fill-extrusion-height': HEIGHT_EXPRESSION, 'fill-extrusion-opacity': 1, 'fill-extrusion-vertical-gradient': true },
+      },
       before,
     );
   }
@@ -169,7 +200,7 @@ export async function addOvertureBuildings(
           'fill-extrusion-color': PART_COLOR_EXPRESSION,
           'fill-extrusion-height': PART_HEIGHT_EXPRESSION,
           'fill-extrusion-base': PART_BASE_EXPRESSION,
-          'fill-extrusion-opacity': 0.95,
+          'fill-extrusion-opacity': 1,
           'fill-extrusion-vertical-gradient': true,
         },
       },

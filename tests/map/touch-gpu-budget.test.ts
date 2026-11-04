@@ -17,7 +17,7 @@ test("touch LiDAR budget downloads and caches less than desktop", () => {
 
 test("with no recent crash touch devices draw up to 20,000,000 LiDAR points and desktops up to 40,000,000", () => {
   assert.equal(LIDAR_POINT_CEILING, 20_000_000);
-  assert.equal(LIDAR_DESKTOP_POINT_CEILING, 40_000_000);
+  assert.equal(LIDAR_DESKTOP_POINT_CEILING, 80_000_000);
   for (const [touch, ceiling] of [[true, LIDAR_POINT_CEILING], [false, LIDAR_DESKTOP_POINT_CEILING]] as const) {
     assert.equal(lidarBudget(touch).points, ceiling);
     assert.equal(lidarBudget(touch, 0).points, ceiling);

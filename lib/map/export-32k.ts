@@ -203,7 +203,7 @@ export async function exportMap32k(
             ctx.drawImage(canvas, 0, 0, tile, tile);
           });
           const got = ctx.getImageData(0, 0, t.w, t.h).data;
-          if (ready && !isBlankTile(got)) px = got;
+          if (ready && map.loaded() && !lidarBusy() && !isBlankTile(got)) px = got;
         }
         if (!px) throw new Error(`32K export stopped: tile row ${t.row + 1}, column ${t.col + 1} did not finish loading after 2 tries`);
         for (let y = 0; y < t.h; y++) band.set(px.subarray(y * t.w * 4, (y + 1) * t.w * 4), (y * plan.width + t.x0) * 4);
