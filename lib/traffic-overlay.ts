@@ -1,6 +1,6 @@
-import type { Map as MapLibreMap } from 'maplibre-gl';
+import type { Map as MapLibreMap, Popup } from 'maplibre-gl';
 import { reportGaFeed } from './ga-live-status';
-import { MAX_AGENTS_DESKTOP, MAX_AGENTS_TOUCH, MAX_FLOW_EDGES, haversineM, TrafficSim, type CarAgent, type LineFlow, type LngLat } from './traffic-sim';
+import { MAX_AGENTS_DESKTOP, MAX_AGENTS_TOUCH, MAX_FLOW_EDGES, SLOW_MS, carLabel, carStatus, haversineM, labelCandidates, msToMph, TrafficSim, type CarAgent, type LineFlow, type LngLat } from './traffic-sim';
 import { FLOW_SOURCE_LAYER, TOMTOM_FLOW_DOCS_URL } from './ga-traffic-flow/flow';
 import { GA_TRAFFIC_FLOW_SOURCE } from './ga-traffic-flow-layer';
 
@@ -10,8 +10,6 @@ const ROAD_CLASSES = ['motorway', 'trunk'];
 /** CubeGeometry spans -1..1, so scale is half the car size: 4 m long, 2 m wide, 1.5 m tall. */
 const HALF = { length: 2, width: 1, height: 0.75 };
 const bound = new WeakSet<MapLibreMap>();
-/** Cars under 10 m/s (36 km/h) are drawn red. */
-const SLOW_MS = 10;
 
 /** SIM vehicles run by default; `?traffic=off` turns them off. */
 export function trafficSimEnabled(search: string): boolean {
@@ -74,7 +72,7 @@ export async function addGaTrafficSim(map: MapLibreMap): Promise<void> {
     return;
   }
   const cap = window.matchMedia('(pointer: coarse)').matches ? MAX_AGENTS_TOUCH : MAX_AGENTS_DESKTOP;
-  const [{ MapLibreOverlay }, { SimpleMeshLayer }, { CubeGeometry }] = await Promise.all([import('@deck.gl/maplibre'), import('@deck.gl/mesh-layers'), import('@luma.gl/engine')]);
+  const [{ Popup: PopupCtor }, { MapLibreOverlay }, { SimpleMeshLayer }, { TextLayer }, { CubeGeometry }] = await Promise.all([import('maplibre-gl'), import('@deck.gl/maplibre'), import('@deck.gl/mesh-layers'), import('@deck.gl/layers'), import('@luma.gl/engine')]);
   const mesh = new CubeGeometry();
   const overlay = new MapLibreOverlay({ interleaved: false, layers: [] });
   map.addControl(overlay);
@@ -82,6 +80,39 @@ export async function addGaTrafficSim(map: MapLibreMap): Promise<void> {
   let raf = 0;
   let last = performance.now();
   let frame = 0;
+  let selected: { car: CarAgent; popup: Popup; rows: HTMLElement[]; at: number } | null = null;
+
+  const fillPopup = (rows: HTMLElement[], a: CarAgent) => {
+    const kmh = a.speed * 3.6;
+    rows[0].textContent = `Car ID: ${a.id}`;
+    rows[1].textContent = `Speed: ${msToMph(a.speed).toFixed(1)} mph (${kmh.toFixed(1)} km/h)`;
+    rows[2].textContent = `Location: ${a.position[1].toFixed(5)}, ${a.position[0].toFixed(5)}`;
+    const st = carStatus(a);
+    rows[3].textContent = `Status: ${st.label}`;
+    rows[3].style.color = st.color;
+  };
+  const closeSelected = () => {
+    const s = selected;
+    selected = null;
+    s?.popup.remove();
+  };
+  const openPopup = (car: CarAgent) => {
+    closeSelected();
+    const box = document.createElement('div');
+    box.style.cssText = 'font:12px/1.4 ui-monospace,monospace;color:#d0e8ff';
+    const head = document.createElement('div');
+    head.style.cssText = 'font-weight:700;color:#00ffff';
+    head.textContent = 'SIM vehicle (simulated, not a real car)';
+    const rows = [0, 1, 2, 3].map(() => box.appendChild(document.createElement('div')));
+    box.prepend(head);
+    fillPopup(rows, car);
+    const popup = new PopupCtor({ closeButton: true, closeOnClick: false, maxWidth: 'min(300px, 90vw)' }).setLngLat(car.position).setDOMContent(box).addTo(map);
+    const s = { car, popup, rows, at: performance.now() };
+    selected = s;
+    popup.on('close', () => {
+      if (selected === s) selected = null;
+    });
+  };
 
   const rebuild = () => {
     const tt = tomtomFlowLines(map);
@@ -89,6 +120,7 @@ export async function addGaTrafficSim(map: MapLibreMap): Promise<void> {
     const lines = onFlow ? tt.lines : motorwayLines(map);
     const elev = lines.map((l) => l.map((c) => map.queryTerrainElevation(c) ?? 0));
     sim = new TrafficSim(lines, cap, elev, onFlow ? tt.flows : undefined);
+    closeSelected();
     const jam = sim.agents.filter((a) => a.speed < SLOW_MS).length;
     reportGaFeed(map, {
       id: 'traffic-sim',
@@ -116,6 +148,15 @@ export async function addGaTrafficSim(map: MapLibreMap): Promise<void> {
     const cars = sim.tick(Math.min(100, now - last));
     last = now;
     frame++;
+    if (selected) {
+      selected.popup.setLngLat(selected.car.position);
+      if (now - selected.at > 250) {
+        fillPopup(selected.rows, selected.car);
+        selected.at = now;
+      }
+    }
+    const c = map.getCenter();
+    const labelled = labelCandidates(cars, [c.lng, c.lat], map.getZoom());
     overlay.setProps({
       layers: [
         new SimpleMeshLayer<CarAgent>({
@@ -128,6 +169,28 @@ export async function addGaTrafficSim(map: MapLibreMap): Promise<void> {
           getColor: (d) => (d.speed < SLOW_MS ? [255, 0, 0, 255] : [0, 255, 255, 255]),
           material: { ambient: 0.5, diffuse: 0.6, shininess: 32, specularColor: [60, 64, 70] },
           updateTriggers: { getPosition: frame, getOrientation: frame, getColor: frame },
+          pickable: true,
+          onClick: ({ object }) => {
+            if (!object) return false;
+            openPopup(object);
+            return true;
+          },
+        }),
+        new TextLayer<CarAgent>({
+          id: 'ga-traffic-sim-labels',
+          data: labelled,
+          visible: labelled.length > 0,
+          getPosition: (d) => [d.position[0], d.position[1], d.elevM + 2.5],
+          getText: carLabel,
+          getSize: 12,
+          getColor: [255, 255, 255, 255],
+          getTextAnchor: 'middle',
+          getAlignmentBaseline: 'bottom',
+          fontFamily: 'ui-monospace, monospace',
+          background: true,
+          getBackgroundColor: [10, 14, 20, 200],
+          backgroundPadding: [3, 1],
+          updateTriggers: { getPosition: frame, getText: frame },
         }),
       ],
     });
@@ -147,6 +210,7 @@ export async function addGaTrafficSim(map: MapLibreMap): Promise<void> {
   map.once('remove', () => {
     cancelAnimationFrame(raf);
     clearTimeout(debounce);
+    closeSelected();
     map.off('moveend', onMoveEnd);
     map.off('sourcedata', onFlowData);
     bound.delete(map);

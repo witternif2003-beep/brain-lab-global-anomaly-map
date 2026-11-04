@@ -174,3 +174,38 @@ export class TrafficSim {
     return this.agents;
   }
 }
+
+/** Cars under 10 m/s (36 km/h) are drawn red. */
+export const SLOW_MS = 10;
+/** Per-car text labels only above this zoom, within this distance of the map centre, nearest first, at most this many. */
+export const LABEL_MIN_ZOOM = 15.5;
+export const LABEL_MAX_DIST_M = 500;
+export const MAX_CAR_LABELS = 50;
+
+export const msToMph = (ms: number): number => ms * 2.2369362920544;
+
+export type CarStatus = { label: 'Stopped' | 'Jammed' | 'Slow' | 'Free-flow'; color: string };
+
+/** Stopped ≤ 5 mph, Jammed < 30 mph, Slow < 55 mph, else Free-flow. */
+export function carStatus(a: Pick<CarAgent, 'speed'>): CarStatus {
+  const mph = msToMph(a.speed);
+  if (mph <= 5) return { label: 'Stopped', color: '#ef4444' };
+  if (mph < 30) return { label: 'Jammed', color: '#f97316' };
+  if (mph < 55) return { label: 'Slow', color: '#eab308' };
+  return { label: 'Free-flow', color: '#22c55e' };
+}
+
+export function carLabel(a: Pick<CarAgent, 'id' | 'speed'>): string {
+  return `SIM ${a.id} | ${msToMph(a.speed).toFixed(1)} mph`;
+}
+
+/** The cars to label this frame: none at zoom ≤ 15.5, else the nearest `max` within 500 m of `center`. */
+export function labelCandidates(cars: readonly CarAgent[], center: LngLat, zoom: number, max = MAX_CAR_LABELS): CarAgent[] {
+  if (zoom <= LABEL_MIN_ZOOM) return [];
+  const near: [number, CarAgent][] = [];
+  for (const c of cars) {
+    const d = haversineM(c.position, center);
+    if (d < LABEL_MAX_DIST_M) near.push([d, c]);
+  }
+  return near.sort((a, b) => a[0] - b[0]).slice(0, max).map(([, c]) => c);
+}

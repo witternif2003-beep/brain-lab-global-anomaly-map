@@ -1,6 +1,6 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-import { CRAWL_SPEED_MS, FREE_SPEED_MS, flowDensityPerKm, flowSpeedMs, JAM_FRACTION, JAM_SPEED_MS, MAX_AGENTS_TOUCH, TrafficSim, bearingDeg, buildEdge, haversineM, inJam, positionAt, type LngLat } from '../lib/traffic-sim';
+import { LABEL_MAX_DIST_M, carLabel, carStatus, labelCandidates, msToMph, CRAWL_SPEED_MS, FREE_SPEED_MS, flowDensityPerKm, flowSpeedMs, JAM_FRACTION, JAM_SPEED_MS, MAX_AGENTS_TOUCH, TrafficSim, bearingDeg, buildEdge, haversineM, inJam, positionAt, type LngLat } from '../lib/traffic-sim';
 import { trafficSimEnabled } from '../lib/traffic-overlay';
 
 /** ~16.1 km (10 mi) due-north line at Atlanta's longitude, in 5 vertices. */
@@ -77,4 +77,26 @@ test('TomTom-bound lines: speed = 100 km/h × traffic_level, density 5→80/km b
   assert.ok(onLine(1).every((a) => Math.abs(a.speed - FREE_SPEED_MS * 0.1) < 1e-9));
   sim.tick(1000);
   assert.ok(onLine(1).every((a) => Math.abs(a.speed - FREE_SPEED_MS * 0.1) < 1e-9));
+});
+
+test('car telemetry: mph conversion, SIM label, 4-level status by mph', () => {
+  assert.ok(Math.abs(msToMph(FREE_SPEED_MS) - 62.137) < 0.01);
+  assert.equal(carLabel({ id: 'car-3-7', speed: 20 }), 'SIM car-3-7 | 44.7 mph');
+  const mph = (m: number) => ({ speed: m / 2.2369362920544 });
+  assert.equal(carStatus(mph(5)).label, 'Stopped');
+  assert.equal(carStatus(mph(29.9)).label, 'Jammed');
+  assert.equal(carStatus(mph(30)).label, 'Slow');
+  assert.equal(carStatus(mph(55)).label, 'Free-flow');
+});
+
+test('car labels: none at zoom 15.5 or below; nearest 50 within 500 m above it', () => {
+  const center: LngLat = [-84.388, 33.749];
+  const car = (i: number, dLat: number) => ({ id: `c${i}`, edgeIndex: 0, offsetDistance: 0, speed: 20, bearing: 0, elevM: 0, position: [center[0], center[1] + dLat] as LngLat });
+  const cars = Array.from({ length: 80 }, (_, i) => car(i, i * 0.00005));
+  assert.equal(labelCandidates(cars, center, 15.5).length, 0);
+  const got = labelCandidates(cars, center, 15.6);
+  assert.equal(got.length, 50);
+  assert.equal(got[0].id, 'c0');
+  assert.ok(got.every((c) => haversineM(c.position, center) < LABEL_MAX_DIST_M));
+  assert.equal(labelCandidates([car(0, 0.01)], center, 18).length, 0);
 });
