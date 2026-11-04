@@ -1,6 +1,6 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-import { FREE_SPEED_MS, JAM_FRACTION, JAM_SPEED_MS, MAX_AGENTS_TOUCH, TrafficSim, bearingDeg, buildEdge, haversineM, inJam, positionAt, type LngLat } from '../lib/traffic-sim';
+import { CRAWL_SPEED_MS, FREE_SPEED_MS, flowDensityPerKm, flowSpeedMs, JAM_FRACTION, JAM_SPEED_MS, MAX_AGENTS_TOUCH, TrafficSim, bearingDeg, buildEdge, haversineM, inJam, positionAt, type LngLat } from '../lib/traffic-sim';
 import { trafficSimEnabled } from '../lib/traffic-overlay';
 
 /** ~16.1 km (10 mi) due-north line at Atlanta's longitude, in 5 vertices. */
@@ -61,4 +61,21 @@ test('SIM vehicles are opt-in via ?traffic=sim only', () => {
   assert.equal(trafficSimEnabled('?traffic=off'), false);
   assert.equal(trafficSimEnabled('?traffic-sim=1'), false);
   assert.equal(trafficSimEnabled('?x=1&traffic=sim'), true);
+});
+
+test('TomTom-bound lines: speed = 100 km/h × traffic_level, density 5→80/km by jamFactor, closures stop', () => {
+  assert.ok(Math.abs(flowSpeedMs({ level: 1 }) - FREE_SPEED_MS) < 1e-9);
+  assert.ok(Math.abs(flowSpeedMs({ level: 0.5 }) - FREE_SPEED_MS / 2) < 1e-9);
+  assert.equal(flowSpeedMs({ level: 0 }), CRAWL_SPEED_MS);
+  assert.equal(flowSpeedMs({ level: 0.9, closed: true }), 0);
+  assert.equal(flowDensityPerKm({ level: 1 }), 5);
+  assert.equal(flowDensityPerKm({ level: 0 }), 80);
+  assert.equal(flowDensityPerKm({ level: 0.5 }), 42.5);
+  const sim = new TrafficSim([I75, I75.map(([x, y]) => [x + 0.1, y] as LngLat)], 100_000, undefined, [{ level: 1 }, { level: 0.1 }]);
+  const onLine = (i: number) => sim.agents.filter((a) => a.edgeIndex === i);
+  assert.ok(onLine(1).length > onLine(0).length * 10);
+  assert.ok(onLine(0).every((a) => Math.abs(a.speed - FREE_SPEED_MS) < 1e-9));
+  assert.ok(onLine(1).every((a) => Math.abs(a.speed - FREE_SPEED_MS * 0.1) < 1e-9));
+  sim.tick(1000);
+  assert.ok(onLine(1).every((a) => Math.abs(a.speed - FREE_SPEED_MS * 0.1) < 1e-9));
 });

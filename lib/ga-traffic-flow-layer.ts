@@ -4,7 +4,6 @@ import { reportGaFeed } from './ga-live-status';
 
 export const GA_TRAFFIC_FLOW_SOURCE = 'ga-traffic-flow';
 export const GA_TRAFFIC_FLOW_LAYER = 'ga-traffic-flow-line';
-export const GA_TRAFFIC_FLOW_CASING = 'ga-traffic-flow-casing';
 
 export interface FlowStatus {
   mode: FlowMode;
@@ -36,10 +35,10 @@ export function gaTrafficFlowStatus(map: MapLibreMap): Promise<FlowStatus> {
   return p;
 }
 
-const WIDTH = ['interpolate', ['exponential', 1.5], ['zoom'], 6, 1.5, 10, 3, 12, 4, 16, 8, 20, 16] as ExpressionSpecification;
-const CASING_WIDTH = ['interpolate', ['exponential', 1.5], ['zoom'], 6, 2.5, 10, 5, 12, 6.5, 16, 12, 20, 22] as ExpressionSpecification;
+const WIDTH = ['interpolate', ['linear'], ['zoom'], 8, 2, 12, 4, 16, 8] as ExpressionSpecification;
+const OPACITY = 0.75;
 
-/** Congestion polylines (not vehicles): live TomTom tiles via the server proxy when a key is set, labelled mock data only when TRAFFIC_FLOW_MOCK=1, otherwise nothing. Drawn above the road overlay, with a dark casing so it reads on satellite imagery. */
+/** Congestion polylines (not vehicles): live TomTom tiles via the server proxy when a key is set, labelled mock data only when TRAFFIC_FLOW_MOCK=1, otherwise nothing. Thin (2–8 px by zoom) and 75% opaque, drawn under 3D buildings and LiDAR, so the road and satellite stay visible underneath. */
 export async function addGaTrafficFlowLayer(map: MapLibreMap): Promise<void> {
   let s: FlowStatus;
   try {
@@ -59,18 +58,8 @@ export async function addGaTrafficFlowLayer(map: MapLibreMap): Promise<void> {
     map.addSource(GA_TRAFFIC_FLOW_SOURCE, src);
   }
   const sourceLayer = s.mode === 'live' ? { 'source-layer': FLOW_SOURCE_LAYER } : {};
-  if (!map.getLayer(GA_TRAFFIC_FLOW_CASING)) {
-    map.addLayer({
-      id: GA_TRAFFIC_FLOW_CASING,
-      type: 'line',
-      source: GA_TRAFFIC_FLOW_SOURCE,
-      ...sourceLayer,
-      minzoom: FLOW_MIN_ZOOM,
-      layout: { 'line-join': 'round', 'line-cap': 'round' },
-      paint: { 'line-color': '#05070c', 'line-opacity': 0.75, 'line-width': CASING_WIDTH },
-    });
-  }
   if (!map.getLayer(GA_TRAFFIC_FLOW_LAYER)) {
+    const below = map.getLayersOrder().find((id) => ['fill-extrusion', 'custom'].includes(map.getLayer(id)?.type ?? ''));
     map.addLayer({
       id: GA_TRAFFIC_FLOW_LAYER,
       type: 'line',
@@ -78,8 +67,8 @@ export async function addGaTrafficFlowLayer(map: MapLibreMap): Promise<void> {
       ...sourceLayer,
       minzoom: FLOW_MIN_ZOOM,
       layout: { 'line-join': 'round', 'line-cap': 'round' },
-      paint: { 'line-color': FLOW_COLOR_EXPRESSION, 'line-opacity': 0.9, 'line-width': WIDTH },
-    });
+      paint: { 'line-color': FLOW_COLOR_EXPRESSION, 'line-opacity': OPACITY, 'line-width': WIDTH },
+    }, below);
   }
   reportGaFeed(map, {
     id: 'traffic-flow',
