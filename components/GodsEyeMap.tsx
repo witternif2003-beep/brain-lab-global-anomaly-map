@@ -14,6 +14,10 @@ import { GaWall3DLayer, GA_WALL_3D_MIN_ZOOM } from '../lib/ga-wall-3d';
 import { addGaPatrolLayers } from '../lib/ga-patrol-3d';
 import { addUsBorderRunnerLayers } from '../lib/us-border-runners-3d';
 import { addGaLidarLayers } from '../lib/ga-lidar-layer';
+import { addOvertureBuildings, type OvertureState } from '../lib/ga-buildings/overture';
+import { attachBuildingEnrichment, type BuildingEnrichStats } from '../lib/ga-buildings/enrich';
+import { addViewshedLayers, clearViewshed, onceOnMapClick, runViewshedAt, type ViewshedResult } from '../lib/ga-viewshed/layer';
+import { exportMap32k, pickPngSink, EXPORT_32K_WIDTH } from '../lib/map/export-32k';
 import { addGaRoadOverlay } from '../lib/ga-roads-overlay';
 import { addGaRetailParkingLayers } from '../lib/ga-retail-parking-layer';
 import { addGaCompetitorLayers } from '../lib/ga-competitors';
@@ -462,6 +466,43 @@ export default function GodsEyeMap({
   // NSA Admin Real-Time Star Constellations Canvas Animation
   const starsCanvasRef = useRef<HTMLCanvasElement>(null);
   const [export8kStatus, setExport8kStatus] = useState<string | null>(null);
+  const [overtureState, setOvertureState] = useState<OvertureState | null>(null);
+  const [buildingStats, setBuildingStats] = useState<BuildingEnrichStats | null>(null);
+  const [export32kStatus, setExport32kStatus] = useState<string | null>(null);
+  const [losResult, setLosResult] = useState<ViewshedResult | null>(null);
+  const [losArmed, setLosArmed] = useState(false);
+  const save32k = useCallback(async () => {
+    const map = mapRef.current;
+    if (!map) return;
+    setExport32kStatus('preparing…');
+    try {
+      const { sink, close } = await pickPngSink(`georgia-map-${EXPORT_32K_WIDTH}.png`);
+      const out = await exportMap32k(map, sink, (done, total) => setExport32kStatus(`tile ${done}/${total}`));
+      await close();
+      setExport32kStatus(`saved ${out.width}×${out.height} in ${Math.round(out.seconds)} s`);
+    } catch (err) {
+      setExport32kStatus(err instanceof Error ? err.message : 'export failed');
+    }
+  }, []);
+  const armLineOfSight = useCallback(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (losArmed) {
+      clearViewshed(map);
+      setLosArmed(false);
+      setLosResult(null);
+      return;
+    }
+    setLosArmed(true);
+    setLosResult(null);
+    onceOnMapClick(map, (lngLat) => {
+      try {
+        setLosResult(runViewshedAt(map, lngLat));
+      } finally {
+        setLosArmed(false);
+      }
+    });
+  }, [losArmed]);
   const save8k = useCallback(async () => {
     const map = mapRef.current;
     if (!map) return;
@@ -685,22 +726,10 @@ export default function GodsEyeMap({
         attribution: '3D buildings: <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> footprints and heights',
       });
     }
-    if (!map.getLayer('buildings-3d')) {
-      map.addLayer({
-        id: 'buildings-3d',
-        type: 'fill-extrusion',
-        source: 'ofm-buildings',
-        'source-layer': 'building',
-        minzoom: 13,
-        paint: {
-          'fill-extrusion-color': ['interpolate', ['linear'], ['coalesce', ['get', 'render_height'], 5], 0, '#cbd5e1', 40, '#93c5fd', 150, '#3b82f6'],
-          'fill-extrusion-height': ['coalesce', ['get', 'render_height'], 5],
-          'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0],
-          'fill-extrusion-opacity': ['interpolate', ['linear'], ['zoom'], 13, 0, 14, 0.8],
-          'fill-extrusion-vertical-gradient': true,
-        },
-      });
-    }
+    void addOvertureBuildings(map, maplibregl, setOvertureState).then(() => {
+      addViewshedLayers(map);
+      attachBuildingEnrichment(map, setBuildingStats);
+    });
 
     // ═══ SINGLE SOURCE for all 8 state boundaries ═══
     if (!map.getSource('all-states')) {
@@ -1841,8 +1870,38 @@ export default function GodsEyeMap({
             >
               SAVE 8K PNG
             </button>
+            <button
+              type="button"
+              onClick={save32k}
+              disabled={!!export32kStatus && export32kStatus !== 'export failed' && !export32kStatus.startsWith('saved')}
+              title="One 32,768 px PNG of this exact view, rendered in 2,048 px tiles"
+              className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold tracking-wider border bg-[#070d18]/90 text-[#a78bfa] border-[#a78bfa]/60 hover:border-[#a78bfa] disabled:opacity-60"
+            >
+              SAVE 32K PNG
+            </button>
+            <button
+              type="button"
+              onClick={armLineOfSight}
+              title="Click the map to compute what an observer there can see, from public building heights and terrain"
+              className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold tracking-wider border bg-[#070d18]/90 ${losArmed ? 'text-[#22d3ee] border-[#22d3ee]' : 'text-[#94a3b8] border-[#334155]'}`}
+            >
+              {losArmed ? 'CLICK A SPOT' : 'LINE OF SIGHT'}
+            </button>
             <FbiOsintPopup />
             {export8kStatus && <span className="text-[10px] text-slate-300 bg-[#070d18]/80 rounded px-1.5 py-0.5">{export8kStatus}</span>}
+            {export32kStatus && <span className="text-[10px] text-slate-300 bg-[#070d18]/80 rounded px-1.5 py-0.5">{export32kStatus}</span>}
+            {losResult && (
+              <span className="text-[10px] text-slate-300 bg-[#070d18]/80 rounded px-1.5 py-0.5">
+                eye {losResult.observerHeightM.toFixed(1)} m · sees {(losResult.areaM2 / 10000).toFixed(1)} ha of {(losResult.circleAreaM2 / 10000).toFixed(1)} ha · {Math.round(losResult.coverage * 100)}% of the 200 m block · {losResult.buildings} buildings · {Math.round(losResult.viewshedMs)}/{Math.round(losResult.blindspotMs)} ms
+              </span>
+            )}
+            {overtureState && (
+              <span className="text-[10px] text-slate-300 bg-[#070d18]/80 rounded px-1.5 py-0.5">
+                buildings {overtureState.status === 'error' ? `error: ${overtureState.error ?? ''}` : `Overture ${overtureState.release}`}
+                {buildingStats && buildingStats.measured > 0 ? ` · ${buildingStats.measured} LiDAR heights` : ''}
+                {buildingStats && buildingStats.painted > 0 ? ` · ${buildingStats.painted} NAIP roofs` : ''}
+              </span>
+            )}
           </div>
           {/* NASA ASTROMETRIC STAR TELEMETRY HUD (50 VERIFIED STELLAR METRICS) */}
           {selectedAstroStar && (

@@ -1,7 +1,7 @@
 /** GPU memory budget for the GodsEYE map: how much the LiDAR layer may use given what everything else already holds. */
 
-/** LiDAR GPU bytes per point: Float32 xyz position (12) + Uint8 rgb colour (3). */
-export const LIDAR_BYTES_PER_POINT = 15;
+/** LiDAR GPU bytes per point: Uint16 xyz position quantised per node (6) + Uint8 rgb colour (3). */
+export const LIDAR_BYTES_PER_POINT = 9;
 /** JavaScript bytes per point kept after upload: Float32 x, y, height above ground (12) + Uint8 class and intensity (2). */
 export const LIDAR_JS_BYTES_PER_POINT = 14;
 
@@ -18,7 +18,7 @@ const MB = 1024 * 1024;
  * browsers do not expose GPU memory, and iOS Safari reloads tabs under memory pressure without a documented threshold.
  * Safe mode (a crash or context loss in the last 30 min) lowers the target further.
  */
-export const VRAM_TARGET_MB = { touch: 512, touchSafe: 320, desktop: 2048, desktopSafe: 1024 } as const;
+export const VRAM_TARGET_MB = { touch: 512, touchSafe: 320, desktop: 4096, desktopSafe: 2048 } as const;
 
 export function vramTargetBytes(touch: boolean, safe: boolean): number {
   const mb = touch ? (safe ? VRAM_TARGET_MB.touchSafe : VRAM_TARGET_MB.touch) : safe ? VRAM_TARGET_MB.desktopSafe : VRAM_TARGET_MB.desktop;
@@ -45,4 +45,20 @@ export function lidarPointBudget({ ceiling, targetBytes, otherBytes, reserveByte
   const free = targetBytes - otherBytes - reserveBytes;
   const fit = Math.floor(free / bytesPerPoint);
   return Math.max(Math.min(LIDAR_MIN_POINTS, ceiling), Math.min(ceiling, Number.isFinite(fit) ? fit : ceiling));
+}
+
+export interface LidarVramStats {
+  /** GPU memory held by the drawn LiDAR points, GB. */
+  loadedGB: number;
+  /** This device's working GPU-memory target, GB. */
+  targetGB: number;
+  pointCount: number;
+}
+
+const GB = 1024 * 1024 * 1024;
+
+/** GPU memory the drawn points hold against the device target (gate: loadedGB ≤ 0.9 × targetGB). */
+export function lidarVramStats(pointCount: number, targetBytes: number, bytesPerPoint = LIDAR_BYTES_PER_POINT): LidarVramStats {
+  const n = Math.max(0, Math.floor(pointCount));
+  return { loadedGB: (n * bytesPerPoint) / GB, targetGB: Math.max(0, targetBytes) / GB, pointCount: n };
 }

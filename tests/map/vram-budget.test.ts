@@ -28,3 +28,15 @@ test("bytesPerPixel maps common WebGL internal formats", () => {
   assert.equal(bytesPerPixel(0x88f0), 4);
   assert.equal(bytesPerPixel(0x1234), 4);
 });
+
+import { lidarVramStats, VRAM_TARGET_MB } from '../../lib/map/vram-budget';
+
+test('stats() reports LiDAR GPU memory, and the 9.65 M points measured downtown stay under 0.9 × the desktop target', () => {
+  const s = lidarVramStats(9_651_869, VRAM_TARGET_MB.desktop * MB);
+  assert.equal(s.pointCount, 9_651_869);
+  assert.ok(Math.abs(s.loadedGB - (9_651_869 * LIDAR_BYTES_PER_POINT) / 1024 ** 3) < 1e-12);
+  assert.equal(s.targetGB, 4);
+  assert.ok(s.loadedGB <= 0.9 * s.targetGB);
+  const full = lidarVramStats(40_000_000, VRAM_TARGET_MB.desktop * MB);
+  assert.ok(full.loadedGB <= 0.9 * full.targetGB, `40 M points use ${full.loadedGB.toFixed(2)} GB`);
+});

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cappedPixelRatio, LIDAR_CRASH_FLOOR, LIDAR_POINT_CEILING, lidarBudget, TOUCH_MAX_PIXEL_RATIO } from "../../lib/map/touch-gpu-budget";
+import { cappedPixelRatio, LIDAR_CRASH_FLOOR, LIDAR_DESKTOP_POINT_CEILING, LIDAR_POINT_CEILING, lidarBudget, TOUCH_MAX_PIXEL_RATIO } from "../../lib/map/touch-gpu-budget";
 
 test("touch devices cap the drawing-buffer pixel ratio; desktop keeps the device ratio", () => {
   assert.equal(cappedPixelRatio(3, true), TOUCH_MAX_PIXEL_RATIO);
@@ -15,12 +15,13 @@ test("touch LiDAR budget downloads and caches less than desktop", () => {
   assert.ok(t.fetchParallel < d.fetchParallel && t.imageryTiles < d.imageryTiles);
 });
 
-test("with no recent crash every device draws up to the 20,000,000-point LiDAR ceiling", () => {
+test("with no recent crash touch devices draw up to 20,000,000 LiDAR points and desktops up to 40,000,000", () => {
   assert.equal(LIDAR_POINT_CEILING, 20_000_000);
-  for (const touch of [true, false]) {
-    assert.equal(lidarBudget(touch).points, LIDAR_POINT_CEILING);
-    assert.equal(lidarBudget(touch, 0).points, LIDAR_POINT_CEILING);
-    assert.equal(lidarBudget(touch, false).points, LIDAR_POINT_CEILING);
+  assert.equal(LIDAR_DESKTOP_POINT_CEILING, 40_000_000);
+  for (const [touch, ceiling] of [[true, LIDAR_POINT_CEILING], [false, LIDAR_DESKTOP_POINT_CEILING]] as const) {
+    assert.equal(lidarBudget(touch).points, ceiling);
+    assert.equal(lidarBudget(touch, 0).points, ceiling);
+    assert.equal(lidarBudget(touch, false).points, ceiling);
   }
 });
 

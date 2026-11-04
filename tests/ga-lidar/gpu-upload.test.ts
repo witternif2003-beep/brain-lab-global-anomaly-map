@@ -51,5 +51,17 @@ test('fullArray reuses an array that has not been uploaded yet', () => {
 test('phones budget GPU and JavaScript bytes per point, desktops GPU only', () => {
   assert.equal(lidarBytesPerPoint(false), LIDAR_BYTES_PER_POINT);
   assert.equal(lidarBytesPerPoint(true), LIDAR_BYTES_PER_POINT + LIDAR_JS_BYTES_PER_POINT);
-  assert.equal(lidarBytesPerPoint(true), 29);
+  assert.equal(lidarBytesPerPoint(true), 23);
+});
+
+test('LiDAR positions pack into 16-bit integers that expand back within one step of the node range', async () => {
+  const { quantizeUint16 } = await import('../../lib/ga-lidar/gpu-upload');
+  const xyz = Float32Array.from([0, 0, 100, 2000, 1500, 400, 1234.5, 10, 250]);
+  const out = new Uint16Array(xyz.length);
+  const { offset, scale } = quantizeUint16(xyz, out);
+  for (let i = 0; i < xyz.length; i++) {
+    const a = i % 3;
+    assert.ok(Math.abs(offset[a] + out[i] * scale[a] - xyz[i]) <= scale[a] / 2 + 1e-6);
+  }
+  assert.equal(LIDAR_BYTES_PER_POINT, 9);
 });

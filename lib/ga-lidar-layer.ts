@@ -27,6 +27,9 @@ import {
   targetDepthFor,
 } from './ga-lidar/ept';
 import type { EptProject, Hierarchy, LidarNodeData } from './ga-lidar/ept';
+import { BUILDING_3D_LAYERS } from './ga-buildings/overture';
+import { quantizeUint16 } from './ga-lidar/gpu-upload';
+import { lidarVramStats, type LidarVramStats } from './map/vram-budget';
 import { nodeSpacings } from './ga-lidar/ept';
 import { cachedFetch } from './ga-lidar/disk-cache';
 import { fullArray, releaseAfterUpload } from './ga-lidar/gpu-upload';
@@ -46,7 +49,8 @@ const GA_LIDAR_BUILDINGS_ZOOM = 15;
  * OSM building opacity under LiDAR: 0, so only LiDAR buildings show (user choice). Opacity rather than visibility, so
  * the user's own building toggle is left alone; the previous opacity is restored when LiDAR turns off or zooms out.
  */
-export const GA_LIDAR_OSM_BUILDING_OPACITY = 0;
+/** Buildings stay visible under the points: airborne LiDAR records roofs but few wall returns. */
+export const GA_LIDAR_OSM_BUILDING_OPACITY = 0.6;
 const VIEW_TILES = 3.5;
 /** Fixed point diameter (CSS px): sharp micro-dots; at low altitude the imagery shows between them. */
 const POINT_CSS_PX = 1.5;
@@ -57,12 +61,20 @@ const POINT_CSS_PX = 1.5;
 const HORIZON_MIN_FORESHORTENING = 0.17;
 /** Extra octree levels so the points still close up at street zoom. */
 const EXTRA_DEPTH = 1;
+/** Desktop GPUs fetch one more octree level, so the nodes around the camera reach full survey density. */
+const EXTRA_DEPTH_DESKTOP = 2;
+/** Dots grow to this multiple of the measured point spacing on screen so neighbouring returns touch. */
+export const POINT_FILL = 1.15;
+/** Largest dot, CSS px, so near-camera points do not become blobs. */
+const POINT_MAX_CSS_PX = { touch: 10, desktop: 24 } as const;
 const TERRAIN_GRID = 8;
 const SURFACE_LIFT_M = 0.25;
 const ORIGIN_RESET_M = 15_000;
 const WORLD_3857 = 2 * Math.PI * 6378137;
 
 export interface GaLidarStats {
+  /** Measured GPU memory gate: LiDAR bytes held vs this device's target. */
+  stats: () => LidarVramStats;
   project: string | null;
   year: number | null;
   ql: string | null;
@@ -101,23 +113,29 @@ const VERTEX = /* glsl */ `
   uniform vec2 uViewport;
   uniform float uPointPx;
   uniform float uHorizon;
+  uniform float uFill;
+  uniform vec3 uQOffset;
+  uniform vec3 uQScale;
+  uniform float uMaxPx;
   varying vec3 vColor;
   void main() {
     mat4 mvp = projectionMatrix * modelViewMatrix;
-    vec4 p0 = mvp * vec4(position, 1.0);
+    // Positions are stored as 16-bit integers per node (6 bytes instead of 12) and expanded here.
+    vec3 P = uQOffset + position * uQScale;
+    vec4 p0 = mvp * vec4(P, 1.0);
     // Planned detail falls off one level per doubling of distance past half the view radius, so the spacing
     // grows with distance from the view centre: between the node's finest-below and own spacing.
-    float falloff = max(1.0, 2.0 * length(position.xy - uCentre) / uHalf);
+    float falloff = max(1.0, 2.0 * length(P.xy - uCentre) / uHalf);
     float spacing = clamp(uSpacingCentre * falloff, uSpacing, uSpacingOwn);
-    vec4 px = mvp * vec4(position + vec3(spacing, 0.0, 0.0), 1.0);
-    vec4 py = mvp * vec4(position + vec3(0.0, spacing, 0.0), 1.0);
+    vec4 px = mvp * vec4(P + vec3(spacing, 0.0, 0.0), 1.0);
+    vec4 py = mvp * vec4(P + vec3(0.0, spacing, 0.0), 1.0);
     vec2 s0 = p0.xy / p0.w;
     vec2 ex = (px.xy / px.w - s0) * uViewport;
     vec2 ey = (py.xy / py.w - s0) * uViewport;
     float spacingPx = max(length(ex), length(ey));
     // Screen area of the point's ground patch over its square: 1 looking straight down, 0 edge-on.
     float foreshortening = abs(ex.x * ey.y - ex.y * ey.x) / max(spacingPx * spacingPx, 1e-12);
-    gl_PointSize = uPointPx;
+    gl_PointSize = clamp(spacingPx * uFill, uPointPx, uMaxPx);
     // Outside the clip volume, so the GPU skips it.
     gl_Position = foreshortening < uHorizon ? vec4(2.0, 2.0, 2.0, 1.0) : p0;
     vColor = aColor;
@@ -147,6 +165,13 @@ interface DrawnNode {
  * Points sit at their height above ground on top of the map surface, so they line up with the imagery
  * with or without 3D terrain.
  */
+const liveLayers = new WeakMap<MapLibreMap, GaLidar3DLayer>();
+
+/** Decoded 3DEP nodes currently drawn on `map` (empty when LiDAR is not showing). */
+export function gaLidarNodes(map: MapLibreMap): LidarNodeData[] {
+  return liveLayers.get(map)?.nodeData() ?? [];
+}
+
 export class GaLidar3DLayer implements CustomLayerInterface {
   readonly id = 'ga-lidar-3d';
   readonly type = 'custom' as const;
@@ -167,6 +192,10 @@ export class GaLidar3DLayer implements CustomLayerInterface {
       uSpacingCentre: { value: 1 },
       uViewport: { value: new Vector2(1, 1) },
       uPointPx: { value: POINT_CSS_PX },
+      uFill: { value: POINT_FILL },
+      uQOffset: { value: new Vector3() },
+      uQScale: { value: new Vector3(1, 1, 1) },
+      uMaxPx: { value: POINT_MAX_CSS_PX.desktop },
       uHorizon: { value: HORIZON_MIN_FORESHORTENING },
     },
   });
@@ -182,6 +211,7 @@ export class GaLidar3DLayer implements CustomLayerInterface {
   private imageryCanvas: HTMLCanvasElement | null = null;
   private timer: ReturnType<typeof setTimeout> | null = null;
   private readonly stats: GaLidarStats = {
+    stats: () => lidarVramStats(this.stats.pointsDrawn, this.vramTarget(), lidarBytesPerPoint(isTouchDevice())),
     project: null,
     year: null,
     ql: null,
@@ -217,8 +247,13 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     if (changed) this.map?.triggerRepaint();
   };
 
+  nodeData(): LidarNodeData[] {
+    return [...this.drawn.values()].map((n) => n.data);
+  }
+
   onAdd(map: MapLibreMap, gl: WebGLRenderingContext | WebGL2RenderingContext): void {
     this.map = map;
+    liveLayers.set(map, this);
     this.renderer = new WebGLRenderer({ canvas: map.getCanvas(), context: gl, antialias: true });
     this.renderer.autoClear = false;
     this.gpuTimer = GpuPassTimer.create(gl);
@@ -235,6 +270,7 @@ export class GaLidar3DLayer implements CustomLayerInterface {
   }
 
   onRemove(map: MapLibreMap): void {
+    if (liveLayers.get(map) === this) liveLayers.delete(map);
     map.off('moveend', this.onMoveEnd);
     map.off('idle', this.onIdle);
     if (this.timer) clearTimeout(this.timer);
@@ -255,17 +291,19 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     this.stats.nodesTrueColor = [...this.drawn.values()].filter((n) => n.trueColor).length;
   }
 
-  private osmOpacity: unknown = undefined;
+  private osmOpacity: Map<string, unknown> | undefined = undefined;
 
   /** OSM extrusions are hidden while LiDAR is drawn and restored afterwards. Buildings newer than the 2009–2018 surveys only show once LiDAR is off. */
   private setOsmBuildings(solid: boolean): void {
     const map = this.map;
-    if (!map?.getLayer('buildings-3d')) return;
+    if (!map) return;
+    const ids = BUILDING_3D_LAYERS.filter((id) => map.getLayer(id));
+    if (!ids.length) return;
     if (!solid && this.osmOpacity === undefined) {
-      this.osmOpacity = map.getPaintProperty('buildings-3d', 'fill-extrusion-opacity') ?? null;
-      map.setPaintProperty('buildings-3d', 'fill-extrusion-opacity', GA_LIDAR_OSM_BUILDING_OPACITY);
+      this.osmOpacity = new Map(ids.map((id) => [id, map.getPaintProperty(id, 'fill-extrusion-opacity') ?? null]));
+      for (const id of ids) map.setPaintProperty(id, 'fill-extrusion-opacity', GA_LIDAR_OSM_BUILDING_OPACITY);
     } else if (solid && this.osmOpacity !== undefined) {
-      map.setPaintProperty('buildings-3d', 'fill-extrusion-opacity', this.osmOpacity as never);
+      for (const [id, v] of this.osmOpacity) if (map.getLayer(id)) map.setPaintProperty(id, 'fill-extrusion-opacity', v as never);
       this.osmOpacity = undefined;
     }
   }
@@ -317,7 +355,7 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     }
 
     const half = (VIEW_TILES * WORLD_3857) / 2 ** zoom;
-    const targetDepth = Math.min(14, targetDepthFor(project, half) + EXTRA_DEPTH);
+    const targetDepth = Math.min(14, targetDepthFor(project, half) + (isTouchDevice() ? EXTRA_DEPTH : EXTRA_DEPTH_DESKTOP));
     const view = { cx, cy, half, targetDepth, pointBudget: this.pointBudget() };
     this.stats.targetDepth = targetDepth;
     this.setStatus('loading hierarchy');
@@ -450,12 +488,12 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     const n = data.count;
     const geometry = new BufferGeometry();
     // WebGL keeps its own copy of each buffer, so the JavaScript arrays are freed after upload and rebuilt from `data` on change.
-    geometry.setAttribute('position', releaseAfterUpload(new BufferAttribute(new Float32Array(n * 3), 3)));
+    geometry.setAttribute('position', releaseAfterUpload(new BufferAttribute(new Uint16Array(n * 3), 3)));
     geometry.setAttribute('aColor', releaseAfterUpload(new BufferAttribute(classColors(data), 3, true)));
     // Own material per node (same compiled shader) so each node's point size follows its own detail level.
     const material = this.material.clone();
     const s = this.spacingFor(key);
-    material.uniforms = { ...this.material.uniforms, uSpacing: { value: s.fine }, uSpacingOwn: { value: s.own } };
+    material.uniforms = { ...this.material.uniforms, uSpacing: { value: s.fine }, uSpacingOwn: { value: s.own }, uQOffset: { value: new Vector3() }, uQScale: { value: new Vector3(1, 1, 1) } };
     const points = new Points(geometry, material);
     points.frustumCulled = false;
     const node: DrawnNode = { points, data, terrainStale: false, trueColor: false };
@@ -550,13 +588,14 @@ export class GaLidar3DLayer implements CustomLayerInterface {
       }
     }
     const pos = node.points.geometry.getAttribute('position') as BufferAttribute;
-    const arr = fullArray<Float32Array>(pos);
+    const arr = fullArray<Uint16Array>(pos);
+    const xyz = new Float32Array(data.count * 3);
     const k = this.metresPer3857();
     const dx = data.minX - this.originXY[0];
     const dy = data.minY - this.originXY[1];
     for (let p = 0; p < data.count; p++) {
-      arr[p * 3] = (dx + data.x[p]) * k;
-      arr[p * 3 + 1] = (dy + data.y[p]) * k;
+      xyz[p * 3] = (dx + data.x[p]) * k;
+      xyz[p * 3 + 1] = (dy + data.y[p]) * k;
       let z = data.hag[p] + SURFACE_LIFT_M;
       if (terrain) {
         const fx = (data.x[p] / data.width) * g;
@@ -571,8 +610,12 @@ export class GaLidar3DLayer implements CustomLayerInterface {
         const d = surface[(j0 + 1) * (g + 1) + i0 + 1];
         z += (a * (1 - tx) + b * tx) * (1 - ty) + (c * (1 - tx) + d * tx) * ty;
       }
-      arr[p * 3 + 2] = z;
+      xyz[p * 3 + 2] = z;
     }
+    const { offset, scale } = quantizeUint16(xyz, arr);
+    const u = (node.points.material as ShaderMaterial).uniforms;
+    u.uQOffset.value.set(offset[0], offset[1], offset[2]);
+    u.uQScale.value.set(scale[0], scale[1], scale[2]);
     pos.array = arr;
     pos.needsUpdate = true;
     node.terrainStale = missing;
@@ -602,6 +645,7 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     this.material.uniforms.uViewport.value.set(gl.drawingBufferWidth, gl.drawingBufferHeight);
     const dpr = Math.min(3, this.map?.getPixelRatio() ?? (window.devicePixelRatio || 1));
     this.material.uniforms.uPointPx.value = POINT_CSS_PX * dpr;
+    this.material.uniforms.uMaxPx.value = (isTouchDevice() ? POINT_MAX_CSS_PX.touch : POINT_MAX_CSS_PX.desktop) * dpr;
     renderer.resetState();
     renderer.setViewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
     this.gpuTimer?.begin();
