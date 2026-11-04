@@ -15,7 +15,7 @@ import {
 
 /** Eye-dome lighting (Boucheny 2009, as used by Potree/CloudCompare): darkens each point by how much nearer its neighbours are. */
 export const EDL_STRENGTH = 0.8;
-export const EDL_RADIUS_CSS_PX = 1.4;
+export const EDL_RADIUS_CSS_PX = 0.5;
 
 /** For a perspective × affine matrix (column-major), clip z = −a·w + b for every point, so depth can be linearised without near/far. */
 export function depthCoefficients(e: ArrayLike<number>): { a: number; b: number } {

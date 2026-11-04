@@ -28,7 +28,7 @@ import {
 } from './ga-lidar/ept';
 import type { EptProject, Hierarchy, LidarNodeData } from './ga-lidar/ept';
 import { quantizeUint16 } from './ga-lidar/gpu-upload';
-import { clipW, EDL_RADIUS_CSS_PX, EdlPass } from './ga-lidar/edl';
+import { EDL_RADIUS_CSS_PX, EdlPass } from './ga-lidar/edl';
 import { lidarVramStats, type LidarVramStats } from './map/vram-budget';
 import { nodeSpacings } from './ga-lidar/ept';
 import { cachedFetch } from './ga-lidar/disk-cache';
@@ -44,8 +44,8 @@ import { raiseGaTrafficCountLayers } from './ga-traffic-counts-layer';
 
 export const GA_LIDAR_MIN_ZOOM = 10;
 const VIEW_TILES = 3.5;
-/** Fixed point diameter (CSS px): sharp micro-dots; at low altitude the imagery shows between them. */
-const POINT_CSS_PX = 1.5;
+/** Fixed point diameter (CSS px) at every zoom and distance: sharp micro-dots, the imagery shows between them. */
+export const POINT_CSS_PX = 1;
 /**
  * Points whose ground patch is squashed on screen below this fraction (about 80° from straight down) are
  * dropped: at the horizon the patch shrinks to a sliver, so the points only sparkle as a grainy line.
@@ -57,10 +57,6 @@ const EXTRA_DEPTH = 1;
 const EXTRA_DEPTH_DESKTOP = 3;
 /** Deepest octree level requested; USGS EPT leaves end where the survey density runs out. */
 const MAX_EPT_DEPTH = 18;
-/** Dots grow to this multiple of the measured point spacing on screen so neighbouring returns touch. */
-export const POINT_FILL = 1.15;
-/** Largest dot, CSS px, so near-camera points do not become blobs. */
-const POINT_MAX_CSS_PX = { touch: 10, desktop: 24 } as const;
 const TERRAIN_GRID = 8;
 const SURFACE_LIFT_M = 0.25;
 const ORIGIN_RESET_M = 15_000;
@@ -107,11 +103,8 @@ const VERTEX = /* glsl */ `
   uniform vec2 uViewport;
   uniform float uPointPx;
   uniform float uHorizon;
-  uniform float uFill;
   uniform vec3 uQOffset;
   uniform vec3 uQScale;
-  uniform float uMaxPx;
-  uniform float uCentreW;
   varying vec3 vColor;
   void main() {
     mat4 mvp = projectionMatrix * modelViewMatrix;
@@ -130,9 +123,8 @@ const VERTEX = /* glsl */ `
     float spacingPx = max(length(ex), length(ey));
     // Screen area of the point's ground patch over its square: 1 looking straight down, 0 edge-on.
     float foreshortening = abs(ex.x * ey.y - ex.y * ey.x) / max(spacingPx * spacingPx, 1e-12);
-    // Past the view centre the size cap shrinks with distance, so coarse far nodes don't draw as large squares.
-    float farCap = max(uPointPx, uMaxPx * clamp(uCentreW / max(p0.w, 1e-6), 0.35, 1.0));
-    gl_PointSize = clamp(spacingPx * uFill, uPointPx, farCap);
+    // Fixed size: no distance attenuation and no growth with point spacing.
+    gl_PointSize = uPointPx;
     // Outside the clip volume, so the GPU skips it.
     gl_Position = foreshortening < uHorizon ? vec4(2.0, 2.0, 2.0, 1.0) : p0;
     vColor = aColor;
@@ -142,9 +134,7 @@ const VERTEX = /* glsl */ `
 const FRAGMENT = /* glsl */ `
   varying vec3 vColor;
   void main() {
-    vec2 c = gl_PointCoord * 2.0 - 1.0;
-    float r = dot(c, c);
-    if (r > 1.0) discard;
+    if (distance(gl_PointCoord, vec2(0.5)) > 0.5) discard;
     gl_FragColor = vec4(vColor, 1.0);
   }
 `;
@@ -189,11 +179,8 @@ export class GaLidar3DLayer implements CustomLayerInterface {
       uSpacingCentre: { value: 1 },
       uViewport: { value: new Vector2(1, 1) },
       uPointPx: { value: POINT_CSS_PX },
-      uFill: { value: POINT_FILL },
       uQOffset: { value: new Vector3() },
       uQScale: { value: new Vector3(1, 1, 1) },
-      uMaxPx: { value: POINT_MAX_CSS_PX.desktop },
-      uCentreW: { value: 1 },
       uHorizon: { value: HORIZON_MIN_FORESHORTENING },
     },
   });
@@ -625,9 +612,6 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     this.material.uniforms.uViewport.value.set(gl.drawingBufferWidth, gl.drawingBufferHeight);
     const dpr = Math.min(3, this.map?.getPixelRatio() ?? (window.devicePixelRatio || 1));
     this.material.uniforms.uPointPx.value = POINT_CSS_PX * dpr;
-    this.material.uniforms.uMaxPx.value = (isTouchDevice() ? POINT_MAX_CSS_PX.touch : POINT_MAX_CSS_PX.desktop) * dpr;
-    const centre = this.material.uniforms.uCentre.value as Vector2;
-    this.material.uniforms.uCentreW.value = Math.max(1e-6, clipW(mvp.elements, centre.x, centre.y, 0));
     renderer.resetState();
     renderer.setViewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
     this.gpuTimer?.begin();
