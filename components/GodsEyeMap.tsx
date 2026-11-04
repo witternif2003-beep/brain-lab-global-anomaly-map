@@ -27,6 +27,7 @@ import { addDisneyLiveBoard } from '../lib/disney-live';
 import { addGaH3Telemetry } from '../lib/ga-h3-telemetry';
 import { addGaTrafficLayers } from '../lib/ga-traffic-layer';
 import { addGaTrafficFlowLayer } from '../lib/ga-traffic-flow-layer';
+import { addGaTrafficSim } from '../lib/traffic-overlay';
 import { addGaTrafficCountLayers } from '../lib/ga-traffic-counts-layer';
 import { addGaHydrometLayers } from '../lib/ga-hydromet-layer';
 import { addGaAnomalyBulbs } from '../lib/ga-anomaly-bulbs';
@@ -936,6 +937,7 @@ export default function GodsEyeMap({
     addGaHydrometLayers(map);
     addGaTrafficLayers(map);
     void addGaTrafficFlowLayer(map);
+    void addGaTrafficSim(map);
     addGaTrafficCountLayers(map);
     addBleVehicleLayers(map);
     addMovingTrackLayers(map);
