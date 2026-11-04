@@ -46,7 +46,7 @@ import { GA_ROAD_LAYERS } from './ga-roads-overlay';
 export const GA_LIDAR_MIN_ZOOM = 10;
 const VIEW_TILES = 3.5;
 /** Fixed point diameter (CSS px) at every zoom and distance: sharp micro-dots, the imagery shows between them. */
-export const POINT_CSS_PX = 0.08;
+export const POINT_CSS_PX = 0.3;
 /**
  * Points whose ground patch is squashed on screen below this fraction (about 80° from straight down) are
  * dropped: at the horizon the patch shrinks to a sliver, so the points only sparkle as a grainy line.
