@@ -35,10 +35,10 @@ export function gaTrafficFlowStatus(map: MapLibreMap): Promise<FlowStatus> {
   return p;
 }
 
-const WIDTH = ['interpolate', ['linear'], ['zoom'], 8, 2, 12, 4, 16, 8] as ExpressionSpecification;
+const WIDTH = ['interpolate', ['linear'], ['zoom'], 8, 2, 12, 4, 16, 6] as ExpressionSpecification;
 const OPACITY = 0.75;
 
-/** Congestion polylines (not vehicles): live TomTom tiles via the server proxy when a key is set, labelled mock data only when TRAFFIC_FLOW_MOCK=1, otherwise nothing. Thin (2–8 px by zoom) and 75% opaque, drawn under 3D buildings and LiDAR, so the road and satellite stay visible underneath. */
+/** Congestion polylines (not vehicles): live TomTom tiles via the server proxy when a key is set, labelled mock data only when TRAFFIC_FLOW_MOCK=1, otherwise nothing. Thin (2–6 px by zoom) and 75% opaque, drawn under 3D buildings and LiDAR, so the road and satellite stay visible underneath. */
 export async function addGaTrafficFlowLayer(map: MapLibreMap): Promise<void> {
   let s: FlowStatus;
   try {

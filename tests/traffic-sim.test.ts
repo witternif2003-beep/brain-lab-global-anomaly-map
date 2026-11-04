@@ -56,11 +56,10 @@ test('agent cap holds and short fragments are skipped', () => {
   assert.ok(sim.agents.length <= MAX_AGENTS_TOUCH);
 });
 
-test('SIM vehicles are opt-in via ?traffic=sim only', () => {
-  assert.equal(trafficSimEnabled(''), false);
-  assert.equal(trafficSimEnabled('?traffic=off'), false);
-  assert.equal(trafficSimEnabled('?traffic-sim=1'), false);
-  assert.equal(trafficSimEnabled('?x=1&traffic=sim'), true);
+test('SIM vehicles run by default and stop only with ?traffic=off', () => {
+  assert.equal(trafficSimEnabled(''), true);
+  assert.equal(trafficSimEnabled('?traffic=sim'), true);
+  assert.equal(trafficSimEnabled('?x=1&traffic=off'), false);
 });
 
 test('TomTom-bound lines: speed = 100 km/h × traffic_level, density 5→80/km by jamFactor, closures stop', () => {

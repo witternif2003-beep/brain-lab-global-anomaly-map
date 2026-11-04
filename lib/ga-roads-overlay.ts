@@ -23,7 +23,7 @@ export function addGaRoadOverlay(map: MapLibreMap): void {
       filter,
       layout: { 'line-join': 'round', 'line-cap': 'round' },
       paint: {
-        'line-color': ['match', ['get', 'class'], ['motorway', 'trunk'], '#ff7ad9', 'primary', '#7ff7f2', ['secondary', 'tertiary'], '#e2e8f0', '#94a3b8'] as never,
+        'line-color': ['match', ['get', 'class'], ['motorway', 'trunk'], '#cbd5e1', 'primary', '#7ff7f2', ['secondary', 'tertiary'], '#e2e8f0', '#94a3b8'] as never,
         'line-opacity': ['interpolate', ['linear'], ['zoom'], 8, 0.55, 14, 0.75, 18, 0.85] as never,
         'line-width': width(1),
       },

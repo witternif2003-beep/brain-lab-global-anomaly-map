@@ -13,9 +13,9 @@ const bound = new WeakSet<MapLibreMap>();
 /** Cars under 10 m/s (36 km/h) are drawn red. */
 const SLOW_MS = 10;
 
-/** SIM vehicles are strictly opt-in: only `?traffic=sim` starts them. */
+/** SIM vehicles run by default; `?traffic=off` turns them off. */
 export function trafficSimEnabled(search: string): boolean {
-  return new URLSearchParams(search).get(TRAFFIC_SIM_PARAM) === 'sim';
+  return new URLSearchParams(search).get(TRAFFIC_SIM_PARAM) !== 'off';
 }
 
 /** Motorway/trunk polylines currently loaded from the OpenFreeMap road tiles, de-duplicated across tiles. */
@@ -64,7 +64,7 @@ export function tomtomFlowLines(map: MapLibreMap): { lines: LngLat[][]; flows: L
 
 /**
  * SIMULATED cars (not real vehicles) on motorways in view, drawn as GPU-instanced boxes in a dedicated deck.gl
- * overlay. Only runs with `?traffic=sim`; see `trafficSimEnabled`.
+ * overlay. On by default, off with `?traffic=off`; see `trafficSimEnabled`.
  */
 export async function addGaTrafficSim(map: MapLibreMap): Promise<void> {
   if (typeof window === 'undefined' || bound.has(map)) return;

@@ -11,9 +11,9 @@ export const FLOW_TILE_CACHE_S = 60;
 export type FlowMode = 'live' | 'mock' | 'off';
 export type FlowBand = 'free' | 'slow' | 'jam' | 'closed';
 
-/** jamFactor bands (0 free … 10 standstill): green 0–3, yellow 4–6, red 7–8, dark red 9–10 or closed. */
+/** jamFactor bands (0 free … 10 standstill): green 0–3, yellow 4–6, orange 7–8, red 9–10 or closed. */
 export const JAM_BANDS: Record<Exclude<FlowBand, 'closed'>, readonly number[]> = { free: [0, 1, 2, 3], slow: [4, 5, 6], jam: [7, 8] };
-export const FLOW_COLORS: Record<FlowBand, string> = { free: '#22c55e', slow: '#facc15', jam: '#ef4444', closed: '#7f1d1d' };
+export const FLOW_COLORS: Record<FlowBand, string> = { free: '#00e676', slow: '#ffeb3b', jam: '#ff9800', closed: '#f44336' };
 
 export interface FlowEnv {
   TOMTOM_API_KEY?: string;
