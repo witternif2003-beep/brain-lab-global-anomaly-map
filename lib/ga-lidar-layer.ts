@@ -29,6 +29,7 @@ import {
 import type { EptProject, Hierarchy, LidarNodeData } from './ga-lidar/ept';
 import { BUILDING_3D_LAYERS } from './ga-buildings/overture';
 import { quantizeUint16 } from './ga-lidar/gpu-upload';
+import { clipW, EDL_RADIUS_CSS_PX, EdlPass } from './ga-lidar/edl';
 import { lidarVramStats, type LidarVramStats } from './map/vram-budget';
 import { nodeSpacings } from './ga-lidar/ept';
 import { cachedFetch } from './ga-lidar/disk-cache';
@@ -117,6 +118,7 @@ const VERTEX = /* glsl */ `
   uniform vec3 uQOffset;
   uniform vec3 uQScale;
   uniform float uMaxPx;
+  uniform float uCentreW;
   varying vec3 vColor;
   void main() {
     mat4 mvp = projectionMatrix * modelViewMatrix;
@@ -135,7 +137,9 @@ const VERTEX = /* glsl */ `
     float spacingPx = max(length(ex), length(ey));
     // Screen area of the point's ground patch over its square: 1 looking straight down, 0 edge-on.
     float foreshortening = abs(ex.x * ey.y - ex.y * ey.x) / max(spacingPx * spacingPx, 1e-12);
-    gl_PointSize = clamp(spacingPx * uFill, uPointPx, uMaxPx);
+    // Past the view centre the size cap shrinks with distance, so coarse far nodes don't draw as large squares.
+    float farCap = max(uPointPx, uMaxPx * clamp(uCentreW / max(p0.w, 1e-6), 0.35, 1.0));
+    gl_PointSize = clamp(spacingPx * uFill, uPointPx, farCap);
     // Outside the clip volume, so the GPU skips it.
     gl_Position = foreshortening < uHorizon ? vec4(2.0, 2.0, 2.0, 1.0) : p0;
     vColor = aColor;
@@ -196,10 +200,12 @@ export class GaLidar3DLayer implements CustomLayerInterface {
       uQOffset: { value: new Vector3() },
       uQScale: { value: new Vector3(1, 1, 1) },
       uMaxPx: { value: POINT_MAX_CSS_PX.desktop },
+      uCentreW: { value: 1 },
       uHorizon: { value: HORIZON_MIN_FORESHORTENING },
     },
   });
   private origin: MercatorCoordinate | null = null;
+  private readonly edl = new EdlPass();
   private originXY: [number, number] = [0, 0];
   private project: EptProject | null = null;
   private readonly hierarchies = new Map<string, Hierarchy>();
@@ -278,6 +284,7 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     this.generation++;
     for (const key of [...this.drawn.keys()]) this.dropNode(key);
     this.material.dispose();
+    this.edl.dispose();
     this.setOsmBuildings(true);
     this.map = null;
     this.renderer = null;
@@ -646,10 +653,12 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     const dpr = Math.min(3, this.map?.getPixelRatio() ?? (window.devicePixelRatio || 1));
     this.material.uniforms.uPointPx.value = POINT_CSS_PX * dpr;
     this.material.uniforms.uMaxPx.value = (isTouchDevice() ? POINT_MAX_CSS_PX.touch : POINT_MAX_CSS_PX.desktop) * dpr;
+    const centre = this.material.uniforms.uCentre.value as Vector2;
+    this.material.uniforms.uCentreW.value = Math.max(1e-6, clipW(mvp.elements, centre.x, centre.y, 0));
     renderer.resetState();
     renderer.setViewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
     this.gpuTimer?.begin();
-    renderer.render(this.scene, this.camera);
+    if (gpuSafeMode() || !this.edl.render(renderer, gl, this.scene, this.camera, mvp.elements, EDL_RADIUS_CSS_PX * dpr)) renderer.render(this.scene, this.camera);
     this.gpuTimer?.end();
     if (this.gpuTimer) this.stats.gpuMsP95 = this.gpuTimer.poll();
   }

@@ -85,3 +85,33 @@ test('a software GPU warns and is allowed 1,200 s (the measured 931 s VM run pas
   assert.equal(g.warning, 'WARN: Software GPU detected, bypassing 180s speed gate');
   assert.equal(exportSpeedGate('SwiftShader', 1201).pass, false);
 });
+
+import { isBlankTile, waitForLoaded } from '../../lib/map/export-32k';
+
+function fakeMap(loadedAfter: number) {
+  let t = 0;
+  return {
+    loaded: () => ++t > loadedAfter,
+    isMoving: () => false,
+    once: (_: 'idle', fn: () => void) => void setTimeout(fn, 5),
+    triggerRepaint: () => {},
+  };
+}
+
+test('a tile with no drawn pixels is blank; one opaque pixel is not', () => {
+  assert.equal(isBlankTile(new Uint8ClampedArray(16)), true);
+  const px = new Uint8ClampedArray(16);
+  px[7] = 255;
+  assert.equal(isBlankTile(px), false);
+});
+
+test('export waits until the map is idle and lazy LiDAR loads finish', async () => {
+  let checks = 0;
+  const ok = await waitForLoaded(fakeMap(1), 5000, () => ++checks < 3, 10);
+  assert.equal(ok, true);
+  assert.equal(checks, 3);
+});
+
+test('export reports a timeout instead of capturing while LiDAR is still loading', async () => {
+  assert.equal(await waitForLoaded(fakeMap(0), 300, () => true, 10), false);
+});

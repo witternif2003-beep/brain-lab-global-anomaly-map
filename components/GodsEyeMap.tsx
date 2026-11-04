@@ -16,6 +16,7 @@ import { addUsBorderRunnerLayers } from '../lib/us-border-runners-3d';
 import { addGaLidarLayers } from '../lib/ga-lidar-layer';
 import { addOvertureBuildings, type OvertureState } from '../lib/ga-buildings/overture';
 import { attachBuildingEnrichment, type BuildingEnrichStats } from '../lib/ga-buildings/enrich';
+import { attachBuildingLighting } from '../lib/ga-buildings/building-lighting';
 import { addViewshedLayers, clearViewshed, onceOnMapClick, runViewshedAt, type ViewshedResult } from '../lib/ga-viewshed/layer';
 import { exportMap32k, pickPngSink, EXPORT_32K_WIDTH } from '../lib/map/export-32k';
 import { addGaRoadOverlay } from '../lib/ga-roads-overlay';
@@ -729,6 +730,7 @@ export default function GodsEyeMap({
     void addOvertureBuildings(map, maplibregl, setOvertureState).then(() => {
       addViewshedLayers(map);
       attachBuildingEnrichment(map, setBuildingStats);
+      map.once('remove', attachBuildingLighting(map));
     });
 
     // ═══ SINGLE SOURCE for all 8 state boundaries ═══

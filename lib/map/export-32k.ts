@@ -93,17 +93,51 @@ function transformHelper(map: MapLibreMap): { helper: Helper; Point: PointCtor }
   return null;
 }
 
-function renderOnce(map: MapLibreMap, idleMs: number, draw: () => void): Promise<void> {
+interface LoadableMap {
+  loaded(): boolean;
+  isMoving(): boolean;
+  once(type: 'idle', listener: () => void): unknown;
+  triggerRepaint(): void;
+}
+
+/** True when LiDAR points are still being fetched for the current view. */
+export const lidarBusy = (): boolean => /^loading/.test((globalThis as { __gaLidar?: { status?: string } }).__gaLidar?.status ?? '');
+
+/** No pixel was drawn (every alpha is 0): the tile captured before anything rendered. */
+export function isBlankTile(px: ArrayLike<number>): boolean {
+  for (let i = 3; i < px.length; i += 4) if (px[i] !== 0) return false;
+  return true;
+}
+
+const pause = (ms: number) => new Promise<void>((r) => globalThis.setTimeout(r, ms));
+
+/**
+ * Resolves true once the map is idle (all tiles loaded) and stays idle after a grace period in which lazy layers
+ * (LiDAR, building enrichment) start and finish their own loads; false if that doesn't happen within `timeoutMs`.
+ */
+export async function waitForLoaded(map: LoadableMap, timeoutMs: number, busy: () => boolean = lidarBusy, graceMs = 400): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (!(map.loaded() && !map.isMoving())) {
+      const idle = await Promise.race([
+        new Promise<boolean>((r) => {
+          map.once('idle', () => r(true));
+          map.triggerRepaint();
+        }),
+        pause(Math.max(0, deadline - Date.now())).then(() => false),
+      ]);
+      if (!idle) return false;
+    }
+    await pause(graceMs);
+    if (!busy() && map.loaded()) return true;
+    await pause(250);
+  }
+  return false;
+}
+
+function drawNextFrame(map: MapLibreMap, draw: () => void): Promise<void> {
   return new Promise((resolve) => {
-    const timer = window.setTimeout(() => {
-      map.once('render', () => (draw(), resolve()));
-      map.triggerRepaint();
-    }, idleMs);
-    map.once('idle', () => {
-      window.clearTimeout(timer);
-      map.once('render', () => (draw(), resolve()));
-      map.triggerRepaint();
-    });
+    map.once('render', () => (draw(), resolve()));
     map.triggerRepaint();
   });
 }
@@ -160,12 +194,18 @@ export async function exportMap32k(
       const rowTiles = plan.tiles.filter((t) => t.row === row);
       for (const t of rowTiles) {
         pt = new th.Point(t.centerX, t.centerY);
-        map.jumpTo({ ...camera, zoom: camera.zoom + plan.zoomOffset });
-        await renderOnce(map, idleMs, () => {
-          ctx.clearRect(0, 0, tile, tile);
-          ctx.drawImage(canvas, 0, 0, tile, tile);
-        });
-        const px = ctx.getImageData(0, 0, t.w, t.h).data;
+        let px: Uint8ClampedArray | null = null;
+        for (let attempt = 0; attempt < 2 && !px; attempt++) {
+          map.jumpTo({ ...camera, zoom: camera.zoom + plan.zoomOffset });
+          const ready = await waitForLoaded(map, idleMs);
+          await drawNextFrame(map, () => {
+            ctx.clearRect(0, 0, tile, tile);
+            ctx.drawImage(canvas, 0, 0, tile, tile);
+          });
+          const got = ctx.getImageData(0, 0, t.w, t.h).data;
+          if (ready && !isBlankTile(got)) px = got;
+        }
+        if (!px) throw new Error(`32K export stopped: tile row ${t.row + 1}, column ${t.col + 1} did not finish loading after 2 tries`);
         for (let y = 0; y < t.h; y++) band.set(px.subarray(y * t.w * 4, (y + 1) * t.w * 4), (y * plan.width + t.x0) * 4);
         onProgress(row * plan.cols + t.col + 1, plan.tiles.length);
       }
