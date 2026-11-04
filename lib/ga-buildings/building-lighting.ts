@@ -90,7 +90,8 @@ export function attachBuildingLighting(map: MapLibreMap, now: () => Date = () =>
     const el = sunElevationDeg(at, c.lat, c.lng);
     const key = `${c.lng.toFixed(4)}|${c.lat.toFixed(4)}|${map.getZoom().toFixed(2)}|${map.getBearing().toFixed(1)}|${Math.floor(at.getTime() / SUN_REFRESH_MS)}`;
     if (key === lastKey) return;
-    lastKey = key;
+    // Only remember the view once its tiles are in, so the first idle after loading still draws shadows.
+    lastKey = map.loaded() ? key : '';
     map.setLight(sunLight(az, el));
     const src = map.getSource(SHADOW_SOURCE) as GeoJSONSource | undefined;
     if (!src) return;
