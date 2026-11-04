@@ -59,12 +59,6 @@ export async function addGaTrafficSim(map: MapLibreMap): Promise<void> {
   const cap = window.matchMedia('(pointer: coarse)').matches ? MAX_AGENTS_TOUCH : MAX_AGENTS_DESKTOP;
   const [{ MapLibreOverlay }, { SimpleMeshLayer }, { CubeGeometry }] = await Promise.all([import('@deck.gl/maplibre'), import('@deck.gl/mesh-layers'), import('@luma.gl/engine')]);
   const mesh = new CubeGeometry();
-  const badge = document.createElement('div');
-  badge.className = 'traffic-sim-badge';
-  badge.textContent = '⚠️ SIMULATED TRAFFIC';
-  badge.title = 'Synthetic cars, not real vehicles: live traffic flow has no API key';
-  badge.style.cssText = 'position:absolute;top:10px;right:10px;background:rgba(255,165,0,0.85);color:#000;padding:4px 8px;font:700 12px monospace;border-radius:4px;z-index:10;pointer-events:none;';
-  map.getContainer().appendChild(badge);
   const overlay = new MapLibreOverlay({ interleaved: false, layers: [] });
   map.addControl(overlay);
   let sim = new TrafficSim([], cap);
@@ -125,7 +119,6 @@ export async function addGaTrafficSim(map: MapLibreMap): Promise<void> {
   raf = requestAnimationFrame(draw);
   map.once('remove', () => {
     cancelAnimationFrame(raf);
-    badge.remove();
     clearTimeout(debounce);
     map.off('moveend', onMoveEnd);
     bound.delete(map);
