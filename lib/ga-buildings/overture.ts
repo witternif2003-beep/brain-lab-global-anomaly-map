@@ -207,6 +207,20 @@ export async function addOvertureBuildings(
       before,
     );
   }
+  if (!map.getLayer('buildings-outline')) {
+    map.addLayer(
+      {
+        id: 'buildings-outline',
+        type: 'line',
+        source: OVERTURE_BUILDINGS_SOURCE,
+        'source-layer': 'building',
+        minzoom: OVERTURE_FULL_ZOOM,
+        filter: underground,
+        paint: { 'line-color': '#323232', 'line-width': ['interpolate', ['linear'], ['zoom'], 14, 0.5, 18, 1.2] },
+      },
+      before,
+    );
+  }
   map.on('error', (ev) => {
     const e = ev as unknown as { sourceId?: string; error?: Error };
     if (e.sourceId === OVERTURE_BUILDINGS_SOURCE) onState?.({ release, status: 'error', error: e.error?.message });

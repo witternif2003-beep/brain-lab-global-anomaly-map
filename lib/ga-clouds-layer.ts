@@ -138,6 +138,7 @@ export function addGaCloudLayers(map: MapLibreMap): void {
       type: 'fill-extrusion',
       source: SOURCE,
       minzoom: 6,
+      maxzoom: 14,
       layout: { visibility: 'none' },
       filter: ['==', ['get', 'cover'], cover],
       paint: {
@@ -158,6 +159,7 @@ export function addGaCloudLayers(map: MapLibreMap): void {
       type: 'fill-extrusion',
       source: MODEL_SOURCE,
       minzoom: 5,
+      maxzoom: 14,
       layout: { visibility: 'none' },
       filter: ['==', ['get', 'band'], band],
       paint: {
@@ -178,6 +180,7 @@ export function addGaCloudLayers(map: MapLibreMap): void {
       type: 'fill-extrusion',
       source: RADAR_SOURCE,
       minzoom: 4,
+      maxzoom: 14,
       filter: ['==', ['get', 'band'], band],
       paint: {
         'fill-extrusion-color': ['interpolate', ['linear'], ['get', 'night'], 0, day, 1, night],
