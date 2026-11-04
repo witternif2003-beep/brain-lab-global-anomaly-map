@@ -73,7 +73,7 @@ export async function addGaTrafficSim(map: MapLibreMap): Promise<void> {
     const jam = sim.agents.filter((a) => a.speed <= JAM_SPEED_MS).length;
     reportGaFeed(map, {
       id: 'traffic-sim',
-      label: 'SIM cars',
+      label: 'SIM vehicles',
       color: '#00ffff',
       count: sim.agents.length,
       detail: `${sim.edges.length} motorway lines in view · 30% of each line jammed (80/km, 15 km/h), rest 5/km at 100 km/h · cap ${cap}`,
