@@ -1,10 +1,10 @@
 import { Popup } from 'maplibre-gl';
 import type { GeoJSONSource, MapLayerMouseEvent, Map as MapLibreMap } from 'maplibre-gl';
-import { hitsGaDeck, pickGaDeckCloud, setGaDeckClouds } from './ga-deck-overlay';
-import { radarCloudBoxes, type CloudBox } from './ga-clouds/radar-boxes';
-import { BASE_SEARCH_KM, RADAR_BANDS, type RadarCells } from './ga-clouds/radar-clouds';
+import { hitsGaDeck, setGaDeckClouds } from './ga-deck-overlay';
+import { radarCloudPuffs } from './ga-clouds/cloud-puffs';
+import { gpuSafeMode } from './map/crash-guard';
 import { reportGaFeed } from './ga-live-status';
-import { addGoesCloudLayer, setGoesCloudBases } from './ga-goes-clouds-layer';
+import { addGoesCloudLayer } from './ga-goes-clouds-layer';
 
 const isTouch = () => typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0;
 const SOURCE = 'ga-clouds';
@@ -22,14 +22,25 @@ const MODEL_SOURCE = 'ga-clouds-model';
 const MODEL_BANDS: [string, number][] = [['low', 0.22], ['mid', 0.36], ['high', 0.52]];
 const MODEL_DOCS = 'https://open-meteo.com/en/docs/gfs-api';
 
+const RADAR_SOURCE = 'ga-clouds-radar';
 const RADAR_REFRESH_MS = 2 * 60_000;
+/** Composite reflectivity band → [opacity, sunlit colour, night colour]; the extrusions are invisible tap targets for the cloud puffs drawn in deck.gl. */
+const RADAR_BANDS: [string, number, string, string][] = [
+  ['light', 0.6, '#ffffff', '#c9d6e8'],
+  ['moderate', 0.7, '#f1f5f9', '#b4c4dc'],
+  ['heavy', 0.8, '#dbe3ec', '#9db0cc'],
+  ['intense', 0.9, '#c3cedb', '#8499bd'],
+];
 const RADAR_BAND_TEXT: Record<string, string> = { light: '18–29 dBZ (light)', moderate: '30–44 dBZ (moderate)', heavy: '45–54 dBZ (heavy)', intense: '55+ dBZ (intense, likely hail)' };
 const RADAR_DOCS = 'https://www.nssl.noaa.gov/projects/mrms/';
-interface RadarPayload extends Partial<RadarCells> { observedAt?: string; generatedAt?: string; sourceUrl?: string; cellDeg?: number; metarStations?: number; error?: string | null }
+/** Puff budget: soft sprites per radar map (cells merge 2×2 above it); halved after a recent crash on the device. */
+const MAX_PUFFS = { touch: 40_000, desktop: 120_000 };
+interface RadarPayload { geojson?: GeoJSON.FeatureCollection; observedAt?: string; generatedAt?: string; sourceUrl?: string; cellDeg?: number; metarStations?: number; error?: string | null }
 
 const bound = new WeakSet<MapLibreMap>();
-const latestRadar = new WeakMap<MapLibreMap, RadarCells>();
+const latestRadar = new WeakMap<MapLibreMap, GeoJSON.FeatureCollection>();
 const radarTime = new WeakMap<MapLibreMap, string | null>();
+const radarCell = new WeakMap<MapLibreMap, number>();
 
 /** True ground height (m above sea level) from the loaded DEM, without the drawn exaggeration; 0 before tiles load. */
 function groundM(map: MapLibreMap, lng: number, lat: number): number {
@@ -39,13 +50,14 @@ function groundM(map: MapLibreMap, lng: number, lat: number): number {
   return e !== null && Number.isFinite(e) ? e / (terrain.exaggeration || 1) : 0;
 }
 
-/** Rebuilds one box per radar cell from the latest radar cells; returns the box count. */
-function rebuildBoxes(map: MapLibreMap): number {
-  const rc = latestRadar.get(map);
-  if (!rc) return 0;
-  const boxes = radarCloudBoxes(rc, (lng, lat) => groundM(map, lng, lat), new Date());
-  setGaDeckClouds(map, boxes);
-  return boxes.length;
+/** Rebuilds the cumulus puffs from the latest radar blocks; returns the puff count. */
+function rebuildPuffs(map: MapLibreMap): number {
+  const fc = latestRadar.get(map);
+  const cellDeg = radarCell.get(map);
+  if (!fc || !cellDeg) return 0;
+  const puffs = radarCloudPuffs(fc, { cellDeg, groundM: (lng, lat) => groundM(map, lng, lat), maxPuffs: (isTouch() ? MAX_PUFFS.touch : MAX_PUFFS.desktop) / (gpuSafeMode() ? 2 : 1) });
+  setGaDeckClouds(map, puffs);
+  return puffs.length;
 }
 const latest = new WeakMap<MapLibreMap, GeoJSON.FeatureCollection>();
 const latestModel = new WeakMap<MapLibreMap, GeoJSON.FeatureCollection>();
@@ -85,19 +97,17 @@ function modelPopup(map: MapLibreMap, e: MapLayerMouseEvent) {
   ], MODEL_DOCS, 'Open-Meteo HRRR (CC BY 4.0) ↗');
 }
 
-function radarPopup(map: MapLibreMap, lngLat: { lng: number; lat: number }, b: CloudBox) {
+function radarPopup(map: MapLibreMap, e: MapLayerMouseEvent) {
+  const p = e.features?.[0]?.properties as Record<string, unknown> | undefined;
+  if (!p) return;
   const t = radarTime.get(map);
-  const el = { lngLat } as MapLayerMouseEvent;
-  rowsPopup(map, el, [
-    ['Radar', 'NOAA MRMS multi-radar mosaic (observed), one 0.01° cell'],
+  rowsPopup(map, e, [
+    ['Radar', 'NOAA MRMS multi-radar mosaic (observed)'],
     ['Scanned', t ? new Date(t).toLocaleString() : ''],
-    ['Cell', `${b.lat.toFixed(2)}, ${b.lng.toFixed(2)}`],
-    ['Echo top', `${b.topMsl.toLocaleString()} m above sea level (highest 18 dBZ return)`],
-    ['Reflectivity', `${RADAR_BAND_TEXT[b.band] ?? ''}, peak ${b.dbz} dBZ`],
-    ['Cloud base', b.baseAglM !== null && b.baseMsl < b.topMsl
-      ? `${b.baseAglM.toLocaleString()} m above ground, lowest base at ${b.station} (${b.stationKm} km away${b.observed ? `, ${new Date(b.observed).toLocaleTimeString()}` : ''})`
-      : b.baseAglM !== null ? `${b.baseAglM.toLocaleString()} m above ground at ${b.station}, not below this echo top: only the top is drawn` : `no station base within ${BASE_SEARCH_KM} km: only the measured top is drawn`],
-    ['Note', 'Radar sees rain, snow and hail, not thin cloud without precipitation; the base is measured at the station, not in this cell'],
+    ['Echo top', `${Number(p.topM).toLocaleString()} m above sea level (highest 18 dBZ return)`],
+    ['Reflectivity', `${RADAR_BAND_TEXT[String(p.band)] ?? ''}, peak ${p.dbz} dBZ`],
+    ['Cloud base', p.baseStation ? `${Number(p.baseM).toLocaleString()} m, lowest base reported at ${p.baseStation}` : 'no METAR base within 100 km; drawn from the ground'],
+    ['Note', 'Radar sees rain, snow and hail in the cloud, not thin cloud without precipitation'],
   ], RADAR_DOCS, 'NOAA MRMS ↗');
 }
 
@@ -116,7 +126,7 @@ function popup(map: MapLibreMap, e: MapLayerMouseEvent) {
   ], `https://aviationweather.gov/data/metar/?ids=${encodeURIComponent(String(p.station))}`, 'NOAA AWC METAR ↗');
 }
 
-/** 3D radar clouds (NOAA MRMS, one box per radar cell) over Georgia; the METAR disc and HRRR grid-cell layers stay loaded but hidden (idempotent). */
+/** Radar-shaped 3D clouds (NOAA MRMS) over Georgia; the METAR disc and HRRR grid-cell layers stay loaded but hidden (idempotent). */
 export function addGaCloudLayers(map: MapLibreMap): void {
   addGoesCloudLayer(map);
   if (!map.getSource(SOURCE)) map.addSource(SOURCE, { type: 'geojson', data: latest.get(map) ?? EMPTY });
@@ -159,21 +169,43 @@ export function addGaCloudLayers(map: MapLibreMap): void {
       },
     });
   }
+  if (!map.getSource(RADAR_SOURCE)) map.addSource(RADAR_SOURCE, { type: 'geojson', data: latestRadar.get(map) ?? EMPTY });
+  for (const [band, , day, night] of RADAR_BANDS) {
+    const id = `${RADAR_SOURCE}-${band}`;
+    if (map.getLayer(id)) continue;
+    map.addLayer({
+      id,
+      type: 'fill-extrusion',
+      source: RADAR_SOURCE,
+      minzoom: 4,
+      filter: ['==', ['get', 'band'], band],
+      paint: {
+        'fill-extrusion-color': ['interpolate', ['linear'], ['get', 'night'], 0, day, 1, night],
+        'fill-extrusion-base': ['get', 'baseM'],
+        'fill-extrusion-height': ['get', 'topM'],
+        'fill-extrusion-opacity': 0,
+        'fill-extrusion-vertical-gradient': true,
+      },
+    });
+  }
   if (bound.has(map)) return;
   bound.add(map);
 
   const refreshRadar = async () => {
     try {
-      const r = await fetch('/api/ga-radar-clouds');
+      const r = await fetch(`/api/ga-radar-clouds${isTouch() ? '?lite=1' : ''}`);
       const d = (await r.json()) as RadarPayload;
-      if (!r.ok || !d.cells || !d.stations || d.lat0 === undefined || d.lng0 === undefined || !d.stepDeg) throw new Error(d.error ?? `HTTP ${r.status}`);
-      latestRadar.set(map, { lat0: d.lat0, lng0: d.lng0, stepDeg: d.stepDeg, stations: d.stations, cells: d.cells, noBase: d.noBase ?? 0 });
+      if (!r.ok || !d.geojson) throw new Error(d.error ?? `HTTP ${r.status}`);
+      latestRadar.set(map, d.geojson);
       radarTime.set(map, d.observedAt ?? null);
-      const boxes = rebuildBoxes(map);
-      const peak = d.cells.reduce((m, v, i) => (i % 5 === 2 ? Math.max(m, v) : m), 0);
+      radarCell.set(map, d.cellDeg ?? 0);
+      (map.getSource(RADAR_SOURCE) as GeoJSONSource | undefined)?.setData(d.geojson);
+      const puffs = rebuildPuffs(map);
+      const byBand = d.geojson.features.reduce<Record<string, number>>((m, f) => ((m[String(f.properties?.band)] = (m[String(f.properties?.band)] ?? 0) + 1), m), {});
+      const peak = d.geojson.features.reduce((m, f) => Math.max(m, Number(f.properties?.topM) || 0), 0);
       reportGaFeed(map, {
-        id: 'radar-clouds', label: 'Radar clouds (NOAA MRMS)', color: '#f8fafc', count: boxes,
-        detail: `1:1 ${d.stepDeg}° radar cells · ${boxes.toLocaleString()} drawn · ${(d.noBase ?? 0).toLocaleString()} top-only (no METAR base within ${BASE_SEARCH_KM} km) · highest echo top ${peak.toLocaleString()} m · bands ${RADAR_BANDS.map(([b]) => b).join('/')}`,
+        id: 'radar-clouds', label: 'Radar clouds (NOAA MRMS)', color: '#f8fafc', count: d.geojson.features.length,
+        detail: `${d.cellDeg ?? ''}° cells · ${puffs.toLocaleString()} cloud puffs · highest echo top ${peak.toLocaleString()} m · ${RADAR_BANDS.map(([b]) => `${byBand[b] ?? 0} ${b}`).join(', ')}`,
         updatedAt: d.observedAt ?? d.generatedAt ?? null, sourceUrl: d.sourceUrl ?? RADAR_DOCS, error: d.error ?? null,
       });
     } catch (err) {
@@ -189,13 +221,15 @@ export function addGaCloudLayers(map: MapLibreMap): void {
   map.on('data', (e) => {
     if (e.dataType !== 'source' || !('sourceId' in e) || e.sourceId !== map.getTerrain()?.source) return;
     window.clearTimeout(regroundTimer);
-    regroundTimer = window.setTimeout(() => rebuildBoxes(map), 3_000);
+    regroundTimer = window.setTimeout(() => rebuildPuffs(map), 3_000);
   });
-  map.on('click', (e) => {
-    if (hitsGaDeck(map, e.point)) return;
-    const box = pickGaDeckCloud(map, e.point);
-    if (box) radarPopup(map, e.lngLat, box);
-  });
+  for (const [band] of RADAR_BANDS) {
+    map.on('click', `${RADAR_SOURCE}-${band}`, (e) => {
+      if (hitsGaDeck(map, e.point)) return;
+      if (map.queryRenderedFeatures(e.point, { layers: COVER_OPACITY.map(([c]) => `${SOURCE}-${c.toLowerCase()}`) }).length) return;
+      radarPopup(map, e);
+    });
+  }
 
   const refresh = async () => {
     try {
@@ -205,7 +239,6 @@ export function addGaCloudLayers(map: MapLibreMap): void {
       const fc = d.geojson ?? EMPTY;
       latest.set(map, fc);
       (map.getSource(SOURCE) as GeoJSONSource | undefined)?.setData(fc);
-      setGoesCloudBases(map, fc.features.filter((f) => f.properties?.layer === 0).map((f) => Number(f.properties?.baseM)));
       const mfc = d.model?.geojson ?? EMPTY;
       latestModel.set(map, mfc);
       modelTime.set(map, d.model?.validTime ?? null);
@@ -236,7 +269,7 @@ export function addGaCloudLayers(map: MapLibreMap): void {
   for (const [band] of MODEL_BANDS) {
     map.on('click', `${MODEL_SOURCE}-${band}`, (e) => {
       if (hitsGaDeck(map, e.point)) return;
-      if (map.queryRenderedFeatures(e.point, { layers: COVER_OPACITY.map(([c]) => `${SOURCE}-${c.toLowerCase()}`) }).length) return;
+      if (map.queryRenderedFeatures(e.point, { layers: [...COVER_OPACITY.map(([c]) => `${SOURCE}-${c.toLowerCase()}`), ...RADAR_BANDS.map(([b]) => `${RADAR_SOURCE}-${b}`)] }).length) return;
       modelPopup(map, e);
     });
   }

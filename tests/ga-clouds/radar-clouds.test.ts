@@ -2,8 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { deflateSync } from "node:zlib";
 import { decodePng16, readMrmsGrib2, type MrmsGrid } from "../../lib/ga-clouds/mrms";
-import { BASE_SEARCH_KM, radarCloudCells } from "../../lib/ga-clouds/radar-clouds";
-import { radarCloudBoxes } from "../../lib/ga-clouds/radar-boxes";
+import { radarCloudBlocks } from "../../lib/ga-clouds/radar-clouds";
 
 function png16(w: number, h: number, px: number[]): Buffer {
   const rows: number[] = [];
@@ -76,61 +75,34 @@ test("readMrmsGrib2 applies (R + X·2^E)/10^D and subsets to the bbox", () => {
 
 const grid = (w: number, h: number, values: number[]): MrmsGrid => ({ time: "t", width: w, height: h, lat0: 34, lng0: -84, stepDeg: 0.01, values: Float32Array.from(values) });
 
-const KATL = { icaoId: "KATL", lat: 34, lon: -84, reportTime: "2026-10-17T17:52:00Z", clouds: [{ cover: "BKN", base: 2000 }, { cover: "OVC", base: 9000 }] };
-
-test("radarCloudCells keeps every native cell 1:1 with its exact echo top", () => {
-  const top = grid(3, 2, [6.1234, 0, 5.5, 0, 7, 0]);
-  const dbz = grid(3, 2, [22.4, 0, 47.6, 0, 60, 0]);
-  const rc = radarCloudCells(top, dbz, [KATL]);
-  assert.equal(rc.stepDeg, 0.01);
-  assert.equal(rc.noBase, 0);
-  assert.deepEqual(rc.cells, [0, 0, 6123, 22, 0, 2, 0, 5500, 48, 0, 1, 1, 7000, 60, 0]);
-  assert.deepEqual(rc.stations, [{ id: "KATL", lat: 34, lng: -84, baseM: 610, observed: "2026-10-17T17:52:00Z" }]);
-});
-
-test(`radarCloudCells keeps cells with no measured base within ${BASE_SEARCH_KM} km, flagged -1`, () => {
-  assert.equal(BASE_SEARCH_KM, 25);
-  const far = { ...KATL, lat: 34.3 }; // ~33 km north
-  const rc = radarCloudCells(grid(1, 1, [8]), grid(1, 1, [40]), [far, { icaoId: "KCLR", lat: 34, lon: -84, clouds: [{ cover: "CLR", base: null }] }]);
-  assert.deepEqual(rc.cells, [0, 0, 8000, 40, -1]);
-  assert.equal(rc.noBase, 1);
-  const [b] = radarCloudBoxes(rc, () => 300, new Date());
-  assert.equal(b.baseMsl, 8000);
-  assert.equal(b.topMsl, 8000);
-  assert.equal(b.station, null);
-  assert.equal(b.baseAglM, null);
-});
-
-test("radarCloudCells drops cells without an echo top and rejects mismatched grids", () => {
-  assert.deepEqual(radarCloudCells(grid(2, 1, [0, -1]), grid(2, 1, [10, 40]), [KATL]).cells, []);
-  assert.throws(() => radarCloudCells(grid(2, 1, [1, 1]), grid(1, 1, [20]), []));
-});
-
-test("radarCloudBoxes: exact cell footprint, base = ground + measured base, top = echo top (both above sea level)", () => {
-  const rc = radarCloudCells(grid(2, 1, [6, 1]), grid(2, 1, [35, 20]), [KATL]);
-  const boxes = radarCloudBoxes(rc, () => 300, new Date("2026-10-17T18:00:00Z"));
-  assert.equal(boxes.length, 2);
-  const [b] = boxes;
-  assert.deepEqual(b.polygon, [[-84.005, 34.005], [-83.995, 34.005], [-83.995, 33.995], [-84.005, 33.995], [-84.005, 34.005]]);
-  assert.equal(b.baseMsl, 910);
-  assert.equal(b.topMsl, 6000);
-  assert.equal(b.baseAglM, 610);
-  assert.equal(b.band, "moderate");
-  assert.equal(b.station, "KATL");
-  assert.equal(b.stationKm, 0);
-  assert.equal(boxes[1].topMsl, 1000);
-  assert.deepEqual(radarCloudBoxes(rc, () => 400, new Date()).map((x) => [x.baseMsl, x.topMsl]), [[1010, 6000], [1000, 1000]]);
-});
-
-test("radarCloudBoxes is deterministic and adds no shape of its own", () => {
-  const rc = radarCloudCells(grid(4, 4, Array(16).fill(9)), grid(4, 4, Array(16).fill(50)), [KATL]);
-  const now = new Date("2026-10-17T18:00:00Z");
-  const a = radarCloudBoxes(rc, () => 0, now);
-  assert.deepEqual(a, radarCloudBoxes(rc, () => 0, now));
-  assert.equal(a.length, 16);
-  for (const b of a) {
-    assert.equal(b.polygon.length, 5);
-    assert.ok(Math.abs(b.polygon[1][0] - b.polygon[0][0] - 0.01) < 1e-9);
-    assert.equal(b.topMsl - b.baseMsl, 9000 - 610);
+test("radarCloudBlocks follows the echo cell by cell, not a circle", () => {
+  // An L-shaped echo: 3 cells on row 0, 1 cell on row 1.
+  const top = grid(3, 2, [5, 5, 5, 5, 0, 0]);
+  const dbz = grid(3, 2, [25, 25, 25, 25, -99, -99]);
+  const fc = radarCloudBlocks(top, dbz, [], { factor: 1, topStepM: 250, now: new Date("2026-10-17T18:00:00Z") });
+  assert.equal(fc.features.length, 2);
+  for (const f of fc.features) {
+    assert.equal(f.geometry.coordinates[0].length, 5);
+    assert.equal(f.properties?.topM, 5000);
+    assert.equal(f.properties?.baseM, 0);
+    assert.equal(f.properties?.band, "light");
   }
+  const area = fc.features.reduce((s, f) => {
+    const c = f.geometry.coordinates[0];
+    return s + Math.round(((c[1][0] - c[0][0]) * (c[0][1] - c[2][1])) / 1e-4);
+  }, 0);
+  assert.equal(area, 4);
+});
+
+test("radarCloudBlocks splits by echo-top step and reflectivity band and uses METAR bases", () => {
+  const top = grid(2, 1, [3, 9]);
+  const dbz = grid(2, 1, [35, 58]);
+  const fc = radarCloudBlocks(top, dbz, [{ icaoId: "KATL", lat: 34, lon: -84, clouds: [{ cover: "BKN", base: 2000 }, { cover: "OVC", base: 9000 }] }], { factor: 1, topStepM: 250, now: new Date() });
+  const props = fc.features.map((f) => f.properties).sort((a, b) => Number(a?.topM) - Number(b?.topM));
+  assert.deepEqual(props.map((p) => [p?.band, p?.topM, p?.baseM, p?.baseStation]), [["moderate", 3000, 610, "KATL"], ["intense", 9000, 610, "KATL"]]);
+});
+
+test("radarCloudBlocks drops cells without an echo top and rejects mismatched grids", () => {
+  assert.equal(radarCloudBlocks(grid(2, 1, [0, -1]), grid(2, 1, [10, 40]), [], { factor: 1, topStepM: 250, now: new Date() }).features.length, 0);
+  assert.throws(() => radarCloudBlocks(grid(2, 1, [1, 1]), grid(1, 1, [20]), [], { factor: 1, topStepM: 250, now: new Date() }));
 });
