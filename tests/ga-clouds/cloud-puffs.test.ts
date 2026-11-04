@@ -64,3 +64,11 @@ test("radarCloudPuffs sorts puffs low to high so crowns blend last", () => {
   const zs = radarCloudPuffs(fc, { cellDeg: 0.01, groundM: flat, maxPuffs: 1e6 }).map((p) => p.position[2]);
   assert.deepEqual(zs, [...zs].sort((a, b) => a - b));
 });
+
+test("radarCloudPuffs varies sprite shape and rotation between neighbouring puffs", () => {
+  const fc: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [block(-84, 33, -83.9, 33.1, { topM: 6000, baseM: 800, band: "light", night: 0, baseStation: "KATL" })] };
+  const puffs = radarCloudPuffs(fc, { cellDeg: 0.01, groundM: flat, maxPuffs: 1e6 });
+  assert.equal(new Set(puffs.map((p) => p.variant)).size, 4);
+  for (const p of puffs) assert.ok(p.angle >= 0 && p.angle < 360 && Number.isInteger(p.variant));
+  assert.ok(new Set(puffs.map((p) => Math.round(p.angle / 10))).size > 30, "rotations spread around the circle");
+});

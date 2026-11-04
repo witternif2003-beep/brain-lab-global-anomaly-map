@@ -8,6 +8,9 @@ export interface CloudPuff {
   color: [number, number, number, number];
   /** Index of the source radar block in the input collection. */
   block: number;
+  /** Sprite variant (0..3) and screen rotation in degrees, so neighbouring puffs never repeat the same shape. */
+  variant: number;
+  angle: number;
 }
 
 export interface CloudPuffOptions {
@@ -118,13 +121,15 @@ function puffsFor(cols: Map<string, Column>, cell: number): CloudPuff[] {
       const flatBase = k === 0 && !crown;
       out.push({
         position: [
-          c.lng + (j(1) - 0.5) * 0.4 * cell,
-          c.lat + (j(2) - 0.5) * 0.4 * cell,
+          c.lng + (j(1) - 0.5) * 0.5 * cell,
+          c.lat + (j(2) - 0.5) * 0.5 * cell,
           flatBase ? base + 0.45 * r : z + (j(3) - 0.5) * 0.3 * r,
         ],
         scale: [size, size, size * (flatBase ? 0.45 : 0.7)],
         color,
         block: c.block,
+        variant: Math.floor(j(6) * 4),
+        angle: j(7) * 360,
       });
       if (!crown) continue;
       // Cauliflower crown: two smaller turrets on opposite diagonals, kept inside the cell.
@@ -136,6 +141,8 @@ function puffsFor(cols: Map<string, Column>, cell: number): CloudPuff[] {
           scale: [sr, sr, sr * 0.8],
           color: [Math.min(255, color[0] + 8), Math.min(255, color[1] + 8), Math.min(255, color[2] + 8), 255],
           block: c.block,
+          variant: Math.floor(hash(x, y, k * 8 + 20 + d) * 4),
+          angle: hash(x, y, k * 8 + 30 + d) * 360,
         });
       }
     }

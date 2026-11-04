@@ -34,7 +34,7 @@ const RADAR_BANDS: [string, number, string, string][] = [
 const RADAR_BAND_TEXT: Record<string, string> = { light: '18–29 dBZ (light)', moderate: '30–44 dBZ (moderate)', heavy: '45–54 dBZ (heavy)', intense: '55+ dBZ (intense, likely hail)' };
 const RADAR_DOCS = 'https://www.nssl.noaa.gov/projects/mrms/';
 /** Puff budget: soft sprites per radar map (cells merge 2×2 above it); halved after a recent crash on the device. */
-const MAX_PUFFS = { touch: 40_000, desktop: 120_000 };
+const MAX_PUFFS = { touch: 60_000, desktop: 200_000 };
 interface RadarPayload { geojson?: GeoJSON.FeatureCollection; observedAt?: string; generatedAt?: string; sourceUrl?: string; cellDeg?: number; metarStations?: number; error?: string | null }
 
 const bound = new WeakSet<MapLibreMap>();
