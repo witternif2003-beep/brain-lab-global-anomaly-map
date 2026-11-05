@@ -2,10 +2,10 @@ import { bearingDeg, haversineM, type LngLat } from "./traffic-sim";
 
 /**
  * Deck height per OSM `layer` step, in metres. An ESTIMATE: OSM `layer` is stacking order, not height
- * (https://wiki.openstreetmap.org/wiki/Key:layer), so stacked decks are drawn `layer × 7 m` above the ground.
+ * (https://wiki.openstreetmap.org/wiki/Key:layer), so a deck is drawn up to `layer × 7 m` above the lowest ground under it.
  */
 export const BRIDGE_LAYER_M = 7;
-/** Steepest approach to a deck (6 %), so cars climb onto a bridge instead of jumping. An assumption, not survey data. */
+/** Steepest climb from an abutment onto a deck (6 %), so cars ramp up instead of jumping. An assumption, not survey data. */
 export const MAX_APPROACH_GRADE = 0.06;
 /** A car line vertex sits on a bridge when it is this close to a bridge segment… */
 export const MATCH_DIST_M = 12;
@@ -152,44 +152,96 @@ export function densify(coords: LngLat[], step = DENSIFY_STEP_M): LngLat[] {
   return out;
 }
 
-/** Raises each vertex to at least `peak − grade × distance` of every bridge vertex, so approaches climb at ≤ `grade`. */
-export function taperOffsets(
-  raw: number[],
+/**
+ * Deck heights above the ground, per vertex. A bridge run (consecutive vertices with `layers[i] > 0`) rests on
+ * abutments at the ground just outside it. Its profile is the highest line that stays at or below
+ * `lowest ground under the run + layer × BRIDGE_LAYER_M` and climbs from each abutment at ≤ `grade`, but never
+ * below the straight chord between the abutments (a span over a valley stays level with its ends).
+ * Off a run the offset is 0, so cars on the approach roads stay on the road.
+ */
+export function deckOffsets(
+  layers: number[],
+  ground: number[],
   cum: number[],
   grade = MAX_APPROACH_GRADE,
 ): number[] {
-  const off = raw.slice();
-  for (let i = 1; i < off.length; i++)
-    off[i] = Math.max(off[i], off[i - 1] - grade * (cum[i] - cum[i - 1]));
-  for (let i = off.length - 2; i >= 0; i--)
-    off[i] = Math.max(off[i], off[i + 1] - grade * (cum[i + 1] - cum[i]));
+  const n = layers.length;
+  const off = new Array<number>(n).fill(0);
+  for (let i0 = 0; i0 < n; ) {
+    if (!(layers[i0] > 0)) {
+      i0++;
+      continue;
+    }
+    let i1 = i0;
+    while (i1 + 1 < n && layers[i1 + 1] > 0) i1++;
+    const a = Math.max(0, i0 - 1),
+      b = Math.min(n - 1, i1 + 1);
+    let low = Infinity;
+    for (let i = i0; i <= i1; i++) low = Math.min(low, ground[i]);
+    const p: number[] = [];
+    for (let i = a; i <= b; i++)
+      p.push(i < i0 || i > i1 ? ground[i] : low + layers[i] * BRIDGE_LAYER_M);
+    if (a === i0) p[0] = ground[a];
+    if (b === i1) p[p.length - 1] = ground[b];
+    for (let k = 1; k < p.length; k++)
+      p[k] = Math.min(p[k], p[k - 1] + grade * (cum[a + k] - cum[a + k - 1]));
+    for (let k = p.length - 2; k >= 0; k--)
+      p[k] = Math.min(p[k], p[k + 1] + grade * (cum[a + k + 1] - cum[a + k]));
+    const span = cum[b] - cum[a];
+    for (let i = i0; i <= i1; i++) {
+      const chord =
+        span > 0
+          ? ground[a] + ((ground[b] - ground[a]) * (cum[i] - cum[a])) / span
+          : ground[a];
+      off[i] = Math.max(0, Math.max(chord, p[i - a]) - ground[i]);
+    }
+    i0 = i1 + 1;
+  }
   return off;
 }
 
 export interface BridgedLine {
   coords: LngLat[];
-  /** Metres above the terrain per vertex: `layer × BRIDGE_LAYER_M` on a matched deck, tapered on the approaches, else 0. */
+  /** Ground height per vertex from `groundAt` (the map's drawn terrain). */
+  ground: number[];
+  /** Matched OSM bridge `layer` per vertex, 0 off a bridge. */
+  layers: number[];
+  /** Metres above `ground` per vertex, from `deckOffsets`; 0 off a bridge. */
   offsets: number[];
   onBridge: boolean;
 }
 
 /** Lifts a car line where it runs along an OSM bridge; lines that touch no bridge come back unchanged with zero offsets. */
-export function bridgeLine(index: BridgeIndex, coords: LngLat[]): BridgedLine {
-  const flat = { coords, offsets: coords.map(() => 0), onBridge: false };
-  if (!index.count || coords.length < 2) return flat;
-  const dense = densify(coords);
-  const raw = dense.map((p, i) => {
-    const j = Math.min(i, dense.length - 2);
-    return (
-      bridgeLayerAt(index, p, bearingDeg(dense[j], dense[j + 1])) *
-      BRIDGE_LAYER_M
-    );
+export function bridgeLine(
+  index: BridgeIndex,
+  coords: LngLat[],
+  groundAt: (c: LngLat) => number = () => 0,
+): BridgedLine {
+  const flat = (): BridgedLine => ({
+    coords,
+    ground: coords.map(groundAt),
+    layers: coords.map(() => 0),
+    offsets: coords.map(() => 0),
+    onBridge: false,
   });
-  if (!raw.some((v) => v > 0)) return flat;
+  if (!index.count || coords.length < 2) return flat();
+  const dense = densify(coords);
+  const layers = dense.map((p, i) => {
+    const j = Math.min(i, dense.length - 2);
+    return bridgeLayerAt(index, p, bearingDeg(dense[j], dense[j + 1]));
+  });
+  if (!layers.some((v) => v > 0)) return flat();
   const cum = [0];
   for (let i = 1; i < dense.length; i++)
     cum.push(cum[i - 1] + haversineM(dense[i - 1], dense[i]));
-  return { coords: dense, offsets: taperOffsets(raw, cum), onBridge: true };
+  const ground = dense.map(groundAt);
+  return {
+    coords: dense,
+    ground,
+    layers,
+    offsets: deckOffsets(layers, ground, cum),
+    onBridge: true,
+  };
 }
 
 export interface DeckFeature {

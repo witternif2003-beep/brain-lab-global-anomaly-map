@@ -157,9 +157,9 @@ export async function addGaTrafficSim(map: MapLibreMap): Promise<void> {
     const tt = tomtomFlowLines(map);
     const onFlow = tt.lines.length > 0;
     const bridges = bridgeIndex(map);
-    const lifted = (onFlow ? tt.lines : motorwayLines(map)).map((l) => bridgeLine(bridges, l));
+    const lifted = (onFlow ? tt.lines : motorwayLines(map)).map((l) => bridgeLine(bridges, l, (c) => map.queryTerrainElevation(c) ?? 0));
     const lines = lifted.map((b) => b.coords);
-    const elev = lifted.map((b) => b.coords.map((c, j) => (map.queryTerrainElevation(c) ?? 0) + b.offsets[j]));
+    const elev = lifted.map((b) => b.ground.map((g, j) => g + b.offsets[j]));
     const onBridge = lifted.filter((b) => b.onBridge);
     setBridgeDecks(map, onBridge.flatMap((b) => deckPolygons(b)));
     sim = new TrafficSim(lines, cap, elev, onFlow ? tt.flows : undefined);

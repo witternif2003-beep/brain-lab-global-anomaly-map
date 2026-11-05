@@ -9,8 +9,8 @@ import {
   bridgeSegments,
   buildBridgeIndex,
   deckPolygons,
+  deckOffsets,
   densify,
-  taperOffsets,
 } from "../lib/traffic-bridges";
 import { haversineM, type LngLat } from "../lib/traffic-sim";
 
@@ -59,13 +59,36 @@ test("densify keeps the ends and caps the step", () => {
     assert.ok(haversineM(d[i - 1], d[i]) <= 20.001);
 });
 
-test("approach taper never exceeds the grade and keeps the deck height", () => {
-  const cum = [0, 100, 200, 300, 400, 500];
-  const off = taperOffsets([0, 0, 14, 14, 0, 0], cum);
-  assert.deepEqual(off.slice(2, 4), [14, 14]);
-  assert.ok(Math.abs(off[1] - (14 - MAX_APPROACH_GRADE * 100)) < 1e-9);
-  for (let i = 1; i < off.length; i++)
-    assert.ok(Math.abs(off[i] - off[i - 1]) <= MAX_APPROACH_GRADE * 100 + 1e-9);
+const steps = (n: number, d = 20) => Array.from({ length: n }, (_, i) => i * d);
+
+test("overpass over a cut rests on its abutments: no lift on the approach, ~layer × 7 m over the cut", () => {
+  // Liberty Rd over I-20 (GDOT-CCTV-1128): terrarium z15 ground 350 m at the ends, 342 m in the cut.
+  const ground = [352, 350, 349, 344, 342, 343, 348, 348, 347];
+  const layers = [0, 0, 1, 1, 1, 1, 1, 0, 0];
+  const off = deckOffsets(layers, ground, steps(9));
+  assert.deepEqual([off[0], off[1], off[7], off[8]], [0, 0, 0, 0]);
+  const deck = ground.map((g, i) => g + off[i]);
+  assert.ok(Math.abs(deck[4] - 349) < 1e-9, "342 m floor + 1 × 7 m");
+  for (let i = 2; i <= 6; i++)
+    assert.ok(deck[i] <= 350 + 1e-9, "never above the abutments on a cut");
+});
+
+test("flyover on flat ground climbs at ≤ 6 % from both ends to layer × 7 m", () => {
+  const n = 40;
+  const ground = new Array(n).fill(300);
+  const layers = ground.map((_, i) => (i > 0 && i < n - 1 ? 2 : 0));
+  const cum = steps(n);
+  const off = deckOffsets(layers, ground, cum);
+  assert.equal(off[0], 0);
+  assert.equal(off[n - 1], 0);
+  assert.equal(Math.max(...off), 2 * BRIDGE_LAYER_M);
+  for (let i = 1; i < n; i++)
+    assert.ok(Math.abs(off[i] - off[i - 1]) <= MAX_APPROACH_GRADE * 20 + 1e-9);
+});
+
+test("span over a valley stays on the chord between its abutments", () => {
+  const off = deckOffsets([0, 1, 1, 1, 0], [350, 300, 290, 300, 350], steps(5));
+  assert.deepEqual(off, [0, 50, 60, 50, 0]);
 });
 
 test("a TomTom line along the bridge is lifted to layer × 7 m with decks under it; others stay flat", () => {
@@ -78,7 +101,11 @@ test("a TomTom line along the bridge is lifted to layer × 7 m with decks under 
   ];
   const b = bridgeLine(idx, along);
   assert.ok(b.onBridge);
-  assert.equal(Math.max(...b.offsets), 2 * BRIDGE_LAYER_M);
+  const top = Math.max(...b.offsets);
+  assert.ok(top > 0 && top <= 2 * BRIDGE_LAYER_M);
+  assert.equal(b.offsets[0], 0, "approach off the bridge stays on the road");
+  assert.equal(b.offsets[b.offsets.length - 1], 0);
+  assert.equal(b.ground.length, b.coords.length);
   assert.equal(b.offsets.length, b.coords.length);
   const decks = deckPolygons(b);
   assert.ok(decks.length > 0);
