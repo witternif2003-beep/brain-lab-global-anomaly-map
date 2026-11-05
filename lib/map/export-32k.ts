@@ -184,8 +184,10 @@ export async function exportMap32k(
   let pt = new th.Point(tile / 2, tile / 2);
   try {
     Object.defineProperty(th.helper, 'centerPoint', { configurable: true, get: () => pt.constructor === th.Point ? new th.Point(pt.x, pt.y) : pt });
-    container.style.width = `${tile}px`;
-    container.style.height = `${tile}px`;
+    // `important` so the tile size beats stylesheet rules such as `.maplibregl-map { width: 100% !important }`.
+    container.style.setProperty('width', `${tile}px`, 'important');
+    container.style.setProperty('height', `${tile}px`, 'important');
+    container.style.setProperty('box-sizing', 'content-box', 'important');
     map.setPixelRatio(1);
     map.resize();
     map.setVerticalFieldOfView(plan.tiles[0].fovDeg);

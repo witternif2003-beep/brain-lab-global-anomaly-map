@@ -17,7 +17,9 @@ export interface AnomalyFeature {
 export function useAnomalyStream(
   sourceId: string,
   map: any | null, // maplibregl.Map
-  onAnomalyReceived?: (anomaly: AnomalyFeature) => void
+  onAnomalyReceived?: (anomaly: AnomalyFeature) => void,
+  /** While true, buffered features are held back (e.g. so a tiled export sees a stable source). */
+  paused?: () => boolean,
 ) {
   const retryCountRef = useRef(0);
   const esRef = useRef<EventSource | null>(null);
@@ -31,6 +33,10 @@ export function useAnomalyStream(
 
     // Flush the buffer to the MapLibre source once per animation frame (60fps ceiling)
     const flush = () => {
+      if (paused?.()) {
+        rafHandle = requestAnimationFrame(flush);
+        return;
+      }
       try {
         const src = map.getSource(sourceId) as any;
         if (src && buffer.length > 0 && typeof src.setData === 'function') {

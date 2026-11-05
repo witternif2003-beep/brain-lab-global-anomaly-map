@@ -107,10 +107,13 @@ export default function StateMap({
   const [zoom, setZoom] = useState(6.2);
   const [webgpuSupported, setWebgpuSupported] = useState(false);
   const [export32kStatus, setExport32kStatus] = useState<string | null>(null);
+  // The pulse animation and anomaly stream call setData, which keeps map.loaded() false; both pause during export.
+  const exportingRef = useRef(false);
   const save32k = useCallback(async () => {
     const map = mapRef.current;
     if (!map) return;
     setExport32kStatus('preparing…');
+    exportingRef.current = true;
     try {
       const { sink, close } = await pickPngSink(`georgia-state-map-${EXPORT_32K_WIDTH}.png`);
       const out = await exportMap32k(map, sink, (done, total) => setExport32kStatus(`tile ${done}/${total}`));
@@ -118,6 +121,8 @@ export default function StateMap({
       setExport32kStatus(`saved ${out.width}×${out.height} in ${Math.round(out.seconds)} s`);
     } catch (err) {
       setExport32kStatus(err instanceof Error ? err.message : 'export failed');
+    } finally {
+      exportingRef.current = false;
     }
   }, []);
 
@@ -150,7 +155,7 @@ export default function StateMap({
   latest.current = { features, anomalies, onSelectAnomaly, onSelectState };
 
   // Coalesced real-time SSE stream hook
-  useAnomalyStream('anomalies', mapRef.current);
+  useAnomalyStream('anomalies', mapRef.current, undefined, () => exportingRef.current);
 
   // Setup layers on map load
   const addMapLayers = useCallback(async (map: maplibregl.Map) => {
@@ -745,6 +750,10 @@ export default function StateMap({
     let animId: number;
 
     const animate = () => {
+      if (exportingRef.current) {
+        animId = requestAnimationFrame(animate);
+        return;
+      }
       const now = Date.now();
 
       // Launch exactly ONE verified person at a time (spacing out every 3.8s)
