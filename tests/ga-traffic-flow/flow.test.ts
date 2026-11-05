@@ -44,3 +44,10 @@ test('mock collection is labelled mock and covers every band', () => {
   const bands = new Set(fc.features.map((f) => flowBand(f.properties.traffic_level, !!f.properties.road_closure)));
   assert.deepEqual([...bands].sort(), ['closed', 'free', 'jam', 'slow']);
 });
+
+test('flow tile URL gets a per-minute stamp so the 60 s refresh busts the CDN once per minute', async () => {
+  const { flowTilesUrl, FLOW_REFRESH_MS } = await import('../../lib/ga-traffic-flow-layer');
+  assert.equal(FLOW_REFRESH_MS, 60_000);
+  assert.equal(flowTilesUrl('https://x', '/api/traffic-flow/{z}/{x}/{y}', 120_000), 'https://x/api/traffic-flow/{z}/{x}/{y}?t=2');
+  assert.equal(flowTilesUrl('https://x', '/t?a=1', 59_999), 'https://x/t?a=1&t=0');
+});

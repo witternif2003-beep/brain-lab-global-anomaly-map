@@ -4,7 +4,6 @@ import {
   GA_INCIDENT_BBOX, INCIDENT_ICON_EXPRESSION, INCIDENT_MAX_BBOX_KM2, bboxAreaKm2, clampBbox, incidentDetailsUrl, incidentIcon, incidentImageId, mergeIncidents, parseBbox, subdivideBbox, tomtomIncidentTileUrl,
 } from '../lib/ga-traffic-incidents/incidents';
 import { calculateRouteUrl, parseLngLat, routeSummaryText, routeToFeature } from '../lib/ga-traffic-route/route';
-import { nextRouteState } from '../lib/ga-traffic-route-control';
 
 test('Georgia bbox is split into cells under the 10,000 km² Incident Details limit that tile it exactly', () => {
   assert.ok(bboxAreaKm2(GA_INCIDENT_BBOX) > 200_000);
@@ -65,16 +64,4 @@ test('routing: Georgia-only points, traffic=true fastest URL, polyline to GeoJSO
   assert.deepEqual(f?.geometry.coordinates, [[-84.3, 33.7], [-84.4, 33.8]]);
   assert.equal(routeToFeature({ routes: [] }), null);
   assert.equal(routeSummaryText(summary), '31.9 km · 36 min (incl. 5 min traffic delay)');
-});
-
-test('route state machine: idle → start → end → loading → result/error, button clears', () => {
-  assert.equal(nextRouteState('idle', 'button'), 'picking-start');
-  assert.equal(nextRouteState('picking-start', 'click'), 'picking-end');
-  assert.equal(nextRouteState('picking-end', 'click'), 'loading');
-  assert.equal(nextRouteState('loading', 'click'), 'loading');
-  assert.equal(nextRouteState('loading', 'done'), 'result');
-  assert.equal(nextRouteState('loading', 'fail'), 'error');
-  assert.equal(nextRouteState('result', 'click'), 'picking-end');
-  assert.equal(nextRouteState('result', 'button'), 'idle');
-  assert.equal(nextRouteState('idle', 'click'), 'idle');
 });

@@ -100,3 +100,14 @@ test('car labels: none at zoom 15.5 or below; nearest 50 within 500 m above it',
   assert.ok(got.every((c) => haversineM(c.position, center) < LABEL_MAX_DIST_M));
   assert.equal(labelCandidates([car(0, 0.01)], center, 18).length, 0);
 });
+
+test('updateFlows: fresh TomTom level changes car speed in place without respawning', () => {
+  const line: LngLat[] = [[-84.4, 33.75], [-84.39, 33.75]];
+  const sim = new TrafficSim([line], 100, undefined, [{ level: 1 }]);
+  const ids = sim.agents.map((a) => a.id);
+  assert.equal(sim.updateFlows([{ level: 0.2 }]), 1);
+  sim.tick(16);
+  assert.deepEqual(sim.agents.map((a) => a.id), ids);
+  assert.ok(sim.agents.every((a) => Math.abs(a.speed - FREE_SPEED_MS * 0.2) < 1e-9));
+  assert.equal(sim.updateFlows([undefined]), 0);
+});

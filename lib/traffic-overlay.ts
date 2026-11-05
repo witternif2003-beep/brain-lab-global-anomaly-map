@@ -36,10 +36,11 @@ function motorwayLines(map: MapLibreMap): LngLat[][] {
 }
 
 /** Road lines (the 2,000 longest) from the loaded TomTom flow tiles with each line's `traffic_level` / `road_closure`, de-duplicated across tiles. */
-export function tomtomFlowLines(map: MapLibreMap): { lines: LngLat[][]; flows: LineFlow[] } {
+export function tomtomFlowLines(map: MapLibreMap): { lines: LngLat[][]; flows: LineFlow[]; keys: string[] } {
   const lines: LngLat[][] = [];
   const flows: LineFlow[] = [];
-  if (!map.getSource(GA_TRAFFIC_FLOW_SOURCE)) return { lines, flows };
+  const keys: string[] = [];
+  if (!map.getSource(GA_TRAFFIC_FLOW_SOURCE)) return { lines, flows, keys };
   const seen = new Set<string>();
   for (const f of map.querySourceFeatures(GA_TRAFFIC_FLOW_SOURCE, { sourceLayer: FLOW_SOURCE_LAYER })) {
     const g = f.geometry;
@@ -52,12 +53,13 @@ export function tomtomFlowLines(map: MapLibreMap): { lines: LngLat[][]; flows: L
       seen.add(key);
       lines.push(p as LngLat[]);
       flows.push({ level, closed });
+      keys.push(key);
     }
   }
-  if (lines.length <= MAX_FLOW_EDGES) return { lines, flows };
+  if (lines.length <= MAX_FLOW_EDGES) return { lines, flows, keys };
   const len = (l: LngLat[]) => l.reduce((s, c, i) => (i ? s + haversineM(l[i - 1], c) : 0), 0);
   const keep = lines.map((l, i) => [len(l), i] as const).sort((a, b) => b[0] - a[0]).slice(0, MAX_FLOW_EDGES).map(([, i]) => i);
-  return { lines: keep.map((i) => lines[i]), flows: keep.map((i) => flows[i]) };
+  return { lines: keep.map((i) => lines[i]), flows: keep.map((i) => flows[i]), keys: keep.map((i) => keys[i]) };
 }
 
 /**
@@ -80,6 +82,7 @@ export async function addGaTrafficSim(map: MapLibreMap): Promise<void> {
   let raf = 0;
   let last = performance.now();
   let frame = 0;
+  let simKeys: string[] = [];
   let selected: { car: CarAgent; popup: Popup; rows: HTMLElement[]; at: number } | null = null;
 
   const fillPopup = (rows: HTMLElement[], a: CarAgent) => {
@@ -120,6 +123,7 @@ export async function addGaTrafficSim(map: MapLibreMap): Promise<void> {
     const lines = onFlow ? tt.lines : motorwayLines(map);
     const elev = lines.map((l) => l.map((c) => map.queryTerrainElevation(c) ?? 0));
     sim = new TrafficSim(lines, cap, elev, onFlow ? tt.flows : undefined);
+    simKeys = onFlow ? tt.keys : [];
     closeSelected();
     const jam = sim.agents.filter((a) => a.speed < SLOW_MS).length;
     reportGaFeed(map, {
@@ -202,7 +206,21 @@ export async function addGaTrafficSim(map: MapLibreMap): Promise<void> {
     map.off('sourcedata', onFlowData);
     onMoveEnd();
   };
+  /** After the 60 s tile refresh, re-read TomTom flow for the lines already simulated so cars speed up or slow down in place. */
+  let refreshTimer: ReturnType<typeof setTimeout> | undefined;
+  const refreshFlows = () => {
+    if (!simKeys.length) return;
+    const tt = tomtomFlowLines(map);
+    const byKey = new Map(tt.keys.map((k, i) => [k, tt.flows[i]] as const));
+    sim.updateFlows(simKeys.map((k) => byKey.get(k)));
+  };
+  const onFlowRefresh = (e: { sourceId?: string; isSourceLoaded?: boolean }) => {
+    if (e.sourceId !== GA_TRAFFIC_FLOW_SOURCE || !e.isSourceLoaded) return;
+    clearTimeout(refreshTimer);
+    refreshTimer = setTimeout(refreshFlows, 500);
+  };
   map.on('sourcedata', onFlowData);
+  map.on('sourcedata', onFlowRefresh);
   map.on('moveend', onMoveEnd);
   if (map.loaded()) rebuild();
   else map.once('idle', rebuild);
@@ -213,6 +231,8 @@ export async function addGaTrafficSim(map: MapLibreMap): Promise<void> {
     closeSelected();
     map.off('moveend', onMoveEnd);
     map.off('sourcedata', onFlowData);
+    map.off('sourcedata', onFlowRefresh);
+    clearTimeout(refreshTimer);
     bound.delete(map);
   });
 }

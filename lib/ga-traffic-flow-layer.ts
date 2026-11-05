@@ -1,4 +1,4 @@
-import type { ExpressionSpecification, GeoJSONSourceSpecification, Map as MapLibreMap, VectorSourceSpecification } from 'maplibre-gl';
+import type { ExpressionSpecification, GeoJSONSourceSpecification, Map as MapLibreMap, VectorSourceSpecification, VectorTileSource } from 'maplibre-gl';
 import { FLOW_COLOR_EXPRESSION, FLOW_COLORS, FLOW_MIN_ZOOM, FLOW_SOURCE_LAYER, FLOW_TILE_MAX_ZOOM, TOMTOM_FLOW_DOCS_URL, type FlowMode } from './ga-traffic-flow/flow';
 import { reportGaFeed } from './ga-live-status';
 
@@ -35,10 +35,16 @@ export function gaTrafficFlowStatus(map: MapLibreMap): Promise<FlowStatus> {
   return p;
 }
 
-const WIDTH = ['interpolate', ['linear'], ['zoom'], 8, 2, 12, 4, 16, 6] as ExpressionSpecification;
-const OPACITY = 0.75;
+const WIDTH = ['interpolate', ['linear'], ['zoom'], 8, 2, 12, 4, 16, 8] as ExpressionSpecification;
+const OPACITY = 0.8;
+/** Live flow tiles are re-fetched this often; the minute stamp lets every visitor share one CDN copy per minute. */
+export const FLOW_REFRESH_MS = 60_000;
 
-/** Congestion polylines (not vehicles): live TomTom tiles via the server proxy when a key is set, labelled mock data only when TRAFFIC_FLOW_MOCK=1, otherwise nothing. Thin (2–6 px by zoom) and 75% opaque, drawn under 3D buildings and LiDAR, so the road and satellite stay visible underneath. */
+export const flowTilesUrl = (origin: string, path: string, now = Date.now()): string =>
+  `${origin}${path}${path.includes('?') ? '&' : '?'}t=${Math.floor(now / FLOW_REFRESH_MS)}`;
+const polling = new WeakSet<MapLibreMap>();
+
+/** Congestion polylines (not vehicles): live TomTom tiles via the server proxy when a key is set, labelled mock data only when TRAFFIC_FLOW_MOCK=1, otherwise nothing. Thin (2–8 px by zoom), 80% opaque and re-fetched every 60 s, drawn under 3D buildings and LiDAR, so the road and satellite stay visible underneath. */
 export async function addGaTrafficFlowLayer(map: MapLibreMap): Promise<void> {
   let s: FlowStatus;
   try {
@@ -53,7 +59,7 @@ export async function addGaTrafficFlowLayer(map: MapLibreMap): Promise<void> {
   }
   if (!map.getSource(GA_TRAFFIC_FLOW_SOURCE)) {
     const src: VectorSourceSpecification | GeoJSONSourceSpecification = s.mode === 'live'
-      ? { type: 'vector', tiles: [`${location.origin}${s.tiles}`], minzoom: 0, maxzoom: FLOW_TILE_MAX_ZOOM, attribution: s.attribution }
+      ? { type: 'vector', tiles: [flowTilesUrl(location.origin, s.tiles ?? '')], minzoom: 0, maxzoom: FLOW_TILE_MAX_ZOOM, attribution: s.attribution }
       : { type: 'geojson', data: s.mock ?? { type: 'FeatureCollection', features: [] }, attribution: s.attribution };
     map.addSource(GA_TRAFFIC_FLOW_SOURCE, src);
   }
@@ -69,6 +75,14 @@ export async function addGaTrafficFlowLayer(map: MapLibreMap): Promise<void> {
       layout: { 'line-join': 'round', 'line-cap': 'round' },
       paint: { 'line-color': FLOW_COLOR_EXPRESSION, 'line-opacity': OPACITY, 'line-width': WIDTH },
     }, below);
+  }
+  if (s.mode === 'live' && s.tiles && !polling.has(map)) {
+    polling.add(map);
+    const path = s.tiles;
+    const timer = setInterval(() => {
+      (map.getSource(GA_TRAFFIC_FLOW_SOURCE) as VectorTileSource | undefined)?.setTiles?.([flowTilesUrl(location.origin, path)]);
+    }, FLOW_REFRESH_MS);
+    map.once('remove', () => clearInterval(timer));
   }
   reportGaFeed(map, {
     id: 'traffic-flow',

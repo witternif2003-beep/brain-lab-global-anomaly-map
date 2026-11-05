@@ -157,6 +157,19 @@ export class TrafficSim {
     });
   }
 
+  /** Swap in fresh TomTom flow per edge (same order as the constructor lines) without respawning cars; returns how many edges changed speed. */
+  updateFlows(flows: readonly (LineFlow | undefined)[]): number {
+    let changed = 0;
+    this.edges.forEach((e, i) => {
+      const f = flows[i];
+      if (!f || !e.flow) return;
+      const speedMs = flowSpeedMs(f);
+      if (speedMs !== e.flow.speedMs) changed++;
+      e.flow = { speedMs, densityPerKm: flowDensityPerKm(f) };
+    });
+    return changed;
+  }
+
   /** Advance every agent by `deltaMs`; agents wrap to the start of their line and take the speed of their line (TomTom) or zone (synthetic). */
   tick(deltaMs: number): CarAgent[] {
     const dt = Math.max(0, deltaMs) / 1000;
