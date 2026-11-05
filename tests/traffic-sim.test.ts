@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import { LABEL_MAX_DIST_M, carCount, carLabel, carStatus, labelCandidates, msToMph, CRAWL_SPEED_MS, FREE_SPEED_MS, flowDensityPerKm, flowSpeedMs, JAM_FRACTION, JAM_SPEED_MS, MAX_AGENTS_TOUCH, TrafficSim, bearingDeg, buildEdge, haversineM, inJam, positionAt, type LngLat } from '../lib/traffic-sim';
-import { trafficSimEnabled } from '../lib/traffic-overlay';
+import { firstLoadTrigger, trafficSimEnabled } from '../lib/traffic-overlay';
 
 /** ~16.1 km (10 mi) due-north line at Atlanta's longitude, in 5 vertices. */
 const I75: LngLat[] = [0, 1, 2, 3, 4].map((i) => [-84.39, 33.70 + (i * 0.145) / 4] as LngLat);
@@ -119,4 +119,15 @@ test('short free-flow TomTom lines still get cars: 200 × 100 m at 35/km ≈ 700
   assert.ok(sim.agents.length >= 600 && sim.agents.length <= 800, String(sim.agents.length));
   assert.equal(carCount(0.5, 1) + carCount(0, 1), carCount(0.5, 1));
   assert.equal(carCount(3, 9), 3);
+});
+
+test('firstLoadTrigger rebuilds once per late source per view, and again after reset', () => {
+  const t = firstLoadTrigger(['ofm-buildings', 'ga-traffic-flow']);
+  assert.equal(t.fire({ sourceId: 'ofm-buildings', isSourceLoaded: false }), false);
+  assert.equal(t.fire({ sourceId: 'other', isSourceLoaded: true }), false);
+  assert.equal(t.fire({ sourceId: 'ofm-buildings', isSourceLoaded: true }), true);
+  assert.equal(t.fire({ sourceId: 'ofm-buildings', isSourceLoaded: true }), false);
+  assert.equal(t.fire({ sourceId: 'ga-traffic-flow', isSourceLoaded: true }), true);
+  t.reset();
+  assert.equal(t.fire({ sourceId: 'ga-traffic-flow', isSourceLoaded: true }), true);
 });

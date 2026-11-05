@@ -42,6 +42,23 @@ function setBridgeDecks(map: MapLibreMap, decks: DeckFeature[]): void {
   );
 }
 
+/**
+ * Car lines come from the TomTom flow tiles and bridges from the OpenFreeMap road tiles; either can finish loading
+ * after the view settles. Fires once per source per view (`reset` on moveend), so a sim built on the OSM motorway
+ * fallback or before bridges arrived is rebuilt when the late source lands.
+ */
+export function firstLoadTrigger(sourceIds: readonly string[]): { fire: (e: { sourceId?: string; isSourceLoaded?: boolean }) => boolean; reset: () => void } {
+  const done = new Set<string>();
+  return {
+    fire: (e) => {
+      if (!e.sourceId || !sourceIds.includes(e.sourceId) || !e.isSourceLoaded || done.has(e.sourceId)) return false;
+      done.add(e.sourceId);
+      return true;
+    },
+    reset: () => done.clear(),
+  };
+}
+
 /** SIM vehicles run by default; `?traffic=off` turns them off. */
 export function trafficSimEnabled(search: string): boolean {
   return new URLSearchParams(search).get(TRAFFIC_SIM_PARAM) !== 'off';
@@ -164,6 +181,8 @@ export async function addGaTrafficSim(map: MapLibreMap): Promise<void> {
     const decks = onBridge.flatMap((b) => deckPolygons(b));
     setBridgeDecks(map, decks);
     const bridgeDiag = {
+      lineSource: onFlow ? 'tomtom-flow' : 'osm-motorway-fallback',
+      flowLines: tt.lines.length,
       osmBridgeSegments: bridges.count,
       liftedLines: onBridge.length,
       deckSlabs: decks.length,
@@ -205,17 +224,14 @@ export async function addGaTrafficSim(map: MapLibreMap): Promise<void> {
       if (sim.agents.length === 0 && emptyRetries++ < EMPTY_RETRY_MAX) schedule(EMPTY_RETRY_MS);
     }, ms);
   };
-  /** Bridges come from the OpenFreeMap road tiles, which can finish loading after the TomTom tiles; rebuild once when they do. */
-  let roadLoaded = false;
+  const loadTrigger = firstLoadTrigger([ROAD_SOURCE, GA_TRAFFIC_FLOW_SOURCE]);
   const onMoveEnd = () => {
     emptyRetries = 0;
-    roadLoaded = false;
+    loadTrigger.reset();
     schedule(REBUILD_DEBOUNCE_MS);
   };
   const onRoadData = (e: { sourceId?: string; isSourceLoaded?: boolean }) => {
-    if (e.sourceId !== ROAD_SOURCE || !e.isSourceLoaded || roadLoaded) return;
-    roadLoaded = true;
-    schedule(REBUILD_DEBOUNCE_MS);
+    if (loadTrigger.fire(e)) schedule(REBUILD_DEBOUNCE_MS);
   };
 
   const draw = (now: number) => {
