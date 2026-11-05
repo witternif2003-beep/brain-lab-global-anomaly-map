@@ -49,6 +49,7 @@ import { attachSolarSky } from '../lib/ga-sky';
 import { applyHorizonLod, horizonLod } from '../lib/map/horizon-lod';
 import { gpuCrashCount } from '../lib/map/crash-guard';
 import { isTouchDevice as isTouchScreen } from '../lib/map/touch-gpu-budget';
+import { exportMap32k, pickPngSink, EXPORT_32K_WIDTH } from '../lib/map/export-32k';
 
 interface StateMapProps {
   anomalies: AnomalyItem[];
@@ -105,6 +106,20 @@ export default function StateMap({
   const [pitch, setPitch] = useState(55);
   const [zoom, setZoom] = useState(6.2);
   const [webgpuSupported, setWebgpuSupported] = useState(false);
+  const [export32kStatus, setExport32kStatus] = useState<string | null>(null);
+  const save32k = useCallback(async () => {
+    const map = mapRef.current;
+    if (!map) return;
+    setExport32kStatus('preparing…');
+    try {
+      const { sink, close } = await pickPngSink(`georgia-state-map-${EXPORT_32K_WIDTH}.png`);
+      const out = await exportMap32k(map, sink, (done, total) => setExport32kStatus(`tile ${done}/${total}`));
+      await close();
+      setExport32kStatus(`saved ${out.width}×${out.height} in ${Math.round(out.seconds)} s`);
+    } catch (err) {
+      setExport32kStatus(err instanceof Error ? err.message : 'export failed');
+    }
+  }, []);
 
   useEffect(() => {
     if (typeof navigator !== 'undefined' && 'gpu' in navigator) {
@@ -912,6 +927,16 @@ export default function StateMap({
         <div style={{ fontSize: '10px', fontFamily: 'monospace', color: '#94a3b8', padding: '2px 6px' }}>
           z{mapRef.current && typeof zoom === 'number' && !isNaN(zoom) ? zoom.toFixed(1) : '5.7'} · p{typeof pitch === 'number' && !isNaN(pitch) ? pitch.toFixed(0) : '55'}° · WEBGL2
         </div>
+        <button
+          type="button"
+          onClick={save32k}
+          disabled={!ready || (export32kStatus !== null && /^(preparing|tile )/.test(export32kStatus))}
+          title={`Save the current view as a ${EXPORT_32K_WIDTH} px wide PNG, rendered in 2,048 px tiles`}
+          className="font-mono text-[10px] text-cyan-300 border border-cyan-500/40 rounded px-1.5 py-0.5 hover:bg-cyan-500/10 disabled:opacity-50"
+        >
+          32K PNG
+        </button>
+        {export32kStatus && <span className="font-mono text-[10px] text-slate-300">{export32kStatus}</span>}
       </div>
 
       {/* NSA ORACLE Full-Spectrum Glass Legend (Bottom Left) */}
