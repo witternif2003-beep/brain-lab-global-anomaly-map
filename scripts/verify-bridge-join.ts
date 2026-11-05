@@ -8,7 +8,7 @@
 import { VectorTile } from '@mapbox/vector-tile';
 import { PbfReader } from 'pbf';
 import sharp from 'sharp';
-import { MAX_APPROACH_GRADE, bridgeLine, bridgeSegments, buildBridgeIndex, deckPolygons } from '../lib/traffic-bridges';
+import { MAX_APPROACH_GRADE, levelSharedDecks, bridgeLine, bridgeSegments, buildBridgeIndex, deckPolygons } from '../lib/traffic-bridges';
 import { haversineM, type LngLat } from '../lib/traffic-sim';
 
 const base = process.argv[2] || 'https://brain-lab-six.vercel.app';
@@ -67,7 +67,7 @@ async function main() {
   const flat = lines.map((l) => bridgeLine(index, l));
   const ground = await groundSampler(flat.filter((b) => b.onBridge).flatMap((b) => b.coords));
   const t0 = performance.now();
-  const lifted = lines.map((l) => bridgeLine(index, l, ground));
+  const lifted = levelSharedDecks(lines.map((l) => bridgeLine(index, l, ground)));
   const joinMs = performance.now() - t0;
   const on = lifted.filter((b) => b.onBridge);
   let maxGrade = 0;

@@ -13,6 +13,8 @@ import {
   flowStripePolygons,
   FLOW_STRIPE_THICKNESS_M,
   ribbonEdges,
+  levelSharedDecks,
+  SLAB_STEP_M,
   densify,
 } from "../lib/traffic-bridges";
 import { haversineM, type LngLat } from "../lib/traffic-sim";
@@ -146,8 +148,9 @@ test("mitred deck slabs share their joint edge at a bend, and flow stripes sit o
   ];
   const line = { coords, ground: [0, 0, 0], layers: [1, 1, 1], offsets: [7, 7, 7], onBridge: true };
   const decks = deckPolygons(line);
-  assert.equal(decks.length, 2);
-  const [a, b] = decks.map((d) => d.geometry.coordinates[0]);
+  const n1 = Math.ceil(haversineM(coords[0], coords[1]) / SLAB_STEP_M);
+  assert.equal(decks.length, n1 + Math.ceil(haversineM(coords[1], coords[2]) / SLAB_STEP_M));
+  const [a, b] = [decks[n1 - 1], decks[n1]].map((d) => d.geometry.coordinates[0]);
   assert.deepEqual(a[1], b[0], "left edge continues");
   assert.deepEqual(a[2], b[3], "right edge continues");
   const { left, right } = ribbonEdges(coords, 8);
@@ -160,4 +163,19 @@ test("mitred deck slabs share their joint edge at a bend, and flow stripes sit o
     assert.equal(s.properties.base, decks[i].properties.height);
     assert.ok(Math.abs(s.properties.height - s.properties.base - FLOW_STRIPE_THICKNESS_M) < 1e-9);
   }
+});
+
+test("overlapping decks from two lines on one bridge are levelled to the higher top; separate bridges are untouched", () => {
+  const mk = (lat: number, off: number, layer = 1) => ({
+    coords: [[-84.262, lat], [-84.2618, lat]] as LngLat[],
+    ground: [100, 100],
+    layers: [layer, layer],
+    offsets: [off, off],
+    onBridge: true,
+  });
+  const [a, b, far, other] = levelSharedDecks([mk(33.8915, 7), mk(33.89154, 5.5), mk(33.8925, 3), mk(33.89152, 2, 2)]);
+  assert.deepEqual(a.offsets, [7, 7]);
+  assert.deepEqual(b.offsets, [7, 7], "4 m apart: raised to the shared top");
+  assert.deepEqual(far.offsets, [3, 3], "110 m away: separate deck");
+  assert.deepEqual(other.offsets, [2, 2], "different OSM layer: stacked bridge stays below");
 });

@@ -254,6 +254,8 @@ export interface DeckFeature {
 /** TomTom flow colour stripe on top of each deck slab, so the live flow layer stays visible on the bridge (the flat line layer drapes onto the ground below). */
 export const FLOW_STRIPE_WIDTH_M = 3;
 export const FLOW_STRIPE_THICKNESS_M = 0.05;
+/** Slabs are flat-topped, so each car-line segment is drawn as ≤ 5 m pieces: on a 6 % ramp the step between pieces stays ≤ 0.3 m. */
+export const SLAB_STEP_M = 5;
 
 /**
  * Left/right edge points per vertex, offset by `width / 2` along the mitred vertex normal, so consecutive slabs share
@@ -285,29 +287,119 @@ export function ribbonEdges(coords: LngLat[], width: number): { left: LngLat[]; 
   return { left, right };
 }
 
-function slabs(line: BridgedLine, width: number, props: (top: number) => DeckFeature["properties"]): DeckFeature[] {
+/**
+ * MapLibre draws each fill-extrusion on terrain at `terrain(centroid) + height` (flat top). With `groundAt` (the same
+ * terrain the map draws, e.g. `map.queryTerrainElevation`), each slab's height is taken from the deck's absolute top
+ * minus the ground under its centroid, so overlapping slabs from different lines with the same absolute top render
+ * coplanar instead of stepping by the ground difference between their centroids.
+ */
+function slabs(
+  line: BridgedLine,
+  width: number,
+  props: (top: number) => DeckFeature["properties"],
+  groundAt?: (c: LngLat) => number,
+): DeckFeature[] {
   const out: DeckFeature[] = [];
-  const { coords, offsets } = line;
+  const { coords, offsets, ground } = line;
   if (coords.length < 2) return out;
   const { left, right } = ribbonEdges(coords, width);
+  const lerp = (a: LngLat, b: LngLat, t: number): LngLat => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
   for (let i = 1; i < coords.length; i++) {
-    const top = (offsets[i - 1] + offsets[i]) / 2;
-    if (!(top > DECK_THICKNESS_M)) continue;
-    out.push({
-      type: "Feature",
-      geometry: { type: "Polygon", coordinates: [[left[i - 1], left[i], right[i], right[i - 1], left[i - 1]]] },
-      properties: props(top),
-    });
+    if (!((offsets[i - 1] + offsets[i]) / 2 > DECK_THICKNESS_M)) continue;
+    const n = Math.max(1, Math.ceil(haversineM(coords[i - 1], coords[i]) / SLAB_STEP_M));
+    const absA = ground[i - 1] + offsets[i - 1], absB = ground[i] + offsets[i];
+    for (let k = 0; k < n; k++) {
+      const t0 = k / n, t1 = (k + 1) / n, tm = (t0 + t1) / 2;
+      const l0 = lerp(left[i - 1], left[i], t0), l1 = lerp(left[i - 1], left[i], t1);
+      const r0 = lerp(right[i - 1], right[i], t0), r1 = lerp(right[i - 1], right[i], t1);
+      const lift = offsets[i - 1] + (offsets[i] - offsets[i - 1]) * tm;
+      const top = groundAt
+        ? Math.max(DECK_THICKNESS_M, absA + (absB - absA) * tm - groundAt(lerp(lerp(l0, r0, 0.5), lerp(l1, r1, 0.5), 0.5)))
+        : lift;
+      out.push({ type: "Feature", geometry: { type: "Polygon", coordinates: [[l0, l1, r1, r0, l0]] }, properties: props(top) });
+    }
   }
   return out;
 }
 
-/** One slab per lifted segment of a car line: top at the cars' road height, `DECK_THICKNESS_M` thick, `DECK_WIDTH_M` wide, mitred at bends. */
-export function deckPolygons(line: BridgedLine, width = DECK_WIDTH_M): DeckFeature[] {
-  return slabs(line, width, (top) => ({ height: top, base: top - DECK_THICKNESS_M }));
+/** Slabs (≤ `SLAB_STEP_M` long) along each lifted segment of a car line: top at the cars' road height, `DECK_THICKNESS_M` thick, `DECK_WIDTH_M` wide, mitred at bends. */
+export function deckPolygons(line: BridgedLine, width = DECK_WIDTH_M, groundAt?: (c: LngLat) => number): DeckFeature[] {
+  return slabs(line, width, (top) => ({ height: top, base: top - DECK_THICKNESS_M }), groundAt);
 }
 
 /** Thin stripes in the line's TomTom flow colour lying on the deck slabs from `deckPolygons`. */
-export function flowStripePolygons(line: BridgedLine, color: string, width = FLOW_STRIPE_WIDTH_M): DeckFeature[] {
-  return slabs(line, width, (top) => ({ height: top + FLOW_STRIPE_THICKNESS_M, base: top, color }));
+export function flowStripePolygons(
+  line: BridgedLine,
+  color: string,
+  width = FLOW_STRIPE_WIDTH_M,
+  groundAt?: (c: LngLat) => number,
+): DeckFeature[] {
+  return slabs(line, width, (top) => ({ height: top + FLOW_STRIPE_THICKNESS_M, base: top, color }), groundAt);
+}
+
+/** Largest height gap between overlapping decks that is treated as one bridge drawn twice; bigger gaps are separate structures. */
+export const SHARED_DECK_MAX_GAP_M = 2.5;
+
+/**
+ * Two car lines on one bridge (e.g. one per direction) get their own decks; where those decks overlap (vertices of the
+ * same OSM `layer` within `DECK_WIDTH_M`, tops less than `SHARED_DECK_MAX_GAP_M` apart), the lower deck is raised to the
+ * higher top so the slabs are coplanar instead of stacked boxes. The raise tapers along the line at `MAX_APPROACH_GRADE`
+ * and never lifts a vertex off the bridge, so approaches stay on the ground. Mutates and returns `lines`.
+ */
+export function levelSharedDecks(lines: BridgedLine[], radiusM = DECK_WIDTH_M, grade = MAX_APPROACH_GRADE): BridgedLine[] {
+  const cell = 0.0003;
+  const deck = (b: BridgedLine, i: number) => b.onBridge && b.layers[i] > 0 && b.offsets[i] > 0;
+  /** Deck segments bucketed by midpoint; segments are ≤ DENSIFY_STEP_M long, so a 3×3 cell search covers `radiusM`. */
+  const grid = new Map<string, { line: number; i: number }[]>();
+  const key = (c: LngLat, dx = 0, dy = 0) => `${Math.floor(c[0] / cell) + dx},${Math.floor(c[1] / cell) + dy}`;
+  lines.forEach((b, line) => {
+    for (let i = 1; i < b.coords.length; i++) {
+      if (!deck(b, i - 1) || !deck(b, i)) continue;
+      const a = b.coords[i - 1], c = b.coords[i];
+      const k = key([(a[0] + c[0]) / 2, (a[1] + c[1]) / 2]);
+      if (!grid.has(k)) grid.set(k, []);
+      grid.get(k)!.push({ line, i });
+    }
+  });
+  /** Other lines' deck top under point `p` (projected onto their segments), or -Infinity. */
+  const topAt = (p: LngLat, line: number, layer: number) => {
+    let best = -Infinity;
+    const kx = 111_320 * Math.cos((p[1] * Math.PI) / 180), ky = 110_574;
+    for (let dx = -1; dx <= 1; dx++)
+      for (let dy = -1; dy <= 1; dy++)
+        for (const q of grid.get(key(p, dx, dy)) ?? []) {
+          const o = lines[q.line];
+          if (q.line === line || o.layers[q.i] !== layer || o.layers[q.i - 1] !== layer) continue;
+          const a = o.coords[q.i - 1], c = o.coords[q.i];
+          const vx = (c[0] - a[0]) * kx, vy = (c[1] - a[1]) * ky;
+          const wx = (p[0] - a[0]) * kx, wy = (p[1] - a[1]) * ky;
+          const t = Math.max(0, Math.min(1, (wx * vx + wy * vy) / (vx * vx + vy * vy || 1)));
+          if (Math.hypot(wx - t * vx, wy - t * vy) > radiusM) continue;
+          const ta = o.ground[q.i - 1] + o.offsets[q.i - 1], tc = o.ground[q.i] + o.offsets[q.i];
+          best = Math.max(best, ta + t * (tc - ta));
+        }
+    return best;
+  };
+  const next = lines.map((b, line) => {
+    if (!b.onBridge) return b.offsets;
+    const n = b.coords.length;
+    const s = [0];
+    for (let i = 1; i < n; i++) s.push(s[i - 1] + haversineM(b.coords[i - 1], b.coords[i]));
+    const own = b.offsets.map((o, i) => b.ground[i] + o);
+    const target = own.map((top0, i) => {
+      if (!deck(b, i)) return top0;
+      const other = topAt(b.coords[i], line, b.layers[i]);
+      let top = other > top0 && other - top0 <= SHARED_DECK_MAX_GAP_M ? other : top0;
+      for (let k = 0; k < n; k++) if (!deck(b, k)) top = Math.min(top, own[k] + grade * Math.abs(s[i] - s[k]));
+      return Math.max(top0, top);
+    });
+    return own.map((top0, i) => {
+      if (!deck(b, i)) return b.offsets[i];
+      let top = top0;
+      for (let j = 0; j < n; j++) if (target[j] > top0) top = Math.max(top, target[j] - grade * Math.abs(s[i] - s[j]));
+      return top - b.ground[i];
+    });
+  });
+  lines.forEach((b, line) => (b.offsets = next[line]));
+  return lines;
 }
