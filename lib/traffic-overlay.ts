@@ -139,8 +139,8 @@ export async function addGaTrafficSim(map: MapLibreMap): Promise<void> {
       color: '#00ffff',
       count: sim.agents.length,
       detail: onFlow
-        ? `${sim.edges.length} TomTom flow lines in view · speed = 100 km/h nominal × TomTom speed ratio, 5–80/km by jamFactor · cap ${cap}`
-        : `${sim.edges.length} motorway lines in view · 30% of each line jammed (80/km, 15 km/h), rest 5/km at 100 km/h · cap ${cap}`,
+        ? `${sim.edges.length} TomTom flow lines in view · speed = 100 km/h nominal × TomTom speed ratio, 35–200/km by jamFactor · cap ${cap}`
+        : `${sim.edges.length} motorway lines in view · 30% of each line jammed (200/km, 15 km/h), rest 35/km at 100 km/h · cap ${cap}`,
       updatedAt: new Date().toISOString(),
       sourceUrl: onFlow ? TOMTOM_FLOW_DOCS_URL : 'https://openfreemap.org/',
       swatches: [

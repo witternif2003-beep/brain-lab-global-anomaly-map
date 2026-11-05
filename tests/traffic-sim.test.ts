@@ -27,13 +27,14 @@ test('jam zone covers 30% of each line', () => {
   assert.ok(Math.abs(jam / N - JAM_FRACTION) < 0.001);
 });
 
-test('densities: 80/km jammed, 5/km free; speeds 15 and 100 km/h', () => {
+test('densities: 200/km jammed, 35/km free (jam pitch ≥ 5 m, so 4 m cars never overlap); speeds 15 and 100 km/h', () => {
   const sim = new TrafficSim([I75], 10_000);
   const km = sim.edges[0].length / 1000;
   const jam = sim.agents.filter((a) => a.speed === JAM_SPEED_MS).length;
   const free = sim.agents.filter((a) => a.speed === FREE_SPEED_MS).length;
-  assert.ok(Math.abs(jam - 80 * km * 0.3) <= 1, `jam ${jam}`);
-  assert.ok(Math.abs(free - 5 * km * 0.7) <= 1, `free ${free}`);
+  assert.ok(Math.abs(jam - 200 * km * 0.3) <= 1, `jam ${jam}`);
+  assert.ok(Math.abs(free - 35 * km * 0.7) <= 1, `free ${free}`);
+  assert.ok(1000 / flowDensityPerKm({ level: 0 }) >= 5);
 });
 
 test('agents advance by speed × dt and wrap to the start of the line', () => {
@@ -62,17 +63,17 @@ test('SIM vehicles run by default and stop only with ?traffic=off', () => {
   assert.equal(trafficSimEnabled('?x=1&traffic=off'), false);
 });
 
-test('TomTom-bound lines: speed = 100 km/h × traffic_level, density 5→80/km by jamFactor, closures stop', () => {
+test('TomTom-bound lines: speed = 100 km/h × traffic_level, density 35→200/km by jamFactor, closures stop', () => {
   assert.ok(Math.abs(flowSpeedMs({ level: 1 }) - FREE_SPEED_MS) < 1e-9);
   assert.ok(Math.abs(flowSpeedMs({ level: 0.5 }) - FREE_SPEED_MS / 2) < 1e-9);
   assert.equal(flowSpeedMs({ level: 0 }), CRAWL_SPEED_MS);
   assert.equal(flowSpeedMs({ level: 0.9, closed: true }), 0);
-  assert.equal(flowDensityPerKm({ level: 1 }), 5);
-  assert.equal(flowDensityPerKm({ level: 0 }), 80);
-  assert.equal(flowDensityPerKm({ level: 0.5 }), 42.5);
+  assert.equal(flowDensityPerKm({ level: 1 }), 35);
+  assert.equal(flowDensityPerKm({ level: 0 }), 200);
+  assert.equal(flowDensityPerKm({ level: 0.5 }), 117.5);
   const sim = new TrafficSim([I75, I75.map(([x, y]) => [x + 0.1, y] as LngLat)], 100_000, undefined, [{ level: 1 }, { level: 0.1 }]);
   const onLine = (i: number) => sim.agents.filter((a) => a.edgeIndex === i);
-  assert.ok(onLine(1).length > onLine(0).length * 10);
+  assert.ok(onLine(1).length > onLine(0).length * 5);
   assert.ok(onLine(0).every((a) => Math.abs(a.speed - FREE_SPEED_MS) < 1e-9));
   assert.ok(onLine(1).every((a) => Math.abs(a.speed - FREE_SPEED_MS * 0.1) < 1e-9));
   sim.tick(1000);
@@ -112,10 +113,10 @@ test('updateFlows: fresh TomTom level changes car speed in place without respawn
   assert.equal(sim.updateFlows([undefined]), 0);
 });
 
-test('short free-flow TomTom lines still get cars: 200 × 100 m at 5/km ≈ 100 cars, not 0', () => {
+test('short free-flow TomTom lines still get cars: 200 × 100 m at 35/km ≈ 700 cars, not 0', () => {
   const lines: LngLat[][] = Array.from({ length: 200 }, (_, i) => [[-84.4, 33.7 + i * 0.001], [-84.3989, 33.7 + i * 0.001]] as LngLat[]);
   const sim = new TrafficSim(lines, 4000, undefined, lines.map(() => ({ level: 1 })));
-  assert.ok(sim.agents.length >= 70 && sim.agents.length <= 130, String(sim.agents.length));
+  assert.ok(sim.agents.length >= 600 && sim.agents.length <= 800, String(sim.agents.length));
   assert.equal(carCount(0.5, 1) + carCount(0, 1), carCount(0.5, 1));
   assert.equal(carCount(3, 9), 3);
 });

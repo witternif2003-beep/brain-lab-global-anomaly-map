@@ -1,18 +1,20 @@
 /**
  * Agent-based traffic SIMULATION along motorway polylines (linear referencing). These are synthetic agents,
- * not observed vehicles: 30% of each line is a deterministic jam zone (80 cars/km at 15 km/h); the rest is
- * free flow (5 cars/km at 100 km/h). When a line carries a TomTom `traffic_level` (current / free-flow speed),
+ * not observed vehicles: 30% of each line is a deterministic jam zone (200 cars/km at 15 km/h); the rest is
+ * free flow (35 cars/km at 100 km/h). When a line carries a TomTom `traffic_level` (current / free-flow speed),
  * the whole line instead runs at NOMINAL_FREE_FLOW_MS × level with density interpolated by jamFactor.
  */
 export type LngLat = [number, number];
 
-export const FREE_DENSITY_PER_KM = 5;
-export const JAM_DENSITY_PER_KM = 80;
+/** 7× the original 5/km free-flow density. */
+export const FREE_DENSITY_PER_KM = 35;
+/** Bumper-to-bumper for the 4 m SIM car: 5 m pitch (4 m car + 1 m gap). Any denser and cars overlap on the line. */
+export const JAM_DENSITY_PER_KM = 200;
 export const FREE_SPEED_MS = 100 / 3.6;
 export const JAM_SPEED_MS = 15 / 3.6;
 export const JAM_FRACTION = 0.3;
-export const MAX_AGENTS_DESKTOP = 4000;
-export const MAX_AGENTS_TOUCH = 800;
+export const MAX_AGENTS_DESKTOP = 15_000;
+export const MAX_AGENTS_TOUCH = 2_000;
 export const MIN_EDGE_M = 200;
 /** TomTom flow lines are tile-clipped and short; keep anything from 10 m and at most the 2,000 longest. */
 export const MIN_FLOW_EDGE_M = 10;
@@ -21,7 +23,7 @@ export const MAX_FLOW_EDGES = 2000;
 export const NOMINAL_FREE_FLOW_MS = FREE_SPEED_MS;
 export const CRAWL_SPEED_MS = 5 / 3.6;
 
-/** Per-line flow from TomTom: speed = nominal × level (crawl floor, 0 when closed), density 5→80 /km as jamFactor 0→10. */
+/** Per-line flow from TomTom: speed = nominal × level (crawl floor, 0 when closed), density 35→200 /km as jamFactor 0→10. */
 export interface LineFlow {
   level: number | null;
   closed?: boolean;
