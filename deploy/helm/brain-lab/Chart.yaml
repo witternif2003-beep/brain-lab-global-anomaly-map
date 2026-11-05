@@ -1,0 +1,6 @@
+apiVersion: v2
+name: brain-lab
+description: Brain Lab Next.js app with an OpenTelemetry Collector
+type: application
+version: 0.1.0
+appVersion: "1cf70b6"

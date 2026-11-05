@@ -1,0 +1,1597 @@
+{
+ "generatedAt": "2026-10-01T18:07:32Z",
+ "source": "SEC EDGAR submissions and XBRL companyfacts APIs (data.sec.gov); USAspending.gov API v2",
+ "companies": {
+  "BAH": {
+   "cik": 1443646,
+   "name": "Booz Allen Hamilton Holding Corp",
+   "tickers": [
+    "BAH"
+   ],
+   "exchanges": [
+    "NYSE"
+   ],
+   "industry": "Services-Management Consulting Services",
+   "incorporated": "DE",
+   "hq": "Mclean, VA",
+   "fiscalYearEnd": "0331",
+   "sic": "8742",
+   "ein": "000000000",
+   "filerCategory": "Large accelerated filer",
+   "phone": "703-902-5000",
+   "street": "8283 Greensboro Drive",
+   "formerNames": [
+    "EXPLORER HOLDING CORP (until 2009-07-27)"
+   ],
+   "sharesOutstanding": {
+    "value": 120284973,
+    "asOf": "2026-07-20"
+   },
+   "recentFilings": [
+    {
+     "form": "8-K",
+     "filed": "2026-08-24",
+     "url": "https://www.sec.gov/Archives/edgar/data/1443646/000144364626000058/bah-20260824.htm"
+    },
+    {
+     "form": "8-K",
+     "filed": "2026-08-04",
+     "url": "https://www.sec.gov/Archives/edgar/data/1443646/000110465926090450/tm2621893d1_8k.htm"
+    },
+    {
+     "form": "8-K",
+     "filed": "2026-07-24",
+     "url": "https://www.sec.gov/Archives/edgar/data/1443646/000144364626000029/bah-20260722.htm"
+    },
+    {
+     "form": "10-Q",
+     "filed": "2026-07-24",
+     "url": "https://www.sec.gov/Archives/edgar/data/1443646/000162828026049495/bah-20260630.htm"
+    },
+    {
+     "form": "8-K",
+     "filed": "2026-07-24",
+     "url": "https://www.sec.gov/Archives/edgar/data/1443646/000162828026049494/bah-20260724.htm"
+    },
+    {
+     "form": "8-K",
+     "filed": "2026-06-22",
+     "url": "https://www.sec.gov/Archives/edgar/data/1443646/000110465926076094/tm2618424d1_8k.htm"
+    }
+   ],
+   "edgarUrl": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=1443646&type=10-K&dateb=&owner=include&count=40",
+   "lastPeriodicFiling": "2026-07-24",
+   "balanceSheet": {
+    "form": "10-Q",
+    "filed": "2026-07-24",
+    "accn": "0001628280-26-049495",
+    "docUrl": "https://www.sec.gov/Archives/edgar/data/1443646/000162828026049495/bah-20260630.htm",
+    "indexUrl": "https://www.sec.gov/Archives/edgar/data/1443646/000162828026049495/0001628280-26-049495-index.htm",
+    "viewerUrl": "https://www.sec.gov/cgi-bin/viewer?action=view&cik=1443646&accession_number=0001628280-26-049495&xbrl_type=v",
+    "assets": 7610000000,
+    "periodEnd": "2026-06-30",
+    "liabilities": 6408000000,
+    "equity": 1202000000,
+    "cash": 540000000,
+    "longTermDebt": 3917000000,
+    "currentAssets": 3040000000,
+    "currentLiabilities": 1906000000,
+    "goodwill": 2528000000
+   },
+   "annual": {
+    "form": "10-K",
+    "filed": "2026-05-22",
+    "accn": "0001628280-26-037521",
+    "docUrl": "https://www.sec.gov/Archives/edgar/data/1443646/000162828026037521/bah-20260331.htm",
+    "indexUrl": "https://www.sec.gov/Archives/edgar/data/1443646/000162828026037521/0001628280-26-037521-index.htm",
+    "viewerUrl": "https://www.sec.gov/cgi-bin/viewer?action=view&cik=1443646&accession_number=0001628280-26-037521&xbrl_type=v",
+    "revenue": 11217000000,
+    "periodStart": "2025-04-01",
+    "periodEnd": "2026-03-31",
+    "operatingIncome": 1033000000,
+    "netIncome": 851000000,
+    "operatingCashFlow": 1041000000
+   }
+  },
+  "RTX": {
+   "cik": 101829,
+   "name": "RTX Corp",
+   "tickers": [
+    "RTX"
+   ],
+   "exchanges": [
+    "NYSE"
+   ],
+   "industry": "Aircraft Engines & Engine Parts",
+   "incorporated": "DE",
+   "hq": "Arlington, VA",
+   "fiscalYearEnd": "1231",
+   "sic": "3724",
+   "ein": "060570975",
+   "filerCategory": "Large accelerated filer",
+   "phone": "781-522-3000",
+   "street": "1000 Wilson Blvd",
+   "formerNames": [
+    "RAYTHEON TECHNOLOGIES CORP (until 2023-06-29)",
+    "UNITED TECHNOLOGIES CORP /DE/ (until 2020-04-06)"
+   ],
+   "sharesOutstanding": {
+    "value": 1347758144,
+    "asOf": "2026-06-30"
+   },
+   "recentFilings": [
+    {
+     "form": "8-K",
+     "filed": "2026-09-15",
+     "url": "https://www.sec.gov/Archives/edgar/data/101829/000114036126036662/ef20082011_8k.htm"
+    },
+    {
+     "form": "10-Q",
+     "filed": "2026-07-23",
+     "url": "https://www.sec.gov/Archives/edgar/data/101829/000010182926000027/rtx-20260630.htm"
+    },
+    {
+     "form": "8-K",
+     "filed": "2026-07-23",
+     "url": "https://www.sec.gov/Archives/edgar/data/101829/000010182926000025/rtx-20260723.htm"
+    },
+    {
+     "form": "8-K",
+     "filed": "2026-05-04",
+     "url": "https://www.sec.gov/Archives/edgar/data/101829/000114036126018932/ef20072402_8k.htm"
+    },
+    {
+     "form": "10-Q",
+     "filed": "2026-04-21",
+     "url": "https://www.sec.gov/Archives/edgar/data/101829/000010182926000011/rtx-20260331.htm"
+    },
+    {
+     "form": "8-K",
+     "filed": "2026-04-21",
+     "url": "https://www.sec.gov/Archives/edgar/data/101829/000010182926000009/rtx-20260421.htm"
+    }
+   ],
+   "edgarUrl": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=101829&type=10-K&dateb=&owner=include&count=40",
+   "lastPeriodicFiling": "2026-07-23",
+   "balanceSheet": {
+    "form": "10-Q",
+    "filed": "2026-07-23",
+    "accn": "0000101829-26-000027",
+    "docUrl": "https://www.sec.gov/Archives/edgar/data/101829/000010182926000027/rtx-20260630.htm",
+    "indexUrl": "https://www.sec.gov/Archives/edgar/data/101829/000010182926000027/0000101829-26-000027-index.htm",
+    "viewerUrl": "https://www.sec.gov/cgi-bin/viewer?action=view&cik=101829&accession_number=0000101829-26-000027&xbrl_type=v",
+    "assets": 173972000000,
+    "periodEnd": "2026-06-30",
+    "liabilities": 105828000000,
+    "equity": 68116000000,
+    "cash": 8305000000,
+    "currentAssets": 63912000000,
+    "currentLiabilities": 63245000000,
+    "goodwill": 52928000000
+   },
+   "annual": {
+    "form": "10-K",
+    "filed": "2026-02-06",
+    "accn": "0000101829-26-000006",
+    "docUrl": "https://www.sec.gov/Archives/edgar/data/101829/000010182926000006/rtx-20251231.htm",
+    "indexUrl": "https://www.sec.gov/Archives/edgar/data/101829/000010182926000006/0000101829-26-000006-index.htm",
+    "viewerUrl": "https://www.sec.gov/cgi-bin/viewer?action=view&cik=101829&accession_number=0000101829-26-000006&xbrl_type=v",
+    "revenue": 88603000000,
+    "periodStart": "2025-01-01",
+    "periodEnd": "2025-12-31",
+    "operatingIncome": 9300000000,
+    "netIncome": 6732000000,
+    "operatingCashFlow": 10567000000
+   }
+  },
+  "CACI": {
+   "cik": 16058,
+   "name": "CACI INTERNATIONAL INC /DE/",
+   "tickers": [
+    "CACI"
+   ],
+   "exchanges": [
+    "NYSE"
+   ],
+   "industry": "Services-Computer Integrated Systems Design",
+   "incorporated": "DE",
+   "hq": "Reston, VA",
+   "fiscalYearEnd": "0630",
+   "sic": "7373",
+   "ein": "541345888",
+   "filerCategory": "Large accelerated filer",
+   "phone": "7038417800",
+   "street": "Two Reston Overlook 12021 Sunset Hills Road",
+   "formerNames": [
+    "CACI INTERNATIONAL INC /DE/ (until 2026-09-11)"
+   ],
+   "sharesOutstanding": {
+    "value": 22099539,
+    "asOf": "2026-07-27"
+   },
+   "recentFilings": [
+    {
+     "form": "DEF 14A",
+     "filed": "2026-09-04",
+     "url": "https://www.sec.gov/Archives/edgar/data/16058/000162828026060738/caci-20260904.htm"
+    },
+    {
+     "form": "10-K",
+     "filed": "2026-08-06",
+     "url": "https://www.sec.gov/Archives/edgar/data/16058/000162828026054195/caci-20260630.htm"
+    },
+    {
+     "form": "8-K",
+     "filed": "2026-08-05",
+     "url": "https://www.sec.gov/Archives/edgar/data/16058/000162828026053448/caci-20260805.htm"
+    },
+    {
+     "form": "8-K",
+     "filed": "2026-06-22",
+     "url": "https://www.sec.gov/Archives/edgar/data/16058/000162828026044492/caci-20260622.htm"
+    },
+    {
+     "form": "8-K",
+     "filed": "2026-06-05",
+     "url": "https://www.sec.gov/Archives/edgar/data/16058/000162828026041245/caci-20260601.htm"
+    },
+    {
+     "form": "10-Q",
+     "filed": "2026-04-23",
+     "url": "https://www.sec.gov/Archives/edgar/data/16058/000162828026026802/caci-20260331.htm"
+    }
+   ],
+   "edgarUrl": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=16058&type=10-K&dateb=&owner=include&count=40",
+   "lastPeriodicFiling": "2026-08-06",
+   "balanceSheet": {
+    "form": "10-K",
+    "filed": "2026-08-06",
+    "accn": "0001628280-26-054195",
+    "docUrl": "https://www.sec.gov/Archives/edgar/data/16058/000162828026054195/caci-20260630.htm",
+    "indexUrl": "https://www.sec.gov/Archives/edgar/data/16058/000162828026054195/0001628280-26-054195-index.htm",
+    "viewerUrl": "https://www.sec.gov/cgi-bin/viewer?action=view&cik=16058&accession_number=0001628280-26-054195&xbrl_type=v",
+    "assets": 11819644000,
+    "periodEnd": "2026-06-30",
+    "liabilities": 7356947000,
+    "equity": 4462697000,
+    "cash": 191756000,
+    "longTermDebt": 4854759000,
+    "currentAssets": 2261345000,
+    "currentLiabilities": 1523932000,
+    "goodwill": 6484456000
+   },
+   "annual": {
+    "form": "10-K",
+    "filed": "2026-08-06",
+    "accn": "0001628280-26-054195",
+    "docUrl": "https://www.sec.gov/Archives/edgar/data/16058/000162828026054195/caci-20260630.htm",
+    "indexUrl": "https://www.sec.gov/Archives/edgar/data/16058/000162828026054195/0001628280-26-054195-index.htm",
+    "viewerUrl": "https://www.sec.gov/cgi-bin/viewer?action=view&cik=16058&accession_number=0001628280-26-054195&xbrl_type=v",
+    "revenue": 9567779000,
+    "periodStart": "2025-07-01",
+    "periodEnd": "2026-06-30",
+    "operatingIncome": 919815000,
+    "netIncome": 535808000,
+    "operatingCashFlow": 886710000
+   }
+  },
+  "AMTM": {
+   "cik": 2011286,
+   "name": "Amentum Holdings, Inc.",
+   "tickers": [
+    "AMTM"
+   ],
+   "exchanges": [
+    "NYSE"
+   ],
+   "industry": "Services-Business Services, NEC",
+   "incorporated": "DE",
+   "hq": "Chantilly, VA",
+   "fiscalYearEnd": "1002",
+   "sic": "7389",
+   "ein": "990622272",
+   "filerCategory": "Large accelerated filer",
+   "phone": "7035790410",
+   "street": "4800 Westfields Boulevard Suite 400",
+   "formerNames": [
+    "Amazon Holdco Inc. (until 2024-09-18)"
+   ],
+   "sharesOutstanding": {
+    "value": 244506413,
+    "asOf": "2026-08-07"
+   },
+   "recentFilings": [
+    {
+     "form": "10-Q",
+     "filed": "2026-08-11",
+     "url": "https://www.sec.gov/Archives/edgar/data/2011286/000162828026055727/amtm-20260703.htm"
+    },
+    {
+     "form": "8-K",
+     "filed": "2026-08-10",
+     "url": "https://www.sec.gov/Archives/edgar/data/2011286/000162828026055294/amtm-20260810.htm"
+    },
+    {
+     "form": "10-Q",
+     "filed": "2026-05-12",
+     "url": "https://www.sec.gov/Archives/edgar/data/2011286/000162828026034156/amtm-20260403.htm"
+    },
+    {
+     "form": "8-K",
+     "filed": "2026-05-11",
+     "url": "https://www.sec.gov/Archives/edgar/data/2011286/000162828026033648/amtm-20260511.htm"
+    },
+    {
+     "form": "8-K",
+     "filed": "2026-04-28",
+     "url": "https://www.sec.gov/Archives/edgar/data/2011286/000201128626000011/amtm-20260424.htm"
+    },
+    {
+     "form": "8-K",
+     "filed": "2026-02-10",
+     "url": "https://www.sec.gov/Archives/edgar/data/2011286/000162828026006679/amtm-20260206.htm"
+    }
+   ],
+   "edgarUrl": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=2011286&type=10-K&dateb=&owner=include&count=40",
+   "lastPeriodicFiling": "2026-08-11",
+   "balanceSheet": {
+    "form": "10-Q",
+    "filed": "2026-08-11",
+    "accn": "0001628280-26-055727",
+    "docUrl": "https://www.sec.gov/Archives/edgar/data/2011286/000162828026055727/amtm-20260703.htm",
+    "indexUrl": "https://www.sec.gov/Archives/edgar/data/2011286/000162828026055727/0001628280-26-055727-index.htm",
+    "viewerUrl": "https://www.sec.gov/cgi-bin/viewer?action=view&cik=2011286&accession_number=0001628280-26-055727&xbrl_type=v",
+    "assets": 11199000000,
+    "periodEnd": "2026-07-03",
+    "liabilities": 6410000000,
+    "equity": 4789000000,
+    "cash": 459000000,
+    "longTermDebt": 3771000000,
+    "currentAssets": 3189000000,
+    "currentLiabilities": 2094000000,
+    "goodwill": 5703000000
+   },
+   "annual": {
+    "form": "10-K",
+    "filed": "2025-11-25",
+    "accn": "0001628280-25-053993",
+    "docUrl": "https://www.sec.gov/Archives/edgar/data/2011286/000162828025053993/amtm-20251003.htm",
+    "indexUrl": "https://www.sec.gov/Archives/edgar/data/2011286/000162828025053993/0001628280-25-053993-index.htm",
+    "viewerUrl": "https://www.sec.gov/cgi-bin/viewer?action=view&cik=2011286&accession_number=0001628280-25-053993&xbrl_type=v",
+    "revenue": 14393000000,
+    "periodStart": "2024-09-28",
+    "periodEnd": "2025-10-03",
+    "operatingIncome": 480000000,
+    "netIncome": 66000000,
+    "operatingCashFlow": 543000000
+   }
+  },
+  "KTOS": {
+   "cik": 1069258,
+   "name": "KRATOS DEFENSE & SECURITY SOLUTIONS, INC.",
+   "tickers": [
+    "KTOS"
+   ],
+   "exchanges": [
+    "Nasdaq"
+   ],
+   "industry": "Guided Missiles & Space Vehicles & Parts",
+   "incorporated": "DE",
+   "hq": "San Diego, CA",
+   "fiscalYearEnd": "1227",
+   "sic": "3760",
+   "ein": "133818604",
+   "filerCategory": "Large accelerated filer",
+   "phone": "858-812-7300",
+   "street": "10680 Treena Street Suite 600",
+   "formerNames": [
+    "WIRELESS FACILITIES INC (until 2007-09-14)"
+   ],
+   "sharesOutstanding": {
+    "value": 187721327,
+    "asOf": "2026-07-31"
+   },
+   "recentFilings": [
+    {
+     "form": "10-Q",
+     "filed": "2026-08-04",
+     "url": "https://www.sec.gov/Archives/edgar/data/1069258/000106925826000077/ktos-20260628.htm"
+    },
+    {
+     "form": "8-K",
+     "filed": "2026-08-04",
+     "url": "https://www.sec.gov/Archives/edgar/data/1069258/000106925826000075/ktos-20260804.htm"
+    },
+    {
+     "form": "8-K",
+     "filed": "2026-05-15",
+     "url": "https://www.sec.gov/Archives/edgar/data/1069258/000106925826000064/ktos-20260515.htm"
+    },
+    {
+     "form": "10-Q",
+     "filed": "2026-05-06",
+     "url": "https://www.sec.gov/Archives/edgar/data/1069258/000106925826000053/ktos-20260329.htm"
+    },
+    {
+     "form": "8-K",
+     "filed": "2026-05-06",
+     "url": "https://www.sec.gov/Archives/edgar/data/1069258/000106925826000051/ktos-20260506.htm"
+    },
+    {
+     "form": "DEF 14A",
+     "filed": "2026-04-02",
+     "url": "https://www.sec.gov/Archives/edgar/data/1069258/000106925826000040/ktos-20260402.htm"
+    }
+   ],
+   "edgarUrl": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=1069258&type=10-K&dateb=&owner=include&count=40",
+   "lastPeriodicFiling": "2026-08-04",
+   "balanceSheet": {
+    "form": "10-Q",
+    "filed": "2026-08-04",
+    "accn": "0001069258-26-000077",
+    "docUrl": "https://www.sec.gov/Archives/edgar/data/1069258/000106925826000077/ktos-20260628.htm",
+    "indexUrl": "https://www.sec.gov/Archives/edgar/data/1069258/000106925826000077/0001069258-26-000077-index.htm",
+    "viewerUrl": "https://www.sec.gov/cgi-bin/viewer?action=view&cik=1069258&accession_number=0001069258-26-000077&xbrl_type=v",
+    "assets": 4089800000,
+    "periodEnd": "2026-06-28",
+    "liabilities": 663000000,
+    "equity": 3426800000,
+    "cash": 1437600000,
+    "currentAssets": 2356500000,
+    "currentLiabilities": 425300000,
+    "goodwill": 871200000
+   },
+   "annual": {
+    "form": "10-K",
+    "filed": "2026-02-23",
+    "accn": "0001069258-26-000013",
+    "docUrl": "https://www.sec.gov/Archives/edgar/data/1069258/000106925826000013/ktos-20251228.htm",
+    "indexUrl": "https://www.sec.gov/Archives/edgar/data/1069258/000106925826000013/0001069258-26-000013-index.htm",
+    "viewerUrl": "https://www.sec.gov/cgi-bin/viewer?action=view&cik=1069258&accession_number=0001069258-26-000013&xbrl_type=v",
+    "revenue": 1346800000,
+    "periodStart": "2024-12-30",
+    "periodEnd": "2025-12-28",
+    "operatingIncome": 25600000,
+    "netIncome": 22000000,
+    "operatingCashFlow": -42100000
+   }
+  },
+  "SAIC": {
+   "cik": 1571123,
+   "name": "Science Applications International Corp",
+   "tickers": [
+    "SAIC"
+   ],
+   "exchanges": [
+    "Nasdaq"
+   ],
+   "industry": "Services-Computer Integrated Systems Design",
+   "incorporated": "DE",
+   "hq": "Reston, VA",
+   "fiscalYearEnd": "0129",
+   "sic": "7373",
+   "ein": "461932921",
+   "filerCategory": "Large accelerated filer",
+   "phone": "703-676-4300",
+   "street": "12010 Sunset Hills Road",
+   "formerNames": [
+    "SAIC Gemini, Inc. (until 2013-09-27)"
+   ],
+   "sharesOutstanding": {
+    "value": 41897635,
+    "asOf": "2026-08-21"
+   },
+   "recentFilings": [
+    {
+     "form": "10-Q",
+     "filed": "2026-08-31",
+     "url": "https://www.sec.gov/Archives/edgar/data/1571123/000157112326000133/saic-20260731.htm"
+    },
+    {
+     "form": "8-K",
+     "filed": "2026-08-31",
+     "url": "https://www.sec.gov/Archives/edgar/data/1571123/000157112326000131/saic-20260831.htm"
+    },
+    {
+     "form": "8-K",
+     "filed": "2026-08-28",
+     "url": "https://www.sec.gov/Archives/edgar/data/1571123/000157112326000129/saic-20260827.htm"
+    },
+    {
+     "form": "8-K",
+     "filed": "2026-08-19",
+     "url": "https://www.sec.gov/Archives/edgar/data/1571123/000157112326000123/saic-20260814.htm"
+    },
+    {
+     "form": "8-K",
+     "filed": "2026-08-10",
+     "url": "https://www.sec.gov/Archives/edgar/data/1571123/000119312526341188/d104119d8k.htm"
+    },
+    {
+     "form": "8-K",
+     "filed": "2026-06-08",
+     "url": "https://www.sec.gov/Archives/edgar/data/1571123/000157112326000113/saic-20260603.htm"
+    }
+   ],
+   "edgarUrl": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=1571123&type=10-K&dateb=&owner=include&count=40",
+   "lastPeriodicFiling": "2026-08-31",
+   "balanceSheet": {
+    "form": "10-Q",
+    "filed": "2026-08-31",
+    "accn": "0001571123-26-000133",
+    "docUrl": "https://www.sec.gov/Archives/edgar/data/1571123/000157112326000133/saic-20260731.htm",
+    "indexUrl": "https://www.sec.gov/Archives/edgar/data/1571123/000157112326000133/0001571123-26-000133-index.htm",
+    "viewerUrl": "https://www.sec.gov/cgi-bin/viewer?action=view&cik=1571123&accession_number=0001571123-26-000133&xbrl_type=v",
+    "assets": 5423000000,
+    "periodEnd": "2026-07-31",
+    "equity": 1436000000,
+    "cash": 126000000,
+    "longTermDebt": 2452000000,
+    "currentAssets": 1279000000,
+    "currentLiabilities": 1062000000,
+    "goodwill": 2943000000,
+    "liabilities": 3987000000,
+    "liabilitiesDerived": true
+   },
+   "annual": {
+    "form": "10-K",
+    "filed": "2026-03-16",
+    "accn": "0001571123-26-000029",
+    "docUrl": "https://www.sec.gov/Archives/edgar/data/1571123/000157112326000029/saic-20260130.htm",
+    "indexUrl": "https://www.sec.gov/Archives/edgar/data/1571123/000157112326000029/0001571123-26-000029-index.htm",
+    "viewerUrl": "https://www.sec.gov/cgi-bin/viewer?action=view&cik=1571123&accession_number=0001571123-26-000029&xbrl_type=v",
+    "revenue": 7262000000,
+    "periodStart": "2025-02-01",
+    "periodEnd": "2026-01-30",
+    "operatingIncome": 521000000,
+    "netIncome": 358000000,
+    "operatingCashFlow": 609000000
+   }
+  },
+  "DRS": {
+   "cik": 1833756,
+   "name": "Leonardo DRS, Inc.",
+   "tickers": [
+    "DRS"
+   ],
+   "exchanges": [
+    "Nasdaq"
+   ],
+   "industry": "Search, Detection, Navigation, Guidance, Aeronautical Sys",
+   "incorporated": "DE",
+   "hq": "Arlington, VA",
+   "fiscalYearEnd": "1231",
+   "sic": "3812",
+   "ein": "132632319",
+   "filerCategory": "Large accelerated filer",
+   "phone": "(703) 416-8000",
+   "street": "2345 Crystal Drive Suite 1000",
+   "formerNames": [],
+   "sharesOutstanding": {
+    "value": 266891515,
+    "asOf": "2026-07-29"
+   },
+   "recentFilings": [
+    {
+     "form": "10-Q",
+     "filed": "2026-07-30",
+     "url": "https://www.sec.gov/Archives/edgar/data/1833756/000183375626000040/drs-20260630.htm"
+    },
+    {
+     "form": "8-K",
+     "filed": "2026-07-30",
+     "url": "https://www.sec.gov/Archives/edgar/data/1833756/000183375626000037/drs-20260730.htm"
+    },
+    {
+     "form": "8-K",
+     "filed": "2026-07-28",
+     "url": "https://www.sec.gov/Archives/edgar/data/1833756/000183375626000034/drs-20260728.htm"
+    },
+    {
+     "form": "8-K",
+     "filed": "2026-07-17",
+     "url": "https://www.sec.gov/Archives/edgar/data/1833756/000183375626000031/drs-20260715.htm"
+    },
+    {
+     "form": "8-K",
+     "filed": "2026-05-14",
+     "url": "https://www.sec.gov/Archives/edgar/data/1833756/000183375626000027/drs-20260514.htm"
+    },
+    {
+     "form": "10-Q",
+     "filed": "2026-05-05",
+     "url": "https://www.sec.gov/Archives/edgar/data/1833756/000183375626000025/drs-20260331.htm"
+    }
+   ],
+   "edgarUrl": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=1833756&type=10-K&dateb=&owner=include&count=40",
+   "lastPeriodicFiling": "2026-07-30",
+   "balanceSheet": {
+    "form": "10-Q",
+    "filed": "2026-07-30",
+    "accn": "0001833756-26-000040",
+    "docUrl": "https://www.sec.gov/Archives/edgar/data/1833756/000183375626000040/drs-20260630.htm",
+    "indexUrl": "https://www.sec.gov/Archives/edgar/data/1833756/000183375626000040/0001833756-26-000040-index.htm",
+    "viewerUrl": "https://www.sec.gov/cgi-bin/viewer?action=view&cik=1833756&accession_number=0001833756-26-000040&xbrl_type=v",
+    "assets": 4197000000,
+    "periodEnd": "2026-06-30",
+    "equity": 2803000000,
+    "cash": 270000000,
+    "currentAssets": 2040000000,
+    "currentLiabilities": 1065000000,
+    "goodwill": 1238000000,
+    "liabilities": 1394000000,
+    "liabilitiesDerived": true
+   },
+   "annual": {
+    "form": "10-K",
+    "filed": "2026-02-27",
+    "accn": "0001833756-26-000013",
+    "docUrl": "https://www.sec.gov/Archives/edgar/data/1833756/000183375626000013/drs-20251231.htm",
+    "indexUrl": "https://www.sec.gov/Archives/edgar/data/1833756/000183375626000013/0001833756-26-000013-index.htm",
+    "viewerUrl": "https://www.sec.gov/cgi-bin/viewer?action=view&cik=1833756&accession_number=0001833756-26-000013&xbrl_type=v",
+    "revenue": 3648000000,
+    "periodStart": "2025-01-01",
+    "periodEnd": "2025-12-31",
+    "operatingIncome": 348000000,
+    "netIncome": 278000000,
+    "operatingCashFlow": 366000000
+   }
+  },
+  "MANT": {
+   "cik": 892537,
+   "name": "MANTECH INTERNATIONAL CORP",
+   "tickers": [],
+   "exchanges": [],
+   "industry": "Services-Management Services",
+   "incorporated": "DE",
+   "hq": "Herndon, VA",
+   "fiscalYearEnd": "1231",
+   "sic": "8741",
+   "ein": "221852179",
+   "filerCategory": "Large accelerated filer",
+   "phone": "703-218-6000",
+   "street": "2251 Corporate Park Drive",
+   "formerNames": [],
+   "sharesOutstanding": null,
+   "recentFilings": [
+    {
+     "form": "8-K",
+     "filed": "2022-09-14",
+     "url": "https://www.sec.gov/Archives/edgar/data/892537/000119312522244730/d677708d8k.htm"
+    },
+    {
+     "form": "8-K",
+     "filed": "2022-09-08",
+     "url": "https://www.sec.gov/Archives/edgar/data/892537/000119312522240262/d337798d8k.htm"
+    },
+    {
+     "form": "8-K",
+     "filed": "2022-08-29",
+     "url": "https://www.sec.gov/Archives/edgar/data/892537/000119312522231504/d264202d8k.htm"
+    },
+    {
+     "form": "10-Q",
+     "filed": "2022-08-03",
+     "url": "https://www.sec.gov/Archives/edgar/data/892537/000089253722000016/mant-20220630.htm"
+    },
+    {
+     "form": "8-K",
+     "filed": "2022-06-21",
+     "url": "https://www.sec.gov/Archives/edgar/data/892537/000119312522177647/d349499d8k.htm"
+    },
+    {
+     "form": "8-K",
+     "filed": "2022-06-15",
+     "url": "https://www.sec.gov/Archives/edgar/data/892537/000119312522174798/d331369d8k.htm"
+    }
+   ],
+   "edgarUrl": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=892537&type=10-K&dateb=&owner=include&count=40",
+   "lastPeriodicFiling": "2022-08-03",
+   "balanceSheet": {
+    "form": "10-Q",
+    "filed": "2022-08-03",
+    "accn": "0000892537-22-000016",
+    "docUrl": "https://www.sec.gov/Archives/edgar/data/892537/000089253722000016/mant-20220630.htm",
+    "indexUrl": "https://www.sec.gov/Archives/edgar/data/892537/000089253722000016/0000892537-22-000016-index.htm",
+    "viewerUrl": "https://www.sec.gov/cgi-bin/viewer?action=view&cik=892537&accession_number=0000892537-22-000016&xbrl_type=v",
+    "assets": 2648572000,
+    "periodEnd": "2022-06-30",
+    "liabilities": 942687000,
+    "equity": 1705885000,
+    "currentAssets": 628961000,
+    "currentLiabilities": 371508000,
+    "goodwill": 1511068000
+   },
+   "annual": {
+    "form": "10-K",
+    "filed": "2022-02-25",
+    "accn": "0000892537-22-000007",
+    "docUrl": "https://www.sec.gov/Archives/edgar/data/892537/000089253722000007/mant-20211231.htm",
+    "indexUrl": "https://www.sec.gov/Archives/edgar/data/892537/000089253722000007/0000892537-22-000007-index.htm",
+    "viewerUrl": "https://www.sec.gov/cgi-bin/viewer?action=view&cik=892537&accession_number=0000892537-22-000007&xbrl_type=v",
+    "revenue": 2553956000,
+    "periodStart": "2021-01-01",
+    "periodEnd": "2021-12-31",
+    "operatingIncome": 186816000,
+    "netIncome": 137017000,
+    "operatingCashFlow": 212171000
+   }
+  }
+ },
+ "federal": {
+  "BAH": {
+   "recipientId": "ed02855e-60d7-2540-e3d7-18fba1dd1316-P",
+   "name": "BOOZ ALLEN HAMILTON HOLDING CORPORATION",
+   "uei": "MBPHTU7Y9S65",
+   "parentName": "BOOZ ALLEN HAMILTON HOLDING CORPORATION",
+   "city": "Mclean",
+   "state": "VA",
+   "businessTypes": [
+    "category_business",
+    "corporate_entity_not_tax_exempt",
+    "other_than_small_business",
+    "special_designations",
+    "us_owned_business"
+   ],
+   "last12mObligations": 6587316087.15,
+   "last12mTransactions": 3540,
+   "lifetimeObligations": 94896391165.31,
+   "lifetimeTransactions": 132840,
+   "fy2026TopAgencies": [
+    {
+     "name": "General Services Administration",
+     "amount": 2693880015.4
+    },
+    {
+     "name": "Department of Defense",
+     "amount": 1834570105.07
+    },
+    {
+     "name": "Department of Veterans Affairs",
+     "amount": 835719068.75
+    }
+   ],
+   "largestContracts": [
+    {
+     "id": "47QFCA22F0047",
+     "description": "TASK ORDER AWARD",
+     "amount": 1288575063.78,
+     "agency": "General Services Administration",
+     "start": "2022-09-06",
+     "end": "2027-09-05",
+     "recipient": "BOOZ ALLEN HAMILTON INC",
+     "url": "https://www.usaspending.gov/award/CONT_AWD_47QFCA22F0047_4732_GS00Q14OADU108_4732"
+    },
+    {
+     "id": "47QFCA20F0014",
+     "description": "THE PURPOSE OF THIS EFFORT IS TO ACQUIRE CONTRACTOR SERVICES TO PROVIDE REAL-TIME, COMPREHENSIVE THREAT ANALYSIS AND ASSESSMENT, TRAINING DEVELOPMENT AND DELIVERY, READINESS AND MODERNIZATION SUPPORT, AND LOGISTICS AND EQUIPMENT SERVICES.",
+     "amount": 1066387866.16,
+     "agency": "General Services Administration",
+     "start": "2020-06-26",
+     "end": "2025-06-25",
+     "recipient": "BOOZ ALLEN HAMILTON INC",
+     "url": "https://www.usaspending.gov/award/CONT_AWD_47QFCA20F0014_4732_GS00Q14OADU108_4732"
+    },
+    {
+     "id": "47QFCA24F0037",
+     "description": "SERVICE SOLUTIONS FOR MODERNIZATION ANALYSIS READINESS CAPABILITY THREAT AND TRAINING SSMARTT",
+     "amount": 774168528.0,
+     "agency": "General Services Administration",
+     "start": "2024-09-10",
+     "end": "2027-09-09",
+     "recipient": "BOOZ ALLEN HAMILTON INC",
+     "url": "https://www.usaspending.gov/award/CONT_AWD_47QFCA24F0037_4732_47QFCA22D0406_4732"
+    }
+   ],
+   "profileUrl": "https://www.usaspending.gov/recipient/ed02855e-60d7-2540-e3d7-18fba1dd1316-P/latest"
+  },
+  "KTOS": {
+   "recipientId": "6ed33a3b-1910-7875-9717-c4b6701f032b-P",
+   "name": "KRATOS DEFENSE & SECURITY SOLUTIONS, INC.",
+   "uei": "H6BWMHGJ5AF5",
+   "parentName": "KRATOS DEFENSE & SECURITY SOLUTIONS, INC.",
+   "city": "San Diego",
+   "state": "CA",
+   "businessTypes": [
+    "category_business",
+    "corporate_entity_not_tax_exempt",
+    "federally_funded_research_and_development_corp",
+    "manufacturer_of_goods",
+    "small_business",
+    "special_designations",
+    "us_owned_business"
+   ],
+   "last12mObligations": 0.0,
+   "last12mTransactions": 2,
+   "lifetimeObligations": 4250047210.71,
+   "lifetimeTransactions": 12034,
+   "fy2026TopAgencies": [],
+   "largestContracts": [],
+   "profileUrl": "https://www.usaspending.gov/recipient/6ed33a3b-1910-7875-9717-c4b6701f032b-P/latest"
+  },
+  "RTX": {
+   "recipientId": "bb947c1e-56f7-2f71-34d9-b0240c8b117c-P",
+   "name": "RTX CORP",
+   "uei": "PPLZG8J3N9D4",
+   "parentName": "RTX CORP",
+   "city": "Arlington",
+   "state": "VA",
+   "businessTypes": [
+    "category_business",
+    "corporate_entity_not_tax_exempt",
+    "manufacturer_of_goods",
+    "other_than_small_business",
+    "special_designations",
+    "us_owned_business"
+   ],
+   "last12mObligations": 26499723510.59,
+   "last12mTransactions": 13442,
+   "lifetimeObligations": 209419334112.67,
+   "lifetimeTransactions": 349137,
+   "fy2026TopAgencies": [
+    {
+     "name": "Department of Defense",
+     "amount": 25346047801.51
+    },
+    {
+     "name": "Department of Transportation",
+     "amount": 779327714.32
+    },
+    {
+     "name": "National Aeronautics and Space Administration",
+     "amount": 264873094.86
+    }
+   ],
+   "largestContracts": [
+    {
+     "id": "N0001918C1021",
+     "description": "LOT 12 AAC LONG LEAD FOR PROPULSION SYSTEMS",
+     "amount": 8688654906.89,
+     "agency": "Department of Defense",
+     "start": "2018-03-23",
+     "end": "2024-12-30",
+     "recipient": "RTX CORPORATION",
+     "url": "https://www.usaspending.gov/award/CONT_AWD_N0001918C1021_9700_-NONE-_-NONE-"
+    },
+    {
+     "id": "N0001920C0011",
+     "description": "LOT 15 FMS-1 F135 CTOL PROP SYSTEM",
+     "amount": 7498605067.74,
+     "agency": "Department of Defense",
+     "start": "2020-03-23",
+     "end": "2030-10-15",
+     "recipient": "RTX CORPORATION",
+     "url": "https://www.usaspending.gov/award/CONT_AWD_N0001920C0011_9700_-NONE-_-NONE-"
+    },
+    {
+     "id": "N0001921C0011",
+     "description": "FY21 PBL2",
+     "amount": 4865962075.84,
+     "agency": "Department of Defense",
+     "start": "2020-12-01",
+     "end": "2030-02-28",
+     "recipient": "RTX CORPORATION",
+     "url": "https://www.usaspending.gov/award/CONT_AWD_N0001921C0011_9700_-NONE-_-NONE-"
+    }
+   ],
+   "profileUrl": "https://www.usaspending.gov/recipient/bb947c1e-56f7-2f71-34d9-b0240c8b117c-P/latest"
+  },
+  "CACI": {
+   "recipientId": "5eb76328-ceeb-571b-5efe-569794c9c9b8-P",
+   "name": "CACI INTERNATIONAL INC",
+   "uei": "QSRTXLFKV857",
+   "parentName": "CACI INTERNATIONAL INC",
+   "city": "Reston",
+   "state": "VA",
+   "businessTypes": [
+    "category_business",
+    "corporate_entity_not_tax_exempt",
+    "other_than_small_business",
+    "special_designations",
+    "us_owned_business"
+   ],
+   "last12mObligations": 3899547781.2,
+   "last12mTransactions": 1801,
+   "lifetimeObligations": 54041278157.62,
+   "lifetimeTransactions": 66602,
+   "fy2026TopAgencies": [
+    {
+     "name": "Department of Defense",
+     "amount": 2122234347.33
+    },
+    {
+     "name": "General Services Administration",
+     "amount": 1113321417.3
+    },
+    {
+     "name": "Department of Homeland Security",
+     "amount": 341180166.46
+    }
+   ],
+   "largestContracts": [
+    {
+     "id": "H9222216C0029",
+     "description": "ODCS  IGF::OT::IGF",
+     "amount": 176464296.83,
+     "agency": "Department of Defense",
+     "start": "2016-02-23",
+     "end": "2021-06-24",
+     "recipient": "CACI-ATHENA, LLC",
+     "url": "https://www.usaspending.gov/award/CONT_AWD_H9222216C0029_9700_-NONE-_-NONE-"
+    },
+    {
+     "id": "HC101306F2862",
+     "description": "IT SUPPORT SERVICES - LABOR",
+     "amount": 131468955.14,
+     "agency": "Department of Defense",
+     "start": "2006-10-01",
+     "end": "2010-09-10",
+     "recipient": "CACI INC - FEDERAL",
+     "url": "https://www.usaspending.gov/award/CONT_AWD_HC101306F2862_9700_GS07T00BGD0021_4735"
+    },
+    {
+     "id": "W56KGY25F0122",
+     "description": "THE PURPOSE OF THIS CONTRACT IS TO PROVIDE PRODUCTION AND FIELDING SUPPORT FOR THE TERRESTRIAL LAYERED SYSTEM (TLS) BRIGADE COMBAT TEAM (BCT) MANPACK.",
+     "amount": 70840501.43,
+     "agency": "Department of Defense",
+     "start": "2025-08-05",
+     "end": "2027-09-30",
+     "recipient": "MASTODON DESIGN LLC",
+     "url": "https://www.usaspending.gov/award/CONT_AWD_W56KGY25F0122_9700_W56KGY24D0004_9700"
+    }
+   ],
+   "profileUrl": "https://www.usaspending.gov/recipient/5eb76328-ceeb-571b-5efe-569794c9c9b8-P/latest"
+  },
+  "CNS": {
+   "recipientId": "3c1a340d-2613-1609-93ce-eb1aba0559b5-P",
+   "name": "CONSOLIDATED NUCLEAR SECURITY, LLC",
+   "uei": "EWV8QKG1JUV7",
+   "parentName": "CONSOLIDATED NUCLEAR SECURITY, LLC",
+   "city": "Oak Ridge",
+   "state": "TN",
+   "businessTypes": [
+    "category_business",
+    "corporate_entity_not_tax_exempt",
+    "limited_liability_corporation",
+    "minority_owned_business",
+    "other_minority_owned_business",
+    "other_than_small_business",
+    "special_designations",
+    "us_owned_business"
+   ],
+   "last12mObligations": 3337001536.38,
+   "last12mTransactions": 39,
+   "lifetimeObligations": 34661768758.82,
+   "lifetimeTransactions": 408,
+   "fy2026TopAgencies": [
+    {
+     "name": "Department of Energy",
+     "amount": 3337001536.38
+    }
+   ],
+   "largestContracts": [
+    {
+     "id": "DENA0001942",
+     "description": "IGF::CL,CT::IGF MANAGEMENT AND OPERATING CONTRACT FOR Y-12 NATIONAL SECURITY COMPLEX, PANTEX PLANT, WITH AN OPTION FOR SAVANNAH RIVER TRITIUM OPERATIONS",
+     "amount": 34661763245.24,
+     "agency": "Department of Energy",
+     "start": "2013-01-08",
+     "end": "2027-09-30",
+     "recipient": "CONSOLIDATED NUCLEAR SECURITY, LLC",
+     "url": "https://www.usaspending.gov/award/CONT_AWD_DENA0001942_8900_-NONE-_-NONE-"
+    }
+   ],
+   "profileUrl": "https://www.usaspending.gov/recipient/3c1a340d-2613-1609-93ce-eb1aba0559b5-P/latest"
+  },
+  "AMTM": {
+   "recipientId": "be555dcf-9195-a54a-e0a9-3592392d69d7-P",
+   "name": "AMENTUM HOLDINGS INC.",
+   "uei": "TU4KCXMM9AP6",
+   "parentName": "AMENTUM HOLDINGS INC.",
+   "city": "",
+   "state": "",
+   "businessTypes": [
+    "category_business",
+    "corporate_entity_not_tax_exempt"
+   ],
+   "last12mObligations": 6725475774.44,
+   "last12mTransactions": 4079,
+   "lifetimeObligations": 13220736100.01,
+   "lifetimeTransactions": 8335,
+   "fy2026TopAgencies": [
+    {
+     "name": "Department of Defense",
+     "amount": 2477546964.08
+    },
+    {
+     "name": "Department of Energy",
+     "amount": 2038341634.98
+    },
+    {
+     "name": "National Aeronautics and Space Administration",
+     "amount": 1247838112.08
+    }
+   ],
+   "largestContracts": [
+    {
+     "id": "89303523FEM400032",
+     "description": "OAK RIDGE RESERVATION CLEANUP CONTRACT TASK ORDERS",
+     "amount": 2540845400.0,
+     "agency": "Department of Energy",
+     "start": "2023-05-17",
+     "end": "2032-02-27",
+     "recipient": "UNITED CLEANUP OAK RIDGE LLC",
+     "url": "https://www.usaspending.gov/award/CONT_AWD_89303523FEM400032_8900_89303322DEM000067_8900"
+    },
+    {
+     "id": "80MSFC18C0011",
+     "description": "ENGINEERING SERVICES AND SCIENCE CAPABILITY AUGMENTATION (ESSCA)",
+     "amount": 2001993510.48,
+     "agency": "National Aeronautics and Space Administration",
+     "start": "2017-12-01",
+     "end": "2027-05-31",
+     "recipient": "AMENTUM TECHNOLOGY, INC.",
+     "url": "https://www.usaspending.gov/award/CONT_AWD_80MSFC18C0011_8000_-NONE-_-NONE-"
+    },
+    {
+     "id": "DEEM0001529",
+     "description": "THE DEPARTMENT OF ENERGY (DOE) HEREBY ISSUES FINAL REQUEST FOR PROPOSALS (RFP) NO. DE-SOL-0002084 PERTAINING TO THE PHASE 1 DECOMMISSIONING - FACILITY DISPOSITION ACTIVITIES TO TAKE PLACE AT DOE'S WEST VALLEY DEMONSTRATION PROJECT (WVDP) IN WESTERN NEW YORK STATE. SERVICES TO BE PROVIDED INCLUDE BUT ARE NOT LIMITED TO: HIGH LEVEL WASTE CANISTER RELOCATION AND STORAGE; CONTAMINATED FACILITY DECONTAMINATION, DEACTIVATION, DEMOLITION, DECOMMISSIONING AND CLOSURE; WASTE TANK FARM MANAGEMENT; CONTAMINATED WATER MANAGEMENT; NON-CONTAMINATED FACILITY DISPOSITION; WASTE MANAGEMENT; OPERATION AND MAINTENANCE OF FACILITIES AND INFRASTRUCTURE INCLUDING THE REMOTE HANDLED WASTE FACILITY; SAFEGUARDS AND SECURITY; JANITORIAL AND GROUNDS KEEPING SERVICES; LABORATORY SERVICES; STATE, FEDERAL AND DOE REGULATORY COMPLIANCE; RADIOLOGICAL MONITORING; AND ADMINISTRATIVE SUPPORT SERVICES. PROSPECTIVE OFFERORS ARE HEREBY REQUESTED TO SUBMIT PROPOSALS IN RESPONSE TO THE FINAL RFP WHICH DOE WILL EVALUATE AND AWARD ONE CONTRACT ON THE BASIS OF BEST VALUE TO THE GOVERNMENT.",
+     "amount": 990004957.81,
+     "agency": "Department of Energy",
+     "start": "2011-07-01",
+     "end": "2026-12-31",
+     "recipient": "CH2M HILL BWXT WEST VALLEY, LLC",
+     "url": "https://www.usaspending.gov/award/CONT_AWD_DEEM0001529_8900_-NONE-_-NONE-"
+    }
+   ],
+   "profileUrl": "https://www.usaspending.gov/recipient/be555dcf-9195-a54a-e0a9-3592392d69d7-P/latest"
+  },
+  "NEWSAT": {
+   "recipientId": "e1372092-b383-7d0c-5495-97bd9f5e60d2-P",
+   "name": "NEWSAT NORTH AMERICA, LLC",
+   "uei": "HCUVLY5JJJF8",
+   "parentName": "NEWSAT NORTH AMERICA, LLC",
+   "city": "Indian Harbour Beach",
+   "state": "FL",
+   "businessTypes": [
+    "category_business",
+    "partnership_or_limited_liability_partnership",
+    "small_business",
+    "special_designations",
+    "us_owned_business"
+   ],
+   "last12mObligations": 500.0,
+   "last12mTransactions": 23,
+   "lifetimeObligations": 50849754.88,
+   "lifetimeTransactions": 163,
+   "fy2026TopAgencies": [
+    {
+     "name": "Department of Defense",
+     "amount": 500.0
+    }
+   ],
+   "largestContracts": [
+    {
+     "id": "W15P7T22F0165",
+     "description": "INSTALLATION KITS FOR NEXT GENERATION COMBAT RADIOS.  MANPACK GEN 2 AND LEADER RADIO INTEGRATION.",
+     "amount": 18161781.93,
+     "agency": "Department of Defense",
+     "start": "2022-07-22",
+     "end": "2024-08-20",
+     "recipient": "NEWSAT NORTH AMERICA, LLC",
+     "url": "https://www.usaspending.gov/award/CONT_AWD_W15P7T22F0165_9700_W15P7T20D0013_9700"
+    },
+    {
+     "id": "W91CRB22F5047",
+     "description": "PROACTIVE TECHNOLOGY REFRESH OF THE JORDAN BORDER SECURITY PROGRAM (JBSP) PHASE 1 UPGRADE (PH1U) REQUEST 2 (R2), IN SUPPORT OF THE HASHEMITE KINGDOM OF JORDAN UNDER FOREIGN MILITARY SALES (FMS) CASE DW-B-UXH",
+     "amount": 9747825.57,
+     "agency": "Department of Defense",
+     "start": "2022-03-04",
+     "end": "2023-09-30",
+     "recipient": "NEWSAT NORTH AMERICA, LLC",
+     "url": "https://www.usaspending.gov/award/CONT_AWD_W91CRB22F5047_9700_W15P7T20D0013_9700"
+    },
+    {
+     "id": "W91CRB25C5041",
+     "description": "TRANSMISSION NODES FOWAN FOR RHAF UNDER FOREIGN MILITARY SALES CASE JO-B-YFG (JORDAN).",
+     "amount": 5194125.06,
+     "agency": "Department of Defense",
+     "start": "2025-07-31",
+     "end": "2027-01-31",
+     "recipient": "NEWSAT NORTH AMERICA, LLC",
+     "url": "https://www.usaspending.gov/award/CONT_AWD_W91CRB25C5041_9700_-NONE-_-NONE-"
+    }
+   ],
+   "profileUrl": "https://www.usaspending.gov/recipient/e1372092-b383-7d0c-5495-97bd9f5e60d2-P/latest"
+  },
+  "CELESTAR": {
+   "recipientId": "c8aecf0c-ca20-9bff-7662-f33c867b4902-P",
+   "name": "CELESTAR CORPORATION",
+   "uei": "FA5HUKQ62TG7",
+   "parentName": "CELESTAR CORPORATION",
+   "city": "Tampa",
+   "state": "FL",
+   "businessTypes": [
+    "black_american_owned_business",
+    "category_business",
+    "corporate_entity_not_tax_exempt",
+    "minority_owned_business",
+    "other_than_small_business",
+    "service_disabled_veteran_owned_business",
+    "special_designations",
+    "subchapter_s_corporation",
+    "us_owned_business",
+    "veteran_owned_business"
+   ],
+   "last12mObligations": 2643925.07,
+   "last12mTransactions": 101,
+   "lifetimeObligations": 126899593.7,
+   "lifetimeTransactions": 1619,
+   "fy2026TopAgencies": [
+    {
+     "name": "Department of Defense",
+     "amount": 1952357.55
+    },
+    {
+     "name": "Department of State",
+     "amount": 846806.31
+    }
+   ],
+   "largestContracts": [
+    {
+     "id": "W91QEX24F0026",
+     "description": "SIX (INTELLIGENCE ANALYST II) FOR GTMO",
+     "amount": 7345675.81,
+     "agency": "Department of Defense",
+     "start": "2024-06-01",
+     "end": "2029-01-31",
+     "recipient": "CELESTAR CORPORATION",
+     "url": "https://www.usaspending.gov/award/CONT_AWD_W91QEX24F0026_9700_GS02F0074X_4732"
+    },
+    {
+     "id": "19AQMM21F3177",
+     "description": "CONTRACT TO PROVIDE SUBJECT MATTER EXPERTS TO HELP IMPROVE THE FUNDAMENTAL SKILLS OF THE ISF'S TERRITORIAL GENDARMERIE UNITS.",
+     "amount": 3519454.63,
+     "agency": "Department of State",
+     "start": "2021-08-20",
+     "end": "2024-08-19",
+     "recipient": "CELESTAR CORPORATION",
+     "url": "https://www.usaspending.gov/award/CONT_AWD_19AQMM21F3177_1900_GS02F0074X_4732"
+    },
+    {
+     "id": "W91QEX19P0014",
+     "description": "LABOR -GTMO DETENTION OPERATIONS SUPPORT",
+     "amount": 2832911.53,
+     "agency": "Department of Defense",
+     "start": "2019-03-22",
+     "end": "2024-03-21",
+     "recipient": "CELESTAR CORPORATION",
+     "url": "https://www.usaspending.gov/award/CONT_AWD_W91QEX19P0014_9700_-NONE-_-NONE-"
+    }
+   ],
+   "profileUrl": "https://www.usaspending.gov/recipient/c8aecf0c-ca20-9bff-7662-f33c867b4902-P/latest"
+  },
+  "AITC": {
+   "recipientId": "ef07cb92-13c4-ab9a-d22c-a085022d9781-P",
+   "name": "ADVANCED IT CONCEPTS INC",
+   "uei": "QY2NUZM5F969",
+   "parentName": "ADVANCED IT CONCEPTS INC",
+   "city": "",
+   "state": "",
+   "businessTypes": [],
+   "last12mObligations": 1357310.62,
+   "last12mTransactions": 22,
+   "lifetimeObligations": 27796942.1,
+   "lifetimeTransactions": 125,
+   "fy2026TopAgencies": [
+    {
+     "name": "Department of Defense",
+     "amount": 1357310.62
+    }
+   ],
+   "largestContracts": [
+    {
+     "id": "W91RUS25FA103",
+     "description": "TO PROVIDE CYBER AND INTELLIGENCE/INFORMATION TECHNOLOGY ,SYSTEMS DESIGN AND IMPLEMENTATION FOR UNITED STATES MILITARY ACADEMY, IN SUPPORT OF THE ARMY INFORMATION SYSTEMS ENGINEERING COMMAND, FORT HUACHUCA ENGINEERING DIRECTORATE.",
+     "amount": 20035227.74,
+     "agency": "Department of Defense",
+     "start": "2025-07-30",
+     "end": "2026-10-29",
+     "recipient": "ADVANCED IT CONCEPTS, LLC",
+     "url": "https://www.usaspending.gov/award/CONT_AWD_W91RUS25FA103_9700_W9128Z22D0004_9700"
+    },
+    {
+     "id": "W91RUS25FA101",
+     "description": "THIS REQUIREMENT PROVIDES CONTIGUOUS UNITED STATES (CONUS) AND OUTSIDE OF CONTIGUOUS UNITED STATES (OCONUS) INSTALLATION AND DE-INSTALLATION SUPPORT TO THE US ARMY INFORMATION SYSTEMS ENGINEERING COMMAND (USAISEC)",
+     "amount": 352485.51,
+     "agency": "Department of Defense",
+     "start": "2025-07-07",
+     "end": "2026-07-06",
+     "recipient": "ADVANCED IT CONCEPTS, LLC",
+     "url": "https://www.usaspending.gov/award/CONT_AWD_W91RUS25FA101_9700_W9128Z22D0004_9700"
+    },
+    {
+     "id": "W912C326PA002",
+     "description": "ENGINEERING TECHNICIANS SERVICES IN SUPPORT OF FORT BUCHANAN DIRECTORATE OF PUBLIC WORKS",
+     "amount": 167736.32,
+     "agency": "Department of Defense",
+     "start": "2026-03-01",
+     "end": "2026-07-30",
+     "recipient": "ADVANCED IT CONCEPTS, LLC",
+     "url": "https://www.usaspending.gov/award/CONT_AWD_W912C326PA002_9700_-NONE-_-NONE-"
+    }
+   ],
+   "profileUrl": "https://www.usaspending.gov/recipient/ef07cb92-13c4-ab9a-d22c-a085022d9781-P/latest"
+  },
+  "SAS": {
+   "recipientId": "4aa32dfb-d986-43ae-6db6-9d1e4ae9aec5-P",
+   "name": "SAS INSTITUTE INC",
+   "uei": "RFLNANKKZYV5",
+   "parentName": "SAS INSTITUTE INC",
+   "city": "Cary",
+   "state": "NC",
+   "businessTypes": [
+    "category_business",
+    "corporate_entity_not_tax_exempt",
+    "manufacturer_of_goods",
+    "other_than_small_business",
+    "special_designations",
+    "us_owned_business"
+   ],
+   "last12mObligations": -49088.28,
+   "last12mTransactions": 3,
+   "lifetimeObligations": 94263135.38,
+   "lifetimeTransactions": 643,
+   "fy2026TopAgencies": [
+    {
+     "name": "Department of the Treasury",
+     "amount": 203532.72
+    },
+    {
+     "name": "International Trade Commission",
+     "amount": 43021.0
+    }
+   ],
+   "largestContracts": [
+    {
+     "id": "2032H522C00036",
+     "description": "THE PURPOSE OF THIS CONTRACT IS TO PROVIDE STATISTICAL SOFTWARE SUPPORT FOR INTERNAL REVENUE SERVICE (IRS) FEDERAL INFORMATION PROCESSING (FIP) RESOURCES",
+     "amount": 8645905.0,
+     "agency": "Department of the Treasury",
+     "start": "2022-06-30",
+     "end": "2026-06-29",
+     "recipient": "SAS INSTITUTE INC",
+     "url": "https://www.usaspending.gov/award/CONT_AWD_2032H522C00036_2050_-NONE-_-NONE-"
+    },
+    {
+     "id": "TIRNO17C00014",
+     "description": "IGF::CL::IGF FOR CLOSELY ASSOCIATED - THE PURPOSE OF THIS CONTRACT IS TO PROVIDE STATISTICAL SOFTWARE SUPPORT FOR INTERNAL REVENUE SERVICE (IRS) FEDERAL INFORMATION PROCESSING (FIP) RESOURCES",
+     "amount": 7989993.0,
+     "agency": "Department of the Treasury",
+     "start": "2017-01-31",
+     "end": "2022-06-29",
+     "recipient": "SAS INSTITUTE INC",
+     "url": "https://www.usaspending.gov/award/CONT_AWD_TIRNO17C00014_2050_-NONE-_-NONE-"
+    },
+    {
+     "id": "HC108418P0004",
+     "description": "SAS SOFTWARE",
+     "amount": 6211953.54,
+     "agency": "Department of Defense",
+     "start": "2018-09-13",
+     "end": "2023-09-30",
+     "recipient": "SAS INSTITUTE INC",
+     "url": "https://www.usaspending.gov/award/CONT_AWD_HC108418P0004_9700_-NONE-_-NONE-"
+    }
+   ],
+   "profileUrl": "https://www.usaspending.gov/recipient/4aa32dfb-d986-43ae-6db6-9d1e4ae9aec5-P/latest"
+  },
+  "DRS": {
+   "recipientId": "f73d6fc6-be43-2ae0-0cfb-4586e0c5a1f8-P",
+   "name": "LEONARDO DRS, INC.",
+   "uei": "UP54BEGGMGV5",
+   "parentName": "LEONARDO DRS, INC.",
+   "city": "Arlington",
+   "state": "VA",
+   "businessTypes": [
+    "category_business",
+    "corporate_entity_not_tax_exempt",
+    "other_than_small_business"
+   ],
+   "last12mObligations": 214886.19,
+   "last12mTransactions": 1,
+   "lifetimeObligations": 19336459.43,
+   "lifetimeTransactions": 66,
+   "fy2026TopAgencies": [
+    {
+     "name": "Federal Communications Commission",
+     "amount": 214886.19
+    }
+   ],
+   "largestContracts": [],
+   "profileUrl": "https://www.usaspending.gov/recipient/f73d6fc6-be43-2ae0-0cfb-4586e0c5a1f8-P/latest"
+  },
+  "SAIC": {
+   "recipientId": "20af0683-f17d-1f8f-38ee-2f11bd124559-P",
+   "name": "SCIENCE APPLICATIONS INTERNATIONAL CORPORATION",
+   "uei": "MMLKPW9JLX64",
+   "parentName": "SCIENCE APPLICATIONS INTERNATIONAL CORPORATION",
+   "city": "Reston",
+   "state": "VA",
+   "businessTypes": [
+    "category_business",
+    "corporate_entity_not_tax_exempt",
+    "other_than_small_business",
+    "special_designations",
+    "us_owned_business"
+   ],
+   "last12mObligations": 3984988221.99,
+   "last12mTransactions": 2942,
+   "lifetimeObligations": 12732312494.58,
+   "lifetimeTransactions": 13265,
+   "fy2026TopAgencies": [
+    {
+     "name": "Department of Defense",
+     "amount": 1455237334.09
+    },
+    {
+     "name": "General Services Administration",
+     "amount": 1221494696.43
+    },
+    {
+     "name": "Department of Transportation",
+     "amount": 414189470.88
+    }
+   ],
+   "largestContracts": [
+    {
+     "id": "SAQMMA11F0233",
+     "description": "TASK ORDER TO PROVIDE PROJECT MANAGEMENT SUPPORT, TRANSITION SUPPORT, ENGINEERING AND DESIGN SUPPORT, SECURING THE INFRASTRUCTURE SUPPORT AND O&M SUPPORT FOR THE DEPARTMENT'S IT CONSOLIDATION PROGRAM.",
+     "amount": 2087211597.56,
+     "agency": "Department of State",
+     "start": "2011-01-01",
+     "end": "2021-08-08",
+     "recipient": "SCIENCE APPLICATIONS INTERNATIONAL CORPORATION",
+     "url": "https://www.usaspending.gov/award/CONT_AWD_SAQMMA11F0233_1900_GS00Q09BGD0048_4735"
+    },
+    {
+     "id": "47QFSA20F0057",
+     "description": "SOFTWARE LIFE CYCLE DEVELOPMENT",
+     "amount": 1426735811.83,
+     "agency": "General Services Administration",
+     "start": "2020-05-05",
+     "end": "2025-11-04",
+     "recipient": "SCIENCE APPLICATIONS INTERNATIONAL CORPORATION",
+     "url": "https://www.usaspending.gov/award/CONT_AWD_47QFSA20F0057_4732_GS00Q14OADU428_4732"
+    },
+    {
+     "id": "47QFCA21F0001",
+     "description": "THE SCOPE OF THE TO IS TO PROVIDE ENTERPRISE IT SERVICES FOR THE USACE.",
+     "amount": 1205937997.76,
+     "agency": "General Services Administration",
+     "start": "2020-11-30",
+     "end": "2026-11-27",
+     "recipient": "SCIENCE APPLICATIONS INTERNATIONAL CORPORATION",
+     "url": "https://www.usaspending.gov/award/CONT_AWD_47QFCA21F0001_4732_47QTCK18D0001_4732"
+    }
+   ],
+   "profileUrl": "https://www.usaspending.gov/recipient/20af0683-f17d-1f8f-38ee-2f11bd124559-P/latest"
+  },
+  "MANT": {
+   "recipientId": "4c1f7ae7-7f7d-43c4-d9b7-e5fb262d6c93-P",
+   "name": "MANTECH INTERNATIONAL CORPORATION",
+   "uei": "KZA5CX3J8KE8",
+   "parentName": "MANTECH INTERNATIONAL CORPORATION",
+   "city": "",
+   "state": "",
+   "businessTypes": [],
+   "last12mObligations": 1250608158.78,
+   "last12mTransactions": 994,
+   "lifetimeObligations": 3205375349.37,
+   "lifetimeTransactions": 2900,
+   "fy2026TopAgencies": [
+    {
+     "name": "General Services Administration",
+     "amount": 571795928.07
+    },
+    {
+     "name": "Department of Defense",
+     "amount": 417164461.39
+    },
+    {
+     "name": "Department of Homeland Security",
+     "amount": 89734069.84
+    }
+   ],
+   "largestContracts": [
+    {
+     "id": "W56HZV12C0127",
+     "description": "IGF::OT::IGF CONTRACTOR LOGISTICS SUSTAINMENT AND SUPPORT (CLSS) SERVICES FOR THE MAINTENANCE REPAIR AND SUPPLY SUPPORT FOR ROUTE CLEARANCE VEHICLES (RCV), MINE RESISTANT AMBUSH PROTECTED (MRAP) VEHICLES, AND THE UNITED STATES SPECIAL OPERATIONS COMMAND (USSOCOM) VEHICLES (REFERRED TO AS THE MRAP FAMILY OF VEHICLES (FOV) OF (MRAP) FAMILY OF VEHICLES (FOV).",
+     "amount": 965408471.81,
+     "agency": "Department of Defense",
+     "start": "2012-05-31",
+     "end": "2020-11-20",
+     "recipient": "MANTECH ADVANCED SYSTEMS INTERNATIONAL, INC.",
+     "url": "https://www.usaspending.gov/award/CONT_AWD_W56HZV12C0127_9700_-NONE-_-NONE-"
+    },
+    {
+     "id": "47QFCA18F0015",
+     "description": "AWARD OF VEHICLE ENGINEERING AND MAINTENANCE OPERATIONS (VEMOS) TASK ORDER. IGF::OT::IGF",
+     "amount": 723691631.84,
+     "agency": "General Services Administration",
+     "start": "2017-11-16",
+     "end": "2023-05-15",
+     "recipient": "MANTECH ADVANCED SYSTEMS INTERNATIONAL, INC.",
+     "url": "https://www.usaspending.gov/award/CONT_AWD_47QFCA18F0015_4732_GS00Q14OADU324_4732"
+    },
+    {
+     "id": "SAQMMA17C0178",
+     "description": "PROTECTIVE TECHNOLOGY SERVICES  IGF::CT::IGF",
+     "amount": 525051705.62,
+     "agency": "Department of State",
+     "start": "2017-07-01",
+     "end": "2025-09-30",
+     "recipient": "MANTECH ADVANCED SYSTEMS INTERNATIONAL, INC.",
+     "url": "https://www.usaspending.gov/award/CONT_AWD_SAQMMA17C0178_1900_-NONE-_-NONE-"
+    }
+   ],
+   "profileUrl": "https://www.usaspending.gov/recipient/4c1f7ae7-7f7d-43c4-d9b7-e5fb262d6c93-P/latest"
+  },
+  "BAE": {
+   "recipientId": "52cf2be8-e3c8-df10-444c-4b5064fa9e30-P",
+   "name": "BAE SYSTEMS PLC",
+   "uei": "UVUTB62B9AV3",
+   "parentName": "BAE SYSTEMS PLC",
+   "city": "",
+   "state": "",
+   "businessTypes": [],
+   "last12mObligations": 4845001952.63,
+   "last12mTransactions": 4274,
+   "lifetimeObligations": 7890806931.36,
+   "lifetimeTransactions": 6028,
+   "fy2026TopAgencies": [
+    {
+     "name": "Department of Defense",
+     "amount": 4607557590.46
+    },
+    {
+     "name": "National Aeronautics and Space Administration",
+     "amount": 147151522.91
+    },
+    {
+     "name": "Department of Homeland Security",
+     "amount": 44780937.14
+    }
+   ],
+   "largestContracts": [
+    {
+     "id": "W15QKN08C0451",
+     "description": "LW155 ARMY QTY",
+     "amount": 985743454.86,
+     "agency": "Department of Defense",
+     "start": "2008-03-31",
+     "end": "2016-09-30",
+     "recipient": "BAE SYSTEMS GLOBAL COMBAT SYSTEMS LTD",
+     "url": "https://www.usaspending.gov/award/CONT_AWD_W15QKN08C0451_9700_-NONE-_-NONE-"
+    },
+    {
+     "id": "FA251706C8001",
+     "description": "200609!000917!5700!FA2517!21CONS/LGC !FA251706C8001 !A!N! !Y! ! !20060522!20060930!150805703!876861790!217304393!N!BAE SYSTEMS TECHNICAL SERVICES!557 MARY ESTHER CUT OFF NW!FORT WALTON BE !FL!32548!58620!041!08!PETERSON AFB !EL PASO !COLORADO !+000000776454!N!N!000508831433!M123!OPERATION/RADAR&NAVIGATIONAL FACILITIES !S1 !SERVICES !000 !NOT DISCERNABLE !517910!E! !3! ! ! ! ! !99990909!B! ! !A! !A!Y!L!2!002!B! !C!N!Z! ! !N!C!N! ! ! !C!C!A!A!000!A!C!Y! ! ! !Y! ! !0001! !",
+     "amount": 564521074.65,
+     "agency": "Department of Defense",
+     "start": "2006-05-22",
+     "end": "2016-09-30",
+     "recipient": "BAE SYSTEMS TECHNICAL SERVICES",
+     "url": "https://www.usaspending.gov/award/CONT_AWD_FA251706C8001_9700_-NONE-_-NONE-"
+    },
+    {
+     "id": "0105",
+     "description": "200508!501660!2100!W9113M!USA SPACE AND STRATEGIC DEF CDR !DASG6002D0009  !A!N! !Y!0105         !      !20050512!20070423!130106867!876861790!217304393!N!BAE SYSTEMS ANALYTICAL SOLUTIO!308 VOYAGER WAY           !HUNTSVILLE          !AL!35806!37000!089!01!HUNTSVILLE          !MADISON               !ALABAMA   !+000000040000!N!N!000000000000!AC23!RDTE/MISSILE AND SPACE SYSTEMS-ADV TECH DEV       !A2 !MISSILE AND SPACE SYSTEMS           !CAA !MDA SUPPORT                   !541710!E! !5!B!M! !A! !20200930!B! ! !A! !A!N!Y!2!007!K!  !Z!N!Z! !  !N!B!Y!N! ! !Z! !B!A!000!A!B!N! ! ! ! !    !      !0001! !",
+     "amount": 147953424.06,
+     "agency": "Department of Defense",
+     "start": "2005-05-12",
+     "end": "2024-01-26",
+     "recipient": "BAE SYSTEMS TECHNOLOGY SOLUTIONS & SERVICES INC.",
+     "url": "https://www.usaspending.gov/award/CONT_AWD_0105_9700_DASG6002D0009_9700"
+    }
+   ],
+   "profileUrl": "https://www.usaspending.gov/recipient/52cf2be8-e3c8-df10-444c-4b5064fa9e30-P/latest"
+  },
+  "ADAPT": {
+   "recipientId": "e9937814-09ba-0254-57ca-3bd7c1f27999-P",
+   "name": "ADAPT FORWARD LLC",
+   "uei": "FH74MM2CFW63",
+   "parentName": "ADAPT FORWARD LLC",
+   "city": "Mt Pleasant",
+   "state": "SC",
+   "businessTypes": [
+    "category_business",
+    "corporate_entity_not_tax_exempt",
+    "limited_liability_corporation",
+    "small_business",
+    "special_designations",
+    "us_owned_business",
+    "veteran_owned_business"
+   ],
+   "last12mObligations": 13745870.78,
+   "last12mTransactions": 21,
+   "lifetimeObligations": 184871769.67,
+   "lifetimeTransactions": 105,
+   "fy2026TopAgencies": [
+    {
+     "name": "Department of Defense",
+     "amount": 13745870.78
+    }
+   ],
+   "largestContracts": [
+    {
+     "id": "N6523621F3002",
+     "description": "THE PURPOSE OF THIS TASK ORDER IS TO PROVIDE ITERATIVE DEFENSIVE CYBERSPACE OPERATIONS CAPABILITIES IN SUPPORT OF NIWC ATLANTIC CSSP. THIS WILL BE A CPFF TASK ORDER WITH A BASE PERIOD AND FOUR ONE-YEAR OPTION PERIODS.",
+     "amount": 184871269.67,
+     "agency": "Department of Defense",
+     "start": "2020-12-04",
+     "end": "2026-07-03",
+     "recipient": "ADAPT FORWARD LLC",
+     "url": "https://www.usaspending.gov/award/CONT_AWD_N6523621F3002_9700_N0017819D7035_9700"
+    },
+    {
+     "id": "HQ085926FE825",
+     "description": "SCALABLE HOMELAND INNOVATIVE ENTERPRISE LAYERED DEFENSE (SHIELD) INITIAL ORDER.",
+     "amount": 500.0,
+     "agency": "Department of Defense",
+     "start": "2025-12-29",
+     "end": "2035-12-28",
+     "recipient": "ADAPT FORWARD LLC",
+     "url": "https://www.usaspending.gov/award/CONT_AWD_HQ085926FE825_9700_HQ085926DF782_9700"
+    }
+   ],
+   "profileUrl": "https://www.usaspending.gov/recipient/e9937814-09ba-0254-57ca-3bd7c1f27999-P/latest"
+  },
+  "SERCO": {
+   "recipientId": "e21c9479-46c2-e775-fac8-12bcb5ad9d4c-P",
+   "name": "SERCO HOLDINGS LIMITED",
+   "uei": "H7VZRSRAG1K5",
+   "parentName": "SERCO HOLDINGS LIMITED",
+   "city": "",
+   "state": "",
+   "businessTypes": [],
+   "last12mObligations": 1008220366.26,
+   "last12mTransactions": 1131,
+   "lifetimeObligations": 4347810270.56,
+   "lifetimeTransactions": 4604,
+   "fy2026TopAgencies": [
+    {
+     "name": "Department of Defense",
+     "amount": 668119744.88
+    },
+    {
+     "name": "Department of Health and Human Services",
+     "amount": 202452114.37
+    },
+    {
+     "name": "Pension Benefit Guaranty Corporation",
+     "amount": 40666286.0
+    }
+   ],
+   "largestContracts": [],
+   "profileUrl": "https://www.usaspending.gov/recipient/e21c9479-46c2-e775-fac8-12bcb5ad9d4c-P/latest"
+  }
+ },
+ "logos": {
+  "boozallen.com": "/logos/boozallen.com.png",
+  "kratosdefense.com": "/logos/kratosdefense.com.png",
+  "rtx.com": "/logos/rtx.com.png",
+  "caci.com": "/logos/caci.com.png",
+  "amentum.com": "/logos/amentum.com.png",
+  "celestarcorp.com": "/logos/celestarcorp.com.png",
+  "aitc-llc.com": "/logos/aitc-llc.com.png",
+  "sas.com": "/logos/sas.com.png",
+  "vtgdefense.com": "/logos/vtgdefense.com.png",
+  "leonardodrs.com": "/logos/leonardodrs.com.png",
+  "saic.com": "/logos/saic.com.png",
+  "mantech.com": "/logos/mantech.com.png",
+  "baesystems.com": "/logos/baesystems.com.png",
+  "adaptforward.com": "/logos/adaptforward.com.png",
+  "serco.com": "/logos/serco.com.png"
+ }
+}

@@ -4,6 +4,7 @@ import Footer from "../components/Footer";
 import ComplianceNotice from "../components/ComplianceNotice";
 import AmbientBackground from "../components/AmbientBackground";
 import VitalsProbe from "../components/VitalsProbe";
+import RenderMetricsProbe from "../components/RenderMetricsProbe";
 import { PlatformProbe } from "../components/PlatformProbe";
 import { RealTimeStreamProvider } from "../components/RealTimeStreamProvider";
 import BuildFreshnessChip from "../components/BuildFreshnessChip";
@@ -31,10 +32,11 @@ export default function RootLayout({
         <PlatformProbe />
         <AmbientBackground />
         <VitalsProbe />
+        <RenderMetricsProbe />
         <RealTimeStreamProvider>
           <ComplianceNotice />
           <Navbar />
-          <main className="flex-1 pb-12 relative z-10">{children}</main>
+          <main className="flex-1 min-w-0 w-full pb-12 relative z-10">{children}</main>
           <Footer />
           <BuildFreshnessChip buildSha={process.env.VERCEL_GIT_COMMIT_SHA || "local"} />
         </RealTimeStreamProvider>
