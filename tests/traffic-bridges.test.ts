@@ -10,6 +10,9 @@ import {
   buildBridgeIndex,
   deckPolygons,
   deckOffsets,
+  flowStripePolygons,
+  FLOW_STRIPE_THICKNESS_M,
+  ribbonEdges,
   densify,
 } from "../lib/traffic-bridges";
 import { haversineM, type LngLat } from "../lib/traffic-sim";
@@ -133,4 +136,28 @@ test("no bridges loaded → no lift", () => {
   const b = bridgeLine(buildBridgeIndex([]), RAMP);
   assert.equal(b.onBridge, false);
   assert.deepEqual(b.offsets, [0, 0, 0, 0]);
+});
+
+test("mitred deck slabs share their joint edge at a bend, and flow stripes sit on top in the given colour", () => {
+  const coords: LngLat[] = [
+    [-84.262, 33.8915],
+    [-84.2618, 33.8915],
+    [-84.2616, 33.8917],
+  ];
+  const line = { coords, ground: [0, 0, 0], layers: [1, 1, 1], offsets: [7, 7, 7], onBridge: true };
+  const decks = deckPolygons(line);
+  assert.equal(decks.length, 2);
+  const [a, b] = decks.map((d) => d.geometry.coordinates[0]);
+  assert.deepEqual(a[1], b[0], "left edge continues");
+  assert.deepEqual(a[2], b[3], "right edge continues");
+  const { left, right } = ribbonEdges(coords, 8);
+  for (const [i, c] of coords.entries()) assert.ok(Math.abs(haversineM(left[i], c) - haversineM(right[i], c)) < 1e-6);
+  assert.ok(Math.abs(haversineM(left[0], coords[0]) - 4) < 0.05, "half width at a straight end");
+  const stripes = flowStripePolygons(line, "#00e676");
+  assert.equal(stripes.length, decks.length);
+  for (const [i, s] of stripes.entries()) {
+    assert.equal(s.properties.color, "#00e676");
+    assert.equal(s.properties.base, decks[i].properties.height);
+    assert.ok(Math.abs(s.properties.height - s.properties.base - FLOW_STRIPE_THICKNESS_M) < 1e-9);
+  }
 });

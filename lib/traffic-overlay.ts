@@ -1,9 +1,9 @@
 import type { Map as MapLibreMap, Popup } from 'maplibre-gl';
 import { reportGaFeed } from './ga-live-status';
 import { MAX_AGENTS_DESKTOP, MAX_AGENTS_TOUCH, MAX_FLOW_EDGES, SLOW_MS, carLabel, carStatus, haversineM, labelCandidates, msToMph, TrafficSim, type CarAgent, type LineFlow, type LngLat } from './traffic-sim';
-import { FLOW_SOURCE_LAYER, TOMTOM_FLOW_DOCS_URL } from './ga-traffic-flow/flow';
+import { FLOW_COLORS, FLOW_SOURCE_LAYER, TOMTOM_FLOW_DOCS_URL, flowBand } from './ga-traffic-flow/flow';
 import { GA_TRAFFIC_FLOW_SOURCE } from './ga-traffic-flow-layer';
-import { BRIDGE_LAYER_M, bridgeLine, bridgeSegments, buildBridgeIndex, deckPolygons, type BridgeIndex, type DeckFeature } from './traffic-bridges';
+import { BRIDGE_LAYER_M, bridgeLine, bridgeSegments, buildBridgeIndex, deckPolygons, flowStripePolygons, type BridgeIndex, type DeckFeature } from './traffic-bridges';
 
 export const TRAFFIC_SIM_PARAM = 'traffic';
 const ROAD_SOURCE = 'ofm-buildings';
@@ -23,7 +23,7 @@ function bridgeIndex(map: MapLibreMap): BridgeIndex {
   return buildBridgeIndex(bridgeSegments(feats));
 }
 
-/** Grey deck slabs under lifted car lines, drawn below the 3D buildings. */
+/** Grey deck slabs under lifted car lines, with TomTom flow-colour stripes on top, drawn below the 3D buildings. */
 function setBridgeDecks(map: MapLibreMap, decks: DeckFeature[]): void {
   const data = { type: 'FeatureCollection' as const, features: decks };
   const src = map.getSource(BRIDGE_DECK_SOURCE) as { setData?: (d: unknown) => void } | undefined;
@@ -36,7 +36,7 @@ function setBridgeDecks(map: MapLibreMap, decks: DeckFeature[]): void {
       type: 'fill-extrusion',
       source: BRIDGE_DECK_SOURCE,
       minzoom: 13,
-      paint: { 'fill-extrusion-color': '#4a4f57', 'fill-extrusion-base': ['get', 'base'] as never, 'fill-extrusion-height': ['get', 'height'] as never, 'fill-extrusion-opacity': 1, 'fill-extrusion-vertical-gradient': true },
+      paint: { 'fill-extrusion-color': ['coalesce', ['get', 'color'], '#4a4f57'] as never, 'fill-extrusion-base': ['get', 'base'] as never, 'fill-extrusion-height': ['get', 'height'] as never, 'fill-extrusion-opacity': 1, 'fill-extrusion-vertical-gradient': true },
     },
     map.getLayer('buildings-3d') ? 'buildings-3d' : undefined,
   );
@@ -179,13 +179,15 @@ export async function addGaTrafficSim(map: MapLibreMap): Promise<void> {
     const elev = lifted.map((b) => b.ground.map((g, j) => g + b.offsets[j]));
     const onBridge = lifted.filter((b) => b.onBridge);
     const decks = onBridge.flatMap((b) => deckPolygons(b));
-    setBridgeDecks(map, decks);
+    const stripes = onFlow ? lifted.flatMap((b, i) => (b.onBridge ? flowStripePolygons(b, FLOW_COLORS[flowBand(tt.flows[i].level, tt.flows[i].closed)]) : [])) : [];
+    setBridgeDecks(map, [...decks, ...stripes]);
     const bridgeDiag = {
       lineSource: onFlow ? 'tomtom-flow' : 'osm-motorway-fallback',
       flowLines: tt.lines.length,
       osmBridgeSegments: bridges.count,
       liftedLines: onBridge.length,
       deckSlabs: decks.length,
+      flowStripes: stripes.length,
       maxDeckM: +onBridge.reduce((m, b) => b.offsets.reduce((n, o) => Math.max(n, o), m), 0).toFixed(1),
       deckLayer: !!map.getLayer(BRIDGE_DECK_LAYER),
       zoom: +map.getZoom().toFixed(2),

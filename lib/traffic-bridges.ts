@@ -247,42 +247,67 @@ export function bridgeLine(
 export interface DeckFeature {
   type: "Feature";
   geometry: { type: "Polygon"; coordinates: LngLat[][] };
-  properties: { height: number; base: number };
+  /** `color` is set on flow stripes only; slabs fall back to the deck grey. */
+  properties: { height: number; base: number; color?: string };
 }
 
-/** One slab per lifted segment of a car line: top at the cars' road height, `DECK_THICKNESS_M` thick, `DECK_WIDTH_M` wide. */
-export function deckPolygons(
-  line: BridgedLine,
-  width = DECK_WIDTH_M,
-): DeckFeature[] {
+/** TomTom flow colour stripe on top of each deck slab, so the live flow layer stays visible on the bridge (the flat line layer drapes onto the ground below). */
+export const FLOW_STRIPE_WIDTH_M = 3;
+export const FLOW_STRIPE_THICKNESS_M = 0.05;
+
+/**
+ * Left/right edge points per vertex, offset by `width / 2` along the mitred vertex normal, so consecutive slabs share
+ * their joint edge instead of leaving wedge gaps (or overlaps) at bends. The mitre is capped at 2× for sharp turns.
+ */
+export function ribbonEdges(coords: LngLat[], width: number): { left: LngLat[]; right: LngLat[] } {
+  const half = width / 2;
+  const kx = (lat: number) => 111_320 * Math.cos((lat * Math.PI) / 180);
+  const normals: [number, number][] = [];
+  for (let i = 1; i < coords.length; i++) {
+    const a = coords[i - 1], b = coords[i];
+    const dx = (b[0] - a[0]) * kx(a[1]), dy = (b[1] - a[1]) * 110_574;
+    const len = Math.hypot(dx, dy) || 1;
+    normals.push([-dy / len, dx / len]);
+  }
+  const left: LngLat[] = [], right: LngLat[] = [];
+  for (let i = 0; i < coords.length; i++) {
+    const n0 = normals[Math.max(0, i - 1)], n1 = normals[Math.min(normals.length - 1, i)];
+    let nx = n0[0] + n1[0], ny = n0[1] + n1[1];
+    const nl = Math.hypot(nx, ny);
+    if (nl < 1e-9) [nx, ny] = n1;
+    else [nx, ny] = [nx / nl, ny / nl];
+    const miter = half / Math.max(0.5, nx * n1[0] + ny * n1[1]);
+    const [lng, lat] = coords[i];
+    const ox = (nx * miter) / kx(lat), oy = (ny * miter) / 110_574;
+    left.push([lng + ox, lat + oy]);
+    right.push([lng - ox, lat - oy]);
+  }
+  return { left, right };
+}
+
+function slabs(line: BridgedLine, width: number, props: (top: number) => DeckFeature["properties"]): DeckFeature[] {
   const out: DeckFeature[] = [];
   const { coords, offsets } = line;
-  const kyHalf = width / 2 / 110_574;
+  if (coords.length < 2) return out;
+  const { left, right } = ribbonEdges(coords, width);
   for (let i = 1; i < coords.length; i++) {
     const top = (offsets[i - 1] + offsets[i]) / 2;
     if (!(top > DECK_THICKNESS_M)) continue;
-    const a = coords[i - 1],
-      b = coords[i];
-    const kxHalf = width / 2 / (111_320 * Math.cos((a[1] * Math.PI) / 180));
-    const br = (bearingDeg(a, b) * Math.PI) / 180;
-    const nx = Math.cos(br) * kxHalf,
-      ny = -Math.sin(br) * kyHalf;
     out.push({
       type: "Feature",
-      geometry: {
-        type: "Polygon",
-        coordinates: [
-          [
-            [a[0] - nx, a[1] - ny],
-            [b[0] - nx, b[1] - ny],
-            [b[0] + nx, b[1] + ny],
-            [a[0] + nx, a[1] + ny],
-            [a[0] - nx, a[1] - ny],
-          ],
-        ],
-      },
-      properties: { height: top, base: top - DECK_THICKNESS_M },
+      geometry: { type: "Polygon", coordinates: [[left[i - 1], left[i], right[i], right[i - 1], left[i - 1]]] },
+      properties: props(top),
     });
   }
   return out;
+}
+
+/** One slab per lifted segment of a car line: top at the cars' road height, `DECK_THICKNESS_M` thick, `DECK_WIDTH_M` wide, mitred at bends. */
+export function deckPolygons(line: BridgedLine, width = DECK_WIDTH_M): DeckFeature[] {
+  return slabs(line, width, (top) => ({ height: top, base: top - DECK_THICKNESS_M }));
+}
+
+/** Thin stripes in the line's TomTom flow colour lying on the deck slabs from `deckPolygons`. */
+export function flowStripePolygons(line: BridgedLine, color: string, width = FLOW_STRIPE_WIDTH_M): DeckFeature[] {
+  return slabs(line, width, (top) => ({ height: top + FLOW_STRIPE_THICKNESS_M, base: top, color }));
 }
