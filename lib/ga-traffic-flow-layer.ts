@@ -35,8 +35,8 @@ export function gaTrafficFlowStatus(map: MapLibreMap): Promise<FlowStatus> {
   return p;
 }
 
-const WIDTH = ['interpolate', ['linear'], ['zoom'], 8, 2, 12, 4, 16, 8] as ExpressionSpecification;
-const OPACITY = 0.8;
+const WIDTH = ['interpolate', ['linear'], ['zoom'], 8, 1.5, 12, 3, 16, 6] as ExpressionSpecification;
+const OPACITY = 0.85;
 /** Live flow tiles are re-fetched this often; the minute stamp lets every visitor share one CDN copy per minute. */
 export const FLOW_REFRESH_MS = 60_000;
 
@@ -44,7 +44,7 @@ export const flowTilesUrl = (origin: string, path: string, now = Date.now()): st
   `${origin}${path}${path.includes('?') ? '&' : '?'}t=${Math.floor(now / FLOW_REFRESH_MS)}`;
 const polling = new WeakSet<MapLibreMap>();
 
-/** Congestion polylines (not vehicles): live TomTom tiles via the server proxy when a key is set, labelled mock data only when TRAFFIC_FLOW_MOCK=1, otherwise nothing. Thin (2–8 px by zoom), 80% opaque and re-fetched every 60 s, drawn under 3D buildings and LiDAR, so the road and satellite stay visible underneath. */
+/** Congestion polylines (not vehicles): live TomTom tiles via the server proxy when a key is set, labelled mock data only when TRAFFIC_FLOW_MOCK=1, otherwise nothing. Thin (1.5–6 px by zoom), 85% opaque and re-fetched every 60 s, drawn under 3D buildings and LiDAR, so the road and satellite stay visible underneath. */
 export async function addGaTrafficFlowLayer(map: MapLibreMap): Promise<void> {
   let s: FlowStatus;
   try {

@@ -9,6 +9,8 @@ const ROAD_SOURCE = 'ofm-buildings';
 const ROAD_CLASSES = ['motorway', 'trunk'];
 /** CubeGeometry spans -1..1, so scale is half the car size: 4 m long, 2 m wide, 1.5 m tall. */
 const HALF = { length: 2, width: 1, height: 0.75 };
+/** Lifts the car body 5 cm off the road (centre at 0.8 m) so it doesn't z-fight with the flow line. */
+const ROAD_CLEARANCE_M = 0.05;
 const bound = new WeakSet<MapLibreMap>();
 
 /** SIM vehicles run by default; `?traffic=off` turns them off. */
@@ -181,7 +183,7 @@ export async function addGaTrafficSim(map: MapLibreMap): Promise<void> {
           id: 'ga-traffic-sim-cars',
           data: cars,
           mesh,
-          getPosition: (d) => [d.position[0], d.position[1], d.elevM + HALF.height],
+          getPosition: (d) => [d.position[0], d.position[1], d.elevM + HALF.height + ROAD_CLEARANCE_M],
           getOrientation: (d) => [0, -d.bearing, 0],
           getScale: [HALF.width, HALF.length, HALF.height],
           getColor: (d) => (d.speed < SLOW_MS ? [255, 0, 0, 255] : [0, 255, 255, 255]),
