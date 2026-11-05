@@ -161,7 +161,18 @@ export async function addGaTrafficSim(map: MapLibreMap): Promise<void> {
     const lines = lifted.map((b) => b.coords);
     const elev = lifted.map((b) => b.ground.map((g, j) => g + b.offsets[j]));
     const onBridge = lifted.filter((b) => b.onBridge);
-    setBridgeDecks(map, onBridge.flatMap((b) => deckPolygons(b)));
+    const decks = onBridge.flatMap((b) => deckPolygons(b));
+    setBridgeDecks(map, decks);
+    const bridgeDiag = {
+      osmBridgeSegments: bridges.count,
+      liftedLines: onBridge.length,
+      deckSlabs: decks.length,
+      maxDeckM: +onBridge.reduce((m, b) => b.offsets.reduce((n, o) => Math.max(n, o), m), 0).toFixed(1),
+      deckLayer: !!map.getLayer(BRIDGE_DECK_LAYER),
+      zoom: +map.getZoom().toFixed(2),
+    };
+    (window as unknown as { __gaBridges?: typeof bridgeDiag }).__gaBridges = bridgeDiag;
+    console.info('[ga-bridges]', JSON.stringify(bridgeDiag));
     sim = new TrafficSim(lines, cap, elev, onFlow ? tt.flows : undefined);
     simKeys = onFlow ? tt.keys : [];
     closeSelected();
@@ -194,8 +205,16 @@ export async function addGaTrafficSim(map: MapLibreMap): Promise<void> {
       if (sim.agents.length === 0 && emptyRetries++ < EMPTY_RETRY_MAX) schedule(EMPTY_RETRY_MS);
     }, ms);
   };
+  /** Bridges come from the OpenFreeMap road tiles, which can finish loading after the TomTom tiles; rebuild once when they do. */
+  let roadLoaded = false;
   const onMoveEnd = () => {
     emptyRetries = 0;
+    roadLoaded = false;
+    schedule(REBUILD_DEBOUNCE_MS);
+  };
+  const onRoadData = (e: { sourceId?: string; isSourceLoaded?: boolean }) => {
+    if (e.sourceId !== ROAD_SOURCE || !e.isSourceLoaded || roadLoaded) return;
+    roadLoaded = true;
     schedule(REBUILD_DEBOUNCE_MS);
   };
 
@@ -273,6 +292,7 @@ export async function addGaTrafficSim(map: MapLibreMap): Promise<void> {
   map.on('sourcedata', onFlowData);
   map.on('sourcedata', onFlowRefresh);
   map.on('moveend', onMoveEnd);
+  map.on('sourcedata', onRoadData);
   onMoveEnd();
   raf = requestAnimationFrame(draw);
   map.once('remove', () => {
@@ -280,6 +300,7 @@ export async function addGaTrafficSim(map: MapLibreMap): Promise<void> {
     clearTimeout(debounce);
     closeSelected();
     map.off('moveend', onMoveEnd);
+    map.off('sourcedata', onRoadData);
     map.off('sourcedata', onFlowData);
     map.off('sourcedata', onFlowRefresh);
     clearTimeout(refreshTimer);
