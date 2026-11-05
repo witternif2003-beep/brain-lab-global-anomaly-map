@@ -144,11 +144,17 @@ export default function StateMap({
     },
   }));
 
+  // The map is built once; its layer setup and click handlers read the latest props through this ref,
+  // so a re-render (zoom, export status, parent state) does not tear down and recreate the map.
+  const latest = useRef({ features, anomalies, onSelectAnomaly, onSelectState });
+  latest.current = { features, anomalies, onSelectAnomaly, onSelectState };
+
   // Coalesced real-time SSE stream hook
   useAnomalyStream('anomalies', mapRef.current);
 
   // Setup layers on map load
   const addMapLayers = useCallback(async (map: maplibregl.Map) => {
+    const { features } = latest.current;
     // ═══ SINGLE SOURCE for all 8 state boundaries ═══
     let normalizedData: any = '/geo/all-states.geojson';
     try {
@@ -448,6 +454,7 @@ export default function StateMap({
       const f = e.features?.[0];
       if (!f || f.geometry.type !== 'Point') return;
       const props = f.properties as any;
+      const { anomalies, onSelectAnomaly } = latest.current;
       const matched = anomalies.find((item) => item.id === props.id || `${item.code} - ${item.location}` === props.title);
       if (matched) {
         onSelectAnomaly(matched);
@@ -475,7 +482,7 @@ export default function StateMap({
       const f = e.features?.[0];
       if (!f) return;
       const st = f.properties?.STUSPS;
-      if (st) onSelectState(st);
+      if (st) latest.current.onSelectState(st);
     });
 
     
@@ -589,7 +596,7 @@ export default function StateMap({
     map.on('mouseleave', 'anomaly-points', () => { map.getCanvas().style.cursor = ''; });
     map.on('mouseenter', 'competitor-labels', () => { map.getCanvas().style.cursor = 'pointer'; });
     map.on('mouseleave', 'competitor-labels', () => { map.getCanvas().style.cursor = ''; });
-  }, [features, anomalies, onSelectAnomaly, onSelectState]);
+  }, []);
 
   // Initialize MapLibre Map
   useEffect(() => {
@@ -719,6 +726,11 @@ export default function StateMap({
       mapRef.current = null;
     };
   }, [addMapLayers]);
+
+  useEffect(() => {
+    const src = ready ? (mapRef.current?.getSource('anomalies') as any) : null;
+    if (src && typeof src.setData === 'function') src.setData({ type: 'FeatureCollection', features: latest.current.features });
+  }, [anomalies, ready]);
 
 
   // ─── NSA ADMIN MODE: OUTBOUND GEORGIA VERIFIED PERSON TELEMETRY (ONE AT A TIME) ───

@@ -170,6 +170,8 @@ export async function exportMap32k(
   const cssH = canvas.clientHeight;
   const camera = { center: map.getCenter(), zoom: map.getZoom(), pitch: map.getPitch(), bearing: map.getBearing() };
   const fov = map.getVerticalFieldOfView();
+  if (!(cssW > 0 && cssH > 0)) throw new Error(`32K export: map canvas is ${cssW}×${cssH} px; the map must be visible`);
+  if (!(fov > 0 && fov < 180)) throw new Error(`32K export: invalid vertical field of view ${fov}°`);
   const plan = planExport(cssW, cssH, fov, width, tile);
   const prev = { pixelRatio: map.getPixelRatio(), style: container.getAttribute('style'), padding: map.getPadding() };
   const desc = Object.getOwnPropertyDescriptor(th.helper, 'centerPoint');
