@@ -3,6 +3,7 @@ import { reportGaFeed } from './ga-live-status';
 import { MAX_AGENTS_DESKTOP, MAX_AGENTS_TOUCH, MAX_FLOW_EDGES, SLOW_MS, carLabel, carStatus, haversineM, labelCandidates, msToMph, TrafficSim, type CarAgent, type LineFlow, type LngLat } from './traffic-sim';
 import { FLOW_SOURCE_LAYER, TOMTOM_FLOW_DOCS_URL } from './ga-traffic-flow/flow';
 import { GA_TRAFFIC_FLOW_SOURCE } from './ga-traffic-flow-layer';
+import { BRIDGE_LAYER_M, bridgeLine, bridgeSegments, buildBridgeIndex, deckPolygons, type BridgeIndex, type DeckFeature } from './traffic-bridges';
 
 export const TRAFFIC_SIM_PARAM = 'traffic';
 const ROAD_SOURCE = 'ofm-buildings';
@@ -12,6 +13,34 @@ const HALF = { length: 2, width: 1, height: 0.75 };
 /** Lifts the car body 5 cm off the road (centre at 0.8 m) so it doesn't z-fight with the flow line. */
 const ROAD_CLEARANCE_M = 0.05;
 const bound = new WeakSet<MapLibreMap>();
+export const BRIDGE_DECK_SOURCE = 'ga-bridge-decks';
+export const BRIDGE_DECK_LAYER = 'ga-bridge-decks-3d';
+
+/** OSM bridges (`brunnel=bridge`, `layer` ≥ 1) in the loaded OpenFreeMap road tiles. */
+function bridgeIndex(map: MapLibreMap): BridgeIndex {
+  if (!map.getSource(ROAD_SOURCE)) return buildBridgeIndex([]);
+  const feats = map.querySourceFeatures(ROAD_SOURCE, { sourceLayer: 'transportation', filter: ['==', ['get', 'brunnel'], 'bridge'] as never });
+  return buildBridgeIndex(bridgeSegments(feats));
+}
+
+/** Grey deck slabs under lifted car lines, drawn below the 3D buildings. */
+function setBridgeDecks(map: MapLibreMap, decks: DeckFeature[]): void {
+  const data = { type: 'FeatureCollection' as const, features: decks };
+  const src = map.getSource(BRIDGE_DECK_SOURCE) as { setData?: (d: unknown) => void } | undefined;
+  if (src?.setData) src.setData(data);
+  else map.addSource(BRIDGE_DECK_SOURCE, { type: 'geojson', data: data as never });
+  if (map.getLayer(BRIDGE_DECK_LAYER)) return;
+  map.addLayer(
+    {
+      id: BRIDGE_DECK_LAYER,
+      type: 'fill-extrusion',
+      source: BRIDGE_DECK_SOURCE,
+      minzoom: 13,
+      paint: { 'fill-extrusion-color': '#4a4f57', 'fill-extrusion-base': ['get', 'base'] as never, 'fill-extrusion-height': ['get', 'height'] as never, 'fill-extrusion-opacity': 1, 'fill-extrusion-vertical-gradient': true },
+    },
+    map.getLayer('buildings-3d') ? 'buildings-3d' : undefined,
+  );
+}
 
 /** SIM vehicles run by default; `?traffic=off` turns them off. */
 export function trafficSimEnabled(search: string): boolean {
@@ -127,8 +156,12 @@ export async function addGaTrafficSim(map: MapLibreMap): Promise<void> {
   const rebuild = () => {
     const tt = tomtomFlowLines(map);
     const onFlow = tt.lines.length > 0;
-    const lines = onFlow ? tt.lines : motorwayLines(map);
-    const elev = lines.map((l) => l.map((c) => map.queryTerrainElevation(c) ?? 0));
+    const bridges = bridgeIndex(map);
+    const lifted = (onFlow ? tt.lines : motorwayLines(map)).map((l) => bridgeLine(bridges, l));
+    const lines = lifted.map((b) => b.coords);
+    const elev = lifted.map((b) => b.coords.map((c, j) => (map.queryTerrainElevation(c) ?? 0) + b.offsets[j]));
+    const onBridge = lifted.filter((b) => b.onBridge);
+    setBridgeDecks(map, onBridge.flatMap((b) => deckPolygons(b)));
     sim = new TrafficSim(lines, cap, elev, onFlow ? tt.flows : undefined);
     simKeys = onFlow ? tt.keys : [];
     closeSelected();
@@ -138,9 +171,11 @@ export async function addGaTrafficSim(map: MapLibreMap): Promise<void> {
       label: 'SIM vehicles',
       color: '#00ffff',
       count: sim.agents.length,
-      detail: onFlow
-        ? `${sim.edges.length} TomTom flow lines in view · speed = 100 km/h nominal × TomTom speed ratio, 35–200/km by jamFactor · cap ${cap}`
-        : `${sim.edges.length} motorway lines in view · 30% of each line jammed (200/km, 15 km/h), rest 35/km at 100 km/h · cap ${cap}`,
+      detail:
+        (onFlow
+          ? `${sim.edges.length} TomTom flow lines in view · speed = 100 km/h nominal × TomTom speed ratio, 35–200/km by jamFactor · cap ${cap}`
+          : `${sim.edges.length} motorway lines in view · 30% of each line jammed (200/km, 15 km/h), rest 35/km at 100 km/h · cap ${cap}`) +
+        ` · ${onBridge.length} lines lifted onto ${bridges.count} OSM bridge segments (layer × ${BRIDGE_LAYER_M} m, estimate)`,
       updatedAt: new Date().toISOString(),
       sourceUrl: onFlow ? TOMTOM_FLOW_DOCS_URL : 'https://openfreemap.org/',
       swatches: [
