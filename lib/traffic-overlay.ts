@@ -66,6 +66,11 @@ export function tomtomFlowLines(map: MapLibreMap): { lines: LngLat[][]; flows: L
  * SIMULATED cars (not real vehicles) on motorways in view, drawn as GPU-instanced boxes in a dedicated deck.gl
  * overlay. On by default, off with `?traffic=off`; see `trafficSimEnabled`.
  */
+const REBUILD_DEBOUNCE_MS = 400;
+/** Road tiles may still be loading when the view settles; retry an empty sim every 2 s for up to 1 minute. */
+const EMPTY_RETRY_MS = 2_000;
+const EMPTY_RETRY_MAX = 30;
+
 export async function addGaTrafficSim(map: MapLibreMap): Promise<void> {
   if (typeof window === 'undefined' || bound.has(map)) return;
   bound.add(map);
@@ -143,9 +148,18 @@ export async function addGaTrafficSim(map: MapLibreMap): Promise<void> {
     });
   };
   let debounce: ReturnType<typeof setTimeout> | undefined;
-  const onMoveEnd = () => {
+  let emptyRetries = 0;
+  /** No `idle` wait: animated layers repaint every frame, so `idle` may never fire and the sim would stay empty. */
+  const schedule = (ms: number) => {
     clearTimeout(debounce);
-    debounce = setTimeout(() => map.once('idle', rebuild), 300);
+    debounce = setTimeout(() => {
+      rebuild();
+      if (sim.agents.length === 0 && emptyRetries++ < EMPTY_RETRY_MAX) schedule(EMPTY_RETRY_MS);
+    }, ms);
+  };
+  const onMoveEnd = () => {
+    emptyRetries = 0;
+    schedule(REBUILD_DEBOUNCE_MS);
   };
 
   const draw = (now: number) => {
@@ -222,8 +236,7 @@ export async function addGaTrafficSim(map: MapLibreMap): Promise<void> {
   map.on('sourcedata', onFlowData);
   map.on('sourcedata', onFlowRefresh);
   map.on('moveend', onMoveEnd);
-  if (map.loaded()) rebuild();
-  else map.once('idle', rebuild);
+  onMoveEnd();
   raf = requestAnimationFrame(draw);
   map.once('remove', () => {
     cancelAnimationFrame(raf);
