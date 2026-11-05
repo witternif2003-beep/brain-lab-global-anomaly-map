@@ -78,6 +78,13 @@ export function unitHash(n: number): number {
   return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
 }
 
+/** Whole cars for an expected count: floor plus a seeded chance of one more, so short tile-clipped lines (e.g. 100 m × 5/km = 0.5) aren't all empty. */
+export function carCount(expected: number, seed: number): number {
+  if (!(expected > 0)) return 0;
+  const n = Math.floor(expected);
+  return n + (unitHash(seed + 0x5bd1e995) < expected - n ? 1 : 0);
+}
+
 export function buildEdge(coords: LngLat[], seed: number, elev?: number[], flow?: LineFlow): SimEdge {
   const cum = [0];
   for (let i = 1; i < coords.length; i++) cum.push(cum[i - 1] + haversineM(coords[i - 1], coords[i]));
@@ -143,9 +150,9 @@ export class TrafficSim {
     const total = counts.reduce((s, c) => s + c.jam + c.free, 0);
     const k = total > maxAgents ? maxAgents / total : 1;
     this.edges.forEach((e, ei) => {
-      const zones: [number, number, number][] = e.flow ? [[Math.floor(counts[ei].free * k), 0, e.length]] : [
-        [Math.floor(counts[ei].jam * k), e.jamStart, JAM_FRACTION * e.length],
-        [Math.floor(counts[ei].free * k), e.jamStart + JAM_FRACTION * e.length, (1 - JAM_FRACTION) * e.length],
+      const zones: [number, number, number][] = e.flow ? [[carCount(counts[ei].free * k, ei * 2), 0, e.length]] : [
+        [carCount(counts[ei].jam * k, ei * 2), e.jamStart, JAM_FRACTION * e.length],
+        [carCount(counts[ei].free * k, ei * 2 + 1), e.jamStart + JAM_FRACTION * e.length, (1 - JAM_FRACTION) * e.length],
       ];
       for (const [n, start, span] of zones) {
         for (let i = 0; i < n && this.agents.length < maxAgents; i++) {

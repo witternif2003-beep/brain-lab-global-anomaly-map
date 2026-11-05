@@ -1,6 +1,6 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
-import { LABEL_MAX_DIST_M, carLabel, carStatus, labelCandidates, msToMph, CRAWL_SPEED_MS, FREE_SPEED_MS, flowDensityPerKm, flowSpeedMs, JAM_FRACTION, JAM_SPEED_MS, MAX_AGENTS_TOUCH, TrafficSim, bearingDeg, buildEdge, haversineM, inJam, positionAt, type LngLat } from '../lib/traffic-sim';
+import { LABEL_MAX_DIST_M, carCount, carLabel, carStatus, labelCandidates, msToMph, CRAWL_SPEED_MS, FREE_SPEED_MS, flowDensityPerKm, flowSpeedMs, JAM_FRACTION, JAM_SPEED_MS, MAX_AGENTS_TOUCH, TrafficSim, bearingDeg, buildEdge, haversineM, inJam, positionAt, type LngLat } from '../lib/traffic-sim';
 import { trafficSimEnabled } from '../lib/traffic-overlay';
 
 /** ~16.1 km (10 mi) due-north line at Atlanta's longitude, in 5 vertices. */
@@ -110,4 +110,12 @@ test('updateFlows: fresh TomTom level changes car speed in place without respawn
   assert.deepEqual(sim.agents.map((a) => a.id), ids);
   assert.ok(sim.agents.every((a) => Math.abs(a.speed - FREE_SPEED_MS * 0.2) < 1e-9));
   assert.equal(sim.updateFlows([undefined]), 0);
+});
+
+test('short free-flow TomTom lines still get cars: 200 × 100 m at 5/km ≈ 100 cars, not 0', () => {
+  const lines: LngLat[][] = Array.from({ length: 200 }, (_, i) => [[-84.4, 33.7 + i * 0.001], [-84.3989, 33.7 + i * 0.001]] as LngLat[]);
+  const sim = new TrafficSim(lines, 4000, undefined, lines.map(() => ({ level: 1 })));
+  assert.ok(sim.agents.length >= 70 && sim.agents.length <= 130, String(sim.agents.length));
+  assert.equal(carCount(0.5, 1) + carCount(0, 1), carCount(0.5, 1));
+  assert.equal(carCount(3, 9), 3);
 });
