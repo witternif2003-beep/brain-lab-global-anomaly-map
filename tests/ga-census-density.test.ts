@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { blockRadiusPx, decodeCensusBlocks, densityAnchors, parseStateEstimate } from "../lib/ga-census-density";
+import { blockRadiusPx, decodeCensusBlocks, densityAnchors, densityZoomScale, densityMinRadiusPx, parseStateEstimate } from "../lib/ga-census-density";
 
 const ab = (b: Buffer) => b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer;
 
@@ -54,4 +54,19 @@ test("parseStateEstimate reads the newest POPESTIMATE column for Georgia", () =>
     "010,0,0,00,United States,1,2,3,4\n040,3,5,13,Georgia,10713861,10732595,11204208,11302748\n";
   assert.deepEqual(parseStateEstimate(csv), { year: 2025, estimate: 11302748, base2020: 10713861 });
   assert.throws(() => parseStateEstimate(csv, "99"));
+});
+
+test("density dots grow from z13 to 4x at z17 (~1,000 ft) and stay capped", () => {
+  assert.equal(densityZoomScale(5), 1);
+  assert.equal(densityZoomScale(13), 1);
+  assert.equal(densityZoomScale(15), 2);
+  assert.equal(densityZoomScale(17), 4);
+  assert.equal(densityZoomScale(22), 4);
+});
+
+test("close-up dots have a floor radius from z14 (4 px) to z17 (10 px)", () => {
+  assert.equal(densityMinRadiusPx(13), 0);
+  assert.equal(densityMinRadiusPx(14), 4);
+  assert.equal(densityMinRadiusPx(17), 10);
+  assert.equal(densityMinRadiusPx(20), 10);
 });

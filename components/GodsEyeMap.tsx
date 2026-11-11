@@ -67,6 +67,7 @@ const TOUCH_SKY_TILES = 24;
 const TOUCH_TILE_CACHE_ZOOM_LEVELS = 3;
 /** After this long without `webglcontextrestored`, offer a reload instead of waiting forever. */
 const GPU_RESTORE_WAIT_MS = 15_000;
+const DENSITY_ON_KEY = 'godseye.density-on';
 const MAP_CREDITS = [
   'Imagery © Esri, Maxar, Earthstar Geographics',
   '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors (OpenFreeMap, Waymarked Trails CC BY-SA)',
@@ -719,6 +720,12 @@ export default function GodsEyeMap({
   }, []);
 
 
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(DENSITY_ON_KEY) === '1') setDensityOn(true);
+    } catch {}
+  }, []);
+
   // Sync internal state with external prop if provided
   useEffect(() => {
     const map = mapRef.current;
@@ -743,7 +750,7 @@ export default function GodsEyeMap({
     return () => {
       cancelled = true;
     };
-  }, [densityOn, density.blocks]);
+  }, [densityOn, density.blocks, ready]);
 
   useEffect(() => {
     if (!densityOn) return;
@@ -2265,7 +2272,14 @@ export default function GodsEyeMap({
                 data-testid="density-toggle"
                 aria-pressed={densityOn}
                 title={`Population by Census 2020 block: one cyan dot per populated block at its internal point, sized by residents. Source: ${CENSUS_BLOCKS_SOURCE}. Headline count: ${popEst ? `Census Bureau July 1, ${popEst.year} estimate (${popEst.sourceUrl}, retrieved ${popEst.retrievedAt})` : '2020 Census block total'}. Aggregate counts only, not people or phones.`}
-                onClick={() => setDensityOn((on) => !on)}
+                onClick={() =>
+                  setDensityOn((on) => {
+                    try {
+                      localStorage.setItem(DENSITY_ON_KEY, on ? '0' : '1');
+                    } catch {}
+                    return !on;
+                  })
+                }
                 style={{
                   padding: '5px 14px',
                   fontSize: '11px',
