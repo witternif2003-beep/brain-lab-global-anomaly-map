@@ -1,0 +1,12 @@
+# NVIDIA override; requires the NVIDIA Container Toolkit on the host.
+services:
+  renderer:
+    environment:
+      NVIDIA_DRIVER_CAPABILITIES: graphics,compute,utility
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
