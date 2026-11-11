@@ -2,6 +2,7 @@ import type { IControl, Map as MapLibreMap } from 'maplibre-gl';
 import { BEACON_CATEGORIES } from './ga-beacon-categories';
 import { INTEGRITY_COLORS, integrityState, type IntegrityState } from './fbi-agencies/parse';
 import { ensureLightBarCss, LIGHTBAR_CLASS } from './fbi-agencies/lightbar';
+import { nodeFieldSummary, type NodeFieldState, type NodeRowState } from './ga-node-field-hud';
 
 export interface GaFeedStatus {
   id: string;
@@ -36,6 +37,16 @@ const order = ['anomalies', 'live-ceiling', 'aircraft', 'vessels', 'transit', 'm
 const feeds = new WeakMap<MapLibreMap, Map<string, GaFeedStatus>>();
 const controls = new WeakMap<MapLibreMap, GaLiveLegend>();
 const custody = new WeakMap<MapLibreMap, Map<string, CustodyEntry[]>>();
+const nodeFieldMaps = new WeakSet<MapLibreMap>();
+
+const NODE_BADGE: Record<NodeFieldState, string> = { LIVE: '#4ade80', PARTIAL: '#fbbf24', STALE: '#f87171', LOADING: '#94a3b8' };
+const NODE_ROW: Record<NodeRowState, string> = { LIVE: '#4ade80', STALE: '#fbbf24', ERROR: '#f87171', LOADING: '#94a3b8', 'NO TIMESTAMP': '#94a3b8' };
+
+/** Shows the GA NODE FIELD summary (aircraft, ships, buses, towers) as the first section of this map's feed legend. */
+export function enableGaNodeField(map: MapLibreMap): void {
+  nodeFieldMaps.add(map);
+  controls.get(map)?.render();
+}
 
 function age(iso: string | null, staleAfterMin = STALE_MIN): { text: string; stale: boolean } {
   if (!iso) return { text: 'no timestamp', stale: true };
@@ -51,6 +62,7 @@ class GaLiveLegend implements IControl {
   private timer: ReturnType<typeof setInterval> | null = null;
   private map: MapLibreMap | null = null;
   private beaconsOpen = false;
+  private nodeFieldOpen = true;
 
 
   onAdd(map: MapLibreMap): HTMLElement {
@@ -82,6 +94,7 @@ class GaLiveLegend implements IControl {
     if (!this.body || !this.map) return;
     const list = [...(feeds.get(this.map)?.values() ?? [])].sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
     this.body.replaceChildren();
+    if (nodeFieldMaps.has(this.map)) this.body.append(this.nodeField(list));
     for (const f of list) {
       const row = document.createElement('div');
       row.style.cssText = 'margin-top:5px;line-height:1.35';
@@ -132,8 +145,64 @@ class GaLiveLegend implements IControl {
       }
       this.body.append(row);
     }
-    if (!list.length) this.body.textContent = 'loading…';
+    if (!list.length) this.body.append('loading…');
     else this.body.append(this.beacons(list));
+  }
+
+  private nodeField(list: GaFeedStatus[]): HTMLDetailsElement {
+    const now = Date.now();
+    const { rows, total, state } = nodeFieldSummary(list, now);
+    const el = document.createElement('details');
+    el.dataset.testid = 'ga-node-field';
+    el.open = this.nodeFieldOpen;
+    el.style.cssText = 'margin-top:5px;border-bottom:1px solid rgba(34,211,238,.45);padding-bottom:5px';
+    const summary = document.createElement('summary');
+    summary.style.cssText = 'cursor:pointer;font-weight:800;letter-spacing:.06em;display:flex;gap:6px;align-items:center';
+    const title = document.createElement('span');
+    title.textContent = `${el.open ? '▾' : '▸'} GA NODE FIELD`;
+    el.addEventListener('toggle', () => {
+      this.nodeFieldOpen = el.open;
+      title.textContent = `${el.open ? '▾' : '▸'} GA NODE FIELD`;
+    });
+    title.style.color = '#67e8f9';
+    const badge = document.createElement('span');
+    badge.setAttribute('role', 'status');
+    badge.style.cssText = `display:inline-flex;gap:3px;align-items:center;color:${NODE_BADGE[state]}`;
+    const dot = document.createElement('span');
+    dot.style.cssText = `width:7px;height:7px;border-radius:50%;background:${NODE_BADGE[state]};box-shadow:0 0 6px ${NODE_BADGE[state]}`;
+    if (state === 'LIVE') dot.classList.add('animate-pulse');
+    badge.append(dot, state);
+    const n = document.createElement('span');
+    n.textContent = total.toLocaleString('en-US');
+    n.style.cssText = 'margin-left:auto;color:#f8fafc';
+    summary.append(title, badge, n);
+    el.append(summary);
+    for (const r of rows) {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;gap:6px;align-items:center;margin-top:3px';
+      if (r.error) row.title = r.error;
+      const d = document.createElement('span');
+      d.style.cssText = `width:8px;height:8px;border-radius:50%;flex:none;background:${r.color};box-shadow:0 0 5px ${r.color}`;
+      const label = document.createElement('span');
+      label.textContent = r.label;
+      label.style.cssText = 'color:#f8fafc;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
+      const src = document.createElement('span');
+      src.textContent = r.source;
+      src.style.color = '#94a3b8';
+      const c = document.createElement('span');
+      c.textContent = r.count === null ? '—' : r.count.toLocaleString('en-US');
+      c.style.cssText = 'margin-left:auto;font-weight:800;color:#f8fafc';
+      const st = document.createElement('span');
+      st.textContent = r.state === 'LIVE' ? r.age : r.state;
+      st.style.cssText = `flex:none;width:64px;text-align:right;font-size:9px;color:${NODE_ROW[r.state]}`;
+      row.append(d, label, src, c, st);
+      el.append(row);
+    }
+    const foot = document.createElement('div');
+    foot.textContent = 'Real public feeds · ships, buses and towers at the coordinates their source publishes · aircraft moved on from their last ADS-B fix by reported speed and track · tap a pin for its source';
+    foot.style.cssText = 'margin-top:4px;color:#94a3b8;font-size:9px;line-height:1.3';
+    el.append(foot);
+    return el;
   }
 
   private beacons(list: GaFeedStatus[]): HTMLDetailsElement {
