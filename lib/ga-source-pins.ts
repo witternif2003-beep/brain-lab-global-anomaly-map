@@ -41,6 +41,7 @@ export const PIN_CATEGORIES: PinCategory[] = [
   { layer: 'sirens', label: 'Warning sirens (OSM)', group: 'fixed', position: AS_PUBLISHED, on: false },
   { layer: 'speedcams', label: 'Speed cameras (OSM)', group: 'fixed', position: AS_PUBLISHED, on: false },
   { layer: 'alpr', label: 'Plate-reader cameras (OSM)', group: 'fixed', position: AS_PUBLISHED, on: false },
+  { layer: 'celltowers', label: 'Cell towers (HIFLD / FCC)', group: 'fixed', position: AS_PUBLISHED, on: true },
   { layer: 'towers', label: 'Communication towers (OSM)', group: 'fixed', position: AS_PUBLISHED, on: false },
   { layer: 'signals', label: 'Traffic signals (OSM)', group: 'fixed', position: AS_PUBLISHED, on: false },
   { layer: 'equipment', label: 'Public equipment (OSM)', group: 'fixed', position: AS_PUBLISHED, on: false },

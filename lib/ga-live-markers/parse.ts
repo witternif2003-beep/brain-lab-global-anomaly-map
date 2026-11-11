@@ -2,7 +2,7 @@ import { mslFromGeometricFt } from "./geoid";
 export const GA_BBOX = { west: -85.7, south: 30.3, east: -80.8, north: 35.1 };
 
 export type OsmInfraKind = "signals" | "towers" | "police" | "firestations" | "sirens" | "speedcams" | "alpr";
-export type LiveLayer = "aircraft" | "transit" | "micromobility" | "stations" | "streamgauges" | "quakes" | "tfr" | "augusta911" | "athens911" | "gdotcams" | "ga511events" | "pireps" | "equipment" | "policereports" | "policetech" | "webcams" | "vessels" | OsmInfraKind;
+export type LiveLayer = "aircraft" | "transit" | "micromobility" | "stations" | "streamgauges" | "quakes" | "tfr" | "augusta911" | "athens911" | "gdotcams" | "ga511events" | "pireps" | "equipment" | "policereports" | "policetech" | "webcams" | "vessels" | "celltowers" | OsmInfraKind;
 export type LiveValue = string | number | boolean | null;
 
 export interface LiveMarker {
@@ -330,6 +330,35 @@ export function parseUsgsQuakes(json: { features?: UsgsQuakeFeature[] }): LiveMa
         eventType: p.type ?? null,
         status: p.status ?? null,
         url: p.url ?? null,
+      });
+    })
+    .filter(keep);
+}
+
+interface HifldCellTowerFeature {
+  geometry?: { coordinates?: number[] } | null;
+  properties?: { OBJECTID?: number; Licensee?: string; Callsign?: string; LocCity?: string; LocCounty?: string; StrucType?: string; AllStruc?: number; LicStatus?: string } | null;
+}
+
+/** HIFLD "Cellular Towers in the United States" (FCC cellular licence sites): fixed tower locations, not phones or users. */
+export function parseHifldCellTowers(json: { features?: HifldCellTowerFeature[] }): LiveMarker[] {
+  return (json.features ?? [])
+    .map((f) => {
+      const [lon, lat] = f.geometry?.coordinates ?? [];
+      const p = f.properties ?? {};
+      const text = (v: string | undefined) => v?.trim() || null;
+      const height = num(p.AllStruc);
+      const licensee = text(p.Licensee);
+      const city = text(p.LocCity);
+      return marker(num(lon), num(lat), null, [licensee, city].filter(Boolean).join(" · ") || "cell tower", {
+        id: num(p.OBJECTID),
+        licensee,
+        callsign: text(p.Callsign),
+        city,
+        county: text(p.LocCounty),
+        structure: text(p.StrucType),
+        heightM: height === null || height <= 0 ? null : round(height, 1),
+        licenceStatus: text(p.LicStatus),
       });
     })
     .filter(keep);

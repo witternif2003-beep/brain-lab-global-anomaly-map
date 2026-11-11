@@ -28,6 +28,7 @@ import {
   parseTfrXml,
   parseUsgsIv,
   parseUsgsQuakes,
+  parseHifldCellTowers,
   transitMarkers,
   GEOCODE_MIN_SCORE,
   mergeAdsbPoints,
@@ -381,6 +382,25 @@ async function arcgisWindow<F>(base: string, dateField: string, fields: string, 
   return { markers, unplaced: total - markers.length };
 }
 
+const HIFLD_CELL_TOWERS = "https://services2.arcgis.com/FiaPA4ga0iQKduv3/arcgis/rest/services/Cellular_Towers_in_the_United_States/FeatureServer/0";
+const HIFLD_PAGE = 2000;
+
+/** Every Georgia row of the HIFLD cellular-tower layer, paged by resultOffset so the 2,000-row server cap never truncates it. */
+async function hifldCellTowers(): Promise<Placed> {
+  const markers: LiveMarker[] = [];
+  let total = 0;
+  for (let offset = 0; offset < 50_000; offset += HIFLD_PAGE) {
+    const d = await getJson<Parameters<typeof parseHifldCellTowers>[0] & { exceededTransferLimit?: boolean; properties?: { exceededTransferLimit?: boolean } }>(
+      `${HIFLD_CELL_TOWERS}/query?where=${encodeURIComponent("LocState='GA'")}&outFields=OBJECTID,Licensee,Callsign,LocCity,LocCounty,StrucType,AllStruc,LicStatus&outSR=4326&orderByFields=OBJECTID&resultOffset=${offset}&resultRecordCount=${HIFLD_PAGE}&f=geojson`,
+      30_000,
+    );
+    total += d.features?.length ?? 0;
+    markers.push(...parseHifldCellTowers(d));
+    if (!(d.exceededTransferLimit || d.properties?.exceededTransferLimit)) break;
+  }
+  return { markers, unplaced: total - markers.length };
+}
+
 const apdCrime = () => arcgisWindow<ApdCrimeFeature>(APD_CRIME, "ReportDate", "ReportNumber,ReportDate,OccurredFromDate,NIBRS_Offense,NIBRS_Bucket,Crime_Against,Part,FireArmInvolved,StreetAddress,LocationType,NhoodName,Zone,Longitude,Latitude", parseApdCrime);
 const doravilleIncidents = () => arcgisWindow<DoravilleFeature>(DORAVILLE, "USER_INC_REPORT_DATE", "USER_AGENCY,USER_NIBR_DESC,USER_BLOCK_ADDRESS,USER_PREMISE_DESC,USER_CASE_STATUS_DESC,USER_INC_REPORT_DATE,USER_FROM_DATE", parseDoravilleIncidents);
 
@@ -580,6 +600,12 @@ const LAYERS: Record<LiveLayer, LayerSpec> = {
       url: () => `https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&orderby=time&minlatitude=30.3&maxlatitude=35.1&minlongitude=-85.7&maxlongitude=-80.8&starttime=${new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10)}`,
       load: json((j) => parseUsgsQuakes(j)),
     }],
+  },
+  celltowers: {
+    ttlS: 3600,
+    source: "Cellular towers in Georgia from HIFLD 'Cellular Towers in the United States' (FCC cellular licence sites, data last edited 2025-08-25) via the Federal User Community ArcGIS layer; fixed tower locations, not phones or users",
+    sourceUrl: "https://www.arcgis.com/home/item.html?id=84617c4387cb4554bdfe5bdc1ef7d22b",
+    feeds: [{ id: "HIFLD Cellular Towers", url: HIFLD_CELL_TOWERS, markers: hifldCellTowers }],
   },
   pireps: {
     ttlS: 300,

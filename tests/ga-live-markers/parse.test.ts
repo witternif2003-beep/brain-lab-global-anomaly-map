@@ -9,6 +9,7 @@ import {
   parseOpenSky,
   parseUsgsIv,
   parseUsgsQuakes,
+  parseHifldCellTowers,
   transitMarkers,
 } from "../../lib/ga-live-markers/parse";
 
@@ -158,4 +159,21 @@ test("parseUsgsQuakes keeps Georgia-area events with magnitude, depth and event 
   assert.equal(ms[0].label, "M2.0 14 km ENE of Mentone, Alabama");
   assert.deepEqual(ms[0].props, { mag: 1.97, depthKm: 9.9, eventType: "earthquake", status: "reviewed", url: "https://earthquake.usgs.gov/earthquakes/eventpage/se60000000" });
   assert.equal(ms[0].observedAt, new Date(1_790_000_000_000).toISOString());
+});
+
+test("parseHifldCellTowers keeps Georgia tower sites with licensee, structure and height", () => {
+  const ms = parseHifldCellTowers({
+    features: [
+      { geometry: { coordinates: [-84.386, 33.779] }, properties: { OBJECTID: 7, Licensee: "Cellco Partnership", Callsign: "KNKA123", LocCity: "Atlanta", LocCounty: "Fulton", StrucType: "Tower", AllStruc: 45.72, LicStatus: "Active" } },
+      { geometry: { coordinates: [-81.248, 32.291] }, properties: { OBJECTID: 80, Licensee: "ALLTEL Corporation", LocCity: "RINCON", StrucType: " ", AllStruc: 0, LicStatus: "A" } },
+      { geometry: { coordinates: [-120, 36] }, properties: { OBJECTID: 8 } },
+      { geometry: null, properties: { OBJECTID: 9 } },
+    ],
+  });
+  assert.equal(ms.length, 2);
+  assert.equal(ms[0].label, "Cellco Partnership · Atlanta");
+  assert.equal(ms[1].props.structure, null);
+  assert.equal(ms[1].props.heightM, null);
+  assert.equal(ms[0].observedAt, null);
+  assert.deepEqual(ms[0].props, { id: 7, licensee: "Cellco Partnership", callsign: "KNKA123", city: "Atlanta", county: "Fulton", structure: "Tower", heightM: 45.7, licenceStatus: "Active" });
 });

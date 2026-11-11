@@ -391,6 +391,19 @@ const SPECS: Record<LiveLayer, Spec> = {
     ],
     detail: (ms) => countBy(ms, 'network').replace(/GA_/g, ''),
   },
+  celltowers: {
+    label: 'Cell towers (HIFLD / FCC licences)', color: LIVE_TRACK_CYAN, stroke: '#0f172a', radiusPx: 3, z: 16, refreshMs: 60 * 60_000,
+    iconPx: 16, labelMinZoom: 12, dateOnly: true,
+    icon: () => ({ shape: 'tower' }),
+    tag: (m) => String(m.props.licensee ?? ''),
+    title: (m) => `CELL TOWER · ${m.label}`,
+    rows: (p) => [
+      ['Licensee', fmt(p.licensee)], ['Call sign', fmt(p.callsign)], ['Structure', fmt(p.structure)], ['Overall height', fmt(p.heightM, ' m')],
+      ['County', fmt(p.county)], ['Licence status', fmt(p.licenceStatus)],
+      ['Pulse', 'decorative only: tower locations are fixed registration data, not live signal or phone activity'],
+    ],
+    detail: (ms) => `${ms.length} towers · ${new Set(ms.map((m) => m.props.licensee)).size} licensees · HIFLD data last edited 2025-08-25`,
+  },
   quakes: {
     label: 'Earthquakes, last 30 days (USGS)', color: '#c084fc', stroke: '#4c1d95', radiusPx: 4, z: 30, refreshMs: 60_000,
     iconPx: 22, labelMinZoom: 6,
@@ -682,7 +695,7 @@ export function addGaLiveMarkerLayers(map: MapLibreMap): void {
       fill: cam === 'offline' || (layer === 'micromobility' && m.props.disabled) ? hexToRgba('#64748b', 200) : cam === null ? hexToRgba('#f59e0b', 220) : layer === 'aircraft' && m.props.emergency ? hexToRgba('#ef4444') : fillOf ? hexToRgba(fillOf(m), 235) : fill,
       stroke,
       strokePx: layer === 'micromobility' ? 0.5 : 1,
-      pulse: (layer === 'aircraft' && !!m.props.emergency) || (layer === 'tfr' && tfrState(m.props, now) === 'active') || now - (firstSeen[layer]?.get(strobeKey(layer, m)) ?? 0) < STROBE_MS,
+      pulse: layer === 'celltowers' || (layer === 'aircraft' && !!m.props.emergency) || (layer === 'tfr' && tfrState(m.props, now) === 'active') || now - (firstSeen[layer]?.get(strobeKey(layer, m)) ?? 0) < STROBE_MS,
       strobeColors: CRIME_TRIANGLE_LAYERS.has(layer) ? crimeStrobe : layer === 'towers' ? towerStrobe : undefined,
       props: { marker: m },
       };
