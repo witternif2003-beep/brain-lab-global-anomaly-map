@@ -65,6 +65,8 @@ const STARMAP_8K_MIN_DEVICE_PX = 1920;
 const TOUCH_SKY_TILES = 24;
 /** Zoom levels of off-screen tiles kept in MapLibre's tile cache on touch devices (MapLibre default 5). */
 const TOUCH_TILE_CACHE_ZOOM_LEVELS = 3;
+/** After this long without `webglcontextrestored`, offer a reload instead of waiting forever. */
+const GPU_RESTORE_WAIT_MS = 15_000;
 const MAP_CREDITS = [
   'Imagery © Esri, Maxar, Earthstar Geographics',
   '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors (OpenFreeMap, Waymarked Trails CC BY-SA)',
@@ -447,6 +449,7 @@ export default function GodsEyeMap({
   const [popEst, setPopEst] = useState<{ year: number; estimate: number; sourceUrl: string; retrievedAt: string } | null>(null);
   const [density, setDensity] = useState<{ blocks: CensusBlocks | null; error: string | null; loading: boolean }>({ blocks: null, error: null, loading: false });
   const [gpuLost, setGpuLost] = useState(false);
+  const [gpuStuck, setGpuStuck] = useState(false);
   const [pitch, setPitch] = useState(60);
   const [zoom, setZoom] = useState(6.0);
   const [activeFocus, setActiveFocus] = useState<StateCode | 'ALL'>(focusState);
@@ -1553,14 +1556,20 @@ export default function GodsEyeMap({
     map.once('remove', applyHorizonLod(map, horizonLod(isTouchDevice(), gpuCrashCount())));
     const gpu = { contextLost: 0, contextRestored: 0 };
     (window as unknown as { __gaGpu?: typeof gpu }).__gaGpu = gpu;
+    let restoreTimer: ReturnType<typeof setTimeout> | undefined;
+    map.once('remove', () => clearTimeout(restoreTimer));
     map.on('webglcontextlost', () => {
       gpu.contextLost++;
       noteContextLost();
       setGpuLost(true);
+      clearTimeout(restoreTimer);
+      restoreTimer = setTimeout(() => setGpuStuck(true), GPU_RESTORE_WAIT_MS);
     });
     map.on('webglcontextrestored', () => {
       gpu.contextRestored++;
+      clearTimeout(restoreTimer);
       setGpuLost(false);
+      setGpuStuck(false);
       map.once('style.load', () => addMapLayers(map));
     });
 
@@ -1923,7 +1932,14 @@ export default function GodsEyeMap({
           <div ref={containerRef} className="absolute inset-0 z-10" />
           {gpuLost && (
             <div className="absolute inset-0 z-30 flex items-center justify-center bg-[#05070f]/85 font-mono text-xs text-[#38bdf8]" role="status">
-              Graphics memory ran out. Restoring the map…
+              {gpuStuck ? (
+                <span className="flex flex-col items-center gap-2">
+                  The browser has not given the graphics back.
+                  <button type="button" onClick={() => window.location.reload()} className="rounded border border-[#38bdf8] px-3 py-1 text-[#e0f2fe]">
+                    RELOAD MAP
+                  </button>
+                </span>
+              ) : 'Graphics memory ran out. Restoring the map…'}
             </div>
           )}
           <div className="absolute top-3 right-3 z-20 flex flex-row-reverse items-center gap-2 font-mono">

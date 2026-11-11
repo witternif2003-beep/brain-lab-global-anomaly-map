@@ -75,6 +75,18 @@ export function gpuCrashCount(): number {
   return s ? recentCrashes(s, Date.now()).length : 0;
 }
 
+export const REBUILD_WINDOW_MS = 5 * 60_000;
+export const MAX_REBUILDS = 3;
+
+/** Records a rebuild in `history` and returns true unless `max` already happened within `windowMs`. */
+export function allowRebuild(history: number[], now: number, max = MAX_REBUILDS, windowMs = REBUILD_WINDOW_MS): boolean {
+  const recent = history.filter((t) => now - t < windowMs);
+  history.splice(0, history.length, ...recent);
+  if (recent.length >= max) return false;
+  history.push(now);
+  return true;
+}
+
 export function noteContextLost(): void {
   const s = browserStore();
   if (s) recordCrash(s, 'context-lost', Date.now());

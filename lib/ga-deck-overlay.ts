@@ -8,7 +8,7 @@ import { GA_MARKER_SCALE, gaGlowMultiplier } from './ga-marker-scale';
 import { GA_ICON_CELL_SCALE, gaIconAtlas, gaIconKey, type GaIconAtlas, type GaIconShape } from './ga-marker-icons';
 import { gaMeshIfReady, gaLiveryMeshIfReady, gaMeshScale, gaModelReach, isFgKind, type GaModelKind } from './ga-mesh-models';
 import { isTouchDevice, LIDAR_POINT_CEILING, markerPixelRatio } from './map/touch-gpu-budget';
-import { gpuCrashCount } from './map/crash-guard';
+import { allowRebuild, gpuCrashCount, noteContextLost } from './map/crash-guard';
 import { declutterMarkers, type DeclutterCandidate, fitsViewport } from './ga-marker-declutter';
 import type { CloudPuff } from './ga-clouds/cloud-puffs';
 import { DENSITY_ANCHOR_MIN_ZOOM, densityAnchors, type CensusBlocks } from './ga-census-density';
@@ -101,6 +101,8 @@ interface DeckState {
   initPromise: Promise<void> | null;
   fallbackPromise: Promise<void> | null;
   removed: boolean;
+  /** Times the deck canvas lost its WebGL context and was rebuilt. */
+  contextRebuilds: number[];
   pulseFrame: number;
   lastPulse: number;
   pulseRadiusScale: number;
@@ -213,6 +215,7 @@ function getState(map: MapLibreMap): DeckState {
     initPromise: null,
     fallbackPromise: null,
     removed: false,
+    contextRebuilds: [],
     pulseFrame: 0,
     lastPulse: 0,
     pulseRadiusScale: 1.2,
@@ -986,6 +989,7 @@ async function addRenderer(map: MapLibreMap, state: DeckState, renderer: Rendere
         state.firstRender = true;
         const canvas = overlay.getCanvas();
         if (canvas) {
+          watchDeckContext(map, state, canvas);
           for (const draw of state.afterRender) draw(canvas);
         }
         state.afterRender.clear();
@@ -1015,6 +1019,29 @@ async function addRenderer(map: MapLibreMap, state: DeckState, renderer: Rendere
     } catch {}
     throw error;
   }
+}
+
+const DECK_REBUILD_DELAY_MS = 1500;
+const watchedDeckCanvases = new WeakSet<HTMLCanvasElement>();
+
+/** luma.gl only resolves `device.lost` and deck.gl never reacts, so a lost deck canvas stays blank; rebuild it on a fresh canvas. */
+function watchDeckContext(map: MapLibreMap, state: DeckState, canvas: HTMLCanvasElement): void {
+  if (watchedDeckCanvases.has(canvas)) return;
+  watchedDeckCanvases.add(canvas);
+  canvas.addEventListener('webglcontextlost', () => {
+    noteContextLost();
+    window.__gaGpuDeck = { contextLost: (window.__gaGpuDeck?.contextLost ?? 0) + 1, rebuilt: window.__gaGpuDeck?.rebuilt ?? 0 };
+    if (state.removed || !allowRebuild(state.contextRebuilds, Date.now())) {
+      state.fallbackReason = 'WebGL context lost repeatedly; reload the page to redraw markers';
+      publishState(map, state);
+      return;
+    }
+    setTimeout(() => {
+      void fallbackToWebGL(map, state, 'WebGL context lost; markers rebuilt').then(() => {
+        if (window.__gaGpuDeck) window.__gaGpuDeck.rebuilt++;
+      });
+    }, DECK_REBUILD_DELAY_MS);
+  }, { once: true });
 }
 
 async function fallbackToWebGL(map: MapLibreMap, state: DeckState, reason: string): Promise<void> {
@@ -1236,4 +1263,5 @@ export function setGaDeckGroup(map: MapLibreMap, key: GroupKey, group: GaDeckGro
 
 declare global {
   interface Window { __gaDeckMetrics?: { gpuMsPerFrame: number; cpuMsPerFrame: number; renderer: Renderer } }
+  interface Window { __gaGpuDeck?: { contextLost: number; rebuilt: number } }
 }
