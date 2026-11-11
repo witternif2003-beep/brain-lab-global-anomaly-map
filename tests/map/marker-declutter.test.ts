@@ -36,3 +36,13 @@ test("a big marker placed first still blocks a small one in a neighbouring grid 
   ]);
   assert.deepEqual([...shown].sort(), ["big"]);
 });
+
+test("labels whose box crosses any screen edge are not placed", async () => {
+  const { fitsViewport } = await import("../../lib/ga-marker-declutter");
+  assert.equal(fitsViewport([10, 10, 90, 30], 400, 300), true);
+  assert.equal(fitsViewport([0, 0, 400, 300], 400, 300), true);
+  assert.equal(fitsViewport([-4, 10, 76, 30], 400, 300), false);
+  assert.equal(fitsViewport([10, -1, 90, 19], 400, 300), false);
+  assert.equal(fitsViewport([350, 10, 430, 30], 400, 300), false);
+  assert.equal(fitsViewport([10, 290, 90, 310], 400, 300), false);
+});

@@ -164,6 +164,9 @@ const TERRAIN_DEM: maplibregl.RasterDEMSourceSpecification = {
   attribution: '<a href="https://registry.opendata.aws/terrain-tiles/" target="_blank" rel="noopener">Terrain Tiles</a> — Mapzen/AWS, USGS 3DEP',
 };
 
+/** Lifts the low-contrast Esri World Imagery mosaic; brightness range left at the style-spec defaults (0–1) so shadows and highlights keep their full range. */
+const SAT_PAINT = { 'raster-saturation': 0.3, 'raster-contrast': 0.2 } as const;
+
 const BASEMAPS = {
   demotiles: 'https://demotiles.maplibre.org/style.json',
   satellite: {
@@ -179,7 +182,7 @@ const BASEMAPS = {
       },
       'terrain-dem': TERRAIN_DEM,
     },
-    layers: [{ id: 'sat', type: 'raster', source: 'sat' }],
+    layers: [{ id: 'sat', type: 'raster', source: 'sat', paint: SAT_PAINT }],
     terrain: { source: 'terrain-dem', exaggeration: 1.5 },
   },
   naip: {
@@ -205,7 +208,7 @@ const BASEMAPS = {
       'terrain-dem': TERRAIN_DEM,
     },
     layers: [
-      { id: 'sat', type: 'raster', source: 'sat' },
+      { id: 'sat', type: 'raster', source: 'sat', paint: SAT_PAINT },
       { id: 'naip', type: 'raster', source: 'naip', minzoom: 11, paint: { 'raster-opacity': ['interpolate', ['linear'], ['zoom'], 11, 0, 12, 1] } },
     ],
     terrain: { source: 'terrain-dem', exaggeration: 1.5 },
@@ -227,7 +230,7 @@ const BASEMAPS = {
       },
       'terrain-dem': TERRAIN_DEM,
     },
-    layers: [{ id: 'sat', type: 'raster', source: 'sat' }],
+    layers: [{ id: 'sat', type: 'raster', source: 'sat', paint: SAT_PAINT }],
     terrain: { source: 'terrain-dem', exaggeration: 1.5 },
   },
   topo: {

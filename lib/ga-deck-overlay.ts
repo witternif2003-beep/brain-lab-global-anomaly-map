@@ -9,7 +9,7 @@ import { GA_ICON_CELL_SCALE, gaIconAtlas, gaIconKey, type GaIconAtlas, type GaIc
 import { gaMeshIfReady, gaLiveryMeshIfReady, gaMeshScale, gaModelReach, isFgKind, type GaModelKind } from './ga-mesh-models';
 import { isTouchDevice, LIDAR_POINT_CEILING, markerPixelRatio } from './map/touch-gpu-budget';
 import { gpuCrashCount } from './map/crash-guard';
-import { declutterMarkers, type DeclutterCandidate } from './ga-marker-declutter';
+import { declutterMarkers, type DeclutterCandidate, fitsViewport } from './ga-marker-declutter';
 import type { CloudPuff } from './ga-clouds/cloud-puffs';
 import { puffAtlas } from './ga-clouds/puff-texture';
 import { cloudTopMesh, type CloudTopGrid, type CloudTopMesh } from './ga-goes-clouds/cloud-tops';
@@ -550,7 +550,7 @@ function declutterLabels(state: DeckState): void {
       const half = (item.label!.length * LABEL_CHAR_PX + 10) / 2 + LABEL_GAP_PX;
       const top = p.y + labelOffsetPx(item) - LABEL_GAP_PX;
       const rect: [number, number, number, number] = [p.x - half, top, p.x + half, top + LABEL_HEIGHT_PX + 2 * LABEL_GAP_PX];
-      if (rect[2] < -w * 0.25 || rect[0] > w * 1.25 || rect[3] < -h * 0.25 || rect[1] > h * 1.25) continue;
+      if (!fitsViewport(rect, w, h)) continue;
       const cells: string[] = [];
       for (let cx = Math.floor(rect[0] / LABEL_CELL_PX); cx <= Math.floor(rect[2] / LABEL_CELL_PX); cx++) {
         for (let cy = Math.floor(rect[1] / LABEL_CELL_PX); cy <= Math.floor(rect[3] / LABEL_CELL_PX); cy++) cells.push(`${cx}:${cy}`);

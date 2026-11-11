@@ -45,3 +45,8 @@ export function declutterMarkers<T>(candidates: DeclutterCandidate<T>[], overlap
   }
   return shown;
 }
+
+/** True when a screen rect [x0, y0, x1, y1] lies wholly inside a w×h viewport, so its label is never cut by the screen edge. */
+export function fitsViewport(rect: readonly [number, number, number, number], w: number, h: number): boolean {
+  return rect[0] >= 0 && rect[1] >= 0 && rect[2] <= w && rect[3] <= h;
+}
