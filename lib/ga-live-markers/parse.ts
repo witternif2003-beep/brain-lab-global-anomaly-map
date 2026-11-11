@@ -19,7 +19,7 @@ const inBox = (lon: number, lat: number) => lon >= GA_BBOX.west && lon <= GA_BBO
 
 function marker(lon: number | null, lat: number | null, observedAt: string | null, label: string, props: Record<string, LiveValue>): LiveMarker | null {
   if (lon === null || lat === null || !inBox(lon, lat)) return null;
-  return { lon: round(lon), lat: round(lat), observedAt, label, props };
+  return { lon, lat, observedAt, label, props };
 }
 
 /** GNSS (ellipsoid) altitude in feet → feet above mean sea level via GEOID18. */

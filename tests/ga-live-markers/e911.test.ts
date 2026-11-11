@@ -68,7 +68,7 @@ test("parseAccpdIncidents keeps every call at its published point with a local d
   });
   assert.equal(ms.length, 1);
   assert.equal(ms[0].label, "Domestic (10-16)");
-  assert.equal(ms[0].lat, 33.92033);
+  assert.equal(ms[0].lat, 33.920334044);
   assert.equal(ms[0].observedAt, "2026-10-04T04:00:00.000Z");
   assert.deepEqual(ms[0].props, { agency: "Athens-Clarke County Police", incident: "2026-10040122", callType: "Domestic (10-16)", callSource: "911", date: "2026-10-04", personnel: null, objectId: 185780 });
 });

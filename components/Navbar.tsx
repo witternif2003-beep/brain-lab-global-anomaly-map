@@ -44,6 +44,7 @@ export default function Navbar() {
     { href: "/lidar-splat", label: "LiDAR Splats", icon: Globe },
     { href: "/benchmarks", label: "ML Telemetry", icon: Zap },
     { href: "/county-matrix", label: "159 Counties", icon: Compass },
+    { href: "/source-pins", label: "GA Source Pins", icon: Radar },
     { href: "/jurisdiction-cards", label: "56 Cards", icon: LayoutGrid },
     { href: "/jurisdiction-records", label: "56 Records", icon: ListOrdered },
     { href: "/election-sources", label: "Election Sources", icon: Landmark },
