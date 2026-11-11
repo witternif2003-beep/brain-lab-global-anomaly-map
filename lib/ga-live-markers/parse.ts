@@ -2,7 +2,7 @@ import { mslFromGeometricFt } from "./geoid";
 export const GA_BBOX = { west: -85.7, south: 30.3, east: -80.8, north: 35.1 };
 
 export type OsmInfraKind = "signals" | "towers" | "police" | "firestations" | "sirens" | "speedcams" | "alpr";
-export type LiveLayer = "aircraft" | "transit" | "micromobility" | "stations" | "streamgauges" | "quakes" | "tfr" | "augusta911" | "athens911" | "gdotcams" | "ga511events" | "pireps" | "equipment" | "policereports" | "policetech" | "webcams" | "vessels" | "celltowers" | OsmInfraKind;
+export type LiveLayer = "aircraft" | "transit" | "micromobility" | "stations" | "streamgauges" | "quakes" | "tfr" | "augusta911" | "athens911" | "gdotcams" | "ga511events" | "pireps" | "equipment" | "policereports" | "policetech" | "webcams" | "vessels" | "celltowers" | "opencellid" | OsmInfraKind;
 export type LiveValue = string | number | boolean | null;
 
 export interface LiveMarker {
@@ -964,4 +964,31 @@ export function mergeVessels(prev: LiveMarker[], next: LiveMarker[], nowMs = Dat
     if (!seen || at > Date.parse(seen.observedAt ?? "")) byId.set(id, m);
   }
   return [...out, ...byId.values()];
+}
+
+const iso = (sec: number | null) => (sec === null || sec <= 0 ? null : new Date(sec * 1000).toISOString());
+
+/**
+ * OpenCelliD cell export rows (radio,mcc,net,area,cell,unit,lon,lat,range,samples,changeable,created,updated,averageSignal)
+ * inside the Georgia box. Positions are community-estimated cell centroids, not tower sites, phones or users; `#` lines are comments.
+ */
+export function parseOpenCellidCsv(text: string): LiveMarker[] {
+  const out: LiveMarker[] = [];
+  for (const line of text.split("\n")) {
+    if (!line || line.startsWith("#") || line.startsWith("radio,")) continue;
+    const c = line.split(",");
+    if (c.length < 13) continue;
+    const m = marker(num(c[6]), num(c[7]), iso(num(c[12])), `${c[0]} ${c[1]}-${c[2]}`, {
+      radio: c[0] || null,
+      mcc: num(c[1]),
+      mnc: num(c[2]),
+      area: num(c[3]),
+      cell: num(c[4]),
+      rangeM: num(c[8]),
+      samples: num(c[9]),
+      firstSeen: iso(num(c[11])),
+    });
+    if (m) out.push(m);
+  }
+  return out;
 }

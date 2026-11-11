@@ -5,7 +5,7 @@ const nextConfig = {
   env: { VERCEL_GIT_COMMIT_SHA: process.env.VERCEL_GIT_COMMIT_SHA || '' },
   serverExternalPackages: ['laz-perf', 'h5wasm'],
   outputFileTracingIncludes: {
-    '/api/ga-live-markers': ['./data/osm/ga-infra-snapshot.json.gz'],
+    '/api/ga-live-markers': ['./data/osm/ga-infra-snapshot.json.gz', './data/opencellid/ga-cells.csv.gz'],
     '/api/fbi-osint': ['./data/geo/ipv4-country.json.gz'],
   },
   productionBrowserSourceMaps: false,

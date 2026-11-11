@@ -83,6 +83,7 @@ const MAP_CREDITS = [
   `Sky: <a href="${SKY_PHOTO_SOURCE_URL}" target="_blank" rel="noopener">NASA SVS</a>`,
   'IP geolocation: DB-IP (CC BY 4.0)',
   'Cesium Man © Cesium (CC BY 4.0)',
+  'Cell tower data from <a href="https://opencellid.org" target="_blank" rel="noopener">OpenCellID</a>, licensed under <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank">CC BY-SA 4.0</a>',
 ].join(' | ');
 const isTouchDevice = () => typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0;
 /** Full device ratio (≤3× on touch devices), 2× on touch after a recent GPU crash. */

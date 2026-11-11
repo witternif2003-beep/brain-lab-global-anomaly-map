@@ -46,7 +46,7 @@ export interface GaDeckGroup {
   onClick: (map: MapLibreMap, lngLat: LngLat, props: Record<string, unknown>) => void;
 }
 
-type GroupKey = 'bulbs' | 'traffic' | 'gauges' | 'imagery' | 'fires' | 'aircraft' | 'transit' | 'micromobility' | 'stations' | 'streamgauges' | 'quakes' | 'tfr' | 'signals' | 'towers' | 'police' | 'firestations' | 'sirens' | 'speedcams' | 'alpr' | 'augusta911' | 'athens911' | 'gdotcams' | 'ga511events' | 'pireps' | 'equipment' | 'policereports' | 'policetech' | 'webcams' | 'vessels' | 'celltowers';
+type GroupKey = 'bulbs' | 'traffic' | 'gauges' | 'imagery' | 'fires' | 'aircraft' | 'transit' | 'micromobility' | 'stations' | 'streamgauges' | 'quakes' | 'tfr' | 'signals' | 'towers' | 'police' | 'firestations' | 'sirens' | 'speedcams' | 'alpr' | 'augusta911' | 'athens911' | 'gdotcams' | 'ga511events' | 'pireps' | 'equipment' | 'policereports' | 'policetech' | 'webcams' | 'vessels' | 'celltowers' | 'opencellid';
 type Renderer = 'webgl2' | 'webgpu';
 type Point = { x: number; y: number };
 type DeckModules = {
@@ -341,6 +341,7 @@ function snapshot(state: DeckState): DeckSnapshot {
       signals: state.groups.get('signals')?.items.length ?? 0,
       towers: state.groups.get('towers')?.items.length ?? 0,
       celltowers: state.groups.get('celltowers')?.items.length ?? 0,
+      opencellid: state.groups.get('opencellid')?.items.length ?? 0,
       police: state.groups.get('police')?.items.length ?? 0,
       firestations: state.groups.get('firestations')?.items.length ?? 0,
       sirens: state.groups.get('sirens')?.items.length ?? 0,

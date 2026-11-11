@@ -10,6 +10,7 @@ import {
   parseUsgsIv,
   parseUsgsQuakes,
   parseHifldCellTowers,
+  parseOpenCellidCsv,
   transitMarkers,
 } from "../../lib/ga-live-markers/parse";
 
@@ -176,4 +177,20 @@ test("parseHifldCellTowers keeps Georgia tower sites with licensee, structure an
   assert.equal(ms[1].props.heightM, null);
   assert.equal(ms[0].observedAt, null);
   assert.deepEqual(ms[0].props, { id: 7, licensee: "Cellco Partnership", callsign: "KNKA123", city: "Atlanta", county: "Fulton", structure: "Tower", heightM: 45.7, licenceStatus: "Active" });
+});
+
+test("parseOpenCellidCsv keeps Georgia cells with radio, network, range and last-seen time; skips comments and out-of-box rows", () => {
+  const ms = parseOpenCellidCsv([
+    "# OpenCelliD export filtered to the Georgia box",
+    "LTE,310,260,30479,70092290,0,-84.388,33.745,1803,1,1,1363987473,1762785180,0",
+    "NR,311,480,7626,61333786,12,-81.1,32.08,0,4,1,0,1762785180,0",
+    "GSM,310,260,307,17022,0,-120.2461,36.1916,11049,9,1,1363987473,1751301121,0",
+    "LTE,310,260,1,2",
+    "",
+  ].join("\n"));
+  assert.equal(ms.length, 2);
+  assert.equal(ms[0].label, "LTE 310-260");
+  assert.equal(ms[0].observedAt, "2025-11-10T14:33:00.000Z");
+  assert.deepEqual(ms[0].props, { radio: "LTE", mcc: 310, mnc: 260, area: 30479, cell: 70092290, rangeM: 1803, samples: 1, firstSeen: "2013-03-22T21:24:33.000Z" });
+  assert.equal(ms[1].props.firstSeen, null);
 });

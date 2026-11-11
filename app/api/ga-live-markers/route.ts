@@ -29,6 +29,7 @@ import {
   parseUsgsIv,
   parseUsgsQuakes,
   parseHifldCellTowers,
+  parseOpenCellidCsv,
   transitMarkers,
   GEOCODE_MIN_SCORE,
   mergeAdsbPoints,
@@ -59,7 +60,7 @@ const UA = { "User-Agent": "brain-lab-global-anomaly-map (public-data map; https
 
 interface Placed { markers: LiveMarker[]; unplaced: number }
 interface Feed { id: string; url: string | (() => string); load?: (r: Response) => Promise<LiveMarker[]>; markers?: () => Promise<LiveMarker[] | Placed> }
-interface LayerSpec { ttlS: number; source: string; sourceUrl: string; feeds: Feed[]; fallback?: Feed[] }
+interface LayerSpec { ttlS: number; source: string; sourceUrl: string; feeds: Feed[]; fallback?: Feed[]; attribution?: { text: string; source: string; license: string } }
 
 const json = (f: (j: never) => LiveMarker[]) => async (r: Response) => f((await r.json()) as never);
 const iem = (network: string): Feed => ({
@@ -385,6 +386,45 @@ async function arcgisWindow<F>(base: string, dateField: string, fields: string, 
 const HIFLD_CELL_TOWERS = "https://services2.arcgis.com/FiaPA4ga0iQKduv3/arcgis/rest/services/Cellular_Towers_in_the_United_States/FeatureServer/0";
 const HIFLD_PAGE = 2000;
 
+/** US mobile country codes in OpenCelliD's per-country export list (download page, 2026-11-11). */
+const OPENCELLID_US_MCCS = [310, 311, 312, 313, 314];
+const OPENCELLID_DOWNLOADS = "https://opencellid.org/downloads.php";
+const OPENCELLID_SNAPSHOT = path.join(process.cwd(), "data/opencellid/ga-cells.csv.gz");
+/** Exports are regenerated daily and each file may be downloaded twice a day, so a good download is reused for 12 h and a refused one is not retried for 1 h. */
+const OPENCELLID_OK_MS = 12 * 3_600_000;
+const OPENCELLID_FAIL_MS = 3_600_000;
+let opencellidMemo: { at: number; ok: boolean; data: Promise<LiveMarker[]> } | null = null;
+let opencellidSnapshotMemo: Promise<LiveMarker[]> | null = null;
+
+/** Today's OpenCelliD US exports filtered to Georgia; errors never include the URL, because it carries the key. */
+function opencellidLive(): Promise<LiveMarker[]> {
+  const key = process.env.OPENCELLID_KEY;
+  if (!key) return Promise.reject(new Error("OPENCELLID_KEY not configured"));
+  const fresh = opencellidMemo && Date.now() - opencellidMemo.at < (opencellidMemo.ok ? OPENCELLID_OK_MS : OPENCELLID_FAIL_MS);
+  if (!fresh) {
+    const memo = {
+      at: Date.now(),
+      ok: true,
+      data: Promise.all(OPENCELLID_US_MCCS.map(async (mcc) => {
+        const r = await fetch(`https://opencellid.org/ocid/downloads?token=${encodeURIComponent(key)}&type=mcc&file=${mcc}.csv.gz`, { cache: "no-store", headers: UA, signal: AbortSignal.timeout(60_000) });
+        if (!r.ok) throw new Error(`MCC ${mcc} export: HTTP ${r.status}`);
+        const b = Buffer.from(await r.arrayBuffer());
+        if (b[0] !== 0x1f || b[1] !== 0x8b) throw new Error(`MCC ${mcc} export refused: ${b.toString("utf8", 0, 120).replace(/pk\.[0-9a-f]+/gi, "[key]").replace(/\s+/g, " ").trim()}`);
+        return parseOpenCellidCsv(gunzipSync(b).toString("utf8"));
+      })).then((parts) => parts.flat()),
+    };
+    memo.data.catch(() => { memo.ok = false; });
+    opencellidMemo = memo;
+  }
+  return opencellidMemo!.data;
+}
+
+/** Georgia rows of the same export committed with the app (scripts/build-ga-opencellid.ts). */
+function opencellidSnapshot() {
+  opencellidSnapshotMemo ??= readFile(OPENCELLID_SNAPSHOT).then((b) => parseOpenCellidCsv(gunzipSync(b).toString("utf8")));
+  return opencellidSnapshotMemo;
+}
+
 /** Every Georgia row of the HIFLD cellular-tower layer, paged by resultOffset so the 2,000-row server cap never truncates it. */
 async function hifldCellTowers(): Promise<Placed> {
   const markers: LiveMarker[] = [];
@@ -607,6 +647,14 @@ const LAYERS: Record<LiveLayer, LayerSpec> = {
     sourceUrl: "https://www.arcgis.com/home/item.html?id=84617c4387cb4554bdfe5bdc1ef7d22b",
     feeds: [{ id: "HIFLD Cellular Towers", url: HIFLD_CELL_TOWERS, markers: hifldCellTowers }],
   },
+  opencellid: {
+    ttlS: 3600,
+    source: "Cell tower data from OpenCellID (https://opencellid.org), licensed under CC BY-SA 4.0. Changes: US export (MCC 310-314) filtered to the Georgia box. Community-estimated cell positions, not tower sites, phones or users; several cells can share one tower",
+    sourceUrl: "https://opencellid.org",
+    attribution: { text: "Cell tower data from OpenCellID, licensed under CC BY-SA 4.0.", source: "https://opencellid.org", license: "https://creativecommons.org/licenses/by-sa/4.0/" },
+    feeds: [{ id: "OpenCelliD daily export", url: OPENCELLID_DOWNLOADS, markers: opencellidLive }],
+    fallback: [{ id: "OpenCelliD export committed with the app (dated by each cell's last-seen time)", url: "https://opencellid.org", markers: opencellidSnapshot }],
+  },
   pireps: {
     ttlS: 300,
     source: "Pilot reports (PIREPs: turbulence, icing, sky and weather as reported by flight crews) from the NOAA Aviation Weather Center data API, Georgia area, observed in the last 6 h; aircraft type only, no registration or callsign",
@@ -669,6 +717,7 @@ async function build(layer: LiveLayer) {
     refreshSeconds: ttlS,
     source,
     sourceUrl,
+    ...(spec.attribution ? { attribution: spec.attribution } : {}),
     feeds: feeds.map((f) => ({ id: f.id, url: f.url, count: f.error ? null : f.markers.length, unplaced: f.unplaced, error: f.error })),
     markers: feeds.flatMap((f) => f.markers),
   };

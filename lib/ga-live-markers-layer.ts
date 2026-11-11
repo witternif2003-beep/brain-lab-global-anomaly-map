@@ -21,6 +21,8 @@ import { CRIME_STROBE_BLUE, CRIME_STROBE_RED, CRIME_TRIANGLE_LAYERS, hasActiveSt
 import { LIVE_FEED_LAYERS, liveCeiling } from './ga-live-markers/ceiling';
 /** Moving public feeds (aircraft, vessels, buses) share one bright cyan so they stand out as live tracks. */
 export const LIVE_TRACK_CYAN = '#00ffff';
+const OPENCELLID_RECENT_DAYS = 7;
+const opencellidRecent = (m: LiveMarker, now: number) => !!m.observedAt && now - Date.parse(m.observedAt) < OPENCELLID_RECENT_DAYS * 86_400_000;
 
 interface Payload {
   generatedAt?: string;
@@ -391,6 +393,25 @@ const SPECS: Record<LiveLayer, Spec> = {
     ],
     detail: (ms) => countBy(ms, 'network').replace(/GA_/g, ''),
   },
+  opencellid: {
+    label: 'Cell sites (OpenCelliD, CC BY-SA 4.0)', color: LIVE_TRACK_CYAN, stroke: '#0f172a', radiusPx: 2, z: 14, refreshMs: 60 * 60_000,
+    iconPx: 9, labelMinZoom: 15,
+    icon: () => ({ shape: 'tower' }),
+    tag: (m) => String(m.label),
+    title: (m) => `CELL SITE · ${m.label}`,
+    rows: (p) => [
+      ['Radio', fmt(p.radio)], ['Network (MCC-MNC)', `${fmt(p.mcc)}-${fmt(p.mnc)}`], ['Area code (LAC/TAC)', fmt(p.area)], ['Cell ID', fmt(p.cell)],
+      ['Estimated range', fmt(p.rangeM, ' m')], ['Measurements', fmt(p.samples)], ['First seen', fmt(p.firstSeen)],
+      ['Position', 'estimated from community measurements; not a tower site, phone or user · several cells can share one tower'],
+      ['Pulse', `cell re-observed by OpenCelliD contributors in the last ${OPENCELLID_RECENT_DAYS} days`],
+      ['Credit', 'Cell tower data from OpenCellID (opencellid.org) · CC BY-SA 4.0'],
+    ],
+    detail: (ms) => {
+      const recent = ms.filter((m) => opencellidRecent(m, Date.now())).length;
+      const radios = [...ms.reduce((a, m) => a.set(String(m.props.radio), (a.get(String(m.props.radio)) ?? 0) + 1), new Map<string, number>())].sort((a, b) => b[1] - a[1]).map(([r, n]) => `${n.toLocaleString('en-US')} ${r}`).join(', ');
+      return `${ms.length.toLocaleString('en-US')} cells (${radios}) · ${recent} re-observed in the last ${OPENCELLID_RECENT_DAYS} days · estimated positions, not tower sites · Cell tower data from OpenCellID, CC BY-SA 4.0`;
+    },
+  },
   celltowers: {
     label: 'Cell towers (HIFLD / FCC licences)', color: LIVE_TRACK_CYAN, stroke: '#0f172a', radiusPx: 3, z: 16, refreshMs: 60 * 60_000,
     iconPx: 16, labelMinZoom: 12, dateOnly: true,
@@ -695,7 +716,7 @@ export function addGaLiveMarkerLayers(map: MapLibreMap): void {
       fill: cam === 'offline' || (layer === 'micromobility' && m.props.disabled) ? hexToRgba('#64748b', 200) : cam === null ? hexToRgba('#f59e0b', 220) : layer === 'aircraft' && m.props.emergency ? hexToRgba('#ef4444') : fillOf ? hexToRgba(fillOf(m), 235) : fill,
       stroke,
       strokePx: layer === 'micromobility' ? 0.5 : 1,
-      pulse: layer === 'celltowers' || (layer === 'aircraft' && !!m.props.emergency) || (layer === 'tfr' && tfrState(m.props, now) === 'active') || now - (firstSeen[layer]?.get(strobeKey(layer, m)) ?? 0) < STROBE_MS,
+      pulse: layer === 'celltowers' || (layer === 'opencellid' && opencellidRecent(m, now)) || (layer === 'aircraft' && !!m.props.emergency) || (layer === 'tfr' && tfrState(m.props, now) === 'active') || now - (firstSeen[layer]?.get(strobeKey(layer, m)) ?? 0) < STROBE_MS,
       strobeColors: CRIME_TRIANGLE_LAYERS.has(layer) ? crimeStrobe : layer === 'towers' ? towerStrobe : undefined,
       props: { marker: m },
       };
