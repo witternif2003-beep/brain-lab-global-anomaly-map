@@ -1,0 +1,196 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import {
+  decodeGtfsRtVehicles,
+  mergeAdsbPoints,
+  parseAdsbLol,
+  parseGbfsFreeBikes,
+  parseIemCurrents,
+  parseOpenSky,
+  parseUsgsIv,
+  parseUsgsQuakes,
+  parseHifldCellTowers,
+  parseOpenCellidCsv,
+  transitMarkers,
+} from "../../lib/ga-live-markers/parse";
+
+const varint = (n: number) => {
+  const out: number[] = [];
+  do {
+    let b = n % 128;
+    n = Math.floor(n / 128);
+    if (n) b |= 0x80;
+    out.push(b);
+  } while (n);
+  return out;
+};
+const key = (field: number, wire: number) => varint(field * 8 + wire);
+const bytes = (field: number, payload: number[]) => [...key(field, 2), ...varint(payload.length), ...payload];
+const str = (field: number, s: string) => bytes(field, [...new TextEncoder().encode(s)]);
+const f32 = (field: number, v: number) => {
+  const b = new Uint8Array(4);
+  new DataView(b.buffer).setFloat32(0, v, true);
+  return [...key(field, 5), ...b];
+};
+
+test("GTFS-RT decoder reads vehicle position, trip route, label and timestamp; skips unknown fields", () => {
+  const position = [...f32(1, 33.75), ...f32(2, -84.39), ...f32(3, 90), ...f32(5, 10)];
+  const vehicle = [...bytes(1, [...str(1, "trip-1"), ...str(5, "110")]), ...bytes(2, position), ...key(5, 0), ...varint(1791120574), ...bytes(8, str(2, "1609")), ...key(9, 0), ...varint(2)];
+  const noPos = [...bytes(1, str(5, "2"))];
+  const feed = [
+    ...bytes(1, [...str(1, "2.0"), ...key(3, 0), ...varint(1791120588)]),
+    ...bytes(2, [...str(1, "e1"), ...bytes(4, vehicle)]),
+    ...bytes(2, [...str(1, "e2"), ...bytes(4, noPos)]),
+  ];
+  const r = decodeGtfsRtVehicles(new Uint8Array(feed));
+  assert.equal(r.headerTimestamp, 1791120588);
+  assert.equal(r.vehicles.length, 1);
+  const v = r.vehicles[0];
+  assert.equal(v.routeId, "110");
+  assert.equal(v.tripId, "trip-1");
+  assert.equal(v.vehicleLabel, "1609");
+  assert.equal(v.timestamp, 1791120574);
+  assert.ok(Math.abs(v.lat - 33.75) < 1e-5 && Math.abs(v.lon + 84.39) < 1e-5);
+  const [m] = transitMarkers(r.vehicles, "MARTA");
+  assert.equal(m.label, "Route 110");
+  assert.equal(m.props.speedMph, 22.4);
+  assert.equal(m.observedAt, "2026-10-04T13:29:34.000Z");
+});
+
+test("GTFS-RT decoder rejects truncated input", () => {
+  assert.throws(() => decodeGtfsRtVehicles(new Uint8Array([0x12, 0x10, 0x0a])));
+});
+
+test("adsb.lol parser drops PIA/LADD aircraft, stale positions and out-of-Georgia aircraft, and omits hex/registration", () => {
+  const now = Date.parse("2026-10-04T13:00:00Z");
+  const ms = parseAdsbLol({
+    now,
+    ac: [
+      { flight: "DAL123  ", t: "B739", lat: 33.6, lon: -84.4, alt_baro: 12000, gs: 300, track: 90, seen_pos: 2, hex: "a1b2c3", r: "N123DL" } as never,
+      { flight: "LADD1", lat: 33.6, lon: -84.4, seen_pos: 1, dbFlags: 8 },
+      { flight: "PIA1", lat: 33.6, lon: -84.4, seen_pos: 1, dbFlags: 4 },
+      { flight: "MIL1", lat: 32.5, lon: -83.6, alt_baro: "ground", seen_pos: 1, dbFlags: 1 },
+      { flight: "OLD1", lat: 33.6, lon: -84.4, seen_pos: 120 },
+      { flight: "FLA1", lat: 28.4, lon: -81.3, seen_pos: 1 },
+    ],
+  });
+  assert.deepEqual(ms.map((m) => m.label), ["DAL123", "MIL1"]);
+  assert.equal(ms[0].observedAt, "2026-10-04T12:59:58.000Z");
+  assert.equal(ms[1].props.onGround, true);
+  assert.ok(!JSON.stringify(ms).includes("a1b2c3") && !JSON.stringify(ms).includes("N123DL"));
+});
+
+test("adsb.lol + adsb.fi merge keeps the freshest fix per aircraft, ORs privacy flags and normalises seconds/ms", () => {
+  const nowMs = Date.parse("2026-10-04T13:00:00Z");
+  const merged = mergeAdsbPoints([
+    { now: nowMs, ac: [
+      { hex: "a1", flight: "DAL1", lat: 33.6, lon: -84.4, seen_pos: 5 },
+      { hex: "b2", flight: "PVT1", lat: 33.7, lon: -84.3, seen_pos: 1 },
+    ] },
+    { now: nowMs / 1000 - 2, aircraft: [
+      { hex: "a1", flight: "DAL1", lat: 33.61, lon: -84.41, seen_pos: 1 },
+      { hex: "b2", flight: "PVT1", lat: 33.7, lon: -84.3, seen_pos: 0, dbFlags: 8 },
+      { hex: "c3", flight: "SWA2", lat: 32.5, lon: -83.6, seen_pos: 0 },
+    ] },
+  ]);
+  assert.equal(merged.now, nowMs);
+  const ms = parseAdsbLol(merged);
+  assert.deepEqual(ms.map((m) => m.label).sort(), ["DAL1", "SWA2"]);
+  const dal = ms.find((m) => m.label === "DAL1")!;
+  assert.equal(dal.observedAt, "2026-10-04T12:59:57.000Z");
+  assert.ok(!JSON.stringify(merged).includes('"hex"'));
+});
+
+test("OpenSky parser converts metres and m/s", () => {
+  const [m] = parseOpenSky({ time: 1791120585, states: [["abc123", "SWA9  ", "United States", 1791120580, 1791120584, -84.4, 33.6, 1000, false, 100, 45, 0, null, 1010, null, false, 0]] });
+  assert.equal(m.label, "SWA9");
+  assert.equal(m.props.altFt, 3281);
+  assert.equal(m.props.gsKt, 194.4);
+});
+
+test("GBFS parser hides reserved vehicles and vehicle IDs", () => {
+  const ms = parseGbfsFreeBikes(
+    { last_updated: 1791120592, data: { bikes: [
+      { bike_id: "x1", lat: 33.76, lon: -84.33, is_reserved: false, is_disabled: false, vehicle_type: "scooter", current_range_meters: 42213 } as never,
+      { lat: 33.77, lon: -84.34, is_reserved: true },
+      { lat: 33.78, lon: -84.35, is_reserved: 0, is_disabled: 1 },
+    ] } },
+    "Lime",
+  );
+  assert.equal(ms.length, 2);
+  assert.equal(ms[0].props.rangeKm, 42.2);
+  assert.equal(ms[1].props.disabled, true);
+  assert.ok(!JSON.stringify(ms).includes("x1"));
+});
+
+test("IEM parser keeps only recent observations", () => {
+  const now = Date.parse("2026-10-04T13:00:00Z");
+  const ms = parseIemCurrents({ data: [
+    { station: "ATL", name: "Atlanta", utc_valid: "2026-10-04T12:52:00Z", lon: -84.43, lat: 33.63, tmpf: 71, relh: 88.4, sknt: 5, drct: 90 },
+    { station: "OLD", name: "Old", utc_valid: "2026-10-03T12:00:00Z", lon: -84, lat: 33 },
+    { station: "NOT", name: "No time", utc_valid: null, lon: -84, lat: 33 },
+  ] }, "GA_ASOS", now);
+  assert.equal(ms.length, 1);
+  assert.equal(ms[0].props.rh, 88);
+  assert.equal(ms[0].props.network, "GA_ASOS");
+});
+
+test("USGS IV parser takes the latest value per site and skips no-data sentinels", () => {
+  const series = (site: string, value: string) => ({
+    sourceInfo: { siteName: `SITE ${site}`, siteCode: [{ value: site }], geoLocation: { geogLocation: { latitude: 34.97, longitude: -83.11 } } },
+    variable: { unit: { unitCode: "ft" } },
+    values: [{ value: [{ value: "0.5", dateTime: "2026-10-04T08:30:00.000-04:00" }, { value, dateTime: "2026-10-04T08:45:00.000-04:00", qualifiers: ["P"] }] }],
+  });
+  const ms = parseUsgsIv({ value: { timeSeries: [series("02176930", "0.97"), series("02999999", "-999999")] } });
+  assert.equal(ms.length, 1);
+  assert.equal(ms[0].props.gageHeightFt, 0.97);
+  assert.equal(ms[0].props.provisional, true);
+  assert.equal(ms[0].observedAt, "2026-10-04T12:45:00.000Z");
+});
+
+test("parseUsgsQuakes keeps Georgia-area events with magnitude, depth and event page", () => {
+  const ms = parseUsgsQuakes({
+    features: [
+      { geometry: { coordinates: [-85.42, 34.45, 9.87] }, properties: { mag: 1.97, place: "14 km ENE of Mentone, Alabama", time: 1_790_000_000_000, type: "earthquake", status: "reviewed", url: "https://earthquake.usgs.gov/earthquakes/eventpage/se60000000" } },
+      { geometry: { coordinates: [-120, 36, 5] }, properties: { mag: 3, place: "California", time: 1_790_000_000_000 } },
+      { geometry: null, properties: { mag: 2 } },
+    ],
+  });
+  assert.equal(ms.length, 1);
+  assert.equal(ms[0].label, "M2.0 14 km ENE of Mentone, Alabama");
+  assert.deepEqual(ms[0].props, { mag: 1.97, depthKm: 9.9, eventType: "earthquake", status: "reviewed", url: "https://earthquake.usgs.gov/earthquakes/eventpage/se60000000" });
+  assert.equal(ms[0].observedAt, new Date(1_790_000_000_000).toISOString());
+});
+
+test("parseHifldCellTowers keeps Georgia tower sites with licensee, structure and height", () => {
+  const ms = parseHifldCellTowers({
+    features: [
+      { geometry: { coordinates: [-84.386, 33.779] }, properties: { OBJECTID: 7, Licensee: "Cellco Partnership", Callsign: "KNKA123", LocCity: "Atlanta", LocCounty: "Fulton", StrucType: "Tower", AllStruc: 45.72, LicStatus: "Active" } },
+      { geometry: { coordinates: [-81.248, 32.291] }, properties: { OBJECTID: 80, Licensee: "ALLTEL Corporation", LocCity: "RINCON", StrucType: " ", AllStruc: 0, LicStatus: "A" } },
+      { geometry: { coordinates: [-120, 36] }, properties: { OBJECTID: 8 } },
+      { geometry: null, properties: { OBJECTID: 9 } },
+    ],
+  });
+  assert.equal(ms.length, 2);
+  assert.equal(ms[0].label, "Cellco Partnership · Atlanta");
+  assert.equal(ms[1].props.structure, null);
+  assert.equal(ms[1].props.heightM, null);
+  assert.equal(ms[0].observedAt, null);
+  assert.deepEqual(ms[0].props, { id: 7, licensee: "Cellco Partnership", callsign: "KNKA123", city: "Atlanta", county: "Fulton", structure: "Tower", heightM: 45.7, licenceStatus: "Active" });
+});
+
+test("parseOpenCellidCsv keeps Georgia cells with radio, network, range and last-seen time; skips comments and out-of-box rows", () => {
+  const ms = parseOpenCellidCsv([
+    "# OpenCelliD export filtered to the Georgia box",
+    "LTE,310,260,30479,70092290,0,-84.388,33.745,1803,1,1,1363987473,1762785180,0",
+    "NR,311,480,7626,61333786,12,-81.1,32.08,0,4,1,0,1762785180,0",
+    "GSM,310,260,307,17022,0,-120.2461,36.1916,11049,9,1,1363987473,1751301121,0",
+    "LTE,310,260,1,2",
+    "",
+  ].join("\n"));
+  assert.equal(ms.length, 2);
+  assert.equal(ms[0].label, "LTE 310-260");
+  assert.equal(ms[0].observedAt, "2025-11-10T14:33:00.000Z");
+  assert.deepEqual(ms[0].props, { radio: "LTE", mcc: 310, mnc: 260, area: 30479, cell: 70092290, rangeM: 1803, samples: 1, firstSeen: "2013-03-22T21:24:33.000Z" });
+  assert.equal(ms[1].props.firstSeen, null);
+});

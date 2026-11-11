@@ -121,7 +121,7 @@ export default function DashboardPage() {
             </div>
             <div className="glass-card border border-white/10 p-3 rounded-xl shadow-md">
               <div className="text-[#94a3b8] text-[10px]">ACTIVE ANOMALIES</div>
-              <div className="text-[#fb923c] font-bold text-xs sm:text-sm">{GEORGIA_ANOMALIES.length} VECTORS</div>
+              <div className="text-[#ff4fd8] font-bold text-xs sm:text-sm">{GEORGIA_ANOMALIES.length} VECTORS</div>
             </div>
             <div className="glass-card border border-white/10 p-3 rounded-xl shadow-md">
               <div className="text-[#94a3b8] text-[10px]">DETECTION PIPELINE</div>
@@ -405,7 +405,7 @@ export default function DashboardPage() {
                   className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
                     a.severity === "CRITICAL"
                       ? "bg-[#f43f5e]/20 text-[#f43f5e] border border-[#f43f5e]/40"
-                      : "bg-[#fb923c]/20 text-[#fb923c] border border-[#fb923c]/40"
+                      : "bg-[#ff4fd8]/20 text-[#ff4fd8] border border-[#ff4fd8]/40"
                   }`}
                 >
                   {a.severity}

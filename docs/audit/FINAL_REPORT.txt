@@ -1,0 +1,215 @@
+MISSION STATUS: INCOMPLETE
+PERFORMANCE CEILING: NOT MET (NOT MEASURABLE ON GPU HARDWARE FROM THIS VM)
+
+1. EXECUTIVE SUMMARY
+286 tracked source, config and document files were scanned (docs/audit/scan.mjs) and triaged;
+bundled data (public/data, models, images) and the lockfile were not reviewed line by line.
+15 confirmed issues were recorded (docs/audit/2026-10-12-technical-audit.md); 12 are fixed,
+3 are documented with the reason they were not changed. OpenTelemetry tracing, browser RUM
+metrics, a self-hosted observability stack and Kubernetes manifests were added and run locally.
+Production: https://brain-lab-six.vercel.app (PR #4). Follow-up: 99.9% multi-window SLOs, Helm chart
+validated on local kind, CI workflow, mocked-upstream load test, WebGL GPU pass timer.
+
+2. CONFIRMED ISSUES & CORRECTIONS
+· File: lib/ga-lidar-layer.ts
+  · Issue: LiDAR layer lost permanently after a WebGL context loss.
+  · Correction: layer re-created on 'webglcontextrestored'.
+· File: lib/ga-lidar-layer.ts
+  · Issue: touch devices drew points up to 10 CSS px.
+  · Correction: 4 CSS px cap on touch devices.
+· File: 16 server routes/connectors (app/api/fbi/*, ga-hydromet, ga-telemetry, ga-traffic, public-live, tiles, lib/connectors/*)
+  · Issue: upstream fetch with no timeout.
+  · Correction: AbortSignal.timeout(15_000) on each call.
+· File: app/api/petitions/sign/route.ts
+  · Issue: returned a fabricated VERIFIED signature count.
+  · Correction: 501, nothing recorded.
+· File: app/api/health/route.ts, components/LucidMethodologyTrace.tsx
+  · Issue: hard-coded commit SHA fallback; constants (clearanceLevel, directivesAvailable) served as live values.
+  · Correction: health returns status, real commit or null, VERCEL_ENV, timestamp. Theme figures labelled "not measured".
+· File: app/api/system-scan/route.ts, app/api/lucid1/route.ts
+  · Issue: fabricated classification marking in public API output.
+  · Correction: removed.
+· File: components/LidarGlobe.tsx
+  · Issue: synthetic vessels shown like real AIS.
+  · Correction: popup says "simulated demo track, not live AIS".
+· File: app/api/cron/ingest/route.ts
+  · Issue: bad CRON_SECRET answered 503.
+  · Correction: 401.
+· File: app/api/tiles/[...path]/route.ts
+  · Issue: invented contact address in OSM User-Agent.
+  · Correction: repository URL.
+· File: k8s/keda-redis-scaler.yaml
+  · Issue: referenced an image, Redis stream and secrets that do not exist.
+  · Correction: deleted; replaced by deploy/k8s/brain-lab.yaml.
+· File: app/api/metrics/rum/route.ts
+  · Issue: one log line per visitor report.
+  · Correction: log removed.
+· File: Dockerfile
+  · Issue: non-numeric USER; Kubernetes runAsNonRoot refused to start the pod.
+  · Correction: UID/GID 10001; runAsUser/runAsGroup set in k8s manifest and Helm chart.
+· Not changed: CORS wildcard in production (policy decision needed), ESLint (typescript-eslint
+  does not support the repo's TypeScript 7), /api/telemetry stream still synthetic.
+
+3. LIDAR RENDERING UPGRADE
+· 3DGS: ADDED AS A SEPARATE VIEWER (/lidar-splat), existing GL_POINTS LiDAR kept unchanged.
+  USGS 3DEP points are turned into one isotropic Gaussian each (scale = mean distance to the
+  3 nearest neighbours, colour = SH degree-0 from ASPRS class, opacity 0.92), the 3DGS
+  initialisation step. No training/optimisation, so it is not a photoreal radiance field.
+  Renderer: PlayCanvas Engine 2.23.0, device order WebGPU then WebGL2. WebXR immersive-vr
+  "Enter VR" button, enabled only when the browser reports immersive-vr available.
+  Local production build on this VM: 1,188,568 Gaussians (downtown Atlanta, GA_Statewide_B2_2018),
+  WebGPU adapter refused -> WebGL2 fallback, ~10 FPS in SwiftShader, 0 errors, VR not available.
+  NOT VERIFIED: the WebGPU path and the VR session (no GPU or headset on this VM).
+· Not adopted from the attached runbooks: Gameleon/MCMC training (needs photos + GPU training),
+  Streamed SOG LOD bundles, WebGPU timestamp queries, Vercel Drains (Hobby plan), gen_ai.*
+  conventions (no LLM in this app), and the "Georgia Perimeter Wall" construction section
+  (physical civil-engineering spec, not software in this repo).
+· Metrics: 24 metric families defined (22 server/RUM + gaussian_splats_drawn,
+  gaussian_splat_webgpu_ratio). Production /api/metrics returned 52 series before this change.
+  Not padded to 7,000; series exist only where something is measured.
+· Point size (map LiDAR, lib/ga-lidar-layer.ts): diameter cut from 0.7x to 0.45x the projected node
+  point spacing, minimum 1 CSS px (was 1.5), caps 6 CSS px desktop (was 10) / 3 touch (was 4).
+  Desktop requests one extra octree level (point budget unchanged at 5 M) so the smaller points close up.
+· Splat size (/lidar-splat): Gaussian sigma = 0.4x the mean 3-neighbour distance, clamped 0.03-0.6 m
+  (was 1.0x, 0.08-1.5 m).
+· Not adopted from the two new attachments: SHARP-GS 8K binning, GPU tile radix sort (PlayCanvas
+  already sorts internally), StreamingGS/MobileSplat, Flink+PDAL, WebGPU Inspector, the 562 MB -> 13.6 MB
+  memory figure (other scenes), and the wall-widening / concrete-curing spec (not software in this repo).
+· Performance Impact: NOT MEASURED ON A GPU. This VM renders with SwiftShader (CPU): 3.7 FPS mean,
+  p95 frame 483 ms on /godseye-telemetry at 1600x1000. No before/after GPU numbers exist.
+· Memory Reduction: none claimed. JS heap measured 104 MB used during the VM run.
+· Latency Reduction: none claimed; not measured.
+
+4. OBSERVABILITY METRICS IMPLEMENTED
+· /api/metrics (Prometheus text): ga_feed_up, ga_feed_request_duration_ms, ga_feed_markers,
+  ga_feed_source_errors, ga_feed_data_age_seconds, aircraft_ingest_latency_ms,
+  transit_gtfs_staleness_seconds, usgs_seismic_events_30d, usgs_seismic_event_delta (1 h count),
+  usgs_seismic_latest_event_age_seconds, faa_restriction_active_count, nodejs_heap_used_bytes.
+· Browser RUM via /api/metrics/rum (5-min window, per instance): map_render_fps,
+  map_render_frame_ms_p95, memory_heap_usage_bytes, network_io_throughput_mbps, lidar_points_drawn,
+  web_vitals_lcp_ms_p75, web_vitals_inp_ms_p75, web_vitals_cls_p75, rum_reports.
+· Tracing: instrumentation.ts (@vercel/otel); one span per layer probe. Verified locally: the
+  OTel Collector (OTLP 4317/4318) received 125 spans.
+· Prometheus rules: deploy/prometheus/rules.yml — 99.9% feed SLO, multi-window burn rate
+  (1h&5m 14.4x page, 6h&30m 6x page, 3d&6h 1x ticket), FeedDown, TransitStale, FeedSlow,
+  RenderBelow30Fps, FrameOver16ms, LidarGpuPassOver8ms, MobileHeapOver512MB. promtool: 16 rules OK.
+· Grafana: deploy/grafana/brain-lab-dashboard.json (15 panels).
+· GPU timing: lidar_gpu_ms_p95 from EXT_disjoint_timer_query_webgl2 around the LiDAR draw
+  (WebGL timer queries, not WebGPU timestamps). Unavailable on this VM (SwiftShader, no
+  extension, no navigator.gpu), so no value has been observed yet.
+· Vercel Drains: NOT CONFIGURED. Drains need Pro/Enterprise; the Vercel team is on Hobby.
+
+5. UNCERTAINTIES & RESIDUAL RISKS
+· RUM values live in one serverless instance's memory; a report and a scrape can hit different
+  instances (seen on production: rum_reports absent after a 204). Fleet-wide numbers need OTLP
+  metrics export or a shared store.
+· /api/metrics/rum is public; bounded and validated but not rate-limited.
+· Production traces need a Vercel tracing integration or OTEL_EXPORTER_OTLP_ENDPOINT; not configured.
+· First production scrape after deploy showed ga_feed_up{layer="aircraft"} 0; a direct request a
+  minute later returned 408 aircraft. The FeedDown alert waits 10 min for this reason.
+· Mobile 60 FPS, 16 ms frame and 512 MB targets: unmeasured (no physical phone or GPU here).
+· Mocked-upstream load test (scripts/perf/mock-fetch.mjs, replay only, +150 ms per upstream):
+  200 concurrent, 30 s, 9 layer APIs + health -> 24,100 requests, 803 req/s, 0 errors,
+  p50 219 ms, p95 257 ms, p99 457 ms, max 18.4 s; 0 requests left the machine. Single local
+  process; not a 10,000-user or production result.
+· 10,000-user test not run: it would load the public agencies behind each layer. Earlier local test:
+  200 concurrent -> 914 req/s, p95 342 ms, 0 errors (pages + health); 50 concurrent cached layer
+  API -> 1,673 req/s, p95 52 ms, 0 errors. The 50 ms API ceiling is met only for cached layers.
+· npm audit reports advisories in the dependency tree; no forced fix was applied.
+· No Kafka/Flink: the app is stateless serverless functions with no consumer to attach them to.
+
+6. DEPLOYMENT ARTIFACTS
+· Dockerfile, .dockerignore (non-root, healthcheck) — built and run.
+· deploy/docker-compose.yml — app + OTel Collector + Prometheus, run locally.
+· deploy/otel-collector.yaml, deploy/prometheus/{prometheus.yml,rules.yml}, deploy/grafana/brain-lab-dashboard.json.
+· deploy/k8s/brain-lab.yaml — Deployment, Service, HPA, Collector. Passes server-side dry run on kind.
+· deploy/helm/brain-lab — Helm chart (dev/production values). Installed on a local kind cluster:
+  app Ready as UID 10001, /api/health 200, /api/metrics 9/9 layers up, Collector received spans.
+  Not deployed to any real cluster.
+· scripts/perf/load.mjs, scripts/perf/mock-fetch.mjs — bounded load test, record/replay upstream stub.
+· CI/CD: .github/workflows/ci.yml (typecheck, tests, build, Docker + health, Helm, promtool);
+  existing deploy.yml; production deployed with the Vercel CLI.
+
+7. PROPOSED, NOT IMPLEMENTED
+· WebGPU 3DGS / PlayCanvas 2.19.0 / Streamed SOG / Gaussianization of 3DEP: not built. The brief's
+  FPS figures are PlayCanvas's published numbers for its own splat scenes (verified against
+  blog.playcanvas.com, 2026-06-03); they are not measurements of this app. The 1,557 -> 105 MB heap
+  figure was not found in that source.
+· Vercel Drains to OTLP/Snowflake/Elastic: needs a Pro plan and a real endpoint.
+· Durable fleet-wide RUM, physical-phone and GPU benchmarks, production Kubernetes.
+
+8. GAIA GPS EXTRACT / "GAIA MIRROR" RUNBOOK
+· Added: TOPO basemap on /godseye-telemetry: USGS The National Map topo tiles (public domain)
+  with the Waymarked Trails hiking overlay (OpenStreetMap, CC BY-SA). Other basemaps unchanged.
+· Not done: copying the Gaia GPS App Store listing (name, text, screenshots, reviews, prices);
+  it is Trailbehind's trademark and copyrighted content.
+· Not done: Mapbox GL JS / Cesium World Terrain (need provider tokens; MapLibre + AWS Terrarium
+  3D terrain already in place), Vercel Drains (Hobby plan), WebGPU timestamp queries (no GPU here),
+  gen_ai.* attributes (/api/spark makes no model call), Gatling, offline maps, accounts, subscriptions.
+· Not claimed: Mapbox "60 FPS desktop and mobile" (vendor statement, not this app).
+
+9. SATELLITE + 3D TERRAIN EVERYWHERE (/godseye-telemetry)
+· Done: default SATELLITE style and TOPO now load with AWS Terrarium 3D terrain (1.5x); switching
+  to either keeps terrain on. TERRAIN, MAP, 2D, STREET LIDAR and all live layers unchanged.
+· Measured (local, phone-sized touch viewport): terrain on at load; Blue Ridge elevation sampled;
+  street LiDAR over downtown Atlanta on terrain: 2,485,759 points, 0 errors.
+· Not fixed: MapLibre scale bar shows "NaN ft" at steep pitch on terrain; horizon blur on phones
+  (draped imagery). Not added: Mapbox / Cesium / Google 3D Tiles (need provider keys).
+
+10. PHONE ZOOM CRASH + 3D-ONLY MAPS
+· Mitigated (not reproduced on the VM): touch devices now cap the map and sky canvas pixel ratio
+  at 2x, turn off antialiasing and use the 4K star map instead of 8K. LiDAR dot size follows the
+  capped ratio. Measured at DPR 3 phone viewport: canvas 740x1492 instead of 1110x2238.
+· Removed on user instruction: the 2D button (GodsEYE), the 2D/3D toggle (home map) and the
+  3D TERRAIN toggle (/threat-globe). All maps now always show 3D terrain; LIGHT basemap too.
+· Not verified on a real phone or GPU.
+
+11. OPERATION MAP HARDEN (MapLibre memory + context loss)
+· Done: maplibre-gl 6.11.2 -> 6.13.0 (upstream fixes for GeoJSON memory growth to crash, camera
+  under terrain on zoom, stale cached workers). Worker URL versioned. Touch tile cache 3 zoom levels.
+· Done: GodsEYE recovers from WebGL context loss: notice shown, all overlays + 3D custom layers
+  re-added. Forced loss on the VM: 52 layers and 3 custom layers back, 0 errors. New metric:
+  webgl_context_losses.
+· Already in place: no DOM markers (deck.gl icon atlas), probe context released, rAF pauses when
+  hidden. Not applicable: Mapbox, Supercluster, video sources.
+· Not done: single WebGL context per page, VRAM/tile-byte metrics (no browser API), MapLibre 6.14.0
+  (2 days old), real-phone test.
+
+12. OSINT4ALL (start.me/p/L1rEYQ) + SEARCH BAR
+· Source review: the live start.me page answered with a Cloudflare challenge (not bypassed).
+  Used the Wayback copy of start.me/p/L1rEYQ.json (2026-07-21): 79 widgets, 1,456 links. The
+  attachment says 77 bookmark groups / 1,446 canonical resources; the difference is not reconciled.
+· Triage: most links are person-search, phone, email, username and social-media lookup tools
+  (not used: person-level), commercial flight/ship trackers needing paid keys (ADS-B is already
+  on the map from adsb.lol), or directories and static maps (no machine feed).
+· Added: map layer "pireps", NOAA Aviation Weather Center pilot reports for the Georgia area,
+  last 6 h, refresh 5 min, aircraft type only. Verified endpoint: HTTP 200, 18 reports.
+  Added to /api/metrics layer probes and the GodsEYE feed list. Nothing removed.
+· Not added: OSM generic surveillance cameras (Overpass timed out on both public servers: 504
+  and no answer in 90-100 s); NHC active storms (verified endpoint, but the map keeps only
+  markers inside the Georgia wall, so storms offshore would never show); NOAA METAR (same
+  airports as the existing IEM ASOS stations).
+· "20,000 more real-time tracking": not met. One verified real-time feed was added; the number
+  was not padded with duplicates or static links.
+· Search bar (/fbi-osint and the GodsEYE popup): on phones the field now takes the full row,
+  uses a 16 px font (iOS no longer zooms the page on tap), filters as you type (0.4 s) and
+  matches source names (e.g. "threatfox"). Phones get the card list instead of a 7-column
+  table that hid the indicator column off-screen.
+· Not done: the "Georgia Statewide Anomaly Report" format and the 53,000-record generator.
+  They describe invented espionage cases with named institutions, ethnic labels, phone, bank
+  and location records, NSA validation and federal charges. That is fabricated intelligence
+  about identifiable people and places; it is not generated.
+
+13. PUBLIC EQUIPMENT, POLICE TECHNOLOGY, POLICE REPORTS, INCIDENT STROBE, 20-DAY 911 WINDOW
+· equipment: 25,851 OSM-mapped public items in 51 categories (Geofabrik extract, OSM base
+  2026-10-14T20:21:12Z). Fixed locations, not live. Private-access items excluded.
+· policetech: 306 Georgia agencies, 532 technology records from EFF's Atlas of Surveillance
+  (ALPR 230, body cameras 139, drones 51, camera registry 41, RTCC 22, gunshot detection 19,
+  predictive policing 11, face recognition 7, video analytics 5, investigative platforms 5,
+  cell-site simulator 1, fusion center 1). 1 agency not placed. Agency level only.
+· policereports: 2,845 reports in the last 20 days (Atlanta PD 2,703, Doraville PD 142),
+  block level, ~110 m rounding, sensitive fields dropped.
+· 911 calls: Augusta and Athens windows set to the last 20 days (1,701 and 5,056 placed).
+· Strobe: new incidents pulse for 10 min after first received, then go steady.
+· "30,000 more": 29,002 new markers from real sources; not padded.
+· Not built: tracking equipment on police vehicles (equals tracking vehicles and officers).

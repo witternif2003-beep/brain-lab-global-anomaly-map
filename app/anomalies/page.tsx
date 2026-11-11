@@ -158,7 +158,7 @@ export default function AnomaliesPage() {
                     className={`px-2.5 py-0.5 rounded text-xs font-bold uppercase tracking-wider ${
                       isCritical
                         ? "bg-[#f43f5e]/20 text-[#f43f5e] border border-[#f43f5e]/50"
-                        : "bg-[#fb923c]/20 text-[#fb923c] border border-[#fb923c]/50"
+                        : "bg-[#ff4fd8]/20 text-[#ff4fd8] border border-[#ff4fd8]/50"
                     }`}
                   >
                     {anom.severity} • {anom.code}
@@ -189,7 +189,7 @@ export default function AnomaliesPage() {
                 </div>
                 <div className="glass-card p-3 rounded-xl border border-white/10">
                   <span className="text-[#8595a8] block text-[10px] uppercase">REAL-TIME ANOMALY DEVIATION</span>
-                  <span className={`font-bold block mt-0.5 ${isCritical ? "text-[#f43f5e]" : "text-[#fb923c]"}`}>
+                  <span className={`font-bold block mt-0.5 ${isCritical ? "text-[#f43f5e]" : "text-[#ff4fd8]"}`}>
                     {anom.deviation}
                   </span>
                 </div>

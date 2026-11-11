@@ -26,7 +26,7 @@ export async function fetchWorldBank(a: {
   const url =
     `${WB}/country/${encodeURIComponent(a.territoryIso3)}` +
     `/indicator/${encodeURIComponent(a.indicatorId)}?format=json&per_page=${perPage}`;
-  const res = await fetch(url, {
+  const res = await fetch(url, { signal: AbortSignal.timeout(15_000),
     headers: { Accept: "application/json", "User-Agent": "brain-lab-ingest/1.0" },
     cache: "no-store"
   });

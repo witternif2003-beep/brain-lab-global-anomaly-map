@@ -2,6 +2,11 @@
 
 import React, { useEffect, useState } from 'react';
 
+// Probe once: every getContext() on a new canvas creates a WebGL context, and browsers drop the
+// oldest live context (the map's or deck.gl's) once about 16 exist.
+let webgl2Support: boolean | undefined;
+const hasWebgl2 = () => (webgl2Support ??= typeof document === 'undefined' || !!document.createElement('canvas').getContext('webgl2'));
+
 export default function MapDebugOverlay({ mapRef, embedded = false }: { mapRef: React.MutableRefObject<any>; embedded?: boolean }) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'TELEMETRY' | 'HONESTY' | 'SYS'>('TELEMETRY');
@@ -27,7 +32,7 @@ export default function MapDebugOverlay({ mapRef, embedded = false }: { mapRef: 
         const m = mapRef?.current;
         if (!m) return;
 
-        const webgl2 = typeof document !== 'undefined' ? !!document.createElement('canvas').getContext('webgl2') : true;
+        const webgl2 = hasWebgl2();
         const canvas = m.getCanvas?.() as HTMLCanvasElement | undefined;
         const rect = canvas?.getBoundingClientRect?.();
         const zoom = typeof m.getZoom === 'function' ? m.getZoom() : 6.0;

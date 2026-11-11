@@ -1,0 +1,2460 @@
+{
+ "title": "FBI Crime Data Explorer — Georgia statewide summarized offenses",
+ "source": "FBI Uniform Crime Reporting Program, Crime Data Explorer (CDE)",
+ "sourceUrl": "https://cde.ucr.cjis.gov/LATEST/webapp/#/pages/explorer/crime/crime-trend",
+ "apiBase": "https://api.usa.gov/crime/fbi/cde/summarized/state/GA",
+ "vintage": {
+  "maxDataDate": "09/2026",
+  "lastRefreshDate": "09/15/2026"
+ },
+ "grain": "State (Georgia) × month × offense category, as published by the FBI",
+ "definitions": "Counts are FBI-published monthly statewide offense and clearance totals; annual figures are the sum of those 12 published months. Rates are the FBI-published offenses per 100,000 people. Coverage is the FBI-published percent of Georgia's population covered by agencies reporting that month.",
+ "limitations": [
+  "Reported offenses only; not all crime is reported to police.",
+  "Agency participation varies by month; read every count next to its coverage.",
+  "The most recent months are incomplete because agencies submit late; FBI revises them.",
+  "Annual/monthly data, re-fetched by script after review — not a live feed."
+ ],
+ "codeVersion": "lib/ga-ucr/summarize.ts",
+ "generatedAt": "2026-10-04T11:08:30.055Z",
+ "files": [
+  {
+   "offense": "violent-crime",
+   "url": "https://api.usa.gov/crime/fbi/cde/summarized/state/GA/violent-crime?from=01-2024&to=12-2026",
+   "retrievedAt": "2026-10-04T10:31:06.103Z",
+   "filename": "data/ga-ucr/raw/violent-crime.json",
+   "bytes": 7769,
+   "sha256": "8149d3bcd1187be8f22f8f4d9e78ff06f5b9a6d26d17f3a27872c4ee30bfc129",
+   "schema": {
+    "actuals": [
+     "Georgia Offenses",
+     "Georgia Clearances"
+    ],
+    "rates": [
+     "Georgia Offenses",
+     "Georgia Clearances",
+     "United States Offenses",
+     "United States Clearances"
+    ]
+   }
+  },
+  {
+   "offense": "homicide",
+   "url": "https://api.usa.gov/crime/fbi/cde/summarized/state/GA/homicide?from=01-2024&to=12-2026",
+   "retrievedAt": "2026-10-04T10:31:06.502Z",
+   "filename": "data/ga-ucr/raw/homicide.json",
+   "bytes": 7571,
+   "sha256": "e47c0ff04c1567400d63c63dabbf778cf6e872846dcb1eb05e8e73a701c178a5",
+   "schema": {
+    "actuals": [
+     "Georgia Offenses",
+     "Georgia Clearances"
+    ],
+    "rates": [
+     "Georgia Offenses",
+     "Georgia Clearances",
+     "United States Offenses",
+     "United States Clearances"
+    ]
+   }
+  },
+  {
+   "offense": "rape",
+   "url": "https://api.usa.gov/crime/fbi/cde/summarized/state/GA/rape?from=01-2024&to=12-2026",
+   "retrievedAt": "2026-10-04T10:31:06.931Z",
+   "filename": "data/ga-ucr/raw/rape.json",
+   "bytes": 7609,
+   "sha256": "2bfb53d9b04dee6500f0c019cc1fa4587d3ce64d209d6829fc82c9eb404bb1ad",
+   "schema": {
+    "actuals": [
+     "Georgia Offenses",
+     "Georgia Clearances"
+    ],
+    "rates": [
+     "Georgia Offenses",
+     "Georgia Clearances",
+     "United States Offenses",
+     "United States Clearances"
+    ]
+   }
+  },
+  {
+   "offense": "robbery",
+   "url": "https://api.usa.gov/crime/fbi/cde/summarized/state/GA/robbery?from=01-2024&to=12-2026",
+   "retrievedAt": "2026-10-04T10:31:07.309Z",
+   "filename": "data/ga-ucr/raw/robbery.json",
+   "bytes": 7611,
+   "sha256": "8337296338529734c879e0cf479d13fe878bc9f7dc1562b4edd501e3ce20a9c2",
+   "schema": {
+    "actuals": [
+     "Georgia Offenses",
+     "Georgia Clearances"
+    ],
+    "rates": [
+     "Georgia Offenses",
+     "Georgia Clearances",
+     "United States Offenses",
+     "United States Clearances"
+    ]
+   }
+  },
+  {
+   "offense": "aggravated-assault",
+   "url": "https://api.usa.gov/crime/fbi/cde/summarized/state/GA/aggravated-assault?from=01-2024&to=12-2026",
+   "retrievedAt": "2026-10-04T10:31:07.685Z",
+   "filename": "data/ga-ucr/raw/aggravated-assault.json",
+   "bytes": 7750,
+   "sha256": "2b4b44fcf984e03e0315fde659927299b481ed54bda27e07431ff6650d906a5f",
+   "schema": {
+    "actuals": [
+     "Georgia Offenses",
+     "Georgia Clearances"
+    ],
+    "rates": [
+     "Georgia Offenses",
+     "Georgia Clearances",
+     "United States Offenses",
+     "United States Clearances"
+    ]
+   }
+  },
+  {
+   "offense": "property-crime",
+   "url": "https://api.usa.gov/crime/fbi/cde/summarized/state/GA/property-crime?from=01-2024&to=12-2026",
+   "retrievedAt": "2026-10-04T10:31:08.058Z",
+   "filename": "data/ga-ucr/raw/property-crime.json",
+   "bytes": 7918,
+   "sha256": "6b0c47b6c59e4532e14052bbf75b7a2a5d36ecc1d9f4ccfcc549ae15c20e1e9a",
+   "schema": {
+    "actuals": [
+     "Georgia Offenses",
+     "Georgia Clearances"
+    ],
+    "rates": [
+     "Georgia Offenses",
+     "Georgia Clearances",
+     "United States Offenses",
+     "United States Clearances"
+    ]
+   }
+  },
+  {
+   "offense": "burglary",
+   "url": "https://api.usa.gov/crime/fbi/cde/summarized/state/GA/burglary?from=01-2024&to=12-2026",
+   "retrievedAt": "2026-10-04T10:31:08.418Z",
+   "filename": "data/ga-ucr/raw/burglary.json",
+   "bytes": 7723,
+   "sha256": "bd1a1328c64b49084d471b7b09f96f149b1c6118985dfbf00d919329a6d7b9b8",
+   "schema": {
+    "actuals": [
+     "Georgia Offenses",
+     "Georgia Clearances"
+    ],
+    "rates": [
+     "Georgia Offenses",
+     "Georgia Clearances",
+     "United States Offenses",
+     "United States Clearances"
+    ]
+   }
+  },
+  {
+   "offense": "larceny",
+   "url": "https://api.usa.gov/crime/fbi/cde/summarized/state/GA/larceny?from=01-2024&to=12-2026",
+   "retrievedAt": "2026-10-04T10:31:08.780Z",
+   "filename": "data/ga-ucr/raw/larceny.json",
+   "bytes": 7861,
+   "sha256": "625d64cdde8265e797bce2945b94a23eddf817cbeb406882678bf1e1dd14e924",
+   "schema": {
+    "actuals": [
+     "Georgia Offenses",
+     "Georgia Clearances"
+    ],
+    "rates": [
+     "Georgia Offenses",
+     "Georgia Clearances",
+     "United States Offenses",
+     "United States Clearances"
+    ]
+   }
+  }
+ ],
+ "offenses": [
+  {
+   "offense": "violent-crime",
+   "months": [
+    {
+     "month": "01-2024",
+     "offenses": 2822,
+     "clearances": 877,
+     "ratePer100k": 26.99,
+     "coveragePct": 93.51
+    },
+    {
+     "month": "02-2024",
+     "offenses": 2685,
+     "clearances": 868,
+     "ratePer100k": 25.74,
+     "coveragePct": 93.3
+    },
+    {
+     "month": "03-2024",
+     "offenses": 2788,
+     "clearances": 1005,
+     "ratePer100k": 26.74,
+     "coveragePct": 93.24
+    },
+    {
+     "month": "04-2024",
+     "offenses": 3106,
+     "clearances": 944,
+     "ratePer100k": 29.89,
+     "coveragePct": 92.93
+    },
+    {
+     "month": "05-2024",
+     "offenses": 3196,
+     "clearances": 1093,
+     "ratePer100k": 30.73,
+     "coveragePct": 93.02
+    },
+    {
+     "month": "06-2024",
+     "offenses": 2908,
+     "clearances": 900,
+     "ratePer100k": 28.06,
+     "coveragePct": 92.7
+    },
+    {
+     "month": "07-2024",
+     "offenses": 2920,
+     "clearances": 909,
+     "ratePer100k": 28.22,
+     "coveragePct": 92.54
+    },
+    {
+     "month": "08-2024",
+     "offenses": 3014,
+     "clearances": 996,
+     "ratePer100k": 29.21,
+     "coveragePct": 92.28
+    },
+    {
+     "month": "09-2024",
+     "offenses": 2819,
+     "clearances": 923,
+     "ratePer100k": 27.33,
+     "coveragePct": 92.26
+    },
+    {
+     "month": "10-2024",
+     "offenses": 2721,
+     "clearances": 919,
+     "ratePer100k": 26.34,
+     "coveragePct": 92.41
+    },
+    {
+     "month": "11-2024",
+     "offenses": 2591,
+     "clearances": 803,
+     "ratePer100k": 25.11,
+     "coveragePct": 92.29
+    },
+    {
+     "month": "12-2024",
+     "offenses": 2447,
+     "clearances": 780,
+     "ratePer100k": 23.78,
+     "coveragePct": 92.04
+    },
+    {
+     "month": "01-2025",
+     "offenses": 2497,
+     "clearances": 800,
+     "ratePer100k": 23.96,
+     "coveragePct": 92.21
+    },
+    {
+     "month": "02-2025",
+     "offenses": 2223,
+     "clearances": 814,
+     "ratePer100k": 21.37,
+     "coveragePct": 92.05
+    },
+    {
+     "month": "03-2025",
+     "offenses": 2701,
+     "clearances": 865,
+     "ratePer100k": 25.97,
+     "coveragePct": 92.02
+    },
+    {
+     "month": "04-2025",
+     "offenses": 2878,
+     "clearances": 965,
+     "ratePer100k": 27.58,
+     "coveragePct": 92.34
+    },
+    {
+     "month": "05-2025",
+     "offenses": 2964,
+     "clearances": 992,
+     "ratePer100k": 28.58,
+     "coveragePct": 91.77
+    },
+    {
+     "month": "06-2025",
+     "offenses": 2919,
+     "clearances": 902,
+     "ratePer100k": 28.26,
+     "coveragePct": 91.4
+    },
+    {
+     "month": "07-2025",
+     "offenses": 2618,
+     "clearances": 886,
+     "ratePer100k": 26.47,
+     "coveragePct": 87.5
+    },
+    {
+     "month": "08-2025",
+     "offenses": 2333,
+     "clearances": 882,
+     "ratePer100k": 23.03,
+     "coveragePct": 89.61
+    },
+    {
+     "month": "09-2025",
+     "offenses": 2486,
+     "clearances": 880,
+     "ratePer100k": 24.58,
+     "coveragePct": 89.47
+    },
+    {
+     "month": "10-2025",
+     "offenses": 2495,
+     "clearances": 932,
+     "ratePer100k": 24.7,
+     "coveragePct": 89.38
+    },
+    {
+     "month": "11-2025",
+     "offenses": 2328,
+     "clearances": 812,
+     "ratePer100k": 23.04,
+     "coveragePct": 89.38
+    },
+    {
+     "month": "12-2025",
+     "offenses": 2402,
+     "clearances": 904,
+     "ratePer100k": 23.76,
+     "coveragePct": 89.46
+    },
+    {
+     "month": "01-2026",
+     "offenses": 2464,
+     "clearances": 822,
+     "ratePer100k": 24.79,
+     "coveragePct": 87.95
+    },
+    {
+     "month": "02-2026",
+     "offenses": 1940,
+     "clearances": 746,
+     "ratePer100k": 19.83,
+     "coveragePct": 86.56
+    },
+    {
+     "month": "03-2026",
+     "offenses": 2396,
+     "clearances": 874,
+     "ratePer100k": 24.69,
+     "coveragePct": 85.85
+    },
+    {
+     "month": "04-2026",
+     "offenses": 2451,
+     "clearances": 858,
+     "ratePer100k": 26.2,
+     "coveragePct": 82.77
+    },
+    {
+     "month": "05-2026",
+     "offenses": 2168,
+     "clearances": 836,
+     "ratePer100k": 25.79,
+     "coveragePct": 74.36
+    },
+    {
+     "month": "06-2026",
+     "offenses": 1893,
+     "clearances": 705,
+     "ratePer100k": 24.34,
+     "coveragePct": 68.81
+    },
+    {
+     "month": "07-2026",
+     "offenses": 1758,
+     "clearances": 691,
+     "ratePer100k": 25.26,
+     "coveragePct": 61.57
+    },
+    {
+     "month": "08-2026",
+     "offenses": 331,
+     "clearances": 151,
+     "ratePer100k": 23.65,
+     "coveragePct": 12.39
+    }
+   ],
+   "completeYears": [
+    {
+     "year": 2024,
+     "months": 12,
+     "firstMonth": "01-2024",
+     "lastMonth": "12-2024",
+     "offenses": 34017,
+     "clearances": 11017,
+     "coverageMinPct": 92.04,
+     "coverageMaxPct": 93.51
+    },
+    {
+     "year": 2025,
+     "months": 12,
+     "firstMonth": "01-2025",
+     "lastMonth": "12-2025",
+     "offenses": 30844,
+     "clearances": 10634,
+     "coverageMinPct": 87.5,
+     "coverageMaxPct": 92.34
+    }
+   ],
+   "yearOverYear": [
+    {
+     "from": 2024,
+     "to": 2025,
+     "pctChange": -9.327689096628157
+    }
+   ],
+   "partial": {
+    "current": {
+     "year": 2026,
+     "months": 8,
+     "firstMonth": "01-2026",
+     "lastMonth": "08-2026",
+     "offenses": 15401,
+     "clearances": 5683,
+     "coverageMinPct": 12.39,
+     "coverageMaxPct": 87.95
+    },
+    "priorSamePeriod": {
+     "year": 2025,
+     "months": 8,
+     "firstMonth": "01-2025",
+     "lastMonth": "08-2025",
+     "offenses": 21133,
+     "clearances": 7106,
+     "coverageMinPct": 87.5,
+     "coverageMaxPct": 92.34
+    }
+   },
+   "warnings": [
+    "2026 is partial (8 of 12 months published); not compared as a year-over-year change"
+   ]
+  },
+  {
+   "offense": "homicide",
+   "months": [
+    {
+     "month": "01-2024",
+     "offenses": 60,
+     "clearances": 31,
+     "ratePer100k": 0.57,
+     "coveragePct": 93.51
+    },
+    {
+     "month": "02-2024",
+     "offenses": 62,
+     "clearances": 39,
+     "ratePer100k": 0.59,
+     "coveragePct": 93.3
+    },
+    {
+     "month": "03-2024",
+     "offenses": 42,
+     "clearances": 30,
+     "ratePer100k": 0.4,
+     "coveragePct": 93.24
+    },
+    {
+     "month": "04-2024",
+     "offenses": 76,
+     "clearances": 36,
+     "ratePer100k": 0.73,
+     "coveragePct": 92.93
+    },
+    {
+     "month": "05-2024",
+     "offenses": 65,
+     "clearances": 34,
+     "ratePer100k": 0.62,
+     "coveragePct": 93.02
+    },
+    {
+     "month": "06-2024",
+     "offenses": 57,
+     "clearances": 25,
+     "ratePer100k": 0.55,
+     "coveragePct": 92.7
+    },
+    {
+     "month": "07-2024",
+     "offenses": 76,
+     "clearances": 30,
+     "ratePer100k": 0.73,
+     "coveragePct": 92.54
+    },
+    {
+     "month": "08-2024",
+     "offenses": 83,
+     "clearances": 45,
+     "ratePer100k": 0.8,
+     "coveragePct": 92.28
+    },
+    {
+     "month": "09-2024",
+     "offenses": 58,
+     "clearances": 31,
+     "ratePer100k": 0.56,
+     "coveragePct": 92.26
+    },
+    {
+     "month": "10-2024",
+     "offenses": 45,
+     "clearances": 30,
+     "ratePer100k": 0.44,
+     "coveragePct": 92.41
+    },
+    {
+     "month": "11-2024",
+     "offenses": 62,
+     "clearances": 30,
+     "ratePer100k": 0.6,
+     "coveragePct": 92.29
+    },
+    {
+     "month": "12-2024",
+     "offenses": 63,
+     "clearances": 32,
+     "ratePer100k": 0.61,
+     "coveragePct": 92.04
+    },
+    {
+     "month": "01-2025",
+     "offenses": 54,
+     "clearances": 38,
+     "ratePer100k": 0.52,
+     "coveragePct": 92.21
+    },
+    {
+     "month": "02-2025",
+     "offenses": 47,
+     "clearances": 30,
+     "ratePer100k": 0.45,
+     "coveragePct": 92.05
+    },
+    {
+     "month": "03-2025",
+     "offenses": 57,
+     "clearances": 37,
+     "ratePer100k": 0.55,
+     "coveragePct": 92.02
+    },
+    {
+     "month": "04-2025",
+     "offenses": 48,
+     "clearances": 26,
+     "ratePer100k": 0.46,
+     "coveragePct": 92.34
+    },
+    {
+     "month": "05-2025",
+     "offenses": 55,
+     "clearances": 20,
+     "ratePer100k": 0.53,
+     "coveragePct": 91.77
+    },
+    {
+     "month": "06-2025",
+     "offenses": 48,
+     "clearances": 24,
+     "ratePer100k": 0.46,
+     "coveragePct": 91.4
+    },
+    {
+     "month": "07-2025",
+     "offenses": 60,
+     "clearances": 30,
+     "ratePer100k": 0.61,
+     "coveragePct": 87.5
+    },
+    {
+     "month": "08-2025",
+     "offenses": 35,
+     "clearances": 19,
+     "ratePer100k": 0.35,
+     "coveragePct": 89.61
+    },
+    {
+     "month": "09-2025",
+     "offenses": 46,
+     "clearances": 28,
+     "ratePer100k": 0.45,
+     "coveragePct": 89.47
+    },
+    {
+     "month": "10-2025",
+     "offenses": 45,
+     "clearances": 24,
+     "ratePer100k": 0.45,
+     "coveragePct": 89.38
+    },
+    {
+     "month": "11-2025",
+     "offenses": 40,
+     "clearances": 20,
+     "ratePer100k": 0.4,
+     "coveragePct": 89.38
+    },
+    {
+     "month": "12-2025",
+     "offenses": 43,
+     "clearances": 17,
+     "ratePer100k": 0.43,
+     "coveragePct": 89.46
+    },
+    {
+     "month": "01-2026",
+     "offenses": 40,
+     "clearances": 20,
+     "ratePer100k": 0.4,
+     "coveragePct": 87.95
+    },
+    {
+     "month": "02-2026",
+     "offenses": 36,
+     "clearances": 24,
+     "ratePer100k": 0.37,
+     "coveragePct": 86.56
+    },
+    {
+     "month": "03-2026",
+     "offenses": 37,
+     "clearances": 22,
+     "ratePer100k": 0.38,
+     "coveragePct": 85.85
+    },
+    {
+     "month": "04-2026",
+     "offenses": 36,
+     "clearances": 22,
+     "ratePer100k": 0.38,
+     "coveragePct": 82.77
+    },
+    {
+     "month": "05-2026",
+     "offenses": 29,
+     "clearances": 18,
+     "ratePer100k": 0.35,
+     "coveragePct": 74.36
+    },
+    {
+     "month": "06-2026",
+     "offenses": 37,
+     "clearances": 12,
+     "ratePer100k": 0.48,
+     "coveragePct": 68.81
+    },
+    {
+     "month": "07-2026",
+     "offenses": 38,
+     "clearances": 16,
+     "ratePer100k": 0.55,
+     "coveragePct": 61.57
+    },
+    {
+     "month": "08-2026",
+     "offenses": 8,
+     "clearances": 4,
+     "ratePer100k": 0.57,
+     "coveragePct": 12.39
+    }
+   ],
+   "completeYears": [
+    {
+     "year": 2024,
+     "months": 12,
+     "firstMonth": "01-2024",
+     "lastMonth": "12-2024",
+     "offenses": 749,
+     "clearances": 393,
+     "coverageMinPct": 92.04,
+     "coverageMaxPct": 93.51
+    },
+    {
+     "year": 2025,
+     "months": 12,
+     "firstMonth": "01-2025",
+     "lastMonth": "12-2025",
+     "offenses": 578,
+     "clearances": 313,
+     "coverageMinPct": 87.5,
+     "coverageMaxPct": 92.34
+    }
+   ],
+   "yearOverYear": [
+    {
+     "from": 2024,
+     "to": 2025,
+     "pctChange": -22.83044058744993
+    }
+   ],
+   "partial": {
+    "current": {
+     "year": 2026,
+     "months": 8,
+     "firstMonth": "01-2026",
+     "lastMonth": "08-2026",
+     "offenses": 261,
+     "clearances": 138,
+     "coverageMinPct": 12.39,
+     "coverageMaxPct": 87.95
+    },
+    "priorSamePeriod": {
+     "year": 2025,
+     "months": 8,
+     "firstMonth": "01-2025",
+     "lastMonth": "08-2025",
+     "offenses": 404,
+     "clearances": 224,
+     "coverageMinPct": 87.5,
+     "coverageMaxPct": 92.34
+    }
+   },
+   "warnings": [
+    "2026 is partial (8 of 12 months published); not compared as a year-over-year change"
+   ]
+  },
+  {
+   "offense": "rape",
+   "months": [
+    {
+     "month": "01-2024",
+     "offenses": 315,
+     "clearances": 67,
+     "ratePer100k": 3.01,
+     "coveragePct": 93.51
+    },
+    {
+     "month": "02-2024",
+     "offenses": 284,
+     "clearances": 58,
+     "ratePer100k": 2.72,
+     "coveragePct": 93.3
+    },
+    {
+     "month": "03-2024",
+     "offenses": 282,
+     "clearances": 66,
+     "ratePer100k": 2.7,
+     "coveragePct": 93.24
+    },
+    {
+     "month": "04-2024",
+     "offenses": 303,
+     "clearances": 62,
+     "ratePer100k": 2.92,
+     "coveragePct": 92.93
+    },
+    {
+     "month": "05-2024",
+     "offenses": 313,
+     "clearances": 69,
+     "ratePer100k": 3.01,
+     "coveragePct": 93.02
+    },
+    {
+     "month": "06-2024",
+     "offenses": 239,
+     "clearances": 48,
+     "ratePer100k": 2.31,
+     "coveragePct": 92.7
+    },
+    {
+     "month": "07-2024",
+     "offenses": 319,
+     "clearances": 70,
+     "ratePer100k": 3.08,
+     "coveragePct": 92.54
+    },
+    {
+     "month": "08-2024",
+     "offenses": 312,
+     "clearances": 52,
+     "ratePer100k": 3.02,
+     "coveragePct": 92.28
+    },
+    {
+     "month": "09-2024",
+     "offenses": 284,
+     "clearances": 52,
+     "ratePer100k": 2.75,
+     "coveragePct": 92.26
+    },
+    {
+     "month": "10-2024",
+     "offenses": 319,
+     "clearances": 73,
+     "ratePer100k": 3.09,
+     "coveragePct": 92.41
+    },
+    {
+     "month": "11-2024",
+     "offenses": 314,
+     "clearances": 38,
+     "ratePer100k": 3.04,
+     "coveragePct": 92.29
+    },
+    {
+     "month": "12-2024",
+     "offenses": 241,
+     "clearances": 42,
+     "ratePer100k": 2.34,
+     "coveragePct": 92.04
+    },
+    {
+     "month": "01-2025",
+     "offenses": 272,
+     "clearances": 66,
+     "ratePer100k": 2.61,
+     "coveragePct": 92.21
+    },
+    {
+     "month": "02-2025",
+     "offenses": 228,
+     "clearances": 55,
+     "ratePer100k": 2.19,
+     "coveragePct": 92.05
+    },
+    {
+     "month": "03-2025",
+     "offenses": 258,
+     "clearances": 53,
+     "ratePer100k": 2.48,
+     "coveragePct": 92.02
+    },
+    {
+     "month": "04-2025",
+     "offenses": 295,
+     "clearances": 58,
+     "ratePer100k": 2.83,
+     "coveragePct": 92.34
+    },
+    {
+     "month": "05-2025",
+     "offenses": 300,
+     "clearances": 50,
+     "ratePer100k": 2.89,
+     "coveragePct": 91.77
+    },
+    {
+     "month": "06-2025",
+     "offenses": 292,
+     "clearances": 46,
+     "ratePer100k": 2.83,
+     "coveragePct": 91.4
+    },
+    {
+     "month": "07-2025",
+     "offenses": 238,
+     "clearances": 60,
+     "ratePer100k": 2.41,
+     "coveragePct": 87.5
+    },
+    {
+     "month": "08-2025",
+     "offenses": 244,
+     "clearances": 50,
+     "ratePer100k": 2.41,
+     "coveragePct": 89.61
+    },
+    {
+     "month": "09-2025",
+     "offenses": 292,
+     "clearances": 50,
+     "ratePer100k": 2.89,
+     "coveragePct": 89.47
+    },
+    {
+     "month": "10-2025",
+     "offenses": 260,
+     "clearances": 60,
+     "ratePer100k": 2.57,
+     "coveragePct": 89.38
+    },
+    {
+     "month": "11-2025",
+     "offenses": 249,
+     "clearances": 55,
+     "ratePer100k": 2.46,
+     "coveragePct": 89.38
+    },
+    {
+     "month": "12-2025",
+     "offenses": 216,
+     "clearances": 50,
+     "ratePer100k": 2.14,
+     "coveragePct": 89.46
+    },
+    {
+     "month": "01-2026",
+     "offenses": 262,
+     "clearances": 53,
+     "ratePer100k": 2.64,
+     "coveragePct": 87.95
+    },
+    {
+     "month": "02-2026",
+     "offenses": 184,
+     "clearances": 40,
+     "ratePer100k": 1.88,
+     "coveragePct": 86.56
+    },
+    {
+     "month": "03-2026",
+     "offenses": 267,
+     "clearances": 57,
+     "ratePer100k": 2.75,
+     "coveragePct": 85.85
+    },
+    {
+     "month": "04-2026",
+     "offenses": 276,
+     "clearances": 64,
+     "ratePer100k": 2.95,
+     "coveragePct": 82.77
+    },
+    {
+     "month": "05-2026",
+     "offenses": 205,
+     "clearances": 31,
+     "ratePer100k": 2.44,
+     "coveragePct": 74.36
+    },
+    {
+     "month": "06-2026",
+     "offenses": 183,
+     "clearances": 49,
+     "ratePer100k": 2.35,
+     "coveragePct": 68.81
+    },
+    {
+     "month": "07-2026",
+     "offenses": 146,
+     "clearances": 45,
+     "ratePer100k": 2.1,
+     "coveragePct": 61.57
+    },
+    {
+     "month": "08-2026",
+     "offenses": 12,
+     "clearances": 6,
+     "ratePer100k": 0.86,
+     "coveragePct": 12.39
+    }
+   ],
+   "completeYears": [
+    {
+     "year": 2024,
+     "months": 12,
+     "firstMonth": "01-2024",
+     "lastMonth": "12-2024",
+     "offenses": 3525,
+     "clearances": 697,
+     "coverageMinPct": 92.04,
+     "coverageMaxPct": 93.51
+    },
+    {
+     "year": 2025,
+     "months": 12,
+     "firstMonth": "01-2025",
+     "lastMonth": "12-2025",
+     "offenses": 3144,
+     "clearances": 653,
+     "coverageMinPct": 87.5,
+     "coverageMaxPct": 92.34
+    }
+   ],
+   "yearOverYear": [
+    {
+     "from": 2024,
+     "to": 2025,
+     "pctChange": -10.808510638297872
+    }
+   ],
+   "partial": {
+    "current": {
+     "year": 2026,
+     "months": 8,
+     "firstMonth": "01-2026",
+     "lastMonth": "08-2026",
+     "offenses": 1535,
+     "clearances": 345,
+     "coverageMinPct": 12.39,
+     "coverageMaxPct": 87.95
+    },
+    "priorSamePeriod": {
+     "year": 2025,
+     "months": 8,
+     "firstMonth": "01-2025",
+     "lastMonth": "08-2025",
+     "offenses": 2127,
+     "clearances": 438,
+     "coverageMinPct": 87.5,
+     "coverageMaxPct": 92.34
+    }
+   },
+   "warnings": [
+    "2026 is partial (8 of 12 months published); not compared as a year-over-year change"
+   ]
+  },
+  {
+   "offense": "robbery",
+   "months": [
+    {
+     "month": "01-2024",
+     "offenses": 343,
+     "clearances": 60,
+     "ratePer100k": 3.28,
+     "coveragePct": 93.51
+    },
+    {
+     "month": "02-2024",
+     "offenses": 313,
+     "clearances": 70,
+     "ratePer100k": 3,
+     "coveragePct": 93.3
+    },
+    {
+     "month": "03-2024",
+     "offenses": 338,
+     "clearances": 73,
+     "ratePer100k": 3.24,
+     "coveragePct": 93.24
+    },
+    {
+     "month": "04-2024",
+     "offenses": 364,
+     "clearances": 67,
+     "ratePer100k": 3.5,
+     "coveragePct": 92.93
+    },
+    {
+     "month": "05-2024",
+     "offenses": 375,
+     "clearances": 79,
+     "ratePer100k": 3.61,
+     "coveragePct": 93.02
+    },
+    {
+     "month": "06-2024",
+     "offenses": 387,
+     "clearances": 55,
+     "ratePer100k": 3.73,
+     "coveragePct": 92.7
+    },
+    {
+     "month": "07-2024",
+     "offenses": 349,
+     "clearances": 66,
+     "ratePer100k": 3.37,
+     "coveragePct": 92.54
+    },
+    {
+     "month": "08-2024",
+     "offenses": 387,
+     "clearances": 97,
+     "ratePer100k": 3.75,
+     "coveragePct": 92.28
+    },
+    {
+     "month": "09-2024",
+     "offenses": 362,
+     "clearances": 91,
+     "ratePer100k": 3.51,
+     "coveragePct": 92.26
+    },
+    {
+     "month": "10-2024",
+     "offenses": 360,
+     "clearances": 78,
+     "ratePer100k": 3.48,
+     "coveragePct": 92.41
+    },
+    {
+     "month": "11-2024",
+     "offenses": 350,
+     "clearances": 86,
+     "ratePer100k": 3.39,
+     "coveragePct": 92.29
+    },
+    {
+     "month": "12-2024",
+     "offenses": 347,
+     "clearances": 45,
+     "ratePer100k": 3.37,
+     "coveragePct": 92.04
+    },
+    {
+     "month": "01-2025",
+     "offenses": 301,
+     "clearances": 79,
+     "ratePer100k": 2.89,
+     "coveragePct": 92.21
+    },
+    {
+     "month": "02-2025",
+     "offenses": 308,
+     "clearances": 87,
+     "ratePer100k": 2.96,
+     "coveragePct": 92.05
+    },
+    {
+     "month": "03-2025",
+     "offenses": 282,
+     "clearances": 60,
+     "ratePer100k": 2.71,
+     "coveragePct": 92.02
+    },
+    {
+     "month": "04-2025",
+     "offenses": 306,
+     "clearances": 57,
+     "ratePer100k": 2.93,
+     "coveragePct": 92.34
+    },
+    {
+     "month": "05-2025",
+     "offenses": 361,
+     "clearances": 76,
+     "ratePer100k": 3.48,
+     "coveragePct": 91.77
+    },
+    {
+     "month": "06-2025",
+     "offenses": 334,
+     "clearances": 77,
+     "ratePer100k": 3.23,
+     "coveragePct": 91.4
+    },
+    {
+     "month": "07-2025",
+     "offenses": 275,
+     "clearances": 69,
+     "ratePer100k": 2.78,
+     "coveragePct": 87.5
+    },
+    {
+     "month": "08-2025",
+     "offenses": 268,
+     "clearances": 73,
+     "ratePer100k": 2.65,
+     "coveragePct": 89.61
+    },
+    {
+     "month": "09-2025",
+     "offenses": 227,
+     "clearances": 60,
+     "ratePer100k": 2.24,
+     "coveragePct": 89.47
+    },
+    {
+     "month": "10-2025",
+     "offenses": 274,
+     "clearances": 72,
+     "ratePer100k": 2.71,
+     "coveragePct": 89.38
+    },
+    {
+     "month": "11-2025",
+     "offenses": 239,
+     "clearances": 55,
+     "ratePer100k": 2.37,
+     "coveragePct": 89.38
+    },
+    {
+     "month": "12-2025",
+     "offenses": 285,
+     "clearances": 90,
+     "ratePer100k": 2.82,
+     "coveragePct": 89.46
+    },
+    {
+     "month": "01-2026",
+     "offenses": 256,
+     "clearances": 83,
+     "ratePer100k": 2.58,
+     "coveragePct": 87.95
+    },
+    {
+     "month": "02-2026",
+     "offenses": 220,
+     "clearances": 81,
+     "ratePer100k": 2.25,
+     "coveragePct": 86.56
+    },
+    {
+     "month": "03-2026",
+     "offenses": 217,
+     "clearances": 77,
+     "ratePer100k": 2.24,
+     "coveragePct": 85.85
+    },
+    {
+     "month": "04-2026",
+     "offenses": 266,
+     "clearances": 79,
+     "ratePer100k": 2.84,
+     "coveragePct": 82.77
+    },
+    {
+     "month": "05-2026",
+     "offenses": 230,
+     "clearances": 64,
+     "ratePer100k": 2.74,
+     "coveragePct": 74.36
+    },
+    {
+     "month": "06-2026",
+     "offenses": 176,
+     "clearances": 44,
+     "ratePer100k": 2.26,
+     "coveragePct": 68.81
+    },
+    {
+     "month": "07-2026",
+     "offenses": 198,
+     "clearances": 53,
+     "ratePer100k": 2.85,
+     "coveragePct": 61.57
+    },
+    {
+     "month": "08-2026",
+     "offenses": 30,
+     "clearances": 13,
+     "ratePer100k": 2.14,
+     "coveragePct": 12.39
+    }
+   ],
+   "completeYears": [
+    {
+     "year": 2024,
+     "months": 12,
+     "firstMonth": "01-2024",
+     "lastMonth": "12-2024",
+     "offenses": 4275,
+     "clearances": 867,
+     "coverageMinPct": 92.04,
+     "coverageMaxPct": 93.51
+    },
+    {
+     "year": 2025,
+     "months": 12,
+     "firstMonth": "01-2025",
+     "lastMonth": "12-2025",
+     "offenses": 3460,
+     "clearances": 855,
+     "coverageMinPct": 87.5,
+     "coverageMaxPct": 92.34
+    }
+   ],
+   "yearOverYear": [
+    {
+     "from": 2024,
+     "to": 2025,
+     "pctChange": -19.06432748538012
+    }
+   ],
+   "partial": {
+    "current": {
+     "year": 2026,
+     "months": 8,
+     "firstMonth": "01-2026",
+     "lastMonth": "08-2026",
+     "offenses": 1593,
+     "clearances": 494,
+     "coverageMinPct": 12.39,
+     "coverageMaxPct": 87.95
+    },
+    "priorSamePeriod": {
+     "year": 2025,
+     "months": 8,
+     "firstMonth": "01-2025",
+     "lastMonth": "08-2025",
+     "offenses": 2435,
+     "clearances": 578,
+     "coverageMinPct": 87.5,
+     "coverageMaxPct": 92.34
+    }
+   },
+   "warnings": [
+    "2026 is partial (8 of 12 months published); not compared as a year-over-year change"
+   ]
+  },
+  {
+   "offense": "aggravated-assault",
+   "months": [
+    {
+     "month": "01-2024",
+     "offenses": 2104,
+     "clearances": 719,
+     "ratePer100k": 20.12,
+     "coveragePct": 93.51
+    },
+    {
+     "month": "02-2024",
+     "offenses": 2026,
+     "clearances": 701,
+     "ratePer100k": 19.42,
+     "coveragePct": 93.3
+    },
+    {
+     "month": "03-2024",
+     "offenses": 2126,
+     "clearances": 836,
+     "ratePer100k": 20.39,
+     "coveragePct": 93.24
+    },
+    {
+     "month": "04-2024",
+     "offenses": 2363,
+     "clearances": 779,
+     "ratePer100k": 22.74,
+     "coveragePct": 92.93
+    },
+    {
+     "month": "05-2024",
+     "offenses": 2443,
+     "clearances": 911,
+     "ratePer100k": 23.49,
+     "coveragePct": 93.02
+    },
+    {
+     "month": "06-2024",
+     "offenses": 2225,
+     "clearances": 772,
+     "ratePer100k": 21.47,
+     "coveragePct": 92.7
+    },
+    {
+     "month": "07-2024",
+     "offenses": 2176,
+     "clearances": 743,
+     "ratePer100k": 21.03,
+     "coveragePct": 92.54
+    },
+    {
+     "month": "08-2024",
+     "offenses": 2232,
+     "clearances": 802,
+     "ratePer100k": 21.63,
+     "coveragePct": 92.28
+    },
+    {
+     "month": "09-2024",
+     "offenses": 2115,
+     "clearances": 749,
+     "ratePer100k": 20.5,
+     "coveragePct": 92.26
+    },
+    {
+     "month": "10-2024",
+     "offenses": 1997,
+     "clearances": 738,
+     "ratePer100k": 19.33,
+     "coveragePct": 92.41
+    },
+    {
+     "month": "11-2024",
+     "offenses": 1865,
+     "clearances": 649,
+     "ratePer100k": 18.07,
+     "coveragePct": 92.29
+    },
+    {
+     "month": "12-2024",
+     "offenses": 1796,
+     "clearances": 661,
+     "ratePer100k": 17.45,
+     "coveragePct": 92.04
+    },
+    {
+     "month": "01-2025",
+     "offenses": 1870,
+     "clearances": 617,
+     "ratePer100k": 17.94,
+     "coveragePct": 92.21
+    },
+    {
+     "month": "02-2025",
+     "offenses": 1640,
+     "clearances": 642,
+     "ratePer100k": 15.76,
+     "coveragePct": 92.05
+    },
+    {
+     "month": "03-2025",
+     "offenses": 2104,
+     "clearances": 715,
+     "ratePer100k": 20.23,
+     "coveragePct": 92.02
+    },
+    {
+     "month": "04-2025",
+     "offenses": 2229,
+     "clearances": 824,
+     "ratePer100k": 21.36,
+     "coveragePct": 92.34
+    },
+    {
+     "month": "05-2025",
+     "offenses": 2248,
+     "clearances": 846,
+     "ratePer100k": 21.67,
+     "coveragePct": 91.77
+    },
+    {
+     "month": "06-2025",
+     "offenses": 2245,
+     "clearances": 755,
+     "ratePer100k": 21.73,
+     "coveragePct": 91.4
+    },
+    {
+     "month": "07-2025",
+     "offenses": 2045,
+     "clearances": 727,
+     "ratePer100k": 20.68,
+     "coveragePct": 87.5
+    },
+    {
+     "month": "08-2025",
+     "offenses": 1786,
+     "clearances": 740,
+     "ratePer100k": 17.63,
+     "coveragePct": 89.61
+    },
+    {
+     "month": "09-2025",
+     "offenses": 1921,
+     "clearances": 742,
+     "ratePer100k": 19,
+     "coveragePct": 89.47
+    },
+    {
+     "month": "10-2025",
+     "offenses": 1916,
+     "clearances": 776,
+     "ratePer100k": 18.97,
+     "coveragePct": 89.38
+    },
+    {
+     "month": "11-2025",
+     "offenses": 1800,
+     "clearances": 682,
+     "ratePer100k": 17.82,
+     "coveragePct": 89.38
+    },
+    {
+     "month": "12-2025",
+     "offenses": 1858,
+     "clearances": 747,
+     "ratePer100k": 18.38,
+     "coveragePct": 89.46
+    },
+    {
+     "month": "01-2026",
+     "offenses": 1906,
+     "clearances": 666,
+     "ratePer100k": 19.17,
+     "coveragePct": 87.95
+    },
+    {
+     "month": "02-2026",
+     "offenses": 1500,
+     "clearances": 601,
+     "ratePer100k": 15.33,
+     "coveragePct": 86.56
+    },
+    {
+     "month": "03-2026",
+     "offenses": 1875,
+     "clearances": 718,
+     "ratePer100k": 19.32,
+     "coveragePct": 85.85
+    },
+    {
+     "month": "04-2026",
+     "offenses": 1873,
+     "clearances": 693,
+     "ratePer100k": 20.02,
+     "coveragePct": 82.77
+    },
+    {
+     "month": "05-2026",
+     "offenses": 1704,
+     "clearances": 723,
+     "ratePer100k": 20.27,
+     "coveragePct": 74.36
+    },
+    {
+     "month": "06-2026",
+     "offenses": 1497,
+     "clearances": 600,
+     "ratePer100k": 19.25,
+     "coveragePct": 68.81
+    },
+    {
+     "month": "07-2026",
+     "offenses": 1376,
+     "clearances": 577,
+     "ratePer100k": 19.77,
+     "coveragePct": 61.57
+    },
+    {
+     "month": "08-2026",
+     "offenses": 281,
+     "clearances": 128,
+     "ratePer100k": 20.07,
+     "coveragePct": 12.39
+    }
+   ],
+   "completeYears": [
+    {
+     "year": 2024,
+     "months": 12,
+     "firstMonth": "01-2024",
+     "lastMonth": "12-2024",
+     "offenses": 25468,
+     "clearances": 9060,
+     "coverageMinPct": 92.04,
+     "coverageMaxPct": 93.51
+    },
+    {
+     "year": 2025,
+     "months": 12,
+     "firstMonth": "01-2025",
+     "lastMonth": "12-2025",
+     "offenses": 23662,
+     "clearances": 8813,
+     "coverageMinPct": 87.5,
+     "coverageMaxPct": 92.34
+    }
+   ],
+   "yearOverYear": [
+    {
+     "from": 2024,
+     "to": 2025,
+     "pctChange": -7.0912517669231985
+    }
+   ],
+   "partial": {
+    "current": {
+     "year": 2026,
+     "months": 8,
+     "firstMonth": "01-2026",
+     "lastMonth": "08-2026",
+     "offenses": 12012,
+     "clearances": 4706,
+     "coverageMinPct": 12.39,
+     "coverageMaxPct": 87.95
+    },
+    "priorSamePeriod": {
+     "year": 2025,
+     "months": 8,
+     "firstMonth": "01-2025",
+     "lastMonth": "08-2025",
+     "offenses": 16167,
+     "clearances": 5866,
+     "coverageMinPct": 87.5,
+     "coverageMaxPct": 92.34
+    }
+   },
+   "warnings": [
+    "2026 is partial (8 of 12 months published); not compared as a year-over-year change"
+   ]
+  },
+  {
+   "offense": "property-crime",
+   "months": [
+    {
+     "month": "01-2024",
+     "offenses": 15590,
+     "clearances": 2025,
+     "ratePer100k": 149.11,
+     "coveragePct": 93.51
+    },
+    {
+     "month": "02-2024",
+     "offenses": 14998,
+     "clearances": 1887,
+     "ratePer100k": 143.77,
+     "coveragePct": 93.3
+    },
+    {
+     "month": "03-2024",
+     "offenses": 14060,
+     "clearances": 1863,
+     "ratePer100k": 134.86,
+     "coveragePct": 93.24
+    },
+    {
+     "month": "04-2024",
+     "offenses": 14553,
+     "clearances": 1929,
+     "ratePer100k": 140.06,
+     "coveragePct": 92.93
+    },
+    {
+     "month": "05-2024",
+     "offenses": 15762,
+     "clearances": 1910,
+     "ratePer100k": 151.55,
+     "coveragePct": 93.02
+    },
+    {
+     "month": "06-2024",
+     "offenses": 15229,
+     "clearances": 1888,
+     "ratePer100k": 146.93,
+     "coveragePct": 92.7
+    },
+    {
+     "month": "07-2024",
+     "offenses": 15310,
+     "clearances": 1950,
+     "ratePer100k": 147.97,
+     "coveragePct": 92.54
+    },
+    {
+     "month": "08-2024",
+     "offenses": 14890,
+     "clearances": 1971,
+     "ratePer100k": 144.31,
+     "coveragePct": 92.28
+    },
+    {
+     "month": "09-2024",
+     "offenses": 14645,
+     "clearances": 1782,
+     "ratePer100k": 141.98,
+     "coveragePct": 92.26
+    },
+    {
+     "month": "10-2024",
+     "offenses": 14489,
+     "clearances": 1734,
+     "ratePer100k": 140.24,
+     "coveragePct": 92.41
+    },
+    {
+     "month": "11-2024",
+     "offenses": 13833,
+     "clearances": 1767,
+     "ratePer100k": 134.06,
+     "coveragePct": 92.29
+    },
+    {
+     "month": "12-2024",
+     "offenses": 13765,
+     "clearances": 1721,
+     "ratePer100k": 133.76,
+     "coveragePct": 92.04
+    },
+    {
+     "month": "01-2025",
+     "offenses": 12289,
+     "clearances": 1758,
+     "ratePer100k": 117.91,
+     "coveragePct": 92.21
+    },
+    {
+     "month": "02-2025",
+     "offenses": 11781,
+     "clearances": 1638,
+     "ratePer100k": 113.24,
+     "coveragePct": 92.05
+    },
+    {
+     "month": "03-2025",
+     "offenses": 12612,
+     "clearances": 1755,
+     "ratePer100k": 121.26,
+     "coveragePct": 92.02
+    },
+    {
+     "month": "04-2025",
+     "offenses": 12884,
+     "clearances": 1748,
+     "ratePer100k": 123.45,
+     "coveragePct": 92.34
+    },
+    {
+     "month": "05-2025",
+     "offenses": 13232,
+     "clearances": 1865,
+     "ratePer100k": 127.57,
+     "coveragePct": 91.77
+    },
+    {
+     "month": "06-2025",
+     "offenses": 12826,
+     "clearances": 1751,
+     "ratePer100k": 124.15,
+     "coveragePct": 91.4
+    },
+    {
+     "month": "07-2025",
+     "offenses": 11960,
+     "clearances": 1708,
+     "ratePer100k": 120.93,
+     "coveragePct": 87.5
+    },
+    {
+     "month": "08-2025",
+     "offenses": 11105,
+     "clearances": 1644,
+     "ratePer100k": 109.64,
+     "coveragePct": 89.61
+    },
+    {
+     "month": "09-2025",
+     "offenses": 11420,
+     "clearances": 1753,
+     "ratePer100k": 112.93,
+     "coveragePct": 89.47
+    },
+    {
+     "month": "10-2025",
+     "offenses": 11812,
+     "clearances": 1769,
+     "ratePer100k": 116.93,
+     "coveragePct": 89.38
+    },
+    {
+     "month": "11-2025",
+     "offenses": 10649,
+     "clearances": 1668,
+     "ratePer100k": 105.41,
+     "coveragePct": 89.38
+    },
+    {
+     "month": "12-2025",
+     "offenses": 11127,
+     "clearances": 1748,
+     "ratePer100k": 110.05,
+     "coveragePct": 89.46
+    },
+    {
+     "month": "01-2026",
+     "offenses": 9777,
+     "clearances": 1637,
+     "ratePer100k": 98.35,
+     "coveragePct": 87.95
+    },
+    {
+     "month": "02-2026",
+     "offenses": 8648,
+     "clearances": 1423,
+     "ratePer100k": 88.39,
+     "coveragePct": 86.56
+    },
+    {
+     "month": "03-2026",
+     "offenses": 9930,
+     "clearances": 1519,
+     "ratePer100k": 102.34,
+     "coveragePct": 85.85
+    },
+    {
+     "month": "04-2026",
+     "offenses": 9932,
+     "clearances": 1581,
+     "ratePer100k": 106.17,
+     "coveragePct": 82.77
+    },
+    {
+     "month": "05-2026",
+     "offenses": 8902,
+     "clearances": 1355,
+     "ratePer100k": 105.91,
+     "coveragePct": 74.36
+    },
+    {
+     "month": "06-2026",
+     "offenses": 7959,
+     "clearances": 1242,
+     "ratePer100k": 102.34,
+     "coveragePct": 68.81
+    },
+    {
+     "month": "07-2026",
+     "offenses": 7065,
+     "clearances": 1160,
+     "ratePer100k": 101.52,
+     "coveragePct": 61.57
+    },
+    {
+     "month": "08-2026",
+     "offenses": 1091,
+     "clearances": 162,
+     "ratePer100k": 77.94,
+     "coveragePct": 12.39
+    }
+   ],
+   "completeYears": [
+    {
+     "year": 2024,
+     "months": 12,
+     "firstMonth": "01-2024",
+     "lastMonth": "12-2024",
+     "offenses": 177124,
+     "clearances": 22427,
+     "coverageMinPct": 92.04,
+     "coverageMaxPct": 93.51
+    },
+    {
+     "year": 2025,
+     "months": 12,
+     "firstMonth": "01-2025",
+     "lastMonth": "12-2025",
+     "offenses": 143697,
+     "clearances": 20805,
+     "coverageMinPct": 87.5,
+     "coverageMaxPct": 92.34
+    }
+   ],
+   "yearOverYear": [
+    {
+     "from": 2024,
+     "to": 2025,
+     "pctChange": -18.87208960953908
+    }
+   ],
+   "partial": {
+    "current": {
+     "year": 2026,
+     "months": 8,
+     "firstMonth": "01-2026",
+     "lastMonth": "08-2026",
+     "offenses": 63304,
+     "clearances": 10079,
+     "coverageMinPct": 12.39,
+     "coverageMaxPct": 87.95
+    },
+    "priorSamePeriod": {
+     "year": 2025,
+     "months": 8,
+     "firstMonth": "01-2025",
+     "lastMonth": "08-2025",
+     "offenses": 98689,
+     "clearances": 13867,
+     "coverageMinPct": 87.5,
+     "coverageMaxPct": 92.34
+    }
+   },
+   "warnings": [
+    "2026 is partial (8 of 12 months published); not compared as a year-over-year change"
+   ]
+  },
+  {
+   "offense": "burglary",
+   "months": [
+    {
+     "month": "01-2024",
+     "offenses": 2031,
+     "clearances": 170,
+     "ratePer100k": 19.43,
+     "coveragePct": 93.51
+    },
+    {
+     "month": "02-2024",
+     "offenses": 2490,
+     "clearances": 152,
+     "ratePer100k": 23.87,
+     "coveragePct": 93.3
+    },
+    {
+     "month": "03-2024",
+     "offenses": 1703,
+     "clearances": 165,
+     "ratePer100k": 16.34,
+     "coveragePct": 93.24
+    },
+    {
+     "month": "04-2024",
+     "offenses": 1577,
+     "clearances": 162,
+     "ratePer100k": 15.18,
+     "coveragePct": 92.93
+    },
+    {
+     "month": "05-2024",
+     "offenses": 1883,
+     "clearances": 179,
+     "ratePer100k": 18.1,
+     "coveragePct": 93.02
+    },
+    {
+     "month": "06-2024",
+     "offenses": 1767,
+     "clearances": 159,
+     "ratePer100k": 17.05,
+     "coveragePct": 92.7
+    },
+    {
+     "month": "07-2024",
+     "offenses": 1841,
+     "clearances": 198,
+     "ratePer100k": 17.79,
+     "coveragePct": 92.54
+    },
+    {
+     "month": "08-2024",
+     "offenses": 1746,
+     "clearances": 156,
+     "ratePer100k": 16.92,
+     "coveragePct": 92.28
+    },
+    {
+     "month": "09-2024",
+     "offenses": 2045,
+     "clearances": 155,
+     "ratePer100k": 19.83,
+     "coveragePct": 92.26
+    },
+    {
+     "month": "10-2024",
+     "offenses": 1570,
+     "clearances": 188,
+     "ratePer100k": 15.2,
+     "coveragePct": 92.41
+    },
+    {
+     "month": "11-2024",
+     "offenses": 1855,
+     "clearances": 137,
+     "ratePer100k": 17.98,
+     "coveragePct": 92.29
+    },
+    {
+     "month": "12-2024",
+     "offenses": 1671,
+     "clearances": 125,
+     "ratePer100k": 16.24,
+     "coveragePct": 92.04
+    },
+    {
+     "month": "01-2025",
+     "offenses": 1533,
+     "clearances": 227,
+     "ratePer100k": 14.71,
+     "coveragePct": 92.21
+    },
+    {
+     "month": "02-2025",
+     "offenses": 1400,
+     "clearances": 171,
+     "ratePer100k": 13.46,
+     "coveragePct": 92.05
+    },
+    {
+     "month": "03-2025",
+     "offenses": 1394,
+     "clearances": 140,
+     "ratePer100k": 13.4,
+     "coveragePct": 92.02
+    },
+    {
+     "month": "04-2025",
+     "offenses": 1577,
+     "clearances": 138,
+     "ratePer100k": 15.11,
+     "coveragePct": 92.34
+    },
+    {
+     "month": "05-2025",
+     "offenses": 1526,
+     "clearances": 152,
+     "ratePer100k": 14.71,
+     "coveragePct": 91.77
+    },
+    {
+     "month": "06-2025",
+     "offenses": 1413,
+     "clearances": 153,
+     "ratePer100k": 13.68,
+     "coveragePct": 91.4
+    },
+    {
+     "month": "07-2025",
+     "offenses": 1264,
+     "clearances": 128,
+     "ratePer100k": 12.78,
+     "coveragePct": 87.5
+    },
+    {
+     "month": "08-2025",
+     "offenses": 1218,
+     "clearances": 146,
+     "ratePer100k": 12.03,
+     "coveragePct": 89.61
+    },
+    {
+     "month": "09-2025",
+     "offenses": 1356,
+     "clearances": 135,
+     "ratePer100k": 13.41,
+     "coveragePct": 89.47
+    },
+    {
+     "month": "10-2025",
+     "offenses": 1365,
+     "clearances": 151,
+     "ratePer100k": 13.51,
+     "coveragePct": 89.38
+    },
+    {
+     "month": "11-2025",
+     "offenses": 1154,
+     "clearances": 131,
+     "ratePer100k": 11.42,
+     "coveragePct": 89.38
+    },
+    {
+     "month": "12-2025",
+     "offenses": 1154,
+     "clearances": 158,
+     "ratePer100k": 11.41,
+     "coveragePct": 89.46
+    },
+    {
+     "month": "01-2026",
+     "offenses": 1044,
+     "clearances": 143,
+     "ratePer100k": 10.5,
+     "coveragePct": 87.95
+    },
+    {
+     "month": "02-2026",
+     "offenses": 900,
+     "clearances": 117,
+     "ratePer100k": 9.2,
+     "coveragePct": 86.56
+    },
+    {
+     "month": "03-2026",
+     "offenses": 1075,
+     "clearances": 130,
+     "ratePer100k": 11.08,
+     "coveragePct": 85.85
+    },
+    {
+     "month": "04-2026",
+     "offenses": 1003,
+     "clearances": 124,
+     "ratePer100k": 10.72,
+     "coveragePct": 82.77
+    },
+    {
+     "month": "05-2026",
+     "offenses": 910,
+     "clearances": 111,
+     "ratePer100k": 10.83,
+     "coveragePct": 74.36
+    },
+    {
+     "month": "06-2026",
+     "offenses": 800,
+     "clearances": 111,
+     "ratePer100k": 10.29,
+     "coveragePct": 68.81
+    },
+    {
+     "month": "07-2026",
+     "offenses": 724,
+     "clearances": 122,
+     "ratePer100k": 10.4,
+     "coveragePct": 61.57
+    },
+    {
+     "month": "08-2026",
+     "offenses": 110,
+     "clearances": 13,
+     "ratePer100k": 7.86,
+     "coveragePct": 12.39
+    }
+   ],
+   "completeYears": [
+    {
+     "year": 2024,
+     "months": 12,
+     "firstMonth": "01-2024",
+     "lastMonth": "12-2024",
+     "offenses": 22179,
+     "clearances": 1946,
+     "coverageMinPct": 92.04,
+     "coverageMaxPct": 93.51
+    },
+    {
+     "year": 2025,
+     "months": 12,
+     "firstMonth": "01-2025",
+     "lastMonth": "12-2025",
+     "offenses": 16354,
+     "clearances": 1830,
+     "coverageMinPct": 87.5,
+     "coverageMaxPct": 92.34
+    }
+   ],
+   "yearOverYear": [
+    {
+     "from": 2024,
+     "to": 2025,
+     "pctChange": -26.263582668289825
+    }
+   ],
+   "partial": {
+    "current": {
+     "year": 2026,
+     "months": 8,
+     "firstMonth": "01-2026",
+     "lastMonth": "08-2026",
+     "offenses": 6566,
+     "clearances": 871,
+     "coverageMinPct": 12.39,
+     "coverageMaxPct": 87.95
+    },
+    "priorSamePeriod": {
+     "year": 2025,
+     "months": 8,
+     "firstMonth": "01-2025",
+     "lastMonth": "08-2025",
+     "offenses": 11325,
+     "clearances": 1255,
+     "coverageMinPct": 87.5,
+     "coverageMaxPct": 92.34
+    }
+   },
+   "warnings": [
+    "2026 is partial (8 of 12 months published); not compared as a year-over-year change"
+   ]
+  },
+  {
+   "offense": "larceny",
+   "months": [
+    {
+     "month": "01-2024",
+     "offenses": 11275,
+     "clearances": 1671,
+     "ratePer100k": 107.84,
+     "coveragePct": 93.51
+    },
+    {
+     "month": "02-2024",
+     "offenses": 10506,
+     "clearances": 1560,
+     "ratePer100k": 100.71,
+     "coveragePct": 93.3
+    },
+    {
+     "month": "03-2024",
+     "offenses": 10453,
+     "clearances": 1543,
+     "ratePer100k": 100.27,
+     "coveragePct": 93.24
+    },
+    {
+     "month": "04-2024",
+     "offenses": 10986,
+     "clearances": 1601,
+     "ratePer100k": 105.73,
+     "coveragePct": 92.93
+    },
+    {
+     "month": "05-2024",
+     "offenses": 11517,
+     "clearances": 1552,
+     "ratePer100k": 110.73,
+     "coveragePct": 93.02
+    },
+    {
+     "month": "06-2024",
+     "offenses": 11243,
+     "clearances": 1562,
+     "ratePer100k": 108.48,
+     "coveragePct": 92.7
+    },
+    {
+     "month": "07-2024",
+     "offenses": 11289,
+     "clearances": 1607,
+     "ratePer100k": 109.11,
+     "coveragePct": 92.54
+    },
+    {
+     "month": "08-2024",
+     "offenses": 11104,
+     "clearances": 1659,
+     "ratePer100k": 107.62,
+     "coveragePct": 92.28
+    },
+    {
+     "month": "09-2024",
+     "offenses": 10465,
+     "clearances": 1463,
+     "ratePer100k": 101.45,
+     "coveragePct": 92.26
+    },
+    {
+     "month": "10-2024",
+     "offenses": 10954,
+     "clearances": 1376,
+     "ratePer100k": 106.02,
+     "coveragePct": 92.41
+    },
+    {
+     "month": "11-2024",
+     "offenses": 10205,
+     "clearances": 1487,
+     "ratePer100k": 98.9,
+     "coveragePct": 92.29
+    },
+    {
+     "month": "12-2024",
+     "offenses": 10373,
+     "clearances": 1477,
+     "ratePer100k": 100.8,
+     "coveragePct": 92.04
+    },
+    {
+     "month": "01-2025",
+     "offenses": 9197,
+     "clearances": 1378,
+     "ratePer100k": 88.24,
+     "coveragePct": 92.21
+    },
+    {
+     "month": "02-2025",
+     "offenses": 8955,
+     "clearances": 1319,
+     "ratePer100k": 86.08,
+     "coveragePct": 92.05
+    },
+    {
+     "month": "03-2025",
+     "offenses": 9534,
+     "clearances": 1485,
+     "ratePer100k": 91.66,
+     "coveragePct": 92.02
+    },
+    {
+     "month": "04-2025",
+     "offenses": 9680,
+     "clearances": 1439,
+     "ratePer100k": 92.75,
+     "coveragePct": 92.34
+    },
+    {
+     "month": "05-2025",
+     "offenses": 9996,
+     "clearances": 1551,
+     "ratePer100k": 96.37,
+     "coveragePct": 91.77
+    },
+    {
+     "month": "06-2025",
+     "offenses": 9821,
+     "clearances": 1429,
+     "ratePer100k": 95.06,
+     "coveragePct": 91.4
+    },
+    {
+     "month": "07-2025",
+     "offenses": 9282,
+     "clearances": 1410,
+     "ratePer100k": 93.85,
+     "coveragePct": 87.5
+    },
+    {
+     "month": "08-2025",
+     "offenses": 8707,
+     "clearances": 1391,
+     "ratePer100k": 85.97,
+     "coveragePct": 89.61
+    },
+    {
+     "month": "09-2025",
+     "offenses": 8854,
+     "clearances": 1479,
+     "ratePer100k": 87.56,
+     "coveragePct": 89.47
+    },
+    {
+     "month": "10-2025",
+     "offenses": 9089,
+     "clearances": 1468,
+     "ratePer100k": 89.97,
+     "coveragePct": 89.38
+    },
+    {
+     "month": "11-2025",
+     "offenses": 8365,
+     "clearances": 1397,
+     "ratePer100k": 82.8,
+     "coveragePct": 89.38
+    },
+    {
+     "month": "12-2025",
+     "offenses": 8810,
+     "clearances": 1454,
+     "ratePer100k": 87.13,
+     "coveragePct": 89.46
+    },
+    {
+     "month": "01-2026",
+     "offenses": 7625,
+     "clearances": 1354,
+     "ratePer100k": 76.7,
+     "coveragePct": 87.95
+    },
+    {
+     "month": "02-2026",
+     "offenses": 6778,
+     "clearances": 1198,
+     "ratePer100k": 69.28,
+     "coveragePct": 86.56
+    },
+    {
+     "month": "03-2026",
+     "offenses": 7833,
+     "clearances": 1270,
+     "ratePer100k": 80.72,
+     "coveragePct": 85.85
+    },
+    {
+     "month": "04-2026",
+     "offenses": 7808,
+     "clearances": 1332,
+     "ratePer100k": 83.46,
+     "coveragePct": 82.77
+    },
+    {
+     "month": "05-2026",
+     "offenses": 6953,
+     "clearances": 1131,
+     "ratePer100k": 82.72,
+     "coveragePct": 74.36
+    },
+    {
+     "month": "06-2026",
+     "offenses": 6301,
+     "clearances": 1010,
+     "ratePer100k": 81.02,
+     "coveragePct": 68.81
+    },
+    {
+     "month": "07-2026",
+     "offenses": 5518,
+     "clearances": 950,
+     "ratePer100k": 79.29,
+     "coveragePct": 61.57
+    },
+    {
+     "month": "08-2026",
+     "offenses": 845,
+     "clearances": 131,
+     "ratePer100k": 60.36,
+     "coveragePct": 12.39
+    }
+   ],
+   "completeYears": [
+    {
+     "year": 2024,
+     "months": 12,
+     "firstMonth": "01-2024",
+     "lastMonth": "12-2024",
+     "offenses": 130370,
+     "clearances": 18558,
+     "coverageMinPct": 92.04,
+     "coverageMaxPct": 93.51
+    },
+    {
+     "year": 2025,
+     "months": 12,
+     "firstMonth": "01-2025",
+     "lastMonth": "12-2025",
+     "offenses": 110290,
+     "clearances": 17200,
+     "coverageMinPct": 87.5,
+     "coverageMaxPct": 92.34
+    }
+   ],
+   "yearOverYear": [
+    {
+     "from": 2024,
+     "to": 2025,
+     "pctChange": -15.402316483853648
+    }
+   ],
+   "partial": {
+    "current": {
+     "year": 2026,
+     "months": 8,
+     "firstMonth": "01-2026",
+     "lastMonth": "08-2026",
+     "offenses": 49661,
+     "clearances": 8376,
+     "coverageMinPct": 12.39,
+     "coverageMaxPct": 87.95
+    },
+    "priorSamePeriod": {
+     "year": 2025,
+     "months": 8,
+     "firstMonth": "01-2025",
+     "lastMonth": "08-2025",
+     "offenses": 75172,
+     "clearances": 11402,
+     "coverageMinPct": 87.5,
+     "coverageMaxPct": 92.34
+    }
+   },
+   "warnings": [
+    "2026 is partial (8 of 12 months published); not compared as a year-over-year change"
+   ]
+  }
+ ],
+ "unavailable": [
+  {
+   "offense": "motor-vehicle-theft",
+   "url": "https://api.usa.gov/crime/fbi/cde/summarized/state/GA/motor-vehicle-theft?from=01-2024&to=12-2026",
+   "error": "HTTP 429 (api.data.gov rate limit)"
+  },
+  {
+   "offense": "arson",
+   "url": "https://api.usa.gov/crime/fbi/cde/summarized/state/GA/arson?from=01-2024&to=12-2026",
+   "error": "HTTP 429 (api.data.gov rate limit)"
+  }
+ ]
+}

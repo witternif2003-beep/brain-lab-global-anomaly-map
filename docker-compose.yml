@@ -1,0 +1,35 @@
+# Fresh local OpenHands 1.8.0 using the Ollama already running on this host (port 11434).
+# OpenHands 1.8 ignores LLM_MODEL / LLM_BASE_URL / LLM_API_KEY at startup; the same values are
+# applied after start through POST /api/v1/settings (see README step below).
+services:
+  openhands:
+    image: docker.openhands.dev/openhands/openhands:1.8.0
+    container_name: openhands-fresh
+    restart: unless-stopped
+    environment:
+      - LLM_MODEL=ollama/qwen2.5-coder:14b-instruct
+      - LLM_BASE_URL=http://host.docker.internal:11434/v1
+      - LLM_API_KEY=ollama
+      - AGENT_SERVER_IMAGE_REPOSITORY=ghcr.io/openhands/agent-server
+      - AGENT_SERVER_IMAGE_TAG=1.26.0-python
+      - SANDBOX_VOLUMES=/home/ubuntu/replica/brain-lab-global-anomaly-map:/workspace:rw
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - .:/workspace
+      - ${HOME}/.openhands-fresh:/.openhands
+    ports:
+      - "127.0.0.1:3000:3000"
+      - "${DOCKER_BRIDGE_IP:-172.17.0.1}:3000:3000"
+    deploy:
+      resources:
+        limits:
+          cpus: "8"
+          memory: 16G
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://127.0.0.1:3000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 30s

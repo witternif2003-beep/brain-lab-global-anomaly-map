@@ -1,18 +1,6 @@
 'use client';
 import { OUTBOUND_GA_PERSON_TEMPLATES, getInterpolatedArcPoint, VerifiedPersonLeavingGA } from '../lib/telemetry-arcs';
 
-// Safe module initialization
-if (typeof window !== 'undefined') {
-  try {
-    const ml = require('maplibre-gl');
-    if (ml && typeof ml.setWorkerUrl === 'function') {
-      ml.setWorkerUrl('/maplibre-gl-worker.mjs');
-    }
-  } catch (e) {
-    console.warn('[MapLibre] Worker URL initialization deferred:', e);
-  }
-}
-
 // FIPS to state abbreviation lookup table
 const FIPS_TO_ABBR: Record<string, string> = {
   '01': 'AL', '12': 'FL', '13': 'GA', '37': 'NC',
@@ -56,6 +44,12 @@ import { AnomalyItem, CompetitorStateIntel } from '../lib/schema';
 import { useAnomalyStream, AnomalyFeature } from '../hooks/useAnomalyStream';
 import { registerGeoJSONVTSource, shouldUseTiledRendering } from '../lib/geojson-vt-protocol';
 import MapDebugOverlay from './MapDebugOverlay';
+import { AWS_TERRARIUM_TILES } from '../lib/lidar-globe-sources';
+import { attachSolarSky } from '../lib/ga-sky';
+import { applyHorizonLod, horizonLod } from '../lib/map/horizon-lod';
+import { gpuCrashCount } from '../lib/map/crash-guard';
+import { isTouchDevice as isTouchScreen } from '../lib/map/touch-gpu-budget';
+import { exportMap32k, pickPngSink, EXPORT_32K_WIDTH } from '../lib/map/export-32k';
 
 interface StateMapProps {
   anomalies: AnomalyItem[];
@@ -73,12 +67,22 @@ const BASEMAPS = {
     sources: {
       sat: {
         type: 'raster',
-        tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+        tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}?blankTile=false'],
         tileSize: 256,
+        maxzoom: 21,
         attribution: '© Esri, Maxar, Earthstar Geographics',
+      },
+      'terrain-dem': {
+        type: 'raster-dem',
+        tiles: [AWS_TERRARIUM_TILES],
+        encoding: 'terrarium',
+        tileSize: 256,
+        maxzoom: 15,
+        attribution: '<a href="https://registry.opendata.aws/terrain-tiles/" target="_blank" rel="noopener">Terrain Tiles</a> — Mapzen/AWS, USGS 3DEP',
       },
     },
     layers: [{ id: 'sat-layer', type: 'raster', source: 'sat' }],
+    terrain: { source: 'terrain-dem', exaggeration: 1.5 },
   },
   light: 'https://demotiles.maplibre.org/style.json',
   terrain: 'https://demotiles.maplibre.org/style.json',
@@ -99,9 +103,28 @@ export default function StateMap({
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const [ready, setReady] = useState(false);
-  const [pitch, setPitch] = useState(0);
+  const [pitch, setPitch] = useState(55);
   const [zoom, setZoom] = useState(6.2);
   const [webgpuSupported, setWebgpuSupported] = useState(false);
+  const [export32kStatus, setExport32kStatus] = useState<string | null>(null);
+  // The pulse animation and anomaly stream call setData, which keeps map.loaded() false; both pause during export.
+  const exportingRef = useRef(false);
+  const save32k = useCallback(async () => {
+    const map = mapRef.current;
+    if (!map) return;
+    setExport32kStatus('preparing…');
+    exportingRef.current = true;
+    try {
+      const { sink, close } = await pickPngSink(`georgia-state-map-${EXPORT_32K_WIDTH}.png`);
+      const out = await exportMap32k(map, sink, (done, total) => setExport32kStatus(`tile ${done}/${total}`));
+      await close();
+      setExport32kStatus(`saved ${out.width}×${out.height} in ${Math.round(out.seconds)} s`);
+    } catch (err) {
+      setExport32kStatus(err instanceof Error ? err.message : 'export failed');
+    } finally {
+      exportingRef.current = false;
+    }
+  }, []);
 
   useEffect(() => {
     if (typeof navigator !== 'undefined' && 'gpu' in navigator) {
@@ -126,11 +149,17 @@ export default function StateMap({
     },
   }));
 
+  // The map is built once; its layer setup and click handlers read the latest props through this ref,
+  // so a re-render (zoom, export status, parent state) does not tear down and recreate the map.
+  const latest = useRef({ features, anomalies, onSelectAnomaly, onSelectState });
+  latest.current = { features, anomalies, onSelectAnomaly, onSelectState };
+
   // Coalesced real-time SSE stream hook
-  useAnomalyStream('anomalies', mapRef.current);
+  useAnomalyStream('anomalies', mapRef.current, undefined, () => exportingRef.current);
 
   // Setup layers on map load
   const addMapLayers = useCallback(async (map: maplibregl.Map) => {
+    const { features } = latest.current;
     // ═══ SINGLE SOURCE for all 8 state boundaries ═══
     let normalizedData: any = '/geo/all-states.geojson';
     try {
@@ -175,7 +204,7 @@ export default function StateMap({
         source: 'all-states',
         filter: ['==', ['get', 'STUSPS'], 'GA'],
         paint: {
-          'line-color': '#dc2626',
+          'line-color': '#7f1d1d',
           'line-width': [
             'interpolate', ['exponential', 1.5], ['zoom'],
             3, 4,
@@ -183,8 +212,8 @@ export default function StateMap({
             18, 22,
             24, 30,
           ],
-          'line-blur': 6,
-          'line-opacity': 0.75,
+          'line-blur': 0,
+          'line-opacity': 1,
         },
       });
     }
@@ -196,7 +225,7 @@ export default function StateMap({
         source: 'all-states',
         filter: ['==', ['get', 'STUSPS'], 'GA'],
         paint: {
-          'line-color': '#ef4444',
+          'line-color': '#7f1d1d',
           'line-width': [
             'interpolate', ['exponential', 1.5], ['zoom'],
             3, 1.2,
@@ -282,6 +311,7 @@ export default function StateMap({
         id: 'competitor-outline',
         type: 'line',
         source: 'competitors',
+        filter: ['!=', ['geometry-type'], 'Point'],
         paint: {
           'line-color': '#475569',
           'line-width': 1.5,
@@ -296,6 +326,7 @@ export default function StateMap({
         id: 'competitor-labels',
         type: 'symbol',
         source: 'competitors',
+        filter: ['==', ['geometry-type'], 'Point'],
         layout: {
           'text-field': ['get', 'STUSPS'],
           'text-size': 13,
@@ -428,6 +459,7 @@ export default function StateMap({
       const f = e.features?.[0];
       if (!f || f.geometry.type !== 'Point') return;
       const props = f.properties as any;
+      const { anomalies, onSelectAnomaly } = latest.current;
       const matched = anomalies.find((item) => item.id === props.id || `${item.code} - ${item.location}` === props.title);
       if (matched) {
         onSelectAnomaly(matched);
@@ -455,7 +487,7 @@ export default function StateMap({
       const f = e.features?.[0];
       if (!f) return;
       const st = f.properties?.STUSPS;
-      if (st) onSelectState(st);
+      if (st) latest.current.onSelectState(st);
     });
 
     
@@ -569,7 +601,7 @@ export default function StateMap({
     map.on('mouseleave', 'anomaly-points', () => { map.getCanvas().style.cursor = ''; });
     map.on('mouseenter', 'competitor-labels', () => { map.getCanvas().style.cursor = 'pointer'; });
     map.on('mouseleave', 'competitor-labels', () => { map.getCanvas().style.cursor = ''; });
-  }, [features, anomalies, onSelectAnomaly, onSelectState]);
+  }, []);
 
   // Initialize MapLibre Map
   useEffect(() => {
@@ -580,15 +612,16 @@ export default function StateMap({
     const webgpuAvailable = typeof navigator !== 'undefined' && 'gpu' in navigator;
 
     // Initialize MapLibre Map with dark satellite style by default
+    maplibregl.setWorkerUrl(`/maplibre-gl-worker.mjs?v=${maplibregl.getVersion()}`);
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: BASEMAPS.satellite as any,
       bounds: GA_BOUNDS,
       fitBoundsOptions: { padding: 40 },
-      pitch: 0,
-      bearing: 0,
+      pitch: 55,
+      bearing: -10,
       minZoom: 1,
-      maxZoom: 35,
+      maxZoom: 21,
       maxPitch: 85,
       attributionControl: false,
       experimentalZoomLevelsToOverscale: 4,
@@ -602,7 +635,8 @@ export default function StateMap({
 
     map.addControl(
       new maplibregl.NavigationControl({
-        visualizePitch: true,
+        // Pitch squashes the compass needle to a flat line in steep 3D views; keep it readable.
+        visualizePitch: false,
         showCompass: true,
         showZoom: true,
       }),
@@ -613,6 +647,9 @@ export default function StateMap({
       new maplibregl.ScaleControl({ maxWidth: 100, unit: 'imperial' }),
       'bottom-left'
     );
+    map.addControl(new maplibregl.ScaleControl({ maxWidth: 100, unit: 'metric' }), 'bottom-left');
+    attachSolarSky(map);
+    map.once('remove', applyHorizonLod(map, horizonLod(isTouchScreen(), gpuCrashCount())));
 
     map.on('style.load', () => {
       try {
@@ -695,6 +732,11 @@ export default function StateMap({
     };
   }, [addMapLayers]);
 
+  useEffect(() => {
+    const src = ready ? (mapRef.current?.getSource('anomalies') as any) : null;
+    if (src && typeof src.setData === 'function') src.setData({ type: 'FeatureCollection', features: latest.current.features });
+  }, [anomalies, ready]);
+
 
   // ─── NSA ADMIN MODE: OUTBOUND GEORGIA VERIFIED PERSON TELEMETRY (ONE AT A TIME) ───
   useEffect(() => {
@@ -708,6 +750,10 @@ export default function StateMap({
     let animId: number;
 
     const animate = () => {
+      if (exportingRef.current) {
+        animId = requestAnimationFrame(animate);
+        return;
+      }
       const now = Date.now();
 
       // Launch exactly ONE verified person at a time (spacing out every 3.8s)
@@ -871,28 +917,6 @@ export default function StateMap({
     } catch {}
   }, [selectedState, ready]);
 
-  // Toggle 3D Terrain
-  const toggle3D = () => {
-    const map = mapRef.current;
-    if (!map) return;
-    const is3D = map.getPitch() > 20;
-
-    if (!is3D) {
-      if (!map.getSource('terrain-dem')) {
-        map.addSource('terrain-dem', {
-          type: 'raster-dem',
-          url: 'https://demotiles.maplibre.org/terrain-tiles/tiles.json',
-          tileSize: 256,
-        });
-      }
-      (map as any).setTerrain?.({ source: 'terrain-dem', exaggeration: 1.5 });
-      map.easeTo({ pitch: 55, bearing: -10, duration: 800 });
-    } else {
-      (map as any).setTerrain?.(null);
-      map.easeTo({ pitch: 0, bearing: 0, duration: 800 });
-    }
-  };
-
   return (
     <div
       ref={containerRef}
@@ -921,28 +945,19 @@ export default function StateMap({
           border: '1px solid rgba(148, 163, 184, 0.2)',
         }}
       >
-        <button
-          onClick={toggle3D}
-          style={{
-            appearance: 'none',
-            WebkitAppearance: 'none',
-            padding: '4px 10px',
-            fontSize: '10px',
-            fontWeight: 700,
-            letterSpacing: '0.05em',
-            color: pitch <= 20 ? '#34d399' : '#cbd5e1',
-            background: pitch <= 20 ? 'rgba(16, 185, 129, 0.2)' : 'transparent',
-            border: pitch <= 20 ? '1px solid rgba(52, 211, 153, 0.6)' : '1px solid rgba(148, 163, 184, 0.3)',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {pitch > 20 ? '3D' : '2D'}
-        </button>
         <div style={{ fontSize: '10px', fontFamily: 'monospace', color: '#94a3b8', padding: '2px 6px' }}>
           z{mapRef.current && typeof zoom === 'number' && !isNaN(zoom) ? zoom.toFixed(1) : '5.7'} · p{typeof pitch === 'number' && !isNaN(pitch) ? pitch.toFixed(0) : '55'}° · WEBGL2
         </div>
+        <button
+          type="button"
+          onClick={save32k}
+          disabled={!ready || (export32kStatus !== null && /^(preparing|tile )/.test(export32kStatus))}
+          title={`Save the current view as a ${EXPORT_32K_WIDTH} px wide PNG, rendered in 2,048 px tiles`}
+          className="font-mono text-[10px] text-cyan-300 border border-cyan-500/40 rounded px-1.5 py-0.5 hover:bg-cyan-500/10 disabled:opacity-50"
+        >
+          32K PNG
+        </button>
+        {export32kStatus && <span className="font-mono text-[10px] text-slate-300">{export32kStatus}</span>}
       </div>
 
       {/* NSA ORACLE Full-Spectrum Glass Legend (Bottom Left) */}

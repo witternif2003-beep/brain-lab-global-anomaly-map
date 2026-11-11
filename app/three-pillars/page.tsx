@@ -96,7 +96,7 @@ export default function ThreePillarsPage() {
               <div key={idx} className="glass-card p-4 rounded-xl border border-white/10 space-y-2 text-xs">
                 <div className="text-white font-bold">{met.metric}</div>
                 <div className="text-[#94a3b8] text-[11px]">Baseline: <span className="text-slate-200">{met.baseline}</span></div>
-                <div className="text-[#fb923c] font-semibold text-[11px]">Observed: {met.observedTelemetry}</div>
+                <div className="text-[#ff4fd8] font-semibold text-[11px]">Observed: {met.observedTelemetry}</div>
                 <div className="glass-card p-2 rounded text-[10px] text-[#38bdf8] flex justify-between">
                   <span>Deviation:</span>
                   <span className="font-bold">{met.deviationZScore}</span>

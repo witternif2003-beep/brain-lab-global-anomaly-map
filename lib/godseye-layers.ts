@@ -118,7 +118,7 @@ export const GODSEYE_INTEL_LAYERS: IntelLayerConfig[] = [
     provider: "GPSJam.org & ADS-B Signal Integrity Vectors",
     georgiaRelevance: "Signals warfare monitoring across military air corridors including Moody AFB, Robins AFB, and Kings Bay Submarine Base.",
     active: true,
-    color: "#fb923c"
+    color: "#ff4fd8"
   },
   {
     id: "layer-osint",
@@ -142,7 +142,7 @@ export const GODSEYE_INTEL_LAYERS: IntelLayerConfig[] = [
     provider: "NOAA Space Weather Prediction Center (SWPC)",
     georgiaRelevance: "Ionospheric disturbance impacts on high-frequency emergency communications and electrical transmission grid harmonics.",
     active: true,
-    color: "#f59e0b"
+    color: "#ff2ec4"
   },
   {
     id: "layer-conflicts",
@@ -202,7 +202,7 @@ export const GODSEYE_INTEL_LAYERS: IntelLayerConfig[] = [
     provider: "UN / EC Global Disaster Alert and Coordination System",
     georgiaRelevance: "Monitors East Coast tropical cyclones, storm surge vectors, and regional FEMA Region IV emergency declarations.",
     active: true,
-    color: "#f59e0b"
+    color: "#ff2ec4"
   },
   {
     id: "layer-ocean-buoys",
@@ -238,7 +238,7 @@ export const GODSEYE_INTEL_LAYERS: IntelLayerConfig[] = [
     provider: "US Department of Energy ODIN & WRI Energy Database",
     georgiaRelevance: "Monitors Plant Vogtle Units 1-4 nuclear baseload, Southern Company distribution nodes, and statewide county-by-county power outages.",
     active: true,
-    color: "#fbbf24"
+    color: "#ff4fd8"
   },
   {
     id: "layer-volcanoes",
