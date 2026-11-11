@@ -11,6 +11,7 @@ import { isTouchDevice, LIDAR_POINT_CEILING, markerPixelRatio } from './map/touc
 import { gpuCrashCount } from './map/crash-guard';
 import { declutterMarkers, type DeclutterCandidate, fitsViewport } from './ga-marker-declutter';
 import type { CloudPuff } from './ga-clouds/cloud-puffs';
+import type { CensusBlocks } from './ga-census-density';
 import { puffAtlas } from './ga-clouds/puff-texture';
 import { cloudTopMesh, type CloudTopGrid, type CloudTopMesh } from './ga-goes-clouds/cloud-tops';
 import { crimeStrobePhase } from './ga-live-markers/strobe';
@@ -132,6 +133,8 @@ interface DeckState {
   clouds: CloudPuff[];
   /** GOES satellite cloud image on the GOES cloud-top-height mesh. */
   cloudSheet: GaCloudSheet | null;
+  /** Census 2020 populated blocks, drawn under every marker group while the density toggle is on. */
+  density: CensusBlocks | null;
 }
 
 export interface GaCloudSheet {
@@ -233,6 +236,7 @@ function getState(map: MapLibreMap): DeckState {
     groundVersion: 0,
     clouds: [],
     cloudSheet: null,
+    density: null,
     groundTimer: null,
   };
   states.set(map, state);
@@ -680,6 +684,18 @@ function createLayers(state: DeckState): Layer[] {
       alphaCutoff: 0,
       pickable: false,
       parameters: CLOUD_PARAMETERS,
+    }));
+  }
+  if (state.density) {
+    const d = state.density;
+    layers.push(new ScatterplotLayer({
+      id: 'ga-deck-census-blocks',
+      data: { length: d.n, attributes: { getPosition: { value: d.positions, size: 2 }, getRadius: { value: d.radii, size: 1 } } },
+      getFillColor: [0, 255, 255, 100],
+      radiusUnits: 'pixels',
+      stroked: false,
+      pickable: false,
+      parameters: DEPTH_PARAMETERS,
     }));
   }
   for (const [key, group] of [...state.groups.entries()].sort((a, b) => a[1].z - b[1].z)) {
@@ -1155,6 +1171,14 @@ export function setGaDeckCloudSheet(map: MapLibreMap, sheet: GaCloudSheet | null
   const state = getState(map);
   state.cloudSheet = sheet;
   publishState(map, state);
+  if (state.overlay) updateLayers(state);
+  if (!state.initPromise) state.initPromise = initialize(map, state);
+}
+
+/** Shows (or with null hides) the Census 2020 block population dots under every marker group. */
+export function setGaDeckDensity(map: MapLibreMap, blocks: CensusBlocks | null): void {
+  const state = getState(map);
+  state.density = blocks;
   if (state.overlay) updateLayers(state);
   if (!state.initPromise) state.initPromise = initialize(map, state);
 }

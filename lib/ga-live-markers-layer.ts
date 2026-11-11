@@ -286,7 +286,7 @@ const SPECS: Record<LiveLayer, Spec> = {
     detail: () => 'mapped locations · not siren activations',
   },
   towers: {
-    label: 'Communication towers (OSM)', color: '#ff2bf0', stroke: '#0b0e14', radiusPx: 4, z: 15, refreshMs: OSM_REFRESH_MS,
+    label: 'Communication towers (OSM)', color: '#ff00ff', stroke: '#0b0e14', radiusPx: 4, z: 15, refreshMs: OSM_REFRESH_MS,
     iconPx: 16, icon: () => ({ shape: 'tower' }),
     title: (m) => `COMM TOWER · ${m.label}`, rows: osmRows,
     detail: (ms) => `${ms.filter((m) => m.props.operator).length} with operator tagged · mapped locations`,

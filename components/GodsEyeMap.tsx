@@ -38,6 +38,8 @@ import { addGaCloudLayers } from '../lib/ga-clouds-layer';
 import { addGibsDailyLayers, setGibsDailyActive } from '../lib/ga-gibs-daily-layer';
 import { addTerminatorLayers } from '../lib/terminator-layer';
 import { addGaLiveMarkerLayers } from '../lib/ga-live-markers-layer';
+import { setGaDeckDensity } from '../lib/ga-deck-overlay';
+import { CENSUS_BLOCKS_SOURCE, CENSUS_BLOCKS_URL, decodeCensusBlocks, type CensusBlocks } from '../lib/ga-census-density';
 import GaNodeFieldHud from './GaNodeFieldHud';
 import { addGaFbiFeeds } from '../lib/ga-fbi-feed';
 import { addGaFbiAgencyLayers } from '../lib/ga-fbi-agencies-layer';
@@ -441,6 +443,8 @@ export default function GodsEyeMap({
   const mapRef = useRef<maplibregl.Map | null>(null);
   const [ready, setReady] = useState(false);
   const [basemap, setBasemap] = useState<keyof typeof BASEMAPS>('satellite');
+  const [densityOn, setDensityOn] = useState(false);
+  const [density, setDensity] = useState<{ blocks: CensusBlocks | null; error: string | null; loading: boolean }>({ blocks: null, error: null, loading: false });
   const [gpuLost, setGpuLost] = useState(false);
   const [pitch, setPitch] = useState(60);
   const [zoom, setZoom] = useState(6.0);
@@ -712,6 +716,31 @@ export default function GodsEyeMap({
 
 
   // Sync internal state with external prop if provided
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (!densityOn) {
+      if (density.blocks) setGaDeckDensity(map, null);
+      return;
+    }
+    if (density.blocks) {
+      setGaDeckDensity(map, density.blocks);
+      return;
+    }
+    let cancelled = false;
+    setDensity({ blocks: null, error: null, loading: true });
+    fetch(CENSUS_BLOCKS_URL)
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.arrayBuffer();
+      })
+      .then((buf) => !cancelled && setDensity({ blocks: decodeCensusBlocks(buf), error: null, loading: false }))
+      .catch((e: Error) => !cancelled && setDensity({ blocks: null, error: e.message, loading: false }));
+    return () => {
+      cancelled = true;
+    };
+  }, [densityOn, density.blocks]);
+
   useEffect(() => {
     setActiveFocus(focusState);
   }, [focusState]);
@@ -2197,6 +2226,34 @@ export default function GodsEyeMap({
                 }}
               >
                 NAIP 2023
+              </button>
+              <button
+                type="button"
+                data-testid="density-toggle"
+                aria-pressed={densityOn}
+                title={`Population by Census 2020 block: one cyan dot per populated block at its internal point, sized by residents. Source: ${CENSUS_BLOCKS_SOURCE}. Aggregate counts only, not people or phones.`}
+                onClick={() => setDensityOn((on) => !on)}
+                style={{
+                  padding: '5px 14px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  borderRadius: '9999px',
+                  color: densityOn ? '#00ffff' : '#cbd5e1',
+                  background: densityOn ? 'rgba(0, 70, 80, 0.75)' : 'rgba(10, 18, 40, 0.85)',
+                  border: densityOn ? '1px solid rgba(0, 255, 255, 0.85)' : '1px solid rgba(30, 58, 95, 0.7)',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  boxShadow: densityOn ? '0 0 14px rgba(0, 255, 255, 0.5)' : 'none',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                {!densityOn
+                  ? 'DENSITY LAYER'
+                  : density.error
+                    ? 'DENSITY LAYER · ERROR'
+                    : density.blocks
+                      ? `DENSITY LAYER · ${density.blocks.n.toLocaleString()} BLOCKS · ${density.blocks.total.toLocaleString()} PEOPLE`
+                      : 'DENSITY LAYER · LOADING'}
               </button>
               <button
                 type="button"
