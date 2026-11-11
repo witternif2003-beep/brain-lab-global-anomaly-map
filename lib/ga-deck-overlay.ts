@@ -11,7 +11,7 @@ import { isTouchDevice, LIDAR_POINT_CEILING, markerPixelRatio } from './map/touc
 import { gpuCrashCount } from './map/crash-guard';
 import { declutterMarkers, type DeclutterCandidate, fitsViewport } from './ga-marker-declutter';
 import type { CloudPuff } from './ga-clouds/cloud-puffs';
-import type { CensusBlocks } from './ga-census-density';
+import { DENSITY_ANCHOR_MIN_ZOOM, densityAnchors, type CensusBlocks } from './ga-census-density';
 import { puffAtlas } from './ga-clouds/puff-texture';
 import { cloudTopMesh, type CloudTopGrid, type CloudTopMesh } from './ga-goes-clouds/cloud-tops';
 import { crimeStrobePhase } from './ga-live-markers/strobe';
@@ -135,6 +135,8 @@ interface DeckState {
   cloudSheet: GaCloudSheet | null;
   /** Census 2020 populated blocks, drawn under every marker group while the density toggle is on. */
   density: CensusBlocks | null;
+  /** What the density layer draws now: all blocks flat, or (terrain on, zoomed in) the in-view blocks on the terrain. */
+  densityView: { n: number; positions: Float64Array; size: 2 | 3; radii: Float32Array } | null;
 }
 
 export interface GaCloudSheet {
@@ -237,6 +239,7 @@ function getState(map: MapLibreMap): DeckState {
     clouds: [],
     cloudSheet: null,
     density: null,
+    densityView: null,
     groundTimer: null,
   };
   states.set(map, state);
@@ -267,6 +270,7 @@ function getState(map: MapLibreMap): DeckState {
   map.on('projectiontransition', reorientIfViewChanged);
   map.on('style.load', reorientIfViewChanged);
   map.on('moveend', () => {
+    refreshDensity(state!);
     declutterGroups(state!);
     declutterLabels(state!);
     updateLayers(state!);
@@ -383,9 +387,35 @@ function modelAt(state: DeckState, item: GaDeckItem): [number, number, number] {
 export const gaModelPosition = (map: MapLibreMap, item: Pick<GaDeckItem, 'coord' | 'model'>): [number, number, number] =>
   item.model ? modelAt(getState(map), item as GaDeckItem) : [item.coord[0], item.coord[1], 0];
 
+/** Recomputes the density view; zoomed in with terrain, only blocks in (and half a screen around) the view, lifted onto the terrain. */
+function refreshDensity(state: DeckState): void {
+  const d = state.density;
+  const map = state.map;
+  if (!d) {
+    state.densityView = null;
+    return;
+  }
+  if (!map.getTerrain() || map.getZoom() < DENSITY_ANCHOR_MIN_ZOOM) {
+    state.densityView = { n: d.n, positions: d.positions, size: 2, radii: d.radii };
+    return;
+  }
+  const b = map.getBounds();
+  const padX = (b.getEast() - b.getWest()) / 2;
+  const padY = (b.getNorth() - b.getSouth()) / 2;
+  const box = { west: b.getWest() - padX, east: b.getEast() + padX, south: b.getSouth() - padY, north: b.getNorth() + padY };
+  state.densityView = {
+    ...densityAnchors(d, box, (lon, lat) => {
+      const e = map.queryTerrainElevation([lon, lat]);
+      return e !== null && Number.isFinite(e) ? e : 0;
+    }),
+    size: 3,
+  };
+}
+
 function reground(state: DeckState): void {
   state.ground.clear();
   state.groundVersion += 1;
+  refreshDensity(state);
   updateLayers(state);
   publishState(state.map, state);
 }
@@ -686,11 +716,11 @@ function createLayers(state: DeckState): Layer[] {
       parameters: CLOUD_PARAMETERS,
     }));
   }
-  if (state.density) {
-    const d = state.density;
+  if (state.densityView) {
+    const d = state.densityView;
     layers.push(new ScatterplotLayer({
       id: 'ga-deck-census-blocks',
-      data: { length: d.n, attributes: { getPosition: { value: d.positions, size: 2 }, getRadius: { value: d.radii, size: 1 } } },
+      data: { length: d.n, attributes: { getPosition: { value: d.positions, size: d.size }, getRadius: { value: d.radii, size: 1 } } },
       getFillColor: [0, 255, 255, 100],
       radiusUnits: 'pixels',
       stroked: false,
@@ -1179,6 +1209,7 @@ export function setGaDeckCloudSheet(map: MapLibreMap, sheet: GaCloudSheet | null
 export function setGaDeckDensity(map: MapLibreMap, blocks: CensusBlocks | null): void {
   const state = getState(map);
   state.density = blocks;
+  refreshDensity(state);
   if (state.overlay) updateLayers(state);
   if (!state.initPromise) state.initPromise = initialize(map, state);
 }

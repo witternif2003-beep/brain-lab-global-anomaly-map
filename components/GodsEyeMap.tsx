@@ -444,6 +444,7 @@ export default function GodsEyeMap({
   const [ready, setReady] = useState(false);
   const [basemap, setBasemap] = useState<keyof typeof BASEMAPS>('satellite');
   const [densityOn, setDensityOn] = useState(false);
+  const [popEst, setPopEst] = useState<{ year: number; estimate: number; sourceUrl: string; retrievedAt: string } | null>(null);
   const [density, setDensity] = useState<{ blocks: CensusBlocks | null; error: string | null; loading: boolean }>({ blocks: null, error: null, loading: false });
   const [gpuLost, setGpuLost] = useState(false);
   const [pitch, setPitch] = useState(60);
@@ -740,6 +741,22 @@ export default function GodsEyeMap({
       cancelled = true;
     };
   }, [densityOn, density.blocks]);
+
+  useEffect(() => {
+    if (!densityOn) return;
+    let cancelled = false;
+    const load = () =>
+      fetch('/api/ga-population', { cache: 'no-store' })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j) => !cancelled && j && typeof j.estimate === 'number' && setPopEst(j))
+        .catch(() => undefined);
+    load();
+    const t = setInterval(load, 30 * 60_000);
+    return () => {
+      cancelled = true;
+      clearInterval(t);
+    };
+  }, [densityOn]);
 
   useEffect(() => {
     setActiveFocus(focusState);
@@ -2231,7 +2248,7 @@ export default function GodsEyeMap({
                 type="button"
                 data-testid="density-toggle"
                 aria-pressed={densityOn}
-                title={`Population by Census 2020 block: one cyan dot per populated block at its internal point, sized by residents. Source: ${CENSUS_BLOCKS_SOURCE}. Aggregate counts only, not people or phones.`}
+                title={`Population by Census 2020 block: one cyan dot per populated block at its internal point, sized by residents. Source: ${CENSUS_BLOCKS_SOURCE}. Headline count: ${popEst ? `Census Bureau July 1, ${popEst.year} estimate (${popEst.sourceUrl}, retrieved ${popEst.retrievedAt})` : '2020 Census block total'}. Aggregate counts only, not people or phones.`}
                 onClick={() => setDensityOn((on) => !on)}
                 style={{
                   padding: '5px 14px',
@@ -2252,7 +2269,7 @@ export default function GodsEyeMap({
                   : density.error
                     ? 'DENSITY LAYER · ERROR'
                     : density.blocks
-                      ? `DENSITY LAYER · ${density.blocks.n.toLocaleString()} BLOCKS · ${density.blocks.total.toLocaleString()} PEOPLE`
+                      ? `DENSITY LAYER · ${density.blocks.n.toLocaleString()} BLOCKS · ${popEst ? `${popEst.estimate.toLocaleString()} PEOPLE (CENSUS EST. JUL ${popEst.year})` : `${density.blocks.total.toLocaleString()} PEOPLE (2020 CENSUS)`}`
                       : 'DENSITY LAYER · LOADING'}
               </button>
               <button

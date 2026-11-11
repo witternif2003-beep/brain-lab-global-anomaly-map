@@ -38,3 +38,52 @@ export function decodeCensusBlocks(buf: ArrayBuffer): CensusBlocks {
   }
   return { n, positions, pops, radii, total };
 }
+
+/** Blocks drawn on the 3D terrain from this zoom; below it they sit flat (the tilt offset is under a pixel or two). */
+export const DENSITY_ANCHOR_MIN_ZOOM = 10;
+
+export interface LngLatBox { west: number; south: number; east: number; north: number }
+
+/** Blocks inside `box`, each lifted to `elev(lon, lat)` metres so its dot sits on the drawn terrain at its exact point. */
+export function densityAnchors(b: CensusBlocks, box: LngLatBox, elev: (lon: number, lat: number) => number): { n: number; positions: Float64Array; radii: Float32Array } {
+  const idx: number[] = [];
+  for (let i = 0; i < b.n; i++) {
+    const lon = b.positions[2 * i];
+    const lat = b.positions[2 * i + 1];
+    if (lon >= box.west && lon <= box.east && lat >= box.south && lat <= box.north) idx.push(i);
+  }
+  const positions = new Float64Array(3 * idx.length);
+  const radii = new Float32Array(idx.length);
+  idx.forEach((i, k) => {
+    const lon = b.positions[2 * i];
+    const lat = b.positions[2 * i + 1];
+    positions[3 * k] = lon;
+    positions[3 * k + 1] = lat;
+    positions[3 * k + 2] = elev(lon, lat);
+    radii[k] = b.radii[i];
+  });
+  return { n: idx.length, positions, radii };
+}
+
+export interface StateEstimate {
+  /** Latest July 1 estimate year in the file. */
+  year: number;
+  estimate: number;
+  /** April 1, 2020 estimates base. */
+  base2020: number;
+}
+
+/** Census Population Estimates Program NST-EST<vintage>-ALLDATA.csv → the newest POPESTIMATE<year> for one state. */
+export function parseStateEstimate(csv: string, stateFips = '13'): StateEstimate {
+  const lines = csv.trim().split(/\r?\n/);
+  const head = lines[0].split(',');
+  const row = lines.slice(1).map((l) => l.split(',')).find((r) => r[head.indexOf('SUMLEV')] === '040' && r[head.indexOf('STATE')] === stateFips);
+  if (!row) throw new Error(`state ${stateFips} not in estimates file`);
+  const years = head.map((h) => /^POPESTIMATE(\d{4})$/.exec(h)?.[1]).filter((y): y is string => !!y).map(Number);
+  if (!years.length) throw new Error('no POPESTIMATE columns');
+  const year = Math.max(...years);
+  const estimate = Number(row[head.indexOf(`POPESTIMATE${year}`)]);
+  const base2020 = Number(row[head.indexOf('ESTIMATESBASE2020')]);
+  if (!Number.isFinite(estimate) || estimate <= 0) throw new Error(`bad POPESTIMATE${year}`);
+  return { year, estimate, base2020 };
+}
