@@ -406,6 +406,35 @@ async function gdotEvents(): Promise<LiveMarker[]> {
   return parse511Events((await r.json()) as Ga511Event[]);
 }
 
+const GA511_EVENTS_MIRROR = "https://services1.arcgis.com/2iUE8l8JKrP2tygQ/arcgis/rest/services/GDOT_511_Events_Public_View/FeatureServer/0";
+const GA511_EVENT_FIELDS = "ID,Organization,RoadwayName,DirectionOfTravel,Description,Reported,LastUpdated,StartDate,PlannedEndDate,LanesAffected,Latitude,Longitude,EventType,IsFullClosure,Severity";
+type Ga511EventRow = { attributes?: Record<string, unknown> };
+const msToS = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? Math.round(v / 1000) : null);
+const str = (v: unknown) => (typeof v === "string" ? v : null);
+
+/** Keyless fallback: GDOT's public ArcGIS view of the 511GA events table (same fields; dates in ms, IsFullClosure as "True"/"False"). */
+async function gdotEventsMirror(): Promise<LiveMarker[]> {
+  const rows: Ga511EventRow[] = [];
+  for (let offset = 0; offset < GA511_MIRROR_MAX; offset += GA511_MIRROR_PAGE) {
+    const d = await getJson<{ features?: Ga511EventRow[]; exceededTransferLimit?: boolean }>(
+      `${GA511_EVENTS_MIRROR}/query?where=1%3D1&outFields=${GA511_EVENT_FIELDS}&returnGeometry=false&orderByFields=ObjectId&resultOffset=${offset}&resultRecordCount=${GA511_MIRROR_PAGE}&f=json`,
+      30_000,
+    );
+    rows.push(...(d.features ?? []));
+    if (!d.exceededTransferLimit) break;
+  }
+  return parse511Events(
+    rows.map(({ attributes: a = {} }) => ({
+      ID: typeof a.ID === "number" ? a.ID : null,
+      Organization: str(a.Organization), RoadwayName: str(a.RoadwayName), DirectionOfTravel: str(a.DirectionOfTravel),
+      Description: str(a.Description), LanesAffected: str(a.LanesAffected), EventType: str(a.EventType), Severity: str(a.Severity),
+      Reported: msToS(a.Reported), LastUpdated: msToS(a.LastUpdated), StartDate: msToS(a.StartDate), PlannedEndDate: msToS(a.PlannedEndDate),
+      Latitude: typeof a.Latitude === "number" ? a.Latitude : null, Longitude: typeof a.Longitude === "number" ? a.Longitude : null,
+      IsFullClosure: a.IsFullClosure === true || a.IsFullClosure === "True" ? true : a.IsFullClosure === false || a.IsFullClosure === "False" ? false : null,
+    })),
+  );
+}
+
 const GA511_MIRROR = "https://services1.arcgis.com/2iUE8l8JKrP2tygQ/arcgis/rest/services/Georgia511Cameras_Detailed_/FeatureServer/0";
 const GA511_MIRROR_PAGE = 2000;
 const GA511_MIRROR_MAX = 10_000;
@@ -446,6 +475,7 @@ const LAYERS: Record<LiveLayer, LayerSpec> = {
     source: "Georgia DOT traffic events from the 511GA developer API (roadwork, closures, accidents and incidents, special events), at each event's published latitude/longitude",
     sourceUrl: "https://511ga.org/help/endpoint/event",
     feeds: [{ id: "511GA events", url: GA511_EVENTS, markers: gdotEvents }],
+    fallback: [{ id: "GDOT 511 Events (public ArcGIS view)", url: GA511_EVENTS_MIRROR, markers: gdotEventsMirror }],
   },
   augusta911: {
     ttlS: 120,
