@@ -38,7 +38,8 @@ import { addGaCloudLayers } from '../lib/ga-clouds-layer';
 import { addGibsDailyLayers, setGibsDailyActive } from '../lib/ga-gibs-daily-layer';
 import { addTerminatorLayers } from '../lib/terminator-layer';
 import { addGaLiveMarkerLayers } from '../lib/ga-live-markers-layer';
-import { setGaDeckDensity } from '../lib/ga-deck-overlay';
+import { setGaDeckDensity, setGaDeckDensityPaused } from '../lib/ga-deck-overlay';
+import { densityPausedFor, FpsMeter } from '../lib/map/fps-watchdog';
 import { enableGaNodeField } from '../lib/ga-live-status';
 import { CENSUS_BLOCKS_SOURCE, CENSUS_BLOCKS_URL, decodeCensusBlocks, type CensusBlocks } from '../lib/ga-census-density';
 import { addGaFbiFeeds } from '../lib/ga-fbi-feed';
@@ -447,6 +448,7 @@ export default function GodsEyeMap({
   const [ready, setReady] = useState(false);
   const [basemap, setBasemap] = useState<keyof typeof BASEMAPS>('satellite');
   const [densityOn, setDensityOn] = useState(false);
+  const [lowFps, setLowFps] = useState<number | null>(null);
   const [popEst, setPopEst] = useState<{ year: number; estimate: number; sourceUrl: string; retrievedAt: string } | null>(null);
   const [density, setDensity] = useState<{ blocks: CensusBlocks | null; error: string | null; loading: boolean }>({ blocks: null, error: null, loading: false });
   const [gpuLost, setGpuLost] = useState(false);
@@ -749,6 +751,41 @@ export default function GodsEyeMap({
       .catch((e: Error) => !cancelled && setDensity({ blocks: null, error: e.message, loading: false }));
     return () => {
       cancelled = true;
+    };
+  }, [densityOn, density.blocks, ready]);
+
+  // FPS watchdog: while the map moves below LOW_FPS the density dots pause; they return as soon as it stops.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !densityOn || !density.blocks) return;
+    const meter = new FpsMeter();
+    let moving = false;
+    let raf = 0;
+    const apply = (paused: boolean, fps: number | null) => {
+      setGaDeckDensityPaused(map, paused);
+      setLowFps(paused && fps !== null ? Math.round(fps) : null);
+    };
+    const frame = (now: number) => {
+      const fps = meter.tick(now);
+      if (fps !== null) apply(densityPausedFor(moving, fps), fps);
+      raf = requestAnimationFrame(frame);
+    };
+    const onStart = () => {
+      moving = true;
+      meter.reset();
+    };
+    const onEnd = () => {
+      moving = false;
+      apply(false, null);
+    };
+    map.on('movestart', onStart);
+    map.on('moveend', onEnd);
+    raf = requestAnimationFrame(frame);
+    return () => {
+      cancelAnimationFrame(raf);
+      map.off('movestart', onStart);
+      map.off('moveend', onEnd);
+      apply(false, null);
     };
   }, [densityOn, density.blocks, ready]);
 
@@ -1492,6 +1529,7 @@ export default function GodsEyeMap({
       pixelRatio: mapPixelRatio(),
       maxCanvasSize: [lim, lim],
       maxTileCacheZoomLevels: isTouchDevice() ? TOUCH_TILE_CACHE_ZOOM_LEVELS : 5,
+      fadeDuration: 0,
       dragRotate: true,
       pitchWithRotate: true,
       touchZoomRotate: true,
@@ -2299,7 +2337,7 @@ export default function GodsEyeMap({
                   : density.error
                     ? 'DENSITY LAYER · ERROR'
                     : density.blocks
-                      ? `DENSITY LAYER · ${density.blocks.n.toLocaleString()} BLOCKS · ${popEst ? `${popEst.estimate.toLocaleString()} PEOPLE (CENSUS EST. JUL ${popEst.year})` : `${density.blocks.total.toLocaleString()} PEOPLE (2020 CENSUS)`}`
+                      ? `DENSITY LAYER · ${density.blocks.n.toLocaleString()} BLOCKS · ${popEst ? `${popEst.estimate.toLocaleString()} PEOPLE (CENSUS EST. JUL ${popEst.year})` : `${density.blocks.total.toLocaleString()} PEOPLE (2020 CENSUS)`}${lowFps !== null ? ` · LOW FPS DETECTED (${lowFps} FPS) · PAUSED WHILE MOVING` : ''}`
                       : 'DENSITY LAYER · LOADING'}
               </button>
               <button

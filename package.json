@@ -9,6 +9,7 @@
     "test": "node --import tsx --test 'tests/**/*.test.ts'",
     "verify:cards": "node scripts/verify-cards.mjs",
     "verify:bridges": "tsx scripts/verify-bridge-join.ts",
+    "verify:parity": "tsx scripts/verify-byte-parity.ts",
     "test:elections": "node --import tsx --test tests/elections/*.test.ts",
     "probe:elections": "tsx scripts/probe-elections.ts"
   },

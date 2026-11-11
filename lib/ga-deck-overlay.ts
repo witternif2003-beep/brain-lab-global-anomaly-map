@@ -139,6 +139,8 @@ interface DeckState {
   density: CensusBlocks | null;
   /** What the density layer draws now: all blocks flat, or (terrain on, zoomed in) the in-view blocks on the terrain. */
   densityView: { n: number; positions: Float64Array; size: 2 | 3; radii: Float32Array } | null;
+  /** Set by the FPS watchdog while the map moves below LOW_FPS; hides the dots without freeing their GPU buffers. */
+  densityPaused: boolean;
 }
 
 export interface GaCloudSheet {
@@ -243,6 +245,7 @@ function getState(map: MapLibreMap): DeckState {
     cloudSheet: null,
     density: null,
     densityView: null,
+    densityPaused: false,
     groundTimer: null,
   };
   states.set(map, state);
@@ -724,6 +727,7 @@ function createLayers(state: DeckState): Layer[] {
     layers.push(new ScatterplotLayer({
       id: 'ga-deck-census-blocks',
       data: { length: d.n, attributes: { getPosition: { value: d.positions, size: d.size } } },
+      visible: !state.densityPaused,
       getRadius: densityDotRadiusPx(GA_MARKER_SCALE),
       getFillColor: [0, 255, 255, 100],
       radiusUnits: 'pixels',
@@ -1244,6 +1248,14 @@ export function setGaDeckDensity(map: MapLibreMap, blocks: CensusBlocks | null):
   refreshDensity(state);
   if (state.overlay) updateLayers(state);
   if (!state.initPromise) state.initPromise = initialize(map, state);
+}
+
+/** Pauses (hides) or resumes the density dots; used by the FPS watchdog while the map is moving. */
+export function setGaDeckDensityPaused(map: MapLibreMap, paused: boolean): void {
+  const state = getState(map);
+  if (state.densityPaused === paused) return;
+  state.densityPaused = paused;
+  if (state.overlay) updateLayers(state);
 }
 
 /** Replaces the radar cloud puffs (drawn under every marker group). */
