@@ -48,3 +48,19 @@ export function summarizeSegment(json: unknown): SegmentSummary | null {
     frc: typeof f.frc === 'string' ? f.frc : null,
   };
 }
+
+export const EVENT_MATCH_RADIUS_M = 100;
+
+const metres = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+  const r = Math.PI / 180, dLat = (lat2 - lat1) * r, dLon = (lon2 - lon1) * r;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * r) * Math.cos(lat2 * r) * Math.sin(dLon / 2) ** 2;
+  return 2 * 6_371_008.8 * Math.asin(Math.sqrt(h));
+};
+
+/** 511GA events whose published point lies within radiusM of the tapped point, nearest first (great-circle distance, not exact-coordinate equality). */
+export function nearbyEvents<T extends { lat: number; lon: number }>(events: T[], lat: number, lon: number, radiusM = EVENT_MATCH_RADIUS_M): (T & { distanceM: number })[] {
+  return events
+    .map((e) => ({ ...e, distanceM: Math.round(metres(lat, lon, e.lat, e.lon)) }))
+    .filter((e) => e.distanceM <= radiusM)
+    .sort((a, b) => a.distanceM - b.distanceM);
+}

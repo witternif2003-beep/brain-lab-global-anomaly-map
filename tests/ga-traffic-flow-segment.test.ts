@@ -27,3 +27,16 @@ test("missing or zero free-flow speed gives no ratio; closures are reported as c
 test("segment URL asks for mph and encodes the key", () => {
   assert.match(tomtomSegmentUrl(33.7, -84.4, "a&b"), /flowSegmentData\/absolute\/22\/json\?point=33\.7,-84\.4&unit=MPH&key=a%26b$/);
 });
+
+test("511GA events match the tapped point by distance, nearest first", async () => {
+  const { nearbyEvents } = await import("../lib/ga-traffic-flow/segment");
+  const ev = [
+    { lat: 33.738224, lon: -84.408144, label: "closures · SR 3" },
+    { lat: 33.7386, lon: -84.408144, label: "≈42 m north" },
+    { lat: 33.7420, lon: -84.408144, label: "≈420 m north" },
+  ];
+  const hits = nearbyEvents(ev, 33.738224, -84.408144);
+  assert.deepEqual(hits.map((h) => h.label), ["closures · SR 3", "≈42 m north"]);
+  assert.equal(hits[0].distanceM, 0);
+  assert.ok(hits[1].distanceM >= 40 && hits[1].distanceM <= 44);
+});

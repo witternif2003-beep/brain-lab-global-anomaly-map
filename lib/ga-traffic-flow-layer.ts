@@ -1,7 +1,7 @@
 import type { ExpressionSpecification, GeoJSONSourceSpecification, Map as MapLibreMap, VectorSourceSpecification, VectorTileSource } from 'maplibre-gl';
 import { FLOW_COLOR_EXPRESSION, FLOW_COLORS, FLOW_MIN_ZOOM, FLOW_SOURCE_LAYER, FLOW_TILE_MAX_ZOOM, TOMTOM_FLOW_DOCS_URL, type FlowMode } from './ga-traffic-flow/flow';
 import { reportGaFeed } from './ga-live-status';
-import type { SegmentSummary } from './ga-traffic-flow/segment';
+import { EVENT_MATCH_RADIUS_M, nearbyEvents, type SegmentSummary } from './ga-traffic-flow/segment';
 
 export const GA_TRAFFIC_FLOW_SOURCE = 'ga-traffic-flow';
 export const GA_TRAFFIC_FLOW_LAYER = 'ga-traffic-flow-line';
@@ -86,6 +86,20 @@ function enableSegmentReadout(map: MapLibreMap): void {
           el.append(row);
         }
         const foot = document.createElement('div');
+        const ev = document.createElement('div');
+        ev.style.cssText = 'margin-top:4px;color:#fbbf24';
+        ev.textContent = `511GA events within ${EVENT_MATCH_RADIUS_M} m: checking…`;
+        el.append(ev);
+        fetch('/api/ga-live-markers?layer=ga511events')
+          .then((r) => r.json() as Promise<{ markers?: { lat: number; lon: number; label: string }[]; error?: string }>)
+          .then((d) => {
+            if (d.error || !d.markers) { ev.textContent = `511GA events: unavailable (${d.error ?? 'no data'})`; return; }
+            const hits = nearbyEvents(d.markers, lat, lng);
+            ev.textContent = hits.length
+              ? `511GA within ${EVENT_MATCH_RADIUS_M} m: ${hits.slice(0, 3).map((h) => `${h.label} (${h.distanceM} m)`).join('; ')}`
+              : `No 511GA event within ${EVENT_MATCH_RADIUS_M} m`;
+          })
+          .catch((err) => { ev.textContent = `511GA events: unavailable (${String(err)})`; });
         foot.style.cssText = 'color:#9ca3af;font-size:11px;margin-top:4px';
         foot.textContent = `${j.source ?? 'TomTom'} · road speeds, not vehicle positions · ${j.retrievedAt ?? ''}`;
         el.append(foot);
