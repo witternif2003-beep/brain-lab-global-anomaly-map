@@ -38,6 +38,7 @@ import { addGaCloudLayers } from '../lib/ga-clouds-layer';
 import { addGibsDailyLayers, setGibsDailyActive } from '../lib/ga-gibs-daily-layer';
 import { addTerminatorLayers } from '../lib/terminator-layer';
 import { addGaLiveMarkerLayers } from '../lib/ga-live-markers-layer';
+import GaNodeFieldHud from './GaNodeFieldHud';
 import { addGaFbiFeeds } from '../lib/ga-fbi-feed';
 import { addGaFbiAgencyLayers } from '../lib/ga-fbi-agencies-layer';
 import { addBleVehicleLayers } from '../lib/ble-traffic-layer';
@@ -1875,6 +1876,7 @@ export default function GodsEyeMap({
               Graphics memory ran out. Restoring the map…
             </div>
           )}
+          <GaNodeFieldHud mapRef={mapRef} />
           <div className="absolute top-3 right-3 z-20 flex flex-row-reverse items-center gap-2 font-mono">
             {export8kStatus && <span className="text-[10px] text-slate-300 bg-[#070d18]/80 rounded px-1.5 py-0.5">{export8kStatus}</span>}
             {export32kStatus && <span className="text-[10px] text-slate-300 bg-[#070d18]/80 rounded px-1.5 py-0.5">{export32kStatus}</span>}

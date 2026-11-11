@@ -193,6 +193,11 @@ export function gaFeedCustody(map: MapLibreMap, id: string): readonly CustodyEnt
   return custody.get(map)?.get(id) ?? [];
 }
 
+/** Latest status of every feed reported on this map, in report order. */
+export function gaFeedStatuses(map: MapLibreMap): GaFeedStatus[] {
+  return [...(feeds.get(map)?.values() ?? [])];
+}
+
 export function reportGaFeed(map: MapLibreMap, status: GaFeedStatus): void {
   let m = feeds.get(map);
   if (!m) feeds.set(map, (m = new Map()));
