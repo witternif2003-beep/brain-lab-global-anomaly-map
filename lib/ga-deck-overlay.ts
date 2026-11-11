@@ -11,7 +11,7 @@ import { isTouchDevice, LIDAR_POINT_CEILING, markerPixelRatio } from './map/touc
 import { allowRebuild, gpuCrashCount, noteContextLost } from './map/crash-guard';
 import { declutterMarkers, type DeclutterCandidate, fitsViewport } from './ga-marker-declutter';
 import type { CloudPuff } from './ga-clouds/cloud-puffs';
-import { DENSITY_ANCHOR_MIN_ZOOM, densityAnchors, densityDotRadiusPx, DENSITY_RING_PX, type CensusBlocks } from './ga-census-density';
+import { DENSITY_ANCHOR_MIN_ZOOM, densityAnchors, densityDotRadiusPx, densityHeatmapOn, densityHeatmapTexturePx, DENSITY_RING_PX, type CensusBlocks } from './ga-census-density';
 import { puffAtlas } from './ga-clouds/puff-texture';
 import { cloudTopMesh, type CloudTopGrid, type CloudTopMesh } from './ga-goes-clouds/cloud-tops';
 import { crimeStrobePhase } from './ga-live-markers/strobe';
@@ -52,6 +52,7 @@ type Point = { x: number; y: number };
 type DeckModules = {
   MapLibreOverlay: typeof import('@deck.gl/maplibre').MapLibreOverlay;
   ScatterplotLayer: typeof import('@deck.gl/layers').ScatterplotLayer;
+  HeatmapLayer: typeof import('@deck.gl/aggregation-layers').HeatmapLayer;
   IconLayer: typeof import('@deck.gl/layers').IconLayer;
   TextLayer: typeof import('@deck.gl/layers').TextLayer;
   LineLayer: typeof import('@deck.gl/layers').LineLayer;
@@ -740,6 +741,22 @@ function createLayers(state: DeckState): Layer[] {
       parameters: DEPTH_PARAMETERS,
     }));
   }
+  if (state.densityView && state.density && densityHeatmapOn(state.map.getZoom())) {
+    const b = state.density;
+    layers.push(new state.modules!.HeatmapLayer({
+      id: 'ga-deck-census-heatmap',
+      data: { length: b.n, attributes: { getPosition: { value: b.positions, size: 2 } } },
+      getWeight: 1,
+      aggregation: 'SUM',
+      radiusPixels: 40,
+      intensity: 3,
+      threshold: 0.01,
+      weightsTextureSize: densityHeatmapTexturePx(isTouchDevice()),
+      // Densest areas run to white: a pure-cyan glow is invisible over the solid cyan dots.
+      colorRange: [[0, 255, 255, 0], [0, 255, 255, 70], [128, 255, 255, 140], [255, 255, 255, 200]],
+      pickable: false,
+    }));
+  }
   for (const [key, group] of [...state.groups.entries()].sort((a, b) => a[1].z - b[1].z)) {
     const views = groupViews(group);
     const { labels } = views;
@@ -941,10 +958,11 @@ function startPulse(map: MapLibreMap, state: DeckState): void {
 }
 
 async function loadModules(): Promise<DeckModules> {
-  const [maplibre, layers, meshLayers] = await Promise.all([import('@deck.gl/maplibre'), import('@deck.gl/layers'), import('@deck.gl/mesh-layers')]);
+  const [maplibre, layers, meshLayers, aggregation] = await Promise.all([import('@deck.gl/maplibre'), import('@deck.gl/layers'), import('@deck.gl/mesh-layers'), import('@deck.gl/aggregation-layers')]);
   return {
     MapLibreOverlay: maplibre.MapLibreOverlay,
     ScatterplotLayer: layers.ScatterplotLayer,
+    HeatmapLayer: aggregation.HeatmapLayer,
     IconLayer: layers.IconLayer,
     TextLayer: layers.TextLayer,
     LineLayer: layers.LineLayer,

@@ -57,6 +57,12 @@ export const densityDotRadiusPx = (markerScale: number): number => (DENSITY_REFE
 /** Solid ring so a lone block reads against satellite imagery; included in the dot's radius. */
 export const DENSITY_RING_PX = 1;
 
+/** Below this zoom a cyan heatmap glow is drawn over the dots (every dot is still drawn beneath it). */
+export const DENSITY_HEATMAP_MAX_ZOOM = 9;
+export const densityHeatmapOn = (zoom: number): boolean => Number.isFinite(zoom) && zoom < DENSITY_HEATMAP_MAX_ZOOM;
+/** Heatmap weight texture edge: deck.gl documents 5-7 ms per aggregation at 512 vs 50-100 ms at 2048. */
+export const densityHeatmapTexturePx = (touch: boolean): number => (touch ? 512 : 1024);
+
 /** Blocks drawn on the 3D terrain from this zoom; below it they sit flat (the tilt offset is under a pixel or two). */
 export const DENSITY_ANCHOR_MIN_ZOOM = 10;
 
