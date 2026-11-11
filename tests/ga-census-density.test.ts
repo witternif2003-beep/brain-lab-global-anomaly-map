@@ -75,15 +75,3 @@ test("density dots are a fixed half the size of a standard map icon at every zoo
   const iconDiameterPx = DENSITY_REFERENCE_ICON_PX * markerScale;
   assert.equal(2 * densityDotRadiusPx(markerScale), iconDiameterPx / 2);
 });
-
-test('heatmap glow only below zoom 9; dots are still drawn', async () => {
-  const { densityHeatmapOn, densityHeatmapTexturePx, DENSITY_HEATMAP_MAX_ZOOM } = await import('../lib/ga-census-density');
-  assert.equal(DENSITY_HEATMAP_MAX_ZOOM, 9);
-  assert.equal(densityHeatmapOn(0), true);
-  assert.equal(densityHeatmapOn(8.99), true);
-  assert.equal(densityHeatmapOn(9), false);
-  assert.equal(densityHeatmapOn(17), false);
-  assert.equal(densityHeatmapOn(Number.NaN), false);
-  assert.equal(densityHeatmapTexturePx(true), 512);
-  assert.equal(densityHeatmapTexturePx(false), 1024);
-});

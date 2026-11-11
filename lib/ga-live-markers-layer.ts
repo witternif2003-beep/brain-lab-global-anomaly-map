@@ -19,6 +19,8 @@ import { registerAircraftSnapshot } from './ga-live-markers/export-snapshot';
 import type { EkfMeasurement } from './ga-live-markers/ekf';
 import { CRIME_STROBE_BLUE, CRIME_STROBE_RED, CRIME_TRIANGLE_LAYERS, hasActiveStrobe, STROBE_MS, strobeKey, strobeSince, TOWER_STROBE } from './ga-live-markers/strobe';
 import { LIVE_FEED_LAYERS, liveCeiling } from './ga-live-markers/ceiling';
+/** Moving public feeds (aircraft, vessels, buses) share one bright cyan so they stand out as live tracks. */
+export const LIVE_TRACK_CYAN = '#00ffff';
 
 interface Payload {
   generatedAt?: string;
@@ -322,7 +324,7 @@ const SPECS: Record<LiveLayer, Spec> = {
     detail: (ms) => `${ms.filter((m) => m.props.player).length} with an embeddable live video player · camera owners' own streams`,
   },
   aircraft: {
-    label: 'Aircraft (ADS-B)', color: '#e0f2fe', stroke: '#0369a1', radiusPx: 4.5, z: 33, refreshMs: 10_000,
+    label: 'Aircraft (ADS-B)', color: LIVE_TRACK_CYAN, stroke: '#0369a1', radiusPx: 4.5, z: 33, refreshMs: 10_000,
     iconPx: 26, labelMinZoom: 0,
     icon: (m) => ({ shape: 'aircraft', angle: heading(m.props.track) }),
     tag: (m) => [m.label === 'no callsign' ? '' : m.label, altTag(m.props)].filter(Boolean).join(' · '),
@@ -344,7 +346,7 @@ const SPECS: Record<LiveLayer, Spec> = {
     detail: (ms) => `${ms.filter((m) => !m.props.onGround).length} airborne · ${ms.filter((m) => m.props.onGround).length} on ground · ${ms.filter(lowGps).length} with low GPS accuracy · PIA/LADD aircraft removed · 3D sizes from ${FAA_ACD.source} (retrieved ${FAA_ACD.retrievedAt.slice(0, 10)}) and ${FAA_HELI.source}, height above sea level from GNSS altitude`,
   },
   vessels: {
-    label: 'Ships and boats (AIS, aisstream.io)', color: '#2dd4bf', stroke: '#134e4a', radiusPx: 4, z: 32, refreshMs: 60_000,
+    label: 'Ships and boats (AIS, aisstream.io)', color: LIVE_TRACK_CYAN, stroke: '#134e4a', radiusPx: 4, z: 32, refreshMs: 60_000,
     iconPx: 20, labelMinZoom: 10,
     icon: (m) => (heading(m.props.heading ?? m.props.cog) === undefined ? { shape: 'vehicle' } : { shape: 'heading', angle: heading(m.props.heading ?? m.props.cog) }),
     tag: (m) => (m.props.aisClass === 'A' ? m.label : ''),
@@ -360,7 +362,7 @@ const SPECS: Record<LiveLayer, Spec> = {
     detail: (ms) => `${ms.filter((m) => m.props.aisClass === 'A').length} Class A · ${ms.filter((m) => m.props.aisClass === 'B').length} Class B · ${ms.filter((m) => Number(m.props.sogKt) >= 0.5).length} under way · positions from the last 15 min`,
   },
   transit: {
-    label: 'Transit buses (GTFS-RT)', color: '#fbbf24', stroke: '#78350f', radiusPx: 4, z: 32, refreshMs: 20_000,
+    label: 'Transit buses (GTFS-RT)', color: LIVE_TRACK_CYAN, stroke: '#78350f', radiusPx: 4, z: 32, refreshMs: 20_000,
     iconPx: 20, labelMinZoom: 11,
     icon: (m) => (heading(m.props.bearing) === undefined ? { shape: 'vehicle' } : { shape: 'heading', angle: heading(m.props.bearing) }),
     tag: (m) => (m.props.route ? `${m.props.agency} ${m.props.route}` : String(m.props.agency)),

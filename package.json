@@ -18,7 +18,6 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@deck.gl/aggregation-layers": "9.4.0",
     "@deck.gl/core": "9.4.0",
     "@deck.gl/layers": "9.4.0",
     "@deck.gl/maplibre": "9.4.0",
