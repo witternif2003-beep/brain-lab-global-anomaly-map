@@ -39,12 +39,11 @@ export function decodeCensusBlocks(buf: ArrayBuffer): CensusBlocks {
   return { n, positions, pops, radii, total };
 }
 
-/** Dot size multiplier: 1× to z13, then doubling every 2 zoom levels to 4× at z17 (≈1,000 ft), so blocks stay visible up close. */
-export const densityZoomScale = (zoom: number): number => Math.min(4, Math.max(1, 2 ** ((zoom - 13) / 2)));
-
-/** Close-up dots get a floor size and a solid cyan ring so a single block reads against satellite imagery. */
-export const DENSITY_RING_MIN_ZOOM = 14;
-export const densityMinRadiusPx = (zoom: number): number => (zoom >= DENSITY_RING_MIN_ZOOM ? Math.min(10, 2 * (zoom - DENSITY_RING_MIN_ZOOM) + 4) : 0);
+/** Every block draws at one fixed screen size at every zoom: half the diameter of a standard 16 px map icon (e.g. comm towers). */
+export const DENSITY_REFERENCE_ICON_PX = 16;
+export const densityDotRadiusPx = (markerScale: number): number => (DENSITY_REFERENCE_ICON_PX * markerScale) / 4;
+/** Solid ring so a lone block reads against satellite imagery; included in the dot's radius. */
+export const DENSITY_RING_PX = 1;
 
 /** Blocks drawn on the 3D terrain from this zoom; below it they sit flat (the tilt offset is under a pixel or two). */
 export const DENSITY_ANCHOR_MIN_ZOOM = 10;

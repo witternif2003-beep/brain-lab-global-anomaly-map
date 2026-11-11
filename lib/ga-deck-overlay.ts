@@ -11,7 +11,7 @@ import { isTouchDevice, LIDAR_POINT_CEILING, markerPixelRatio } from './map/touc
 import { allowRebuild, gpuCrashCount, noteContextLost } from './map/crash-guard';
 import { declutterMarkers, type DeclutterCandidate, fitsViewport } from './ga-marker-declutter';
 import type { CloudPuff } from './ga-clouds/cloud-puffs';
-import { DENSITY_ANCHOR_MIN_ZOOM, densityAnchors, densityZoomScale, densityMinRadiusPx, DENSITY_RING_MIN_ZOOM, type CensusBlocks } from './ga-census-density';
+import { DENSITY_ANCHOR_MIN_ZOOM, densityAnchors, densityDotRadiusPx, DENSITY_RING_PX, type CensusBlocks } from './ga-census-density';
 import { puffAtlas } from './ga-clouds/puff-texture';
 import { cloudTopMesh, type CloudTopGrid, type CloudTopMesh } from './ga-goes-clouds/cloud-tops';
 import { crimeStrobePhase } from './ga-live-markers/strobe';
@@ -723,16 +723,15 @@ function createLayers(state: DeckState): Layer[] {
     const d = state.densityView;
     layers.push(new ScatterplotLayer({
       id: 'ga-deck-census-blocks',
-      data: { length: d.n, attributes: { getPosition: { value: d.positions, size: d.size }, getRadius: { value: d.radii, size: 1 } } },
+      data: { length: d.n, attributes: { getPosition: { value: d.positions, size: d.size } } },
+      getRadius: densityDotRadiusPx(GA_MARKER_SCALE),
       getFillColor: [0, 255, 255, 100],
       radiusUnits: 'pixels',
-      radiusScale: densityZoomScale(state.map.getZoom()),
-      radiusMinPixels: densityMinRadiusPx(state.map.getZoom()),
       billboard: true,
-      stroked: state.map.getZoom() >= DENSITY_RING_MIN_ZOOM,
+      stroked: true,
       getLineColor: [0, 255, 255, 255],
       lineWidthUnits: 'pixels',
-      getLineWidth: 1.5,
+      getLineWidth: DENSITY_RING_PX,
       pickable: false,
       parameters: DEPTH_PARAMETERS,
     }));

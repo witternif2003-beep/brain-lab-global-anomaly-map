@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { blockRadiusPx, decodeCensusBlocks, densityAnchors, densityZoomScale, densityMinRadiusPx, parseStateEstimate } from "../lib/ga-census-density";
+import { blockRadiusPx, decodeCensusBlocks, densityAnchors, densityDotRadiusPx, DENSITY_REFERENCE_ICON_PX, parseStateEstimate } from "../lib/ga-census-density";
 
 const ab = (b: Buffer) => b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer;
 
@@ -56,17 +56,8 @@ test("parseStateEstimate reads the newest POPESTIMATE column for Georgia", () =>
   assert.throws(() => parseStateEstimate(csv, "99"));
 });
 
-test("density dots grow from z13 to 4x at z17 (~1,000 ft) and stay capped", () => {
-  assert.equal(densityZoomScale(5), 1);
-  assert.equal(densityZoomScale(13), 1);
-  assert.equal(densityZoomScale(15), 2);
-  assert.equal(densityZoomScale(17), 4);
-  assert.equal(densityZoomScale(22), 4);
-});
-
-test("close-up dots have a floor radius from z14 (4 px) to z17 (10 px)", () => {
-  assert.equal(densityMinRadiusPx(13), 0);
-  assert.equal(densityMinRadiusPx(14), 4);
-  assert.equal(densityMinRadiusPx(17), 10);
-  assert.equal(densityMinRadiusPx(20), 10);
+test("density dots are a fixed half the size of a standard map icon at every zoom", () => {
+  const markerScale = 2 / 3;
+  const iconDiameterPx = DENSITY_REFERENCE_ICON_PX * markerScale;
+  assert.equal(2 * densityDotRadiusPx(markerScale), iconDiameterPx / 2);
 });
