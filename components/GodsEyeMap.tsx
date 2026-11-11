@@ -450,7 +450,7 @@ export default function GodsEyeMap({
   const mapRef = useRef<maplibregl.Map | null>(null);
   const [ready, setReady] = useState(false);
   const [basemap, setBasemap] = useState<keyof typeof BASEMAPS>('satellite');
-  const [densityOn, setDensityOn] = useState(false);
+  const [densityOn, setDensityOn] = useState(true);
   const [lowFps, setLowFps] = useState<number | null>(null);
   const [popEst, setPopEst] = useState<{ year: number; estimate: number; sourceUrl: string; retrievedAt: string } | null>(null);
   const [density, setDensity] = useState<{ blocks: CensusBlocks | null; error: string | null; loading: boolean }>({ blocks: null, error: null, loading: false });
@@ -728,7 +728,7 @@ export default function GodsEyeMap({
 
   useEffect(() => {
     try {
-      if (localStorage.getItem(DENSITY_ON_KEY) === '1') setDensityOn(true);
+      if (localStorage.getItem(DENSITY_ON_KEY) === '0') setDensityOn(false);
     } catch {}
   }, []);
 
