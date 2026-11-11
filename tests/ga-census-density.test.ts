@@ -19,10 +19,24 @@ test("decodes block internal points and populations at 1e-6° precision", () => 
   assert.throws(() => decodeCensusBlocks(ab(b.subarray(0, 20))));
 });
 
+test("drops records whose position is outside WGS84 and keeps the rest", () => {
+  const b = Buffer.alloc(4 + 2 * 10);
+  b.writeUInt32LE(2, 0);
+  b.writeInt32LE(-84388000, 4); b.writeInt32LE(-84000000, 8);
+  b.writeInt32LE(33749000, 12); b.writeInt32LE(95000000, 16);
+  b.writeUInt16LE(12, 20); b.writeUInt16LE(50, 22);
+  const d = decodeCensusBlocks(ab(b));
+  assert.equal(d.n, 1);
+  assert.equal(d.dropped, 1);
+  assert.deepEqual([...d.positions], [-84.388, 33.749]);
+  assert.equal(d.total, 12);
+});
+
 test("committed Georgia file matches the 2020 census: 165,333 populated blocks, 10,711,908 people, all inside Georgia's extent", () => {
   const d = decodeCensusBlocks(ab(readFileSync("public/data/ga-census-blocks-2020.bin")));
   assert.equal(d.n, 165_333);
   assert.equal(d.total, 10_711_908);
+  assert.equal(d.dropped, 0);
   for (let i = 0; i < d.n; i++) {
     const [lon, lat] = [d.positions[2 * i], d.positions[2 * i + 1]];
     assert.ok(lon > -85.61 && lon < -80.84 && lat > 30.35 && lat < 35.01, `block ${i} at ${lon},${lat}`);

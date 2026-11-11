@@ -14,7 +14,12 @@ export interface CensusBlocks {
   /** Screen radius in px per block, from blockRadiusPx. */
   radii: Float32Array;
   total: number;
+  /** Records dropped by the decoder for a non-finite or out-of-WGS84 position (0 for the shipped file). */
+  dropped: number;
 }
+
+const validLonLat = (lon: number, lat: number): boolean =>
+  Number.isFinite(lon) && Number.isFinite(lat) && Math.abs(lon) <= 180 && Math.abs(lat) <= 90;
 
 /** Area-proportional dot: radius grows with √population, 1.5 px floor so single-resident blocks stay visible, 7 px cap. */
 export const blockRadiusPx = (pop: number): number => Math.min(7, 1.5 + Math.sqrt(pop) / 8);
@@ -28,15 +33,22 @@ export function decodeCensusBlocks(buf: ArrayBuffer): CensusBlocks {
   const pops = new Uint16Array(n);
   const radii = new Float32Array(n);
   let total = 0;
+  let k = 0;
   for (let i = 0; i < n; i++) {
-    positions[2 * i] = dv.getInt32(4 + 4 * i, true) / 1e6;
-    positions[2 * i + 1] = dv.getInt32(4 + 4 * n + 4 * i, true) / 1e6;
+    const lon = dv.getInt32(4 + 4 * i, true) / 1e6;
+    const lat = dv.getInt32(4 + 4 * n + 4 * i, true) / 1e6;
+    if (!validLonLat(lon, lat)) continue;
     const p = dv.getUint16(4 + 8 * n + 2 * i, true);
-    pops[i] = p;
-    radii[i] = blockRadiusPx(p);
+    positions[2 * k] = lon;
+    positions[2 * k + 1] = lat;
+    pops[k] = p;
+    radii[k] = blockRadiusPx(p);
     total += p;
+    k++;
   }
-  return { n, positions, pops, radii, total };
+  const dropped = n - k;
+  if (dropped) console.warn(`[census blocks] dropped ${dropped} records with invalid positions`);
+  return { n: k, positions: positions.subarray(0, 2 * k), pops: pops.subarray(0, k), radii: radii.subarray(0, k), total, dropped };
 }
 
 /** Every block draws at one fixed screen size at every zoom: half the diameter of a standard 16 px map icon (e.g. comm towers). */

@@ -40,6 +40,7 @@ import { addTerminatorLayers } from '../lib/terminator-layer';
 import { addGaLiveMarkerLayers } from '../lib/ga-live-markers-layer';
 import { setGaDeckDensity, setGaDeckDensityPaused } from '../lib/ga-deck-overlay';
 import { densityPausedFor, FpsMeter } from '../lib/map/fps-watchdog';
+import { fallbackTiles, RASTER_FALLBACK_DELAY_MS, type FallbackView } from '../lib/map/raster-fallback';
 import { enableGaNodeField } from '../lib/ga-live-status';
 import { CENSUS_BLOCKS_SOURCE, CENSUS_BLOCKS_URL, decodeCensusBlocks, type CensusBlocks } from '../lib/ga-census-density';
 import { addGaFbiFeeds } from '../lib/ga-fbi-feed';
@@ -66,6 +67,8 @@ const STARMAP_8K_MIN_DEVICE_PX = 1920;
 const TOUCH_SKY_TILES = 24;
 /** Zoom levels of off-screen tiles kept in MapLibre's tile cache on touch devices (MapLibre default 5). */
 const TOUCH_TILE_CACHE_ZOOM_LEVELS = 3;
+/** Hard per-source tile cache cap on touch devices; MapLibre uses min(this, the zoom-level-based size). */
+const TOUCH_TILE_CACHE_MAX_TILES = 50;
 /** After this long without `webglcontextrestored`, offer a reload instead of waiting forever. */
 const GPU_RESTORE_WAIT_MS = 15_000;
 const DENSITY_ON_KEY = 'godseye.density-on';
@@ -453,6 +456,7 @@ export default function GodsEyeMap({
   const [density, setDensity] = useState<{ blocks: CensusBlocks | null; error: string | null; loading: boolean }>({ blocks: null, error: null, loading: false });
   const [gpuLost, setGpuLost] = useState(false);
   const [gpuStuck, setGpuStuck] = useState(false);
+  const [gpuFallback, setGpuFallback] = useState<FallbackView | null>(null);
   const [pitch, setPitch] = useState(60);
   const [zoom, setZoom] = useState(6.0);
   const [activeFocus, setActiveFocus] = useState<StateCode | 'ALL'>(focusState);
@@ -1529,6 +1533,7 @@ export default function GodsEyeMap({
       pixelRatio: mapPixelRatio(),
       maxCanvasSize: [lim, lim],
       maxTileCacheZoomLevels: isTouchDevice() ? TOUCH_TILE_CACHE_ZOOM_LEVELS : 5,
+      maxTileCacheSize: isTouchDevice() ? TOUCH_TILE_CACHE_MAX_TILES : null,
       fadeDuration: 0,
       dragRotate: true,
       pitchWithRotate: true,
@@ -1602,19 +1607,26 @@ export default function GodsEyeMap({
     const gpu = { contextLost: 0, contextRestored: 0 };
     (window as unknown as { __gaGpu?: typeof gpu }).__gaGpu = gpu;
     let restoreTimer: ReturnType<typeof setTimeout> | undefined;
-    map.once('remove', () => clearTimeout(restoreTimer));
+    let rasterFallbackTimer: ReturnType<typeof setTimeout> | undefined;
+    map.once('remove', () => { clearTimeout(restoreTimer); clearTimeout(rasterFallbackTimer); });
     map.on('webglcontextlost', () => {
       gpu.contextLost++;
       noteContextLost();
       setGpuLost(true);
       clearTimeout(restoreTimer);
+      clearTimeout(rasterFallbackTimer);
       restoreTimer = setTimeout(() => setGpuStuck(true), GPU_RESTORE_WAIT_MS);
+      const c = map.getCenter();
+      const view = { lng: c.lng, lat: c.lat, zoom: map.getZoom(), width: map.getContainer().clientWidth, height: map.getContainer().clientHeight };
+      rasterFallbackTimer = setTimeout(() => setGpuFallback(view), RASTER_FALLBACK_DELAY_MS);
     });
     map.on('webglcontextrestored', () => {
       gpu.contextRestored++;
       clearTimeout(restoreTimer);
+      clearTimeout(rasterFallbackTimer);
       setGpuLost(false);
       setGpuStuck(false);
+      setGpuFallback(null);
       map.once('style.load', () => addMapLayers(map));
     });
 
@@ -1975,8 +1987,18 @@ export default function GodsEyeMap({
           />
           {/* Map Surface: Mount MapLibre globe container directly with transparent deep space */}
           <div ref={containerRef} className="absolute inset-0 z-10" />
+          {gpuLost && gpuFallback && (
+            <div className="absolute inset-0 z-20 overflow-hidden bg-[#05070f]" aria-hidden="true" data-testid="gpu-raster-fallback">
+              {fallbackTiles(gpuFallback).map((t) => (
+                <img key={t.url} src={t.url} alt="" draggable={false} className="absolute max-w-none select-none" style={{ left: t.left, top: t.top, width: t.size, height: t.size }} />
+              ))}
+              <span className="absolute bottom-2 left-2 rounded bg-[#05070f]/80 px-1.5 py-0.5 font-mono text-[10px] text-slate-300">
+                STILL 2D IMAGE · 3D MAP AND LIVE LAYERS PAUSED UNTIL GRAPHICS RETURN · Imagery © Esri, Maxar, Earthstar Geographics
+              </span>
+            </div>
+          )}
           {gpuLost && (
-            <div className="absolute inset-0 z-30 flex items-center justify-center bg-[#05070f]/85 font-mono text-xs text-[#38bdf8]" role="status">
+            <div className={`absolute z-30 flex items-center justify-center font-mono text-xs text-[#38bdf8] ${gpuFallback ? 'top-14 left-1/2 -translate-x-1/2 rounded bg-[#05070f]/85 px-3 py-2' : 'inset-0 bg-[#05070f]/85'}`} role="status">
               {gpuStuck ? (
                 <span className="flex flex-col items-center gap-2">
                   The browser has not given the graphics back.
