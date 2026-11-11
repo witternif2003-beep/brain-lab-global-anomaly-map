@@ -11,6 +11,7 @@ import {
   GA_BBOX,
   ga511CamerasFromViewRows,
   parse511Cameras,
+  parse511Events,
   parseAccpdIncidents,
   parseAdsbLol,
   parseAisStream,
@@ -40,6 +41,7 @@ import {
   type EquipmentCategory,
   type BskyFeedItem,
   type Ga511Camera,
+  type Ga511Event,
   type Ga511ViewRow,
   type GeocodeHit,
   type LiveLayer,
@@ -393,6 +395,17 @@ async function gdotCameras(): Promise<LiveMarker[]> {
   return parse511Cameras((await r.json()) as Ga511Camera[]);
 }
 
+const GA511_EVENTS = "https://511ga.org/api/v2/get/event";
+
+/** 511GA traffic events; same developer key and 10-calls-per-60-s budget as the camera list, so cached for 5 min. */
+async function gdotEvents(): Promise<LiveMarker[]> {
+  const key = process.env.GA511_API_KEY;
+  if (!key) throw new Error("GA511_API_KEY is not configured (free developer key: https://511ga.org/developers/doc)");
+  const r = await fetch(`${GA511_EVENTS}?key=${encodeURIComponent(key)}&format=json`, { cache: "no-store", headers: UA, signal: AbortSignal.timeout(30_000) });
+  if (!r.ok) throw new Error(`511GA HTTP ${r.status}`);
+  return parse511Events((await r.json()) as Ga511Event[]);
+}
+
 const GA511_MIRROR = "https://services1.arcgis.com/2iUE8l8JKrP2tygQ/arcgis/rest/services/Georgia511Cameras_Detailed_/FeatureServer/0";
 const GA511_MIRROR_PAGE = 2000;
 const GA511_MIRROR_MAX = 10_000;
@@ -427,6 +440,12 @@ const LAYERS: Record<LiveLayer, LayerSpec> = {
     sourceUrl: "https://511ga.org/cctv",
     feeds: [{ id: "511GA cameras", url: GA511_CAMERAS, markers: gdotCameras }],
     fallback: [{ id: "Georgia 511 Cameras (Detailed), public ArcGIS copy", url: GA511_MIRROR, markers: gdotCamerasMirror }],
+  },
+  ga511events: {
+    ttlS: 300,
+    source: "Georgia DOT traffic events from the 511GA developer API (roadwork, closures, accidents and incidents, special events), at each event's published latitude/longitude",
+    sourceUrl: "https://511ga.org/help/endpoint/event",
+    feeds: [{ id: "511GA events", url: GA511_EVENTS, markers: gdotEvents }],
   },
   augusta911: {
     ttlS: 120,

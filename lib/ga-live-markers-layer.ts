@@ -199,6 +199,21 @@ const SPECS: Record<LiveLayer, Spec> = {
       return `${n('live')} verified live (blue) · ${n('offline')} with no live picture (gray) · ${ms.length - n('live') - n('offline')} not checked yet (amber), zoom in to check`;
     },
   },
+  ga511events: {
+    label: 'Road events (511GA)', color: '#f59e0b', stroke: '#111827', radiusPx: 4.5, z: 28, refreshMs: 5 * 60_000,
+    iconPx: 18, labelMinZoom: 12,
+    icon: () => ({ shape: 'alert' }),
+    tag: (m) => String(m.props.eventType ?? ''),
+    title: (m) => `511GA EVENT · ${m.label}`,
+    rows: (p) => [
+      ['Type', `${fmt(p.eventType)}${p.subtype ? ` · ${p.subtype}` : ''}`],
+      ['Road', `${fmt(p.roadway)}${p.direction ? ` · ${p.direction}` : ''}`],
+      ['Lanes', `${fmt(p.lanes)}${p.fullClosure ? ' · FULL CLOSURE' : ''}`],
+      ['Details', fmt(p.description)],
+      ['Severity', fmt(p.severity)],
+    ],
+    detail: (ms) => `${ms.length} events · ${ms.filter((m) => m.props.fullClosure === true).length} full closures`,
+  },
   augusta911: {
     label: 'Augusta E911 calls, last 20 days', color: '#ef4444', stroke: '#1d4ed8', radiusPx: 4.5, z: 29, refreshMs: 2 * 60_000,
     iconPx: 20, labelMinZoom: 12,

@@ -45,7 +45,7 @@ export interface GaDeckGroup {
   onClick: (map: MapLibreMap, lngLat: LngLat, props: Record<string, unknown>) => void;
 }
 
-type GroupKey = 'bulbs' | 'traffic' | 'gauges' | 'imagery' | 'fires' | 'aircraft' | 'transit' | 'micromobility' | 'stations' | 'streamgauges' | 'quakes' | 'tfr' | 'signals' | 'towers' | 'police' | 'firestations' | 'sirens' | 'speedcams' | 'alpr' | 'augusta911' | 'athens911' | 'gdotcams' | 'pireps' | 'equipment' | 'policereports' | 'policetech' | 'webcams' | 'vessels';
+type GroupKey = 'bulbs' | 'traffic' | 'gauges' | 'imagery' | 'fires' | 'aircraft' | 'transit' | 'micromobility' | 'stations' | 'streamgauges' | 'quakes' | 'tfr' | 'signals' | 'towers' | 'police' | 'firestations' | 'sirens' | 'speedcams' | 'alpr' | 'augusta911' | 'athens911' | 'gdotcams' | 'ga511events' | 'pireps' | 'equipment' | 'policereports' | 'policetech' | 'webcams' | 'vessels';
 type Renderer = 'webgl2' | 'webgpu';
 type Point = { x: number; y: number };
 type DeckModules = {
@@ -336,6 +336,7 @@ function snapshot(state: DeckState): DeckSnapshot {
       gdotcams: state.groups.get('gdotcams')?.items.length ?? 0,
       pireps: state.groups.get('pireps')?.items.length ?? 0,
       equipment: state.groups.get('equipment')?.items.length ?? 0,
+      ga511events: state.groups.get('ga511events')?.items.length ?? 0,
       policereports: state.groups.get('policereports')?.items.length ?? 0,
       policetech: state.groups.get('policetech')?.items.length ?? 0,
       webcams: state.groups.get('webcams')?.items.length ?? 0,

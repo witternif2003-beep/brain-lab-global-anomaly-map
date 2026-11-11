@@ -5,7 +5,7 @@ export const TOMTOM_FLOW_DOCS_URL = 'https://developer.tomtom.com/traffic-api/do
 export const FLOW_SOURCE_LAYER = 'Traffic flow';
 export const FLOW_TILE_PATH = '/api/traffic-flow/{z}/{x}/{y}';
 export const FLOW_MIN_ZOOM = 6;
-export const FLOW_TILE_MAX_ZOOM = 18;
+export const FLOW_TILE_MAX_ZOOM = 22;
 export const FLOW_TILE_CACHE_S = 60;
 
 export type FlowMode = 'live' | 'mock' | 'off';

@@ -32,6 +32,7 @@ export const PIN_CATEGORIES: PinCategory[] = [
   { layer: 'policereports', label: 'Police-reported offences', group: 'reports', position: 'block-level point rounded to 3 decimals (~110 m) by this app', on: false },
   { layer: 'stations', label: 'Weather/hydro stations (IEM)', group: 'sensors', position: AS_PUBLISHED, on: false },
   { layer: 'streamgauges', label: 'USGS stream gauges', group: 'sensors', position: AS_PUBLISHED, on: false },
+  { layer: 'ga511events', label: 'Road events (511GA)', group: 'reports', position: AS_PUBLISHED, on: false },
   { layer: 'gdotcams', label: 'GDOT traffic cameras', group: 'sensors', position: AS_PUBLISHED, on: false },
   { layer: 'webcams', label: 'Public webcams (GEMA)', group: 'sensors', position: AS_PUBLISHED, on: false },
   { layer: 'policetech', label: 'Police surveillance tech by agency', group: 'fixed', position: 'agency facility, else city or county centre', on: false },
@@ -101,7 +102,7 @@ export async function loadGaRing(url = GA_BOUNDARY_URL): Promise<LngLat[]> {
   return largestRing(await res.json());
 }
 
-const ID_PROPS = ['vehicle', 'vid', 'hex', 'osm', 'site', 'cameraId', 'station', 'objectId', 'incident', 'url'] as const;
+const ID_PROPS = ['vehicle', 'vid', 'hex', 'osm', 'site', 'cameraId', 'eventId', 'station', 'objectId', 'incident', 'url'] as const;
 
 /** Identity that survives a refresh, so a selected pin stays selected when its source moves it. */
 export function pinId(layer: LiveLayer, m: LiveMarker): string {

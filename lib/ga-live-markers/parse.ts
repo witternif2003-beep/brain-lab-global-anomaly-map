@@ -2,7 +2,7 @@ import { mslFromGeometricFt } from "./geoid";
 export const GA_BBOX = { west: -85.7, south: 30.3, east: -80.8, north: 35.1 };
 
 export type OsmInfraKind = "signals" | "towers" | "police" | "firestations" | "sirens" | "speedcams" | "alpr";
-export type LiveLayer = "aircraft" | "transit" | "micromobility" | "stations" | "streamgauges" | "quakes" | "tfr" | "augusta911" | "athens911" | "gdotcams" | "pireps" | "equipment" | "policereports" | "policetech" | "webcams" | "vessels" | OsmInfraKind;
+export type LiveLayer = "aircraft" | "transit" | "micromobility" | "stations" | "streamgauges" | "quakes" | "tfr" | "augusta911" | "athens911" | "gdotcams" | "ga511events" | "pireps" | "equipment" | "policereports" | "policetech" | "webcams" | "vessels" | OsmInfraKind;
 export type LiveValue = string | number | boolean | null;
 
 export interface LiveMarker {
@@ -591,6 +591,51 @@ export function parse511Cameras(json: Ga511Camera[] | null | undefined): LiveMar
         source: c.Source?.trim() || null,
         imageUrl: view?.Url ?? null,
         views: views.length,
+      });
+    })
+    .filter(keep);
+}
+
+export interface Ga511Event {
+  ID?: number | null;
+  Organization?: string | null;
+  RoadwayName?: string | null;
+  DirectionOfTravel?: string | null;
+  Description?: string | null;
+  Reported?: number | null;
+  LastUpdated?: number | null;
+  StartDate?: number | null;
+  PlannedEndDate?: number | null;
+  LanesAffected?: string | null;
+  Latitude?: number | null;
+  Longitude?: number | null;
+  EventType?: string | null;
+  IsFullClosure?: boolean | null;
+  Severity?: string | null;
+  Subtype?: string | null;
+}
+
+const unixIso = (s: number | null) => (s === null ? null : new Date(s * 1000).toISOString());
+
+/** 511GA traffic events (`/api/v2/get/event`): roadwork, closures, accidentsAndIncidents, specialEvents, at the event's published latitude/longitude. */
+export function parse511Events(json: Ga511Event[] | null | undefined): LiveMarker[] {
+  return (Array.isArray(json) ? json : [])
+    .map((e) => {
+      const type = e.EventType?.trim() || null;
+      const road = e.RoadwayName?.trim() || null;
+      return marker(num(e.Longitude), num(e.Latitude), unixIso(num(e.LastUpdated) ?? num(e.Reported)), [type ?? "event", road].filter(Boolean).join(" · "), {
+        eventId: num(e.ID),
+        eventType: type,
+        subtype: e.Subtype?.trim() || null,
+        roadway: road,
+        direction: e.DirectionOfTravel?.trim() || null,
+        description: e.Description?.trim().slice(0, 400) || null,
+        lanes: e.LanesAffected?.trim() || null,
+        fullClosure: typeof e.IsFullClosure === "boolean" ? e.IsFullClosure : null,
+        severity: e.Severity?.trim() || null,
+        organization: e.Organization?.trim() || null,
+        started: unixIso(num(e.StartDate)),
+        plannedEnd: unixIso(num(e.PlannedEndDate)),
       });
     })
     .filter(keep);

@@ -7,7 +7,7 @@ import { transitMarkers, type LiveMarker } from '../lib/ga-live-markers/parse';
 test('every category is a distinct layer and the moving ones start on', () => {
   const layers = PIN_CATEGORIES.map((c) => c.layer);
   assert.equal(new Set(layers).size, layers.length);
-  assert.equal(layers.length, 23);
+  assert.equal(layers.length, 24);
   assert.deepEqual(PIN_CATEGORIES.filter((c) => c.on).map((c) => c.layer), ['aircraft', 'vessels', 'transit', 'micromobility']);
 });
 
