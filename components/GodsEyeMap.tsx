@@ -38,7 +38,7 @@ import { addGaCloudLayers } from '../lib/ga-clouds-layer';
 import { addGibsDailyLayers, setGibsDailyActive } from '../lib/ga-gibs-daily-layer';
 import { addTerminatorLayers } from '../lib/terminator-layer';
 import { addGaLiveMarkerLayers } from '../lib/ga-live-markers-layer';
-import { setGaDeckDensity, setGaDeckDensityPaused } from '../lib/ga-deck-overlay';
+import { setGaDeckDensity } from '../lib/ga-deck-overlay';
 import { densityPausedFor, FpsMeter } from '../lib/map/fps-watchdog';
 import { fallbackTiles, RASTER_FALLBACK_DELAY_MS, type FallbackView } from '../lib/map/raster-fallback';
 import { enableGaNodeField } from '../lib/ga-live-status';
@@ -758,17 +758,14 @@ export default function GodsEyeMap({
     };
   }, [densityOn, density.blocks, ready]);
 
-  // FPS watchdog: while the map moves below LOW_FPS the density dots pause; they return as soon as it stops.
+  // FPS watchdog: reports frame rate while the map moves below LOW_FPS. Every density dot keeps drawing.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !densityOn || !density.blocks) return;
     const meter = new FpsMeter();
     let moving = false;
     let raf = 0;
-    const apply = (paused: boolean, fps: number | null) => {
-      setGaDeckDensityPaused(map, paused);
-      setLowFps(paused && fps !== null ? Math.round(fps) : null);
-    };
+    const apply = (low: boolean, fps: number | null) => setLowFps(low && fps !== null ? Math.round(fps) : null);
     const frame = (now: number) => {
       const fps = meter.tick(now);
       if (fps !== null) apply(densityPausedFor(moving, fps), fps);
@@ -2359,7 +2356,7 @@ export default function GodsEyeMap({
                   : density.error
                     ? 'DENSITY LAYER · ERROR'
                     : density.blocks
-                      ? `DENSITY LAYER · ${density.blocks.n.toLocaleString()} BLOCKS · ${popEst ? `${popEst.estimate.toLocaleString()} PEOPLE (CENSUS EST. JUL ${popEst.year})` : `${density.blocks.total.toLocaleString()} PEOPLE (2020 CENSUS)`}${lowFps !== null ? ` · LOW FPS DETECTED (${lowFps} FPS) · PAUSED WHILE MOVING` : ''}`
+                      ? `DENSITY LAYER · ${density.blocks.n.toLocaleString()} BLOCKS · ${popEst ? `${popEst.estimate.toLocaleString()} PEOPLE (CENSUS EST. JUL ${popEst.year})` : `${density.blocks.total.toLocaleString()} PEOPLE (2020 CENSUS)`}${lowFps !== null ? ` · LOW FPS DETECTED (${lowFps} FPS) · ALL DOTS STILL DRAWN` : ''}`
                       : 'DENSITY LAYER · LOADING'}
               </button>
               <button
