@@ -38,6 +38,8 @@ export const hasActiveStrobe = (seen: Map<string, number> | undefined, now: numb
 export const CRIME_TRIANGLE_LAYERS: ReadonlySet<LiveLayer> = new Set<LiveLayer>(["policereports", "augusta911"]);
 export const CRIME_STROBE_RED = "#8b0000";
 export const CRIME_STROBE_BLUE = "#1d4ed8";
+/** Cyan/white flash for a communication tower that appears in the OSM feed after the layer first loaded. */
+export const TOWER_STROBE: readonly [string, string] = ["#00f5ff", "#ffffff"];
 
 /** Police light-bar phase for a new crime triangle: 1 = dark red, 2 = blue, 0 = between flashes (triangle keeps its own colour). */
 export function crimeStrobePhase(now: number): 0 | 1 | 2 {

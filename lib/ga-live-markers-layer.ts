@@ -17,7 +17,7 @@ import type { CameraState } from './ga-live-markers/snapshot';
 import { createAircraftPredictor } from './ga-live-markers/ekf-client';
 import { registerAircraftSnapshot } from './ga-live-markers/export-snapshot';
 import type { EkfMeasurement } from './ga-live-markers/ekf';
-import { CRIME_STROBE_BLUE, CRIME_STROBE_RED, CRIME_TRIANGLE_LAYERS, hasActiveStrobe, STROBE_MS, strobeKey, strobeSince } from './ga-live-markers/strobe';
+import { CRIME_STROBE_BLUE, CRIME_STROBE_RED, CRIME_TRIANGLE_LAYERS, hasActiveStrobe, STROBE_MS, strobeKey, strobeSince, TOWER_STROBE } from './ga-live-markers/strobe';
 import { LIVE_FEED_LAYERS, liveCeiling } from './ga-live-markers/ceiling';
 
 interface Payload {
@@ -286,8 +286,8 @@ const SPECS: Record<LiveLayer, Spec> = {
     detail: () => 'mapped locations · not siren activations',
   },
   towers: {
-    label: 'Communication towers (OSM)', color: '#ff4fd8', stroke: '#0b0e14', radiusPx: 2.5, z: 15, refreshMs: OSM_REFRESH_MS,
-    iconPx: 12, icon: () => ({ shape: 'tower' }),
+    label: 'Communication towers (OSM)', color: '#ff2bf0', stroke: '#0b0e14', radiusPx: 4, z: 15, refreshMs: OSM_REFRESH_MS,
+    iconPx: 16, icon: () => ({ shape: 'tower' }),
     title: (m) => `COMM TOWER · ${m.label}`, rows: osmRows,
     detail: (ms) => `${ms.filter((m) => m.props.operator).length} with operator tagged · mapped locations`,
   },
@@ -667,6 +667,7 @@ export function addGaLiveMarkerLayers(map: MapLibreMap): void {
     const fillOf = spec.colorOf;
     const stroke = hexToRgba(spec.stroke);
     const crimeStrobe: [RGBA, RGBA] = [hexToRgba(CRIME_STROBE_RED), hexToRgba(CRIME_STROBE_BLUE)];
+    const towerStrobe: [RGBA, RGBA] = [hexToRgba(TOWER_STROBE[0]), hexToRgba(TOWER_STROBE[1])];
     const items: GaDeckItem[] = ms.map((m) => {
       const cam = layer === 'gdotcams' ? cameraState(m) : 'live';
       return {
@@ -680,7 +681,7 @@ export function addGaLiveMarkerLayers(map: MapLibreMap): void {
       stroke,
       strokePx: layer === 'micromobility' ? 0.5 : 1,
       pulse: (layer === 'aircraft' && !!m.props.emergency) || (layer === 'tfr' && tfrState(m.props, now) === 'active') || now - (firstSeen[layer]?.get(strobeKey(layer, m)) ?? 0) < STROBE_MS,
-      strobeColors: CRIME_TRIANGLE_LAYERS.has(layer) ? crimeStrobe : undefined,
+      strobeColors: CRIME_TRIANGLE_LAYERS.has(layer) ? crimeStrobe : layer === 'towers' ? towerStrobe : undefined,
       props: { marker: m },
       };
     });

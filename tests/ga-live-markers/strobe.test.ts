@@ -54,7 +54,18 @@ test("new crime triangles flash dark red four times, then blue four times, every
 test("crime triangle markers carry the red/blue strobe fills and the overlay swaps glyph fill only while pulsing", () => {
   const layer = readFileSync("lib/ga-live-markers-layer.ts", "utf8");
   const deck = readFileSync("lib/ga-deck-overlay.ts", "utf8");
-  assert.match(layer, /strobeColors: CRIME_TRIANGLE_LAYERS\.has\(layer\) \? crimeStrobe : undefined/);
+  assert.match(layer, /strobeColors: CRIME_TRIANGLE_LAYERS\.has\(layer\) \? crimeStrobe : layer === 'towers' \? towerStrobe : undefined/);
   assert.match(deck, /item\.pulse && item\.strobeColors && state\.lightBar \? item\.strobeColors\[state\.lightBar - 1\] : item\.fill/);
   assert.match(deck, /getIcon: \(item\) => gaIconKey\(item\.icon!, strobeFill\(state, item\), item\.stroke\)/);
+});
+
+test("towers: none strobe on first load; a tower first seen on a later refresh strobes for STROBE_MS", () => {
+  const t = (lon: number) => ({ lon, lat: 33.7, observedAt: "2026-01-01T00:00:00Z", label: "Communication tower", props: {} });
+  const first = strobeSince("towers", [t(-84.1)], undefined, NOW);
+  assert.equal(hasActiveStrobe(first, NOW), false);
+  const later = strobeSince("towers", [t(-84.1), t(-84.2)], first, NOW + 30 * 60_000);
+  assert.equal(later.get(strobeKey("towers", t(-84.1))), 0);
+  assert.equal(later.get(strobeKey("towers", t(-84.2))), NOW + 30 * 60_000);
+  assert.equal(hasActiveStrobe(later, NOW + 30 * 60_000 + STROBE_MS - 1), true);
+  assert.equal(hasActiveStrobe(later, NOW + 30 * 60_000 + STROBE_MS), false);
 });
