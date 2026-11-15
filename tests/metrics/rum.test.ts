@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { formatPrometheus } from '../../lib/metrics/prometheus';
-import { RumWindow, parseRumSample } from '../../lib/metrics/rum';
+import { RumWindow, classifyRenderer, parseRumSample } from '../../lib/metrics/rum';
 
 const base = { page: '/godseye-telemetry', fps: 58, frameMsP95: 21, heapBytes: 2e8, netMbps: 12, lidarPoints: null, lidarGpuMsP95: null, splats: null, splatRenderer: null, webglContextLosses: null, lcpMs: 900, inpMs: 80, cls: 0.01, touch: true };
 
@@ -90,4 +90,20 @@ test('main-thread blocking and deck.gl frame-time fields: range checks, Safari n
   const sg = safari.gauges(now);
   assert.equal(sg.find((x) => x.name === 'main_thread_blocking_ms_p95')?.values[0]?.value, null);
   assert.equal(sg.find((x) => x.name === 'main_thread_long_tasks')?.values[0]?.value, null);
+});
+
+test('renderer class: software rasterizers, real GPUs, masked strings and the software-share gauge', () => {
+  assert.equal(classifyRenderer('ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)'), 'software');
+  assert.equal(classifyRenderer('llvmpipe (LLVM 15.0.7, 256 bits)'), 'software');
+  assert.equal(classifyRenderer('Apple GPU'), 'hardware');
+  assert.equal(classifyRenderer('ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 Direct3D11 vs_5_0 ps_5_0, D3D11)'), 'hardware');
+  assert.equal(classifyRenderer(''), 'masked');
+  assert.equal(classifyRenderer(null), null);
+  const base = { fps: 60, frameMsP95: 20, page: '/godseye-telemetry', touch: true };
+  assert.equal(parseRumSample({ ...base, gpuRenderer: 'SwiftShader' })?.gpuRenderer, null);
+  const w = new RumWindow();
+  const now = Date.now();
+  for (const g of ['software', 'hardware', 'hardware', 'hardware', 'masked']) w.add(parseRumSample({ ...base, gpuRenderer: g })!, now);
+  const v = w.gauges(now).find((x) => x.name === 'map_software_renderer_ratio')!.values;
+  assert.equal(v[0].value, 0.25);
 });

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect } from "react";
 import { onCLS, onINP, onLCP } from "web-vitals";
-import { RUM_INTERVAL_MS, type RumSample } from "../lib/metrics/rum";
+import { RUM_INTERVAL_MS, classifyRenderer, type GpuRendererClass, type RumSample } from "../lib/metrics/rum";
 import { gpuSafeMode, startCrashTracking } from "../lib/map/crash-guard";
 
 type Perf = Performance & { memory?: { usedJSHeapSize: number } };
@@ -50,6 +50,18 @@ export default function RenderMetricsProbe() {
       : null;
     lt?.observe({ type: "longtask", buffered: true });
 
+    let renderer: GpuRendererClass | null = null;
+    const mapRenderer = (): GpuRendererClass | null => {
+      if (renderer) return renderer;
+      const canvas = (window as unknown as { __map?: { getCanvas(): HTMLCanvasElement } }).__map?.getCanvas();
+      // Same canvas + same context type returns the map's existing WebGL2 context; no new context is created.
+      const gl = canvas?.getContext("webgl2");
+      if (!gl || gl.isContextLost()) return null;
+      const ext = gl.getExtension("WEBGL_debug_renderer_info");
+      renderer = classifyRenderer(String(gl.getParameter(ext ? ext.UNMASKED_RENDERER_WEBGL : gl.RENDERER) ?? ""));
+      return renderer;
+    };
+
     let lossesSeen = 0;
     let crashesUnreported = startCrashTracking();
     const report = () => {
@@ -81,6 +93,7 @@ export default function RenderMetricsProbe() {
         deckCpuMsPerFrame: deck ? Math.round(deck.cpuMsPerFrame * 100) / 100 : null,
         ...vitals,
         touch: navigator.maxTouchPoints > 0,
+        gpuRenderer: mapRenderer(),
       };
       const gpu = (window as unknown as { __gaGpu?: { contextLost: number } }).__gaGpu;
       if (gpu) {

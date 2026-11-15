@@ -36,6 +36,18 @@ export interface RumSample {
   inpMs: number | null;
   cls: number | null;
   touch: boolean;
+  /** Class of the map's WebGL renderer string; only the class is sent, never the string. */
+  gpuRenderer?: GpuRendererClass | null;
+}
+
+export type GpuRendererClass = 'software' | 'hardware' | 'masked';
+const SOFTWARE_RENDERER = /swiftshader|llvmpipe|softpipe|lavapipe|software|microsoft basic render/i;
+
+/** Software rasterizers (SwiftShader, llvmpipe, …) vs a real GPU; 'masked' when the browser hides the string. */
+export function classifyRenderer(renderer: string | null | undefined): GpuRendererClass | null {
+  if (renderer === null || renderer === undefined) return null;
+  if (!renderer.trim()) return 'masked';
+  return SOFTWARE_RENDERER.test(renderer) ? 'software' : 'hardware';
 }
 
 export const RUM_INTERVAL_MS = 30_000;
@@ -77,6 +89,7 @@ export function parseRumSample(raw: unknown): RumSample | null {
     inpMs: num(r.inpMs, 600_000),
     cls: num(r.cls, 100),
     touch: r.touch === true,
+    gpuRenderer: r.gpuRenderer === 'software' || r.gpuRenderer === 'hardware' || r.gpuRenderer === 'masked' ? r.gpuRenderer : null,
   };
 }
 
@@ -141,6 +154,14 @@ export class RumWindow {
         name: 'map_gpu_safe_mode_ratio',
         help: 'Share of reports from devices running halved GPU budgets after a recent crash.',
         values: series((xs) => xs.filter((s) => s.gpuSafeMode).length / xs.length),
+      },
+      {
+        name: 'map_software_renderer_ratio',
+        help: 'Share of reports whose map WebGL renderer is a software rasterizer (SwiftShader, llvmpipe), among reports that sent a renderer class.',
+        values: series((xs) => {
+          const r = xs.filter((s) => s.gpuRenderer === 'software' || s.gpuRenderer === 'hardware');
+          return r.length ? r.filter((s) => s.gpuRenderer === 'software').length / r.length : null;
+        }),
       },
       { name: 'ble_update_diff_size_p95', help: 'p95 features changed per Bluetooth vehicle layer updateData flush.', values: series(pct((s) => s.bleDiffSize ?? null, 0.95)) },
       { name: 'ble_flush_ms_p95', help: 'p95 time to apply a Bluetooth vehicle layer updateData flush.', values: series(pct((s) => s.bleFlushMs ?? null, 0.95)) },
