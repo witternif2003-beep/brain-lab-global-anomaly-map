@@ -52,7 +52,7 @@ import { exportMapAt8k } from '../lib/map-8k-export';
 import { attachSolarSky } from '../lib/ga-sky';
 import { SKY_PHOTO_SOURCE_URL, SkyPhotoRenderer, projectRaDec, skyBasis, skyBodyPositions, type SkyBodyPosition } from '../lib/sky-photo';
 import { staticRender } from '../lib/static-render';
-import { AWS_TERRARIUM_TILES, OPENFREEMAP_PLANET } from '../lib/lidar-globe-sources';
+import { GA_1M_TERRAIN_ATTRIBUTION, GA_1M_TERRAIN_MAXZOOM, OPENFREEMAP_PLANET, ga1mTerrainTiles } from '../lib/lidar-globe-sources';
 import { CreditsControl } from '../lib/map/credits-control';
 import { gpuCrashCount, noteContextLost } from '../lib/map/crash-guard';
 import { markerPixelRatio } from '../lib/map/touch-gpu-budget';
@@ -168,11 +168,11 @@ type StateCode = (typeof COMPETITOR_STATES)[number];
 
 const TERRAIN_DEM: maplibregl.RasterDEMSourceSpecification = {
   type: 'raster-dem',
-  tiles: [AWS_TERRARIUM_TILES],
+  tiles: [ga1mTerrainTiles()],
   encoding: 'terrarium',
   tileSize: 256,
-  maxzoom: 15,
-  attribution: '<a href="https://registry.opendata.aws/terrain-tiles/" target="_blank" rel="noopener">Terrain Tiles</a> — Mapzen/AWS, USGS 3DEP',
+  maxzoom: GA_1M_TERRAIN_MAXZOOM,
+  attribution: GA_1M_TERRAIN_ATTRIBUTION,
 };
 
 /** Lifts the low-contrast Esri World Imagery mosaic; brightness range left at the style-spec defaults (0–1) so shadows and highlights keep their full range. */

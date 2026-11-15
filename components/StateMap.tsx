@@ -44,7 +44,7 @@ import { AnomalyItem, CompetitorStateIntel } from '../lib/schema';
 import { useAnomalyStream, AnomalyFeature } from '../hooks/useAnomalyStream';
 import { registerGeoJSONVTSource, shouldUseTiledRendering } from '../lib/geojson-vt-protocol';
 import MapDebugOverlay from './MapDebugOverlay';
-import { AWS_TERRARIUM_TILES } from '../lib/lidar-globe-sources';
+import { GA_1M_TERRAIN_ATTRIBUTION, GA_1M_TERRAIN_MAXZOOM, ga1mTerrainTiles } from '../lib/lidar-globe-sources';
 import { attachSolarSky } from '../lib/ga-sky';
 import { applyHorizonLod, horizonLod } from '../lib/map/horizon-lod';
 import { gpuCrashCount } from '../lib/map/crash-guard';
@@ -74,11 +74,11 @@ const BASEMAPS = {
       },
       'terrain-dem': {
         type: 'raster-dem',
-        tiles: [AWS_TERRARIUM_TILES],
+        tiles: [ga1mTerrainTiles()],
         encoding: 'terrarium',
         tileSize: 256,
-        maxzoom: 15,
-        attribution: '<a href="https://registry.opendata.aws/terrain-tiles/" target="_blank" rel="noopener">Terrain Tiles</a> — Mapzen/AWS, USGS 3DEP',
+        maxzoom: GA_1M_TERRAIN_MAXZOOM,
+        attribution: GA_1M_TERRAIN_ATTRIBUTION,
       },
     },
     layers: [{ id: 'sat-layer', type: 'raster', source: 'sat' }],

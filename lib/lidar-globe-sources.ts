@@ -12,6 +12,15 @@ export const ESRI_WORLD_IMAGERY_TILES =
 export const AWS_TERRARIUM_TILES =
   "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png";
 
+/** Georgia 1 m terrain (USGS 3DEP S1M + 1 m project DEMs), Terrarium-encoded; AWS Terrain Tiles outside Georgia and below z12. */
+export const GA_1M_TERRAIN_PATH = "/api/ga-terrain/{z}/{x}/{y}.png";
+export const GA_1M_TERRAIN_MAXZOOM = 17;
+export const GA_1M_TERRAIN_ATTRIBUTION =
+  '<a href="https://www.usgs.gov/3d-elevation-program" target="_blank" rel="noopener">USGS 3DEP 1 m</a> (GA) · <a href="https://registry.opendata.aws/terrain-tiles/" target="_blank" rel="noopener">Terrain Tiles</a> — Mapzen/AWS';
+export function ga1mTerrainTiles(): string {
+  return (typeof window === "undefined" ? "" : window.location.origin) + GA_1M_TERRAIN_PATH;
+}
+
 export const OPENFREEMAP_PLANET = "https://tiles.openfreemap.org/planet";
 
 const DC_LIDAR_IMAGE_SERVER = "https://imagery.dcgis.dc.gov/dcgis/rest/services/Lidar";
