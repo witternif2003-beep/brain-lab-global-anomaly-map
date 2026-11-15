@@ -1,4 +1,5 @@
 import type { Layer } from '@deck.gl/core';
+import type { Device, Texture } from '@luma.gl/core';
 import type { MapLibreOverlay } from '@deck.gl/maplibre';
 import type { Map as MapLibreMap } from 'maplibre-gl';
 import { deckGlobeActive, meshYaw } from './ga-deck-heading';
@@ -93,6 +94,7 @@ interface DeckState {
   map: MapLibreMap;
   groups: Map<GroupKey, GaDeckGroup>;
   overlay: MapLibreOverlay | null;
+  device: Device | null;
   modules: DeckModules | null;
   renderer: Renderer | null;
   fallbackReason: string | null;
@@ -211,6 +213,7 @@ function getState(map: MapLibreMap): DeckState {
     overlay: null,
     modules: null,
     renderer: null,
+    device: null,
     fallbackReason: null,
     webgpuAdapterFound: false,
     firstRender: false,
@@ -709,7 +712,7 @@ function createLayers(state: DeckState): Layer[] {
     layers.push(new IconLayer<CloudPuff>({
       id: 'ga-deck-clouds',
       data: state.clouds,
-      iconAtlas: atlas.url,
+      iconAtlas: sharedAtlas(state, 'clouds', atlas),
       iconMapping: atlas.mapping,
       getIcon: (p) => `puff${p.variant}`,
       getPosition: (p) => [p.position[0], p.position[1], p.position[2] * exaggeration],
@@ -823,7 +826,7 @@ function createLayers(state: DeckState): Layer[] {
         id: `ga-deck-${key}-icon`,
         data: icons,
         getPosition: (item) => anchored(state, item.coord),
-        iconAtlas: state.atlas.url,
+        iconAtlas: sharedAtlas(state, 'icons', state.atlas),
         iconMapping: state.atlas.mapping,
         getIcon: (item) => gaIconKey(item.icon!, strobeFill(state, item), item.stroke),
         getSize: (item) => (item.iconPx ?? 12) * GA_MARKER_SCALE * GA_ICON_CELL_SCALE,
@@ -918,6 +921,34 @@ function createLayers(state: DeckState): Layer[] {
   return layers;
 }
 
+/**
+ * A data-URL `iconAtlas` makes every IconLayer upload its own mipmapped copy of the atlas (7–29 copies on a phone-sized
+ * view). The atlas canvas is uploaded once per device instead and that texture is shared by all of them.
+ */
+const sharedAtlases = new WeakMap<Device, Map<string, { canvas: HTMLCanvasElement; tex: Texture }>>();
+const ATLAS_SAMPLER = { minFilter: 'linear', mipmapFilter: 'linear', magFilter: 'linear', addressModeU: 'clamp-to-edge', addressModeV: 'clamp-to-edge' } as const;
+
+/** deck.gl returns a Texture `iconAtlas` as-is and only destroys textures it created, so the shared one outlives each layer. */
+function sharedAtlas(state: DeckState, kind: 'icons' | 'clouds', atlas: { url: string; canvas?: HTMLCanvasElement }): string | Texture {
+  const { device } = state;
+  if (!device || !atlas.canvas) return atlas.url;
+  let kinds = sharedAtlases.get(device);
+  if (!kinds) sharedAtlases.set(device, (kinds = new Map()));
+  const entry = kinds.get(kind);
+  if (entry?.canvas === atlas.canvas) return entry.tex;
+  try {
+    const { canvas } = atlas;
+    const tex = device.createTexture({ data: canvas, width: canvas.width, height: canvas.height, mipLevels: device.getMipLevelCount(canvas.width, canvas.height), sampler: ATLAS_SAMPLER });
+    if (device.type === 'webgpu') device.generateMipmapsWebGPU(tex);
+    else tex.generateMipmapsWebGL();
+    kinds.set(kind, { canvas, tex });
+    if (entry) state.afterRender.add(() => entry.tex.destroy());
+    return tex;
+  } catch {
+    return entry ? entry.tex : atlas.url;
+  }
+}
+
 function updateLayers(state: DeckState): void {
   if (!state.overlay || !state.modules) return;
   state.overlay.setProps({ layers: createLayers(state) });
@@ -984,8 +1015,14 @@ fragColor.a *= smoothstep(${CLOUD_SHEET_WALL_FADE[0].toFixed(3)}, ${CLOUD_SHEET_
 }
 
 async function addRenderer(map: MapLibreMap, state: DeckState, renderer: Renderer, modules: DeckModules, deviceProps?: Record<string, unknown>): Promise<void> {
+  state.device = null;
   const overlay = new modules.MapLibreOverlay({
     interleaved: false,
+    onDeviceInitialized: (device: Device) => {
+      if (state.overlay !== overlay) return;
+      state.device = device;
+      updateLayers(state);
+    },
     layers: [],
     useDevicePixels: defaultDevicePixels(),
     ...(deviceProps ? { deviceProps } : {}),

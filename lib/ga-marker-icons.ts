@@ -49,6 +49,8 @@ export interface GaIconFrame {
 
 export interface GaIconAtlas {
   url: string;
+  /** The atlas bitmap, so one GPU texture can be shared by every IconLayer. */
+  canvas?: HTMLCanvasElement;
   mapping: Record<string, GaIconFrame>;
 }
 
@@ -123,6 +125,6 @@ export function gaIconAtlas(entries: Iterable<{ icon?: GaIconShape; fill: RGBA; 
     ctx.restore();
     mapping[key] = { x, y, width: CELL, height: CELL, mask: false };
   });
-  atlas = { url: canvas.toDataURL('image/png'), mapping };
+  atlas = { url: canvas.toDataURL('image/png'), canvas, mapping };
   return atlas;
 }

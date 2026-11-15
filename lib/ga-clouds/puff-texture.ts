@@ -1,6 +1,7 @@
 /** Soft cumulus sprites for the radar cloud puffs: feathered lobe clusters (alpha only, tinted per puff). */
 export interface PuffAtlas {
   url: string;
+  canvas?: HTMLCanvasElement;
   mapping: Record<string, { x: number; y: number; width: number; height: number; mask: boolean }>;
 }
 
@@ -65,6 +66,6 @@ export function puffAtlas(): PuffAtlas {
     }
     ctx.putImageData(img, k * PUFF_SIZE, 0);
   }
-  cached = { url: canvas.toDataURL('image/png'), mapping };
+  cached = { url: canvas.toDataURL('image/png'), canvas, mapping };
   return cached;
 }

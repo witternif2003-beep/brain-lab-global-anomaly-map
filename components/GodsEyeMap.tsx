@@ -60,6 +60,7 @@ import { sharpenBasemap } from '../lib/map/sharp-raster';
 import { installVramMeter } from '../lib/map/vram-meter';
 import { governDrapeMemory } from '../lib/map/terrain-rtt';
 import { applyHorizonLod, horizonLod } from '../lib/map/horizon-lod';
+import { capTileTexturePool } from '../lib/map/tile-texture-pool';
 
 const ALLY_STATE_CODES = ['AL', 'FL', 'NC', 'SC', 'TN', 'TX', 'VA'];
 const STARMAP_8K_MIN_DEVICE_PX = 1920;
@@ -1602,6 +1603,7 @@ export default function GodsEyeMap({
     const stopDrapeGovernor = governDrapeMemory(map);
     map.once('remove', stopDrapeGovernor);
     map.once('remove', applyHorizonLod(map, horizonLod(isTouchDevice(), gpuCrashCount())));
+    if (isTouchDevice()) capTileTexturePool(map);
     const gpu = { contextLost: 0, contextRestored: 0 };
     (window as unknown as { __gaGpu?: typeof gpu }).__gaGpu = gpu;
     let restoreTimer: ReturnType<typeof setTimeout> | undefined;
@@ -2119,6 +2121,16 @@ export default function GodsEyeMap({
               ))}
             </div>
           </div>
+
+          <a
+            href="https://omega-protocol-seven.vercel.app/"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: '#38bdf8' }}
+            className="absolute bottom-14 sm:bottom-3 left-1/2 -translate-x-1/2 z-20 whitespace-nowrap rounded-lg border border-[#38bdf8]/60 bg-[#0b1d33]/90 px-3 py-1.5 font-mono text-xs text-[#38bdf8] underline-offset-2 backdrop-blur hover:bg-[#38bdf8]/20 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[#38bdf8]"
+          >
+            omega-protocol-seven.vercel.app ↗
+          </a>
 
           {/* Severity & Telemetry Arc Flow Legend */}
           <div className="absolute bottom-3 left-3 z-10 rounded-lg bg-[#0f172a]/90 border border-[#28394e] p-2 text-xs backdrop-blur space-y-2 hidden sm:block max-w-[270px]">
