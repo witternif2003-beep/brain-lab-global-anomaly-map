@@ -168,6 +168,12 @@ export function vramTextureGroups(top = 8): [string, number, number][] {
 
 export const vramMeterInstalled = (): boolean => installed;
 
+/** Metered bytes owned by one canvas's contexts (0 when the canvas has created none since the meter was installed). */
+export function canvasBytes(canvas: HTMLCanvasElement | OffscreenCanvas | null | undefined): number {
+  const id = canvas ? canvasIds.get(canvas) : undefined;
+  return id ? Math.max(0, byCanvas.get(id) ?? 0) : 0;
+}
+
 declare global {
   interface Window { __gaVram?: () => VramSnapshot; __gaVramTextures?: (top?: number) => [string, number, number][] }
 }

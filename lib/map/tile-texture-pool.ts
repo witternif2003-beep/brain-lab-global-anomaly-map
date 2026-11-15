@@ -23,3 +23,16 @@ export function capTileTexturePool(map: MapLibreMap, cap = TOUCH_TILE_TEXTURE_PO
   }
   return Painter.MAX_TEXTURE_POOL_SIZE_PER_BUCKET;
 }
+
+/** Sets the reuse-pool cap (raising or lowering it), frees textures above it, and returns the previous cap; null when MapLibre's internals differ. */
+export function setTileTexturePool(map: MapLibreMap, cap: number): number | null {
+  const painter = (map as unknown as { painter?: PainterInternals }).painter;
+  const Painter = painter?.constructor;
+  if (!Painter || typeof Painter.MAX_TEXTURE_POOL_SIZE_PER_BUCKET !== 'number') return null;
+  const prev = Painter.MAX_TEXTURE_POOL_SIZE_PER_BUCKET;
+  Painter.MAX_TEXTURE_POOL_SIZE_PER_BUCKET = Math.max(0, Math.floor(cap));
+  for (const bucket of Object.values(painter._tileTextures ?? {})) {
+    while (bucket.length > Painter.MAX_TEXTURE_POOL_SIZE_PER_BUCKET) bucket.pop()?.destroy();
+  }
+  return prev;
+}

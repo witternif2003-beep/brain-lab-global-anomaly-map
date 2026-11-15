@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { onCLS, onINP, onLCP } from "web-vitals";
 import { RUM_INTERVAL_MS, classifyRenderer, type GpuRendererClass, type RumSample } from "../lib/metrics/rum";
 import { gpuSafeMode, startCrashTracking } from "../lib/map/crash-guard";
+import type {} from "../lib/map/gpu-ledger-controller";
 
 type Perf = Performance & { memory?: { usedJSHeapSize: number } };
 
@@ -94,7 +95,11 @@ export default function RenderMetricsProbe() {
         ...vitals,
         touch: navigator.maxTouchPoints > 0,
         gpuRenderer: mapRenderer(),
+        gpuBudgetPeakRatio: window.__gaLedger?.state ? Math.round(window.__gaLedger.peakRatio * 1000) / 1000 : null,
+        gpuTelemetryPeakRatio: window.__gaLedger?.state ? Math.round(window.__gaLedger.telemetryPeakRatio * 1000) / 1000 : null,
+        gpuShedEvents: window.__gaLedger?.state ? window.__gaLedger.shedEvents : null,
       };
+      if (window.__gaLedger) Object.assign(window.__gaLedger, { peakRatio: 0, telemetryPeakRatio: 0, shedEvents: 0 });
       const gpu = (window as unknown as { __gaGpu?: { contextLost: number } }).__gaGpu;
       if (gpu) {
         s.webglContextLosses = gpu.contextLost - lossesSeen;

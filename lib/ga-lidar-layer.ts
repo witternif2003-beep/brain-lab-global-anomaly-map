@@ -38,6 +38,7 @@ import { isTouchDevice, lidarBudget } from './map/touch-gpu-budget';
 import { gpuCrashCount, gpuSafeMode } from './map/crash-guard';
 import { drawingBufferBytes, LIDAR_BYTES_PER_POINT, LIDAR_MIN_POINTS, lidarBytesPerPoint, lidarPointBudget, vramTargetBytes } from './map/vram-budget';
 import { vramMeterInstalled, vramSnapshot } from './map/vram-meter';
+import { lidarSliceCeiling } from './map/gpu-ledger';
 import { reportGaFeed } from './ga-live-status';
 import { raiseGaRoadOverlay } from './ga-roads-overlay';
 import { raiseGaTrafficCountLayers } from './ga-traffic-counts-layer';
@@ -412,9 +413,9 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     return vramTargetBytes(isTouchDevice(), gpuSafeMode());
   }
 
-  /** LiDAR point budget: the 20,000,000 ceiling, lowered to what fits in the GPU-memory target next to everything else on the map. */
+  /** LiDAR point budget: the 20,000,000 ceiling (capped at the ledger's LiDAR share), lowered to what fits in the GPU-memory target next to everything else on the map. */
   private pointBudget(): number {
-    const ceiling = lidarBudget(isTouchDevice(), gpuCrashCount()).points;
+    const ceiling = Math.min(lidarBudget(isTouchDevice(), gpuCrashCount()).points, lidarSliceCeiling(this.vramTarget(), LIDAR_BYTES_PER_POINT));
     const used = this.measuredVram();
     const budget = used === null ? ceiling : lidarPointBudget({ ceiling, targetBytes: this.vramTarget(), otherBytes: used - this.lidarBytes(), bytesPerPoint: lidarBytesPerPoint(isTouchDevice()) });
     this.stats.pointBudget = budget;
@@ -424,7 +425,8 @@ export class GaLidar3DLayer implements CustomLayerInterface {
 
   private overVramTarget(): boolean {
     const used = this.measuredVram();
-    return used !== null && used >= this.vramTarget();
+    // The GPU-memory ledger's pressure gate (lib/map/gpu-ledger-controller.ts) also stops new loads at 90% of the target.
+    return (used !== null && used >= this.vramTarget()) || window.__gaLedger?.state?.pressure === true;
   }
 
   private reportVram(): void {

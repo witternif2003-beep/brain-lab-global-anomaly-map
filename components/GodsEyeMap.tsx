@@ -61,6 +61,7 @@ import { installVramMeter } from '../lib/map/vram-meter';
 import { governDrapeMemory } from '../lib/map/terrain-rtt';
 import { applyHorizonLod, horizonLod } from '../lib/map/horizon-lod';
 import { capTileTexturePool } from '../lib/map/tile-texture-pool';
+import { startGpuLedger } from '../lib/map/gpu-ledger-controller';
 
 const ALLY_STATE_CODES = ['AL', 'FL', 'NC', 'SC', 'TN', 'TX', 'VA'];
 const STARMAP_8K_MIN_DEVICE_PX = 1920;
@@ -1604,6 +1605,7 @@ export default function GodsEyeMap({
     map.once('remove', stopDrapeGovernor);
     map.once('remove', applyHorizonLod(map, horizonLod(isTouchDevice(), gpuCrashCount())));
     if (isTouchDevice()) capTileTexturePool(map);
+    map.once('remove', startGpuLedger(map, mapPixelRatio));
     const gpu = { contextLost: 0, contextRestored: 0 };
     (window as unknown as { __gaGpu?: typeof gpu }).__gaGpu = gpu;
     let restoreTimer: ReturnType<typeof setTimeout> | undefined;

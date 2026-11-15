@@ -38,6 +38,12 @@ export interface RumSample {
   touch: boolean;
   /** Class of the map's WebGL renderer string; only the class is sent, never the string. */
   gpuRenderer?: GpuRendererClass | null;
+  /** Peak GPU-memory ledger use / this device's app target since the previous report (lib/map/gpu-ledger.ts). */
+  gpuBudgetPeakRatio?: number | null;
+  /** Peak telemetry (deck.gl canvas) use / its reserved share since the previous report. */
+  gpuTelemetryPeakRatio?: number | null;
+  /** Times a ledger slice started shedding detail since the previous report. */
+  gpuShedEvents?: number | null;
 }
 
 export type GpuRendererClass = 'software' | 'hardware' | 'masked';
@@ -90,6 +96,9 @@ export function parseRumSample(raw: unknown): RumSample | null {
     cls: num(r.cls, 100),
     touch: r.touch === true,
     gpuRenderer: r.gpuRenderer === 'software' || r.gpuRenderer === 'hardware' || r.gpuRenderer === 'masked' ? r.gpuRenderer : null,
+    gpuBudgetPeakRatio: num(r.gpuBudgetPeakRatio, 100),
+    gpuTelemetryPeakRatio: num(r.gpuTelemetryPeakRatio, 100),
+    gpuShedEvents: num(r.gpuShedEvents, 10_000),
   };
 }
 
@@ -161,6 +170,16 @@ export class RumWindow {
         values: series((xs) => {
           const r = xs.filter((s) => s.gpuRenderer === 'software' || s.gpuRenderer === 'hardware');
           return r.length ? r.filter((s) => s.gpuRenderer === 'software').length / r.length : null;
+        }),
+      },
+      { name: 'map_gpu_budget_peak_ratio_p95', help: 'p95 of per-report peak GPU-memory ledger use / app target (WebGL allocation meter; app budget, not hardware VRAM).', values: series(pct((s) => s.gpuBudgetPeakRatio ?? null, 0.95)) },
+      { name: 'map_gpu_telemetry_share_peak_ratio_p95', help: 'p95 of per-report peak telemetry (deck.gl canvas) use / its reserved ledger share.', values: series(pct((s) => s.gpuTelemetryPeakRatio ?? null, 0.95)) },
+      {
+        name: 'map_gpu_shed_events',
+        help: 'Times a GPU-memory ledger slice started shedding detail, reported in the last 5 min.',
+        values: series((xs) => {
+          const v = xs.map((s) => s.gpuShedEvents ?? null).filter((x): x is number => x !== null);
+          return v.length ? v.reduce((a, b) => a + b, 0) : null;
         }),
       },
       { name: 'ble_update_diff_size_p95', help: 'p95 features changed per Bluetooth vehicle layer updateData flush.', values: series(pct((s) => s.bleDiffSize ?? null, 0.95)) },

@@ -107,3 +107,17 @@ test('renderer class: software rasterizers, real GPUs, masked strings and the so
   const v = w.gauges(now).find((x) => x.name === 'map_software_renderer_ratio')!.values;
   assert.equal(v[0].value, 0.25);
 });
+
+test("GPU ledger fields parse, clamp and feed their gauges", () => {
+  const base = { fps: 60, frameMsP95: 20, page: "/godseye-telemetry", touch: true };
+  const s = parseRumSample({ ...base, gpuBudgetPeakRatio: 0.82, gpuTelemetryPeakRatio: 0.4, gpuShedEvents: 2 });
+  assert.ok(s);
+  assert.equal(s.gpuBudgetPeakRatio, 0.82);
+  assert.equal(parseRumSample({ ...base, gpuShedEvents: "x" })?.gpuShedEvents, null);
+  const w = new RumWindow();
+  w.add(s, 0);
+  w.add(parseRumSample({ ...base, gpuBudgetPeakRatio: 0.5, gpuShedEvents: 1 })!, 0);
+  const g = w.gauges(1);
+  assert.equal(g.find((x) => x.name === "map_gpu_shed_events")?.values[0].value, 3);
+  assert.equal(g.find((x) => x.name === "map_gpu_budget_peak_ratio_p95")?.values[0].value, 0.82);
+});
