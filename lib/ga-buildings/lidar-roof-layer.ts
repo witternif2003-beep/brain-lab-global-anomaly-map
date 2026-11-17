@@ -60,7 +60,16 @@ export interface RoofLayerStats {
 const layers = new WeakMap<MapLibreMap, LidarRoofLayer>();
 export const lidarRoofLayer = (map: MapLibreMap): LidarRoofLayer | null => layers.get(map) ?? null;
 
+/** Never rejects: a timed-out or failed photo leaves the roof in its flat colour. */
 async function composeBlock(z: number, tx: number, ty: number, bounds: readonly number[]): Promise<{ canvas: OffscreenCanvas; source: Block['source'] } | null> {
+  try {
+    return await composeBlockOnce(z, tx, ty, bounds);
+  } catch {
+    return null;
+  }
+}
+
+async function composeBlockOnce(z: number, tx: number, ty: number, bounds: readonly number[]): Promise<{ canvas: OffscreenCanvas; source: Block['source'] } | null> {
   const canvas = new OffscreenCanvas(512, 512);
   const ctx = canvas.getContext('2d');
   if (!ctx) return null;

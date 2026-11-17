@@ -100,7 +100,7 @@ export async function naipLatestTile(z: number, tx: number, ty: number): Promise
       r = await fetchWithTimeout(naipLatestTileUrl(again, z, tx, ty));
     }
     if (!r.ok) return null;
-    return createImageBitmap(await r.blob());
+    return await createImageBitmap(await r.blob());
   })().catch(() => null);
   tileCache.set(key, p);
   while (tileCache.size > TILE_CACHE_MAX) {
