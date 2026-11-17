@@ -2,8 +2,8 @@ import type { Map as MapLibreMap } from 'maplibre-gl';
 import { gaLidarNodes } from '../ga-lidar-layer';
 import { lngLatTo3857 } from '../ga-lidar/ept';
 import { gpuLedgerPressure } from '../map/gpu-ledger-controller';
-import { applyLidarHeights, indexRoofReturns, ringFromCoordinates, type HeightStats, type ReturnIndex } from './lidar-heights';
-import { buildRoofModel, roofPoints } from './lidar-roofs';
+import { applyLidarHeights, indexRoofReturns, ringBbox, ringFromCoordinates, type HeightStats, type ReturnIndex } from './lidar-heights';
+import { buildRoofModel, roofPoints, ROOF_FIT_MIN_POINTS } from './lidar-roofs';
 import { lidarRoofLayer, ROOF_MESH_MIN_ZOOM } from './lidar-roof-layer';
 import { applyRoofImagery, ROOF_MIN_ZOOM, type RoofStats } from './roof-imagery';
 import { OVERTURE_BUILDINGS_SOURCE, OVERTURE_FULL_ZOOM } from './overture';
@@ -81,9 +81,12 @@ export function applyLidarRoofs(map: MapLibreMap, done: Set<string>, rms: number
     done.delete(id);
     map.removeFeatureState({ source: OVERTURE_BUILDINGS_SOURCE, sourceLayer: 'building', id }, 'lidarEave');
   }
-  let budget = ROOF_FITS_PER_IDLE;
+  // Nearest buildings in view first; footprints with too few returns are cheap to skip and do not use the fit budget.
+  const b = map.getBounds();
+  const [vx0, vy0] = lngLatTo3857(b.getWest(), b.getSouth());
+  const [vx1, vy1] = lngLatTo3857(b.getEast(), b.getNorth());
+  const candidates: { f: GeoJSON.Feature; key: string; ring: ReturnType<typeof ringFromCoordinates>; bbox: [number, number, number, number]; d: number }[] = [];
   for (const f of features) {
-    if (budget <= 0 || layer.size >= layer.limits.roofs) break;
     const id = f.id;
     if (typeof id !== 'string' && typeof id !== 'number') continue;
     const key = String(id);
@@ -91,22 +94,32 @@ export function applyLidarRoofs(map: MapLibreMap, done: Set<string>, rms: number
     const g = f.geometry;
     const outer = g.type === 'Polygon' ? g.coordinates[0] : g.type === 'MultiPolygon' ? g.coordinates[0]?.[0] : null;
     if (!outer || outer.length < 4) continue;
-    budget--;
     const ring = ringFromCoordinates(outer);
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    for (let i = 0; i < ring.xy.length; i += 2) {
-      minX = Math.min(minX, ring.xy[i]);
-      maxX = Math.max(maxX, ring.xy[i]);
-      minY = Math.min(minY, ring.xy[i + 1]);
-      maxY = Math.max(maxY, ring.xy[i + 1]);
-    }
+    const bbox = ringBbox(ring);
+    const mx = (bbox[0] + bbox[2]) / 2, my = (bbox[1] + bbox[3]) / 2;
+    if (mx < vx0 || mx > vx1 || my < vy0 || my > vy1) continue;
+    candidates.push({ f, key, ring, bbox, d: Math.hypot(mx - cx, my - cy) });
+  }
+  candidates.sort((a, b2) => a.d - b2.d);
+  let budget = ROOF_FITS_PER_IDLE;
+  for (const { f, key, ring, bbox } of candidates) {
+    if (budget <= 0 || layer.size >= layer.limits.roofs) break;
+    const id = f.id as string | number;
+    const [minX, minY, maxX, maxY] = bbox;
     const ox = (minX + maxX) / 2, oy = (minY + maxY) / 2;
     const local = new Float64Array(ring.xy.length);
     for (let i = 0; i < ring.xy.length; i += 2) {
       local[i] = ring.xy[i] - ox;
       local[i + 1] = ring.xy[i + 1] - oy;
     }
-    const model = buildRoofModel(local, roofPoints(ring, [], ox, oy, undefined, index));
+    const pts = roofPoints(ring, [], ox, oy, undefined, index);
+    if (pts.x.length < ROOF_FIT_MIN_POINTS) {
+      tried.add(key);
+      stats.roofsRejected++;
+      continue;
+    }
+    budget--;
+    const model = buildRoofModel(local, pts);
     if (!model) {
       tried.add(key);
       stats.roofsRejected++;

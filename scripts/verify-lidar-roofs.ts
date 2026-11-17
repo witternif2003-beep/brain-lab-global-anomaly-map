@@ -38,7 +38,7 @@ async function lidarNodes(x: number, y: number): Promise<LidarNodeData[]> {
   const load = async (k: string) => Object.assign(h, await (await fetch(`${EPT_ROOT}/${project.name}/ept-hierarchy/${k}.json`)).json());
   // Same view the desktop map plans at zoom 17 (lib/ga-lidar-layer.ts: VIEW_TILES 3.5, EXTRA_DEPTH_DESKTOP 3, MAX_EPT_DEPTH 18).
   const viewHalf = (3.5 * 40075016.68557849) / 2 ** 17;
-  const view = { cx: x, cy: y, half: viewHalf, targetDepth: Math.min(18, targetDepthFor(project, viewHalf, 18) + 3), pointBudget: 4_000_000 };
+  const view = { cx: x, cy: y, half: viewHalf, targetDepth: Math.min(18, targetDepthFor(project, viewHalf, 18) + Number(process.env.EXTRA_DEPTH ?? 3)), pointBudget: Number(process.env.POINT_BUDGET ?? 4_000_000) };
   let plan = planNodes(project, h, view);
   const seen = new Set<string>();
   for (let r = 0; r < 8 && plan.pendingHierarchy.some((k) => !seen.has(k)); r++) {
