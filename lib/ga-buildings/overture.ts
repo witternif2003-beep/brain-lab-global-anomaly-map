@@ -132,7 +132,6 @@ export async function addOvertureBuildings(
       type: 'vector',
       url: buildingsUrl(release),
       promoteId: 'id',
-      bounds: GA_BBOX,
       attribution: `3D buildings: <a href="${OVERTURE_DOCS_URL}" target="_blank" rel="noopener">Overture Maps ${release}</a> (ODbL) — © OpenStreetMap contributors, Microsoft &amp; Google ML footprints`,
     });
   }
