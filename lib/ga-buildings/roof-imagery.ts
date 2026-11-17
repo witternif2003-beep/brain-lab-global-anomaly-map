@@ -1,6 +1,6 @@
 import type { Map as MapLibreMap } from 'maplibre-gl';
 import { OVERTURE_BUILDINGS_SOURCE } from './overture';
-import { naipLatestTile, tileOf3857 } from './naip-latest';
+import { fetchWithTimeout, naipLatestTile, tileOf3857 } from './naip-latest';
 
 /** USDA NAIP 2023, 0.6 m per pixel, public domain, served by USGS The National Map with CORS `*`. */
 export const NAIP_IMAGE_SERVER = 'https://imagery.nationalmap.gov/arcgis/rest/services/USGSNAIPImagery/ImageServer/exportImage';
@@ -71,7 +71,7 @@ async function sampleLatest(x: number, y: number): Promise<[number, number, numb
 }
 
 async function samplePatch(url: string, px: number): Promise<[number, number, number] | null> {
-  const r = await fetch(url);
+  const r = await fetchWithTimeout(url);
   if (!r.ok) return null;
   const bmp = await createImageBitmap(await r.blob());
   const canvas = new OffscreenCanvas(px, px);

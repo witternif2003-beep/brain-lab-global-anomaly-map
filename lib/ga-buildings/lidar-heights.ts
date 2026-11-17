@@ -160,7 +160,11 @@ export interface HeightStats {
  * Writes measured roof heights onto the Overture buildings in view as feature-state `lidarHeight`,
  * which the extrusion height expression prefers over Overture's recorded height.
  */
-export function applyLidarHeights(map: MapLibreMap, nodes: readonly LidarNodeData[], done = new Set<string>(), index?: ReturnIndex): HeightStats {
+/**
+ * `done` holds measured buildings (never redone); `tried` holds buildings skipped against the current return grid,
+ * so callers that reset it when more LiDAR arrives retry them instead of leaving them unmeasured for good.
+ */
+export function applyLidarHeights(map: MapLibreMap, nodes: readonly LidarNodeData[], done = new Set<string>(), index?: ReturnIndex, tried = done): HeightStats {
   const stats: HeightStats = { measured: 0, skipped: 0 };
   if (!map.getLayer('buildings-3d') || !nodes.length) return stats;
   let features: GeoJSON.Feature[];
@@ -173,16 +177,17 @@ export function applyLidarHeights(map: MapLibreMap, nodes: readonly LidarNodeDat
     const id = f.id;
     if (typeof id !== 'string' && typeof id !== 'number') continue;
     const key = String(id);
-    if (done.has(key)) continue;
+    if (done.has(key) || tried.has(key)) continue;
     const g = f.geometry;
     const outer = g.type === 'Polygon' ? g.coordinates[0] : g.type === 'MultiPolygon' ? g.coordinates[0]?.[0] : null;
     if (!outer || outer.length < 4) continue;
     const m = measureRing(ringFromCoordinates(outer), nodes, (index ??= indexRoofReturns(nodes)));
-    done.add(key);
     if (!m) {
+      tried.add(key);
       stats.skipped++;
       continue;
     }
+    done.add(key);
     map.setFeatureState({ source: OVERTURE_BUILDINGS_SOURCE, sourceLayer: 'building', id }, { lidarHeight: m.heightM, lidarPoints: m.points });
     stats.measured++;
   }

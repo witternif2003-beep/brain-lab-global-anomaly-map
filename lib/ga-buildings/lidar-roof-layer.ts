@@ -21,7 +21,7 @@ import type { CustomLayerInterface, CustomRenderMethodInput, Map as MapLibreMap 
 import { GA_LIDAR_SOURCE_URL, lngLatFrom3857 } from '../ga-lidar/ept';
 import type { RoofModel } from './lidar-roofs';
 import { NAIP_IMAGE_SERVER, NAIP_SOURCE_URL } from './roof-imagery';
-import { NAIP_LATEST_LABEL, NAIP_LATEST_SOURCE_URL, naipLatestTile, photoBlock } from './naip-latest';
+import { NAIP_LATEST_LABEL, NAIP_LATEST_SOURCE_URL, fetchWithTimeout, naipLatestTile, photoBlock } from './naip-latest';
 
 export const LIDAR_ROOF_LAYER = 'buildings-lidar-roofs';
 /** Roofs are fitted from street zoom; once fitted they draw wherever the 3D buildings draw. */
@@ -69,7 +69,7 @@ async function composeBlock(z: number, tx: number, ty: number, bounds: readonly 
     tiles.forEach((t, i) => ctx.drawImage(t!, (i % 2) * 256, (i >> 1) * 256, 256, 256));
     return { canvas, source: 'naip-2025' };
   }
-  const r = await fetch(`${NAIP_IMAGE_SERVER}?bbox=${bounds.join(',')}&bboxSR=3857&imageSR=3857&size=512,512&format=jpgpng&f=image`).catch(() => null);
+  const r = await fetchWithTimeout(`${NAIP_IMAGE_SERVER}?bbox=${bounds.join(',')}&bboxSR=3857&imageSR=3857&size=512,512&format=jpgpng&f=image`).catch(() => null);
   if (!r?.ok) return null;
   const bmp = await createImageBitmap(await r.blob());
   ctx.drawImage(bmp, 0, 0, 512, 512);

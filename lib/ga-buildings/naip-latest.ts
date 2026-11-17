@@ -22,12 +22,18 @@ export function naipSearchBody(since = NAIP_LATEST_SINCE) {
 export const naipLatestTileUrl = (searchId: string, z: number, x: number, y: number) =>
   `${PC_DATA_API}/mosaic/${searchId}/tiles/WebMercatorQuad/${z}/${x}/${y}?collection=naip&assets=image&asset_bidx=image%7C1%2C2%2C3`;
 
+/** Imagery requests give up after this long, so a stalled request never blocks later enrichment passes. */
+export const IMAGERY_TIMEOUT_MS = 15_000;
+export const fetchWithTimeout = (url: string, init: RequestInit = {}, ms = IMAGERY_TIMEOUT_MS): Promise<Response> =>
+  fetch(url, { ...init, signal: AbortSignal.timeout(ms) });
+
 let searchPromise: Promise<string | null> | null = null;
 
 /** Registers (once per page) the newest-first NAIP mosaic and returns its search id, or null when the tiler is unreachable. */
 export function naipLatestSearch(fetchFn: typeof fetch = fetch): Promise<string | null> {
   searchPromise ??= fetchFn(`${PC_DATA_API}/mosaic/register`, {
     method: 'POST',
+    signal: AbortSignal.timeout(IMAGERY_TIMEOUT_MS),
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(naipSearchBody()),
   })
@@ -86,12 +92,12 @@ export async function naipLatestTile(z: number, tx: number, ty: number): Promise
   const p = (async () => {
     const id = await naipLatestSearch();
     if (!id) return null;
-    let r = await fetch(naipLatestTileUrl(id, z, tx, ty));
+    let r = await fetchWithTimeout(naipLatestTileUrl(id, z, tx, ty));
     if (r.status === 404 && (await r.clone().text()).includes('Unknown search ID')) {
       resetNaipLatestSearch();
       const again = await naipLatestSearch();
       if (!again) return null;
-      r = await fetch(naipLatestTileUrl(again, z, tx, ty));
+      r = await fetchWithTimeout(naipLatestTileUrl(again, z, tx, ty));
     }
     if (!r.ok) return null;
     return createImageBitmap(await r.blob());

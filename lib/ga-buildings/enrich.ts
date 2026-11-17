@@ -65,7 +65,8 @@ const median = (v: number[]) => {
 };
 
 /** Fits LiDAR roofs for buildings in view, hands meshes to the roof layer and cuts their walls at the measured eave. */
-export function applyLidarRoofs(map: MapLibreMap, done: Set<string>, rms: number[], stats: RoofFitStats, index: ReturnIndex): void {
+/** `done`: drawn roofs; `tried`: footprints rejected against the current return grid (reset when more LiDAR arrives). */
+export function applyLidarRoofs(map: MapLibreMap, done: Set<string>, rms: number[], stats: RoofFitStats, index: ReturnIndex, tried = new Set<string>()): void {
   const layer = lidarRoofLayer(map);
   if (!layer || !index.x.length) return;
   let features: GeoJSON.Feature[];
@@ -86,11 +87,10 @@ export function applyLidarRoofs(map: MapLibreMap, done: Set<string>, rms: number
     const id = f.id;
     if (typeof id !== 'string' && typeof id !== 'number') continue;
     const key = String(id);
-    if (done.has(key) || layer.has(key)) continue;
+    if (done.has(key) || tried.has(key) || layer.has(key)) continue;
     const g = f.geometry;
     const outer = g.type === 'Polygon' ? g.coordinates[0] : g.type === 'MultiPolygon' ? g.coordinates[0]?.[0] : null;
     if (!outer || outer.length < 4) continue;
-    done.add(key);
     budget--;
     const ring = ringFromCoordinates(outer);
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -108,6 +108,7 @@ export function applyLidarRoofs(map: MapLibreMap, done: Set<string>, rms: number
     }
     const model = buildRoofModel(local, roofPoints(ring, [], ox, oy, undefined, index));
     if (!model) {
+      tried.add(key);
       stats.roofsRejected++;
       continue;
     }
@@ -115,6 +116,7 @@ export function applyLidarRoofs(map: MapLibreMap, done: Set<string>, rms: number
     const state = map.getFeatureState(target) as { roofColor?: string };
     const color = state.roofColor ?? String((f.properties ?? {}).roof_color ?? '#9aa3ad');
     if (!layer.add(key, model, ox, oy, [minX, minY, maxX, maxY], color)) continue;
+    done.add(key);
     map.setFeatureState(target, { lidarEave: model.eaveM });
     stats.roofsFitted++;
     stats.roofKinds[model.kind] = (stats.roofKinds[model.kind] ?? 0) + 1;
@@ -137,6 +139,9 @@ export function attachBuildingEnrichment(map: MapLibreMap, onStats?: (s: Buildin
   let indexKey = '';
   let index: ReturnIndex | null = null;
   let indexAt = 0;
+  const heightsTried = new Set<string>();
+  const roofsTried = new Set<string>();
+  let imageryBusy = false;
   /** The return grid is rebuilt only when the drawn LiDAR nodes change. */
   const returnIndex = (nodes: ReturnType<typeof gaLidarNodes>): ReturnIndex => {
     let total = 0;
@@ -147,6 +152,8 @@ export function attachBuildingEnrichment(map: MapLibreMap, onStats?: (s: Buildin
       index = indexRoofReturns(nodes);
       indexKey = key;
       indexAt = now;
+      heightsTried.clear();
+      roofsTried.clear();
     }
     return index;
   };
@@ -161,19 +168,27 @@ export function attachBuildingEnrichment(map: MapLibreMap, onStats?: (s: Buildin
       const nodes = gaLidarNodes(map);
       stats.lidarNodes = nodes.length;
       if (nodes.length) {
-        const h = applyLidarHeights(map, nodes, heightsDone, returnIndex(nodes));
+        const idx = returnIndex(nodes);
+        const h = applyLidarHeights(map, nodes, heightsDone, idx, heightsTried);
         stats.measured += h.measured;
         stats.skipped += h.skipped;
       }
       // Roof shapes first (local CPU work), then roof photos (network), publishing stats after each.
-      if (map.getZoom() >= ROOF_MESH_MIN_ZOOM && nodes.length && !gpuLedgerPressure()) applyLidarRoofs(map, meshDone, rms, stats, returnIndex(nodes));
+      if (map.getZoom() >= ROOF_MESH_MIN_ZOOM && nodes.length && !gpuLedgerPressure()) applyLidarRoofs(map, meshDone, rms, stats, returnIndex(nodes), roofsTried);
       publish();
-      if (map.getZoom() >= ROOF_MIN_ZOOM) {
-        const r = await applyRoofImagery(map, visibleCentroids(map), roofsDone);
-        stats.painted += r.painted;
-        stats.failed += r.failed;
+      if (map.getZoom() >= ROOF_MIN_ZOOM && !imageryBusy) {
+        imageryBusy = true;
+        void applyRoofImagery(map, visibleCentroids(map), roofsDone)
+          .then((r) => {
+            stats.painted += r.painted;
+            stats.failed += r.failed;
+            publish();
+            onStats?.({ ...stats });
+          })
+          .finally(() => {
+            imageryBusy = false;
+          });
       }
-      publish();
       onStats?.({ ...stats });
     } finally {
       busy = false;
