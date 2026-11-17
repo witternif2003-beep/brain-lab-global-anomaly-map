@@ -27,9 +27,13 @@ export function latestRelease(listXml: string): string | null {
 
 export const buildingsUrl = (release: string) => `pmtiles://${OVERTURE_TILES_BUCKET}/tiles/${release}/buildings.pmtiles`;
 
-/** Height used for extrusion, in priority order: LiDAR-measured (feature-state), recorded height, floors × 3.2 m, 5 m. */
+/**
+ * Height used for extrusion, in priority order: measured eave under a LiDAR-reconstructed roof (the roof mesh draws above
+ * it), LiDAR-measured height (feature-state), recorded height, floors × 3.2 m, 5 m.
+ */
 export const HEIGHT_EXPRESSION: ExpressionSpecification = [
   'coalesce',
+  ['feature-state', 'lidarEave'],
   ['feature-state', 'lidarHeight'],
   ['get', 'height'],
   ['case', ['has', 'num_floors'], ['*', ['to-number', ['get', 'num_floors'], 0], FLOOR_HEIGHT_M], DEFAULT_HEIGHT_M],

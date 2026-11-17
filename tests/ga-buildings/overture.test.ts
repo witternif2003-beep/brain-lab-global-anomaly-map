@@ -17,9 +17,10 @@ test('the source URL uses the pmtiles protocol over public HTTPS', () => {
 });
 
 test('a LiDAR-measured height outranks the recorded height, floors and the 5 m default', () => {
-  assert.deepEqual(HEIGHT_EXPRESSION[1], ['feature-state', 'lidarHeight']);
-  assert.deepEqual(HEIGHT_EXPRESSION[2], ['get', 'height']);
-  assert.deepEqual((HEIGHT_EXPRESSION[3] as unknown[])[3], 5);
+  assert.deepEqual(HEIGHT_EXPRESSION[1], ['feature-state', 'lidarEave']);
+  assert.deepEqual(HEIGHT_EXPRESSION[2], ['feature-state', 'lidarHeight']);
+  assert.deepEqual(HEIGHT_EXPRESSION[3], ['get', 'height']);
+  assert.deepEqual((HEIGHT_EXPRESSION[4] as unknown[])[3], 5);
 });
 
 test('2D outlines start five zooms before the complete z14 building tiles', () => {

@@ -64,6 +64,16 @@ export function pickProject(x: number, y: number, projects: EptProject[] = GA_LI
   return best;
 }
 
+/** Every project whose conforming rectangle holds (x, y), best first (same order as pickProject). */
+export function candidateProjects(x: number, y: number, projects: EptProject[] = GA_LIDAR_PROJECTS): EptProject[] {
+  return projects
+    .filter((p) => {
+      const b = p.boundsConforming;
+      return x >= b[0] && x <= b[3] && y >= b[1] && y <= b[4];
+    })
+    .sort((a, b) => qlRank(a.ql) - qlRank(b.ql) || b.year - a.year);
+}
+
 export const NODE_KEY = /^(\d{1,2})-(\d{1,7})-(\d{1,7})-(\d{1,7})$/;
 export const MAX_NODE_DEPTH = 20;
 
@@ -89,6 +99,43 @@ export function nodeBox(project: EptProject, key: string): NodeBox | null {
 
 /** EPT hierarchy: node key → point count, or -1 when the node's subtree lives in its own hierarchy file. */
 export type Hierarchy = Record<string, number>;
+
+/** Width of the smallest node holding points that contains (x, y): small means the survey really has data there. */
+export function coverageWidth(project: EptProject, hierarchy: Hierarchy, x: number, y: number): number {
+  let w = Infinity;
+  for (const [key, count] of Object.entries(hierarchy)) {
+    if (count === 0) continue;
+    const b = nodeBox(project, key);
+    if (b && b.width < w && x >= b.minX && x <= b.maxX && y >= b.minY && y <= b.maxY) w = b.width;
+  }
+  return w;
+}
+
+/**
+ * Survey that actually has points at (x, y). Irregular survey areas have overlapping rectangles, so the rectangle
+ * test alone can pick a survey whose nearest return is hundreds of metres away; the hierarchy decides.
+ */
+export async function pickCoveringProject(
+  x: number,
+  y: number,
+  load: (p: EptProject) => Promise<Hierarchy | null>,
+  projects: EptProject[] = GA_LIDAR_PROJECTS,
+): Promise<EptProject | null> {
+  const c = candidateProjects(x, y, projects);
+  if (c.length <= 1) return c[0] ?? null;
+  let best: EptProject | null = null;
+  let bestW = Infinity;
+  for (const p of c) {
+    const h = await load(p);
+    if (!h) continue;
+    const w = coverageWidth(p, h, x, y);
+    if (w < bestW * 0.99) {
+      best = p;
+      bestW = w;
+    }
+  }
+  return best ?? c[0];
+}
 
 export interface LidarView {
   /** View centre and half-size of the area to fill, EPSG:3857 metres. */

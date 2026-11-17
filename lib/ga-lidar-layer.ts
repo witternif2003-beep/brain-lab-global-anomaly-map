@@ -22,7 +22,7 @@ import {
   heightRampColor,
   lngLatFrom3857,
   lngLatTo3857,
-  pickProject,
+  pickCoveringProject,
   planNodes,
   targetDepthFor,
 } from './ga-lidar/ept';
@@ -304,7 +304,14 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     const zoom = map.getZoom();
     const c = map.getCenter();
     const [cx, cy] = lngLatTo3857(c.lng, c.lat);
-    const project = zoom >= GA_LIDAR_MIN_ZOOM ? pickProject(cx, cy) : null;
+    const project =
+      zoom >= GA_LIDAR_MIN_ZOOM
+        ? await pickCoveringProject(cx, cy, async (p) => {
+            await this.hierarchy(p, '0-0-0-0');
+            return this.hierarchies.get(p.name) ?? null;
+          })
+        : null;
+    if (gen !== this.generation) return;
     this.stats.project = project?.name ?? null;
     this.stats.year = project?.year ?? null;
     this.stats.ql = project?.ql ?? null;

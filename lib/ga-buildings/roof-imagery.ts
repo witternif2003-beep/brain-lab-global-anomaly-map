@@ -1,5 +1,6 @@
 import type { Map as MapLibreMap } from 'maplibre-gl';
 import { OVERTURE_BUILDINGS_SOURCE } from './overture';
+import { naipLatestTile, tileOf3857 } from './naip-latest';
 
 /** USDA NAIP 2023, 0.6 m per pixel, public domain, served by USGS The National Map with CORS `*`. */
 export const NAIP_IMAGE_SERVER = 'https://imagery.nationalmap.gov/arcgis/rest/services/USGSNAIPImagery/ImageServer/exportImage';
@@ -48,6 +49,27 @@ export function liftShade(c: readonly [number, number, number], min = 70): [numb
   return [Math.min(255, c[0] * k), Math.min(255, c[1] * k), Math.min(255, c[2] * k)] as [number, number, number];
 }
 
+/** Zoom of the newest-NAIP tile used for roof colour: ~0.25 m per pixel at Georgia's latitude. */
+export const LATEST_ROOF_ZOOM = 19;
+/** Pixel window centred on the footprint for the newest-photo colour, clamped inside its tile. */
+export function patchWindow(px: number, py: number, size = PATCH_PX): { sx: number; sy: number; size: number } {
+  const s = Math.min(256, size);
+  return { sx: Math.max(0, Math.min(256 - s, px - s / 2)), sy: Math.max(0, Math.min(256 - s, py - s / 2)), size: s };
+}
+
+/** Roof colour from the newest NAIP (2025+, 0.3 m where flown), or null where it has no photo. */
+async function sampleLatest(x: number, y: number): Promise<[number, number, number] | null> {
+  const t = tileOf3857(x, y, LATEST_ROOF_ZOOM);
+  const bmp = await naipLatestTile(LATEST_ROOF_ZOOM, t.tx, t.ty);
+  if (!bmp) return null;
+  const w = patchWindow(t.px, t.py);
+  const canvas = new OffscreenCanvas(w.size, w.size);
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  ctx.drawImage(bmp, w.sx, w.sy, w.size, w.size, 0, 0, w.size, w.size);
+  return liftShade(averageColor(ctx.getImageData(0, 0, w.size, w.size).data, w.size));
+}
+
 async function samplePatch(url: string, px: number): Promise<[number, number, number] | null> {
   const r = await fetch(url);
   if (!r.ok) return null;
@@ -67,7 +89,7 @@ export interface RoofStats {
 
 /**
  * Paints each visible building's roof with its own NAIP colour (0.6 m source pixels averaged over the
- * footprint centre) as feature-state `roofColor`. Imagery resolution is 0.6 m; nothing is upscaled.
+ * footprint centre) as feature-state `roofColor`: newest NAIP (2025+, 0.3 m in Georgia) first, else NAIP 2023 0.6 m. Nothing is upscaled.
  */
 export async function applyRoofImagery(
   map: MapLibreMap,
@@ -82,7 +104,7 @@ export async function applyRoofImagery(
       todo.slice(i, i + ROOF_CONCURRENCY).map(async (c) => {
         done.add(String(c.id));
         try {
-          const color = await samplePatch(naipPatchUrl(patchBbox(c.x, c.y)), PATCH_PX);
+          const color = (await sampleLatest(c.x, c.y)) ?? (await samplePatch(naipPatchUrl(patchBbox(c.x, c.y)), PATCH_PX));
           if (!color) {
             stats.failed++;
             return;

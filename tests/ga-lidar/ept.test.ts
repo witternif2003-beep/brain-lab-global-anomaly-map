@@ -160,3 +160,20 @@ test("imageryPixel maps EPSG:3857 to the Web-Mercator tile and pixel", () => {
   assert.equal(p.tx, Math.floor(((-84.388 + 180) / 360) * 2 ** 18));
   assert.ok(p.px >= 0 && p.px < 256 && p.py >= 0 && p.py < 256);
 });
+
+test("overlapping survey rectangles: the survey whose hierarchy has points at the location wins", async () => {
+  const { pickCoveringProject, coverageWidth, candidateProjects } = await import("../../lib/ga-lidar/ept");
+  const box = { bounds: [0, 0, 0, 16, 16, 16], boundsConforming: [0, 0, 0, 16, 16, 16], points: 0, span: 128 };
+  const a = { ...box, name: "A", year: 2018, ql: "QL2" };
+  const b = { ...box, name: "B", year: 2016, ql: "QL2" };
+  const hier: Record<string, Record<string, number>> = {
+    A: { "0-0-0-0": 10, "1-1-1-0": 10, "2-3-3-0": 10 },
+    B: { "0-0-0-0": 10, "1-0-0-0": 10, "2-0-0-0": 10 },
+  };
+  assert.deepEqual(candidateProjects(1, 1, [a, b]).map((p) => p.name), ["A", "B"]);
+  assert.equal(coverageWidth(a, hier.A, 1, 1), 16);
+  assert.equal(coverageWidth(b, hier.B, 1, 1), 4);
+  assert.equal((await pickCoveringProject(1, 1, async (p) => hier[p.name], [a, b]))?.name, "B");
+  assert.equal((await pickCoveringProject(15, 15, async (p) => hier[p.name], [a, b]))?.name, "A");
+  assert.equal((await pickCoveringProject(1, 1, async () => null, [a, b]))?.name, "A");
+});
