@@ -1,0 +1,285 @@
+#!/usr/bin/env python3
+"""FlightGear FGMEMBERS aircraft (GPL) AC3D exterior models -> public/models/airframes/<id>.bin + lib/ga-live-markers/fg-airframes.json.
+
+Each model is flattened (object loc/rot applied), interior/cockpit/light/effect objects dropped, triangulated, flat-shaded,
+coloured from its AC3D material, vertex-clustered down to a phone-sized triangle budget, and rotated to the map's mesh axes
+(+x forward, +y left, +z up, wheels at z=0). The map stretches each mesh to FAA length/span/tail height at draw time.
+Usage: python3 scripts/build-fg-airframes.py /path/to/fgmembers-checkouts
+"""
+import hashlib, json, math, re, struct, subprocess, sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+from PIL import Image
+
+ROOT = Path(__file__).resolve().parent.parent
+OUT_DIR = ROOT / "public/models/airframes"
+MANIFEST = ROOT / "lib/ga-live-markers/fg-airframes.json"
+DROP = re.compile(r"seat|cabin|cockpit|panel|light|flightdeck|shadow|shade|interior|int$|strobe|glass|window|yoke|pedal|throttle|screen|display|instrument|pilot|fire|smoke|contrail|exhaust|pushback|shield|disk|well", re.I)
+AIRFRAMES = [
+    {"id": "b739", "repo": "737-900ER", "files": ["Models/737-900.ac"], "types": ["B739", "B738", "B737", "B38M", "B39M", "B37M"]},
+    # A320.xml offsets (FlightGear x aft, y right, z up) applied per part; gear and engines are separate models not converted.
+    {"id": "a320", "repo": "A320-family", "files": [("Models/a320.fuselage.ac", [0, 0, 0]), ("Models/Wings/a320.wings.ac", [15.28, 0, -1.06019]),
+        ("Models/Wings/a320.winglets.ac", [15.28, 0, -1.06019]), ("Models/a320.hstab.ac", [34.1512207, 0, 0]), ("Models/a320.vstab.ac", [32.2535728, 0, 0])],
+     "types": ["A320", "A20N", "A319", "A19N", "A318", "A321", "A21N"]},
+    {"id": "b748", "repo": "747-8i", "files": ["Models/747-8F.ac"], "types": ["B748", "B744"]},
+    {"id": "b788", "repo": "787", "files": ["Models/787-8.ac"], "types": ["B788", "B789", "B78X"]},
+    {"id": "e170", "repo": "E-jet-family", "files": ["Models/erj170.ac"], "types": ["E170", "E75L", "E75S"]},
+    {"id": "e190", "repo": "E-jet-family", "files": ["Models/erj190.ac"], "types": ["E190", "E195", "E290", "E295"]},
+    # pw4000.xml engine offsets.
+    {"id": "a330", "repo": "A330-200", "files": ["Models/a330-200-main.ac", ("Models/pw4000.ac", [-2.7034, -9.4014, -2.6508]), ("Models/pw4000.ac", [-2.7034, 9.4014, -2.6508])],
+     "types": ["A332", "A333", "A338", "A339", "A337"]},
+    {"id": "q400", "repo": "Q400", "files": ["Models/q400.ac"], "types": ["DH8D"]},
+    {"id": "citationx", "repo": "CitationX", "files": ["Models/CitationX.ac"], "types": ["C750"]},
+    {"id": "c182", "repo": "c182s", "files": ["Models/c182s.ac"], "types": ["C182", "C82R", "C82T"]},
+    # ec135.xml main-rotor offset (rotor pitch of -5 deg ignored).
+    {"id": "ec135", "repo": "ec135", "files": ["Models/ec135.ac", ("Models/rotors/mainrotor.ac", [3.023, 0, 1.801])], "types": ["EC35"]},
+]
+BUDGET = 16000
+# Livery folders and which base texture each livery XML key replaces. Liveries named by a 3-letter ICAO airline designator
+# (FlightGear's naming convention) are matched at runtime to the operator code that starts the ADS-B callsign.
+LIVERIES = {
+    "b739": (["Models/Liveries"], {"livery": "JA.png"}),
+    "a320": (["Models/Liveries/A320-211", "Models/Liveries/A320-231", "Models/Liveries/A320-111", "Models/Liveries/A319-111", "Models/Liveries/A319-131",
+              "Models/Liveries/A321-211", "Models/Liveries/A318-111", "Models/Liveries"], {"livery": "A320-NWA.png"}),
+    "b748": (["Models/Liveries/748F", "Models/Liveries/748I"], {"livery": "freighter.png", "turbofans": "turbofan.png", "wings": "wings.png"}),
+    "b788": (["Models/Liveries"], {"livery": "BCA-Livery.png"}),
+    "e170": (["Models/Liveries/ERJ170", "Models/Liveries/ERJ175"], {"livery": "blank.png"}),
+    "e190": (["Models/Liveries/ERJ190", "Models/Liveries/ERJ195"], {"livery": "blank190.png"}),
+    "a330": (["Models/Liveries/A330-223"], {"livery": "223_blank.png"}),
+    "q400": (["Models/Liveries"], {"livery": "Q400_House.png"}),
+}
+ICAO = re.compile(r"^[A-Za-z]{3}$")
+
+
+def parse_ac(path):
+    lines = path.read_text(errors="replace").splitlines()
+    mats, tris, i = [], [], 0
+
+    def obj(parent_m, parent_t):
+        nonlocal i
+        name, loc, rot, verts, kids, tex = "", [0, 0, 0], [1, 0, 0, 0, 1, 0, 0, 0, 1], [], 0, None
+        surfs = []
+        i += 1
+        while i < len(lines):
+            t = lines[i].split()
+            if not t:
+                i += 1; continue
+            k = t[0]
+            if k == "name": name = " ".join(t[1:]).strip('"')
+            elif k == "loc": loc = list(map(float, t[1:4]))
+            elif k == "rot": rot = list(map(float, t[1:10]))
+            elif k == "data": i += 1
+            elif k == "texture": tex = " ".join(t[1:]).strip('"')
+            elif k == "texrep" or k == "crease" or k == "url" or k == "texoff" or k == "subdiv": pass
+            elif k == "numvert":
+                n = int(t[1])
+                verts = [list(map(float, lines[i + 1 + j].split()[:3])) for j in range(n)]
+                i += n
+            elif k == "numsurf":
+                for _ in range(int(t[1])):
+                    i += 1
+                    flags, mat = int(lines[i].split()[1], 0), 0
+                    i += 1
+                    if lines[i].startswith("mat"): mat = int(lines[i].split()[1]); i += 1
+                    nref = int(lines[i].split()[1])
+                    rl = [lines[i + 1 + j].split() for j in range(nref)]
+                    refs = [int(r[0]) for r in rl]
+                    uvs = [(float(r[1]), float(r[2])) if len(r) >= 3 else (0.0, 0.0) for r in rl]
+                    i += nref
+                    if flags & 0xF == 0 and nref >= 3: surfs.append((mat, refs, uvs))
+            elif k == "kids":
+                kids = int(t[1]); i += 1; break
+            i += 1
+        # world transform: parent_m * (rot, loc)
+        m = [sum(parent_m[r * 3 + q] * rot[q * 3 + c] for q in range(3)) for r in range(3) for c in range(3)]
+        tr = [parent_t[r] + sum(parent_m[r * 3 + q] * loc[q] for q in range(3)) for r in range(3)]
+        keep = not DROP.search(name)
+        if keep:
+            w = [[sum(m[r * 3 + c] * v[c] for c in range(3)) + tr[r] for r in range(3)] for v in verts]
+            for mat, refs, uvs in surfs:
+                for j in range(1, len(refs) - 1):
+                    tris.append((w[refs[0]], w[refs[j]], w[refs[j + 1]], mat, tex, (uvs[0], uvs[j], uvs[j + 1])))
+        for _ in range(kids):
+            while i < len(lines) and not lines[i].startswith("OBJECT"): i += 1
+            if keep: obj(m, tr)
+            else: skip()
+
+    def skip():
+        nonlocal i
+        kids = 0
+        i += 1
+        while i < len(lines):
+            t = lines[i].split()
+            if t and t[0] == "numvert": i += int(t[1])
+            elif t and t[0] == "numsurf":
+                for _ in range(int(t[1])):
+                    i += 2
+                    if lines[i].startswith("mat"): i += 1
+                    i += int(lines[i].split()[1])
+            elif t and t[0] == "data": i += 1
+            elif t and t[0] == "kids":
+                kids = int(t[1]); i += 1; break
+            i += 1
+        for _ in range(kids):
+            while i < len(lines) and not lines[i].startswith("OBJECT"): i += 1
+            skip()
+
+    while i < len(lines):
+        if lines[i].startswith("MATERIAL"):
+            t = lines[i].split()
+            r = t.index("rgb"); tr = t.index("trans")
+            mats.append(([float(x) for x in t[r + 1:r + 4]], float(t[tr + 1])))
+            i += 1
+        elif lines[i].startswith("OBJECT"):
+            obj([1, 0, 0, 0, 1, 0, 0, 0, 1], [0, 0, 0]); break
+        else: i += 1
+    return mats, tris
+
+
+_textures = {}
+
+
+def texture(folder, name):
+    """The object's paint texture (PNG/SGI/DDS), searched next to the .ac file and up to the repo's Models folder."""
+    if not name: return None
+    key = (folder, name)
+    if key not in _textures:
+        img = None
+        for d in (folder, folder.parent, folder.parent.parent):
+            fpath = d / name
+            if fpath.exists():
+                try: img = Image.open(fpath).convert("RGBA")
+                except Exception: img = None
+                break
+        _textures[key] = img
+    return _textures[key]
+
+
+def sample(img, uv):
+    """Average texture colour at four points inside the triangle (centroid and halfway to each corner); None if mostly transparent."""
+    w, h = img.size
+    cu = sum(p[0] for p in uv) / 3; cv = sum(p[1] for p in uv) / 3
+    acc, alpha = [0.0, 0.0, 0.0], 0.0
+    pts = [(cu, cv)] + [((cu + p[0]) / 2, (cv + p[1]) / 2) for p in uv]
+    for u, v in pts:
+        r, g, b, a = img.getpixel((int((u % 1) * w) % w, int((1 - v % 1) * h) % h))
+        acc[0] += r; acc[1] += g; acc[2] += b; alpha += a
+    if alpha / len(pts) < 128: return None
+    return [x / len(pts) / 255 for x in acc]
+
+
+def cluster(tris, budget):
+    """Vertex clustering: snap to a grid whose cell grows until the triangle count fits the budget."""
+    xs = [c for t in tris for v in t[:3] for c in v]
+    span = max(max(xs[k::3]) - min(xs[k::3]) for k in range(3))
+    cell = span / 1200
+    while True:
+        seen, out = set(), []
+        for a, b, c, col in tris:
+            q = [tuple(round(x / cell) for x in v) for v in (a, b, c)]
+            if q[0] == q[1] or q[1] == q[2] or q[0] == q[2]: continue
+            key = tuple(sorted(q))
+            if key in seen: continue
+            seen.add(key)
+            out.append(([[x * cell for x in v] for v in q], col))
+        if len(out) <= budget: return out, cell
+        cell *= 1.25
+
+
+def tri_colour(folder, mat, mats, tex, uv, swap=None):
+    """Triangle colour from its AC3D material times its texture; `swap` maps a base texture name to a livery image. None = transparent."""
+    rgb, trans = mats[mat] if mat < len(mats) else ([0.8] * 3, 0)
+    if trans > 0.5: return None
+    img = (swap or {}).get(Path(tex).name) if tex else None
+    if img is None: img = texture(folder, tex)
+    if img is not None:
+        px = sample(img, uv)
+        if px is None: return None
+        rgb = [min(1.0, m * p) for m, p in zip(rgb, px)]
+    return rgb
+
+
+def liveries(af, repo, kept, meta):
+    """Per-triangle RGB (u8) for every ICAO-coded livery: public/models/airframes/liveries/<id>/<CODE>.bin."""
+    if af["id"] not in LIVERIES: return {}
+    dirs, keys = LIVERIES[af["id"]]
+    out_dir = OUT_DIR / "liveries" / af["id"]
+    out_dir.mkdir(parents=True, exist_ok=True)
+    found = {}
+    for d in dirs:
+        for x in sorted((repo / d).glob("*.xml")):
+            code = x.stem.upper()
+            if not ICAO.match(x.stem) or code in found: continue
+            xml = x.read_text(errors="replace")
+            swap, name = {}, None
+            for key, base in keys.items():
+                m = re.search(rf"<{key}>(.*?)</{key}>", xml, re.S)
+                if not m: continue
+                t = re.search(r"<texture>\s*(.*?)\s*</texture>", m.group(1), re.S)
+                if key == "livery":
+                    n = re.search(r"<name[^>]*>\s*(.*?)\s*</name>", m.group(1), re.S)
+                    name = n.group(1) if n else code
+                if not t: continue
+                for cand in (repo / "Models" / t.group(1), x.parent / Path(t.group(1)).name):
+                    if cand.exists():
+                        try: swap[base] = Image.open(cand).convert("RGBA")
+                        except Exception: pass
+                        break
+            if keys["livery"] not in swap: continue
+            blob = bytearray()
+            for idx, base_rgb in kept:
+                folder, mat, mats, tex, uv = meta[idx]
+                rgb = tri_colour(folder, mat, mats, tex, uv, swap) or base_rgb
+                blob += bytes(max(0, min(255, round(c * 255))) for c in rgb)
+            (out_dir / f"{code}.bin").write_bytes(bytes(blob))
+            found[code] = {"name": name, "file": f"{x.relative_to(repo)}", "sha256": hashlib.sha256(bytes(blob)).hexdigest()}
+    return found
+
+
+def build(af, src):
+    repo = src / af["repo"]
+    tris, colours, meta = [], [], []
+    for f in af["files"]:
+        f, off = f if isinstance(f, tuple) else (f, [0, 0, 0])
+        mats, ts = parse_ac(repo / f)
+        # FlightGear offsets are x aft, y right, z up; AC3D vertices are x aft, y up, z right... converted below via ac (x, y, z) = (x+ox, y+oz, z+oy)
+        ts = [tuple([v[0] + off[0], v[1] + off[2], v[2] + off[1]] for v in t[:3]) + t[3:] for t in ts]
+        for a, b, c, mat, tex, uv in ts:
+            rgb = tri_colour((repo / f).parent, mat, mats, tex, uv)
+            if rgb is None: continue  # see-through material or transparent texture (windows, blur discs)
+            meta.append(((repo / f).parent, mat, mats, tex, uv))
+            # AC3D is y-up with the nose toward -x in FlightGear models -> map mesh axes (+x forward, +y left, +z up).
+            tris.append(tuple([-v[0], -v[2], v[1]] for v in (a, b, c)) + ((tuple(round(x, 2) for x in rgb), len(meta) - 1),))
+    raw = len(tris)
+    out, cell = cluster(tris, BUDGET)
+    zmin = min(v[2] for t, _ in out for v in t)
+    # Centre length and span on the origin so the reported position is the middle of the airframe and it turns about that point.
+    mid = [(min(v[k] for t, _ in out for v in t) + max(v[k] for t, _ in out for v in t)) / 2 for k in range(2)]
+    pos, nor, col = [], [], []
+    kept = [(c[1], c[0]) for _, c in out]
+    for t, (c, _) in out:
+        t = [[v[0] - mid[0], v[1] - mid[1], v[2] - zmin] for v in t]
+        u = [t[1][k] - t[0][k] for k in range(3)]; w = [t[2][k] - t[0][k] for k in range(3)]
+        n = [u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0]]
+        l = math.sqrt(sum(x * x for x in n)) or 1
+        for v in t: pos += v; nor += [x / l for x in n]; col += list(c)
+    ext = [max(pos[k::3]) - min(pos[k::3]) for k in range(3)]
+    blob = struct.pack("<I", len(pos) // 3) + struct.pack(f"<{len(pos)}f", *pos) + struct.pack(f"<{len(nor)}f", *nor) + struct.pack(f"<{len(col)}f", *col)
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    (OUT_DIR / f"{af['id']}.bin").write_bytes(blob)
+    sha = subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
+    lic_file = next(f for f in ("COPYING", "COPYING.txt", "LICENSE", "LICENSE.txt", "License.txt") if (repo / f).exists())
+    lic = (repo / lic_file).read_text(errors="replace")[:200]
+    assert "GNU GENERAL PUBLIC LICENSE" in lic, f"{af['repo']}: {lic_file} is not a GPL licence"
+    return {"id": af["id"], "types": af["types"], "repo": f"https://github.com/FGMEMBERS/{af['repo']}", "commit": sha,
+            "files": [f if isinstance(f, str) else f[0] for f in af["files"]], "license": "GPL-3.0" if "Version 3" in lic else "GPL-2.0", "triangles": len(out),
+            "sourceTriangles": raw, "extentM": [round(x, 3) for x in ext], "sha256": hashlib.sha256(blob).hexdigest(),
+            "liveries": liveries(af, repo, kept, meta)}
+
+
+if __name__ == "__main__":
+    src = Path(sys.argv[1] if len(sys.argv) > 1 else "/home/ubuntu/fg")
+    models = [build(af, src) for af in AIRFRAMES]
+    MANIFEST.write_text(json.dumps({"source": "FlightGear FGMEMBERS aircraft models (GPL)", "builtAt": datetime.now(timezone.utc).isoformat(timespec="seconds"), "models": models}, indent=1) + "\n")
+    for m in models: print(m["id"], m["triangles"], "of", m["sourceTriangles"], "extent", m["extentM"])

@@ -31,7 +31,7 @@ export async function fetchEdgarByState(a: {
   const url =
     `${EDGAR}?action=getcompany&State=${encodeURIComponent(a.territory)}` +
     `&type=${encodeURIComponent(type)}&dateb=&owner=include&count=${count}&output=atom`;
-  const res = await fetch(url, {
+  const res = await fetch(url, { signal: AbortSignal.timeout(15_000),
     headers: {
       Accept: "application/atom+xml, application/xml;q=0.9",
       "User-Agent": "brain-lab-ingest/1.0 (contact: admin@example.com)"

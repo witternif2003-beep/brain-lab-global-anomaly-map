@@ -1,0 +1,118 @@
+# SLO: 99.9% of live-layer probes succeed over 30 days (error budget 0.1%).
+# Multi-window, multi-burn-rate alerts (Google SRE Workbook, ch. 5):
+#   2% of budget in 1h  -> burn 14.4 (1h and 5m windows)  -> page
+#   5% of budget in 6h  -> burn 6    (6h and 30m windows) -> page
+#   10% of budget in 3d -> burn 1    (3d and 6h windows)  -> ticket
+groups:
+  - name: brain-lab-slo-recording
+    interval: 1m
+    rules:
+      - record: ga:feed_errors:ratio_rate5m
+        expr: 1 - avg(avg_over_time(ga_feed_up[5m]))
+      - record: ga:feed_errors:ratio_rate30m
+        expr: 1 - avg(avg_over_time(ga_feed_up[30m]))
+      - record: ga:feed_errors:ratio_rate1h
+        expr: 1 - avg(avg_over_time(ga_feed_up[1h]))
+      - record: ga:feed_errors:ratio_rate6h
+        expr: 1 - avg(avg_over_time(ga_feed_up[6h]))
+      - record: ga:feed_errors:ratio_rate3d
+        expr: 1 - avg(avg_over_time(ga_feed_up[3d]))
+      - record: ga:feed_availability:ratio_30d
+        expr: avg(avg_over_time(ga_feed_up[30d]))
+  - name: brain-lab-slo
+    rules:
+      - alert: FeedErrorBudgetBurn1h
+        expr: ga:feed_errors:ratio_rate1h > (14.4 * 0.001) and ga:feed_errors:ratio_rate5m > (14.4 * 0.001)
+        for: 2m
+        labels: { severity: page }
+        annotations: { summary: 'Live layers spent 2% of the 30-day error budget in 1 h (burn rate 14.4)' }
+      - alert: FeedErrorBudgetBurn6h
+        expr: ga:feed_errors:ratio_rate6h > (6 * 0.001) and ga:feed_errors:ratio_rate30m > (6 * 0.001)
+        for: 15m
+        labels: { severity: page }
+        annotations: { summary: 'Live layers spent 5% of the 30-day error budget in 6 h (burn rate 6)' }
+      - alert: FeedErrorBudgetBurn3d
+        expr: ga:feed_errors:ratio_rate3d > (1 * 0.001) and ga:feed_errors:ratio_rate6h > (1 * 0.001)
+        for: 1h
+        labels: { severity: ticket }
+        annotations: { summary: 'Live layers spent 10% of the 30-day error budget in 3 d (burn rate 1)' }
+      - alert: FeedDown
+        expr: ga_feed_up == 0
+        for: 10m
+        labels: { severity: ticket }
+        annotations: { summary: 'Layer {{ $labels.layer }} has failed for 10 min' }
+      - alert: TransitStale
+        expr: transit_gtfs_staleness_seconds > 300
+        for: 10m
+        labels: { severity: ticket }
+        annotations: { summary: 'Newest GTFS-realtime bus position is older than 5 min' }
+      - alert: FeedSlow
+        expr: ga_feed_request_duration_ms > 10000
+        for: 15m
+        labels: { severity: ticket }
+        annotations: { summary: 'Layer {{ $labels.layer }} takes over 10 s to load' }
+      - alert: RenderBelow30Fps
+        expr: map_render_fps < 30 and rum_reports >= 5
+        for: 15m
+        labels: { severity: ticket }
+        annotations: { summary: 'Median frame rate on {{ $labels.page }} ({{ $labels.device }}) below 30 FPS' }
+      - alert: FrameOver16ms
+        expr: map_render_frame_ms_p95 > 16.7 and rum_reports >= 5
+        for: 15m
+        labels: { severity: ticket }
+        annotations: { summary: 'p95 frame time on {{ $labels.page }} ({{ $labels.device }}) above the 16 ms ceiling' }
+      - alert: LidarGpuPassOver8ms
+        expr: lidar_gpu_ms_p95 > 8 and rum_reports >= 5
+        for: 15m
+        labels: { severity: ticket }
+        annotations: { summary: 'p95 LiDAR GPU draw time on {{ $labels.page }} ({{ $labels.device }}) above 8 ms (half the frame budget)' }
+      - alert: LidarPointCeilingExceeded
+        expr: lidar_points_drawn > 5000000
+        for: 0m
+        labels: { severity: page }
+        annotations: { summary: 'Median LiDAR points on {{ $labels.page }} ({{ $labels.device }}) above the 5,000,000-point ceiling' }
+      - alert: RepeatedWebglContextLoss
+        expr: webgl_context_losses > 2
+        for: 10m
+        labels: { severity: page }
+        annotations: { summary: 'Main map on {{ $labels.page }} ({{ $labels.device }}) losing its WebGL context repeatedly (GPU memory exhaustion or reset)' }
+      - alert: MapPageCrashes
+        expr: map_page_crashes > 0
+        for: 5m
+        labels: { severity: page }
+        annotations: { summary: 'Map on {{ $labels.page }} ({{ $labels.device }}) was killed while visible (out-of-memory tab reload)' }
+      - alert: BleSourceOffline
+        expr: ble_source_up == 0
+        for: 10m
+        labels: { severity: ticket }
+        annotations: { summary: 'ACT Bluetooth vehicle feed (Addinsight) offline for 10 min' }
+      - alert: BleSourceStale
+        expr: ble_source_lag_seconds > 600
+        for: 10m
+        labels: { severity: ticket }
+        annotations: { summary: 'Newest ACT Bluetooth interval older than 10 min' }
+      - alert: BleUpdateChurn
+        expr: ble_update_diff_size_p95 > 500
+        for: 15m
+        labels: { severity: ticket }
+        annotations: { summary: 'Bluetooth vehicle layer changing more than 500 features per flush on {{ $labels.page }} ({{ $labels.device }})' }
+      - alert: MovingTrackSourceOffline
+        expr: moving_tracks_source_up == 0
+        for: 15m
+        labels: { severity: ticket }
+        annotations: { summary: 'Moving-track source {{ $labels.source }} offline for 15 min' }
+      - alert: MovingTrackSourceStale
+        expr: moving_tracks_source_lag_seconds > 1200
+        for: 15m
+        labels: { severity: ticket }
+        annotations: { summary: 'Newest {{ $labels.source }} position fix older than 20 min' }
+      - alert: MovingTracksAtCeiling
+        expr: moving_tracks_truncated > 0
+        for: 30m
+        labels: { severity: info }
+        annotations: { summary: 'Moving tracks exceed the 50,000 ceiling; {{ $value }} dropped' }
+      - alert: MobileHeapOver512MB
+        expr: memory_heap_usage_bytes{device="touch"} > 512 * 1024 * 1024
+        for: 15m
+        labels: { severity: ticket }
+        annotations: { summary: 'Median touch-device JS heap above 512 MB on {{ $labels.page }}' }

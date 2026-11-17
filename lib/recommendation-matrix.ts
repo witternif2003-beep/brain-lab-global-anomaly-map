@@ -671,7 +671,7 @@ const VECTOR_TEMPLATES: Record<MissionVectorType, {
       "Supercluster Native Clustering with clusterRadius: 50 and clusterMaxZoom: 12",
       "Cluster Property Accumulators for Instant Critical Severity Rollups",
       "getClusterExpansionZoom Spring Easing Transitions on Cluster Selection",
-      "Multi-Stop Circle Color Ramp (#f59e0b -> #f97316 -> #dc2626) by Point Count",
+      "Multi-Stop Circle Color Ramp (#ff2ec4 -> #ff2ec4 -> #dc2626) by Point Count",
       "Pulsing Ring Overlay Activation for Isolated Critical Severity Nodes"
     ],
     telemetry: [

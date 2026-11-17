@@ -1,0 +1,23 @@
+# CPU renderer (SwiftShader). On an NVIDIA host add: -f docker-compose.renderer.gpu.yml
+#   VNC_PASSWORD=... docker compose -f docker-compose.renderer.yml up -d --build
+# Server-side API keys come from RENDERER_ENV_FILE (default .env.renderer, gitignored),
+# e.g. created with `npx vercel env pull .env.renderer --environment=production`.
+services:
+  renderer:
+    build:
+      context: .
+      dockerfile: Dockerfile.renderer
+    image: brain-lab-renderer:local
+    container_name: brain_lab_renderer
+    environment:
+      VNC_PASSWORD: ${VNC_PASSWORD:?set VNC_PASSWORD}
+      RENDER_PATH: ${RENDER_PATH:-/}
+      RENDER_SCREEN: ${RENDER_SCREEN:-1920x1080x24}
+    env_file:
+      - path: ${RENDERER_ENV_FILE:-.env.renderer}
+        required: false
+    shm_size: 1gb
+    ports:
+      - "127.0.0.1:${RENDERER_APP_PORT:-3100}:3000"
+      - "127.0.0.1:${RENDERER_VNC_PORT:-5900}:5900"
+    restart: unless-stopped

@@ -1,0 +1,21 @@
+# Local/self-hosted stack: app + OpenTelemetry Collector (OTLP 4317/4318) + Prometheus.
+services:
+  app:
+    build: { context: .., dockerfile: Dockerfile }
+    ports: ['3000:3000']
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_SERVICE_NAME: brain-lab
+    depends_on: [otel-collector]
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.115.1
+    command: ['--config=/etc/otel/config.yaml']
+    volumes: ['./otel-collector.yaml:/etc/otel/config.yaml:ro']
+    ports: ['4317:4317', '4318:4318', '8889:8889']
+  prometheus:
+    image: prom/prometheus:v3.0.1
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/rules.yml:/etc/prometheus/rules.yml:ro
+    ports: ['9090:9090']
+    depends_on: [app]

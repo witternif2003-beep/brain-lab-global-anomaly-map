@@ -29,7 +29,7 @@ export async function GET(request: Request) {
       upstreamUrl = `https://api.usa.gov/crime/fbi/cde/summarized/${encodeURIComponent(level)}/${encodeURIComponent(scope)}/${encodeURIComponent(offense)}?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&api_key=${encodeURIComponent(key)}`;
     }
 
-    const res = await fetch(upstreamUrl, {
+    const res = await fetch(upstreamUrl, { signal: AbortSignal.timeout(15_000),
       headers: {
         'Accept': 'application/json',
         'User-Agent': 'BrainLab-Research-Platform/1.0',
@@ -41,7 +41,7 @@ export async function GET(request: Request) {
       // If legacy /summarized endpoint returns 404 (due to UCR decommission / endpoint consolidation),
       // seamlessly query active state law enforcement reporting agencies directory
       const fallbackUrl = `https://api.usa.gov/crime/fbi/cde/agency/byStateAbbr/${encodeURIComponent(scope === 'US' ? 'GA' : scope)}?API_KEY=${encodeURIComponent(key)}`;
-      const fbRes = await fetch(fallbackUrl, {
+      const fbRes = await fetch(fallbackUrl, { signal: AbortSignal.timeout(15_000),
         headers: {
           'Accept': 'application/json',
           'User-Agent': 'BrainLab-Research-Platform/1.0',

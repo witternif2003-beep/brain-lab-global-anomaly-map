@@ -1,0 +1,359 @@
+[
+ {
+  "id": "evcharger",
+  "key": "amenity",
+  "value": "charging_station",
+  "label": "Public EV charger",
+  "group": "Vehicles & charging"
+ },
+ {
+  "id": "fuel",
+  "key": "amenity",
+  "value": "fuel",
+  "label": "Fuel station",
+  "group": "Vehicles & charging"
+ },
+ {
+  "id": "compressedair",
+  "key": "amenity",
+  "value": "compressed_air",
+  "label": "Tyre air pump",
+  "group": "Vehicles & charging"
+ },
+ {
+  "id": "carwash",
+  "key": "amenity",
+  "value": "car_wash",
+  "label": "Car wash",
+  "group": "Vehicles & charging"
+ },
+ {
+  "id": "carsharing",
+  "key": "amenity",
+  "value": "car_sharing",
+  "label": "Car-share bay",
+  "group": "Vehicles & charging"
+ },
+ {
+  "id": "carrental",
+  "key": "amenity",
+  "value": "car_rental",
+  "label": "Car rental desk",
+  "group": "Vehicles & charging"
+ },
+ {
+  "id": "motoparking",
+  "key": "amenity",
+  "value": "motorcycle_parking",
+  "label": "Motorcycle parking",
+  "group": "Vehicles & charging"
+ },
+ {
+  "id": "dumpstation",
+  "key": "amenity",
+  "value": "sanitary_dump_station",
+  "label": "RV dump station",
+  "group": "Vehicles & charging"
+ },
+ {
+  "id": "restarea",
+  "key": "highway",
+  "value": "rest_area",
+  "label": "Highway rest area",
+  "group": "Vehicles & charging"
+ },
+ {
+  "id": "bikeparking",
+  "key": "amenity",
+  "value": "bicycle_parking",
+  "label": "Bike rack",
+  "group": "Bikes & scooters"
+ },
+ {
+  "id": "bikerental",
+  "key": "amenity",
+  "value": "bicycle_rental",
+  "label": "Bike-share / rental dock",
+  "group": "Bikes & scooters"
+ },
+ {
+  "id": "bikerepair",
+  "key": "amenity",
+  "value": "bicycle_repair_station",
+  "label": "Bike repair stand",
+  "group": "Bikes & scooters"
+ },
+ {
+  "id": "busstop",
+  "key": "highway",
+  "value": "bus_stop",
+  "label": "Bus stop",
+  "group": "Buses & trains"
+ },
+ {
+  "id": "busstation",
+  "key": "amenity",
+  "value": "bus_station",
+  "label": "Bus station",
+  "group": "Buses & trains"
+ },
+ {
+  "id": "railstation",
+  "key": "railway",
+  "value": "station",
+  "label": "Rail station",
+  "group": "Buses & trains"
+ },
+ {
+  "id": "railhalt",
+  "key": "railway",
+  "value": "halt",
+  "label": "Rail halt",
+  "group": "Buses & trains"
+ },
+ {
+  "id": "tramstop",
+  "key": "railway",
+  "value": "tram_stop",
+  "label": "Streetcar stop",
+  "group": "Buses & trains"
+ },
+ {
+  "id": "taxi",
+  "key": "amenity",
+  "value": "taxi",
+  "label": "Taxi rank",
+  "group": "Buses & trains"
+ },
+ {
+  "id": "ferry",
+  "key": "amenity",
+  "value": "ferry_terminal",
+  "label": "Ferry terminal",
+  "group": "Buses & trains"
+ },
+ {
+  "id": "elevator",
+  "key": "highway",
+  "value": "elevator",
+  "label": "Public elevator",
+  "group": "Buses & trains"
+ },
+ {
+  "id": "airfield",
+  "key": "aeroway",
+  "value": "aerodrome",
+  "label": "Airport / airfield",
+  "group": "Aviation & water"
+ },
+ {
+  "id": "helipad",
+  "key": "aeroway",
+  "value": "helipad",
+  "label": "Helipad",
+  "group": "Aviation & water"
+ },
+ {
+  "id": "slipway",
+  "key": "leisure",
+  "value": "slipway",
+  "label": "Boat ramp",
+  "group": "Aviation & water"
+ },
+ {
+  "id": "aed",
+  "key": "emergency",
+  "value": "defibrillator",
+  "label": "AED (defibrillator)",
+  "group": "Emergency equipment"
+ },
+ {
+  "id": "hydrant",
+  "key": "emergency",
+  "value": "fire_hydrant",
+  "label": "Fire hydrant",
+  "group": "Emergency equipment"
+ },
+ {
+  "id": "callbox",
+  "key": "emergency",
+  "value": "phone",
+  "label": "Emergency call box",
+  "group": "Emergency equipment"
+ },
+ {
+  "id": "lifering",
+  "key": "emergency",
+  "value": "life_ring",
+  "label": "Life ring",
+  "group": "Emergency equipment"
+ },
+ {
+  "id": "ambulance",
+  "key": "emergency",
+  "value": "ambulance_station",
+  "label": "Ambulance station",
+  "group": "Emergency equipment"
+ },
+ {
+  "id": "hospital",
+  "key": "amenity",
+  "value": "hospital",
+  "label": "Hospital",
+  "group": "Health"
+ },
+ {
+  "id": "clinic",
+  "key": "amenity",
+  "value": "clinic",
+  "label": "Clinic",
+  "group": "Health"
+ },
+ {
+  "id": "pharmacy",
+  "key": "amenity",
+  "value": "pharmacy",
+  "label": "Pharmacy",
+  "group": "Health"
+ },
+ {
+  "id": "atm",
+  "key": "amenity",
+  "value": "atm",
+  "label": "ATM",
+  "group": "Money & mail"
+ },
+ {
+  "id": "postbox",
+  "key": "amenity",
+  "value": "post_box",
+  "label": "Mailbox (USPS collection box)",
+  "group": "Money & mail"
+ },
+ {
+  "id": "postoffice",
+  "key": "amenity",
+  "value": "post_office",
+  "label": "Post office",
+  "group": "Money & mail"
+ },
+ {
+  "id": "parcellocker",
+  "key": "amenity",
+  "value": "parcel_locker",
+  "label": "Parcel locker",
+  "group": "Money & mail"
+ },
+ {
+  "id": "vending",
+  "key": "amenity",
+  "value": "vending_machine",
+  "label": "Vending machine",
+  "group": "Money & mail"
+ },
+ {
+  "id": "payphone",
+  "key": "amenity",
+  "value": "telephone",
+  "label": "Payphone",
+  "group": "Money & mail"
+ },
+ {
+  "id": "water",
+  "key": "amenity",
+  "value": "drinking_water",
+  "label": "Drinking fountain",
+  "group": "Public facilities"
+ },
+ {
+  "id": "toilets",
+  "key": "amenity",
+  "value": "toilets",
+  "label": "Public restroom",
+  "group": "Public facilities"
+ },
+ {
+  "id": "shower",
+  "key": "amenity",
+  "value": "shower",
+  "label": "Public shower",
+  "group": "Public facilities"
+ },
+ {
+  "id": "shelter",
+  "key": "amenity",
+  "value": "shelter",
+  "label": "Shelter / pavilion",
+  "group": "Public facilities"
+ },
+ {
+  "id": "library",
+  "key": "amenity",
+  "value": "library",
+  "label": "Library",
+  "group": "Public facilities"
+ },
+ {
+  "id": "bookcase",
+  "key": "amenity",
+  "value": "public_bookcase",
+  "label": "Little free library",
+  "group": "Public facilities"
+ },
+ {
+  "id": "recycling",
+  "key": "amenity",
+  "value": "recycling",
+  "label": "Recycling drop-off",
+  "group": "Public facilities"
+ },
+ {
+  "id": "bbq",
+  "key": "amenity",
+  "value": "bbq",
+  "label": "Public grill",
+  "group": "Parks & recreation"
+ },
+ {
+  "id": "picnictable",
+  "key": "leisure",
+  "value": "picnic_table",
+  "label": "Picnic table",
+  "group": "Parks & recreation"
+ },
+ {
+  "id": "picnicsite",
+  "key": "tourism",
+  "value": "picnic_site",
+  "label": "Picnic site",
+  "group": "Parks & recreation"
+ },
+ {
+  "id": "playground",
+  "key": "leisure",
+  "value": "playground",
+  "label": "Playground",
+  "group": "Parks & recreation"
+ },
+ {
+  "id": "fitness",
+  "key": "leisure",
+  "value": "fitness_station",
+  "label": "Outdoor fitness station",
+  "group": "Parks & recreation"
+ },
+ {
+  "id": "dogpark",
+  "key": "leisure",
+  "value": "dog_park",
+  "label": "Dog park",
+  "group": "Parks & recreation"
+ },
+ {
+  "id": "campsite",
+  "key": "tourism",
+  "value": "camp_site",
+  "label": "Campground",
+  "group": "Parks & recreation"
+ }
+]
