@@ -23,6 +23,9 @@ export interface BuildingEnrichStats extends HeightStats, RoofStats, RoofFitStat
   lidarNodes: number;
 }
 
+/** Enrichment pass interval while the camera is still. */
+export const ENRICH_TICK_MS = 2500;
+
 /** Roofs fitted per idle so one pan never stalls a frame for long. */
 export const ROOF_FITS_PER_IDLE = 40;
 
@@ -153,6 +156,17 @@ export function attachBuildingEnrichment(map: MapLibreMap, onStats?: (s: Buildin
       busy = false;
     }
   };
+  // God's Eye repaints every frame for its animated layers, so 'idle' may never fire; a slow timer and
+  // 'moveend' run the same once-per-building pass whenever the camera is still.
+  const tick = () => {
+    if (!map.isMoving()) void onIdle();
+  };
+  const timer = setInterval(tick, ENRICH_TICK_MS);
   map.on('idle', onIdle);
-  return () => map.off('idle', onIdle);
+  map.on('moveend', tick);
+  return () => {
+    clearInterval(timer);
+    map.off('idle', onIdle);
+    map.off('moveend', tick);
+  };
 }
