@@ -2,7 +2,7 @@ import type { Map as MapLibreMap } from 'maplibre-gl';
 import { gaLidarNodes } from '../ga-lidar-layer';
 import { lngLatTo3857 } from '../ga-lidar/ept';
 import { gpuLedgerPressure } from '../map/gpu-ledger-controller';
-import { applyLidarHeights, ringFromCoordinates, type HeightStats } from './lidar-heights';
+import { applyLidarHeights, indexRoofReturns, ringFromCoordinates, type HeightStats, type ReturnIndex } from './lidar-heights';
 import { buildRoofModel, roofPoints } from './lidar-roofs';
 import { lidarRoofLayer, ROOF_MESH_MIN_ZOOM } from './lidar-roof-layer';
 import { applyRoofImagery, ROOF_MIN_ZOOM, type RoofStats } from './roof-imagery';
@@ -23,11 +23,14 @@ export interface BuildingEnrichStats extends HeightStats, RoofStats, RoofFitStat
   lidarNodes: number;
 }
 
+/** While LiDAR nodes stream in, the return grid is rebuilt at most this often. */
+export const INDEX_REBUILD_MS = 10_000;
+
 /** Enrichment pass interval while the camera is still. */
 export const ENRICH_TICK_MS = 2500;
 
 /** Roofs fitted per idle so one pan never stalls a frame for long. */
-export const ROOF_FITS_PER_IDLE = 40;
+export const ROOF_FITS_PER_IDLE = 12;
 
 /** Footprint centroids of the buildings in view, EPSG:3857 metres. */
 export function visibleCentroids(map: MapLibreMap): { id: string | number; x: number; y: number }[] {
@@ -62,10 +65,9 @@ const median = (v: number[]) => {
 };
 
 /** Fits LiDAR roofs for buildings in view, hands meshes to the roof layer and cuts their walls at the measured eave. */
-export function applyLidarRoofs(map: MapLibreMap, done: Set<string>, rms: number[], stats: RoofFitStats): void {
+export function applyLidarRoofs(map: MapLibreMap, done: Set<string>, rms: number[], stats: RoofFitStats, index: ReturnIndex): void {
   const layer = lidarRoofLayer(map);
-  const nodes = gaLidarNodes(map);
-  if (!layer || !nodes.length) return;
+  if (!layer || !index.x.length) return;
   let features: GeoJSON.Feature[];
   try {
     features = map.querySourceFeatures(OVERTURE_BUILDINGS_SOURCE, { sourceLayer: 'building', filter: ['!=', ['get', 'has_parts'], true] }) as unknown as GeoJSON.Feature[];
@@ -104,7 +106,7 @@ export function applyLidarRoofs(map: MapLibreMap, done: Set<string>, rms: number
       local[i] = ring.xy[i] - ox;
       local[i + 1] = ring.xy[i + 1] - oy;
     }
-    const model = buildRoofModel(local, roofPoints(ring, nodes, ox, oy));
+    const model = buildRoofModel(local, roofPoints(ring, [], ox, oy, undefined, index));
     if (!model) {
       stats.roofsRejected++;
       continue;
@@ -132,6 +134,25 @@ export function attachBuildingEnrichment(map: MapLibreMap, onStats?: (s: Buildin
   const rms: number[] = [];
   const stats: BuildingEnrichStats = { measured: 0, skipped: 0, painted: 0, failed: 0, lidarNodes: 0, roofsFitted: 0, roofsRejected: 0, roofRmsMedianM: null, roofKinds: {} };
   let busy = false;
+  let indexKey = '';
+  let index: ReturnIndex | null = null;
+  let indexAt = 0;
+  /** The return grid is rebuilt only when the drawn LiDAR nodes change. */
+  const returnIndex = (nodes: ReturnType<typeof gaLidarNodes>): ReturnIndex => {
+    let total = 0;
+    for (const n of nodes) total += n.count;
+    const key = `${nodes.length}:${total}:${nodes[0]?.minX ?? 0}:${nodes[nodes.length - 1]?.minY ?? 0}`;
+    const now = Date.now();
+    if (!index || (key !== indexKey && now - indexAt >= INDEX_REBUILD_MS)) {
+      index = indexRoofReturns(nodes);
+      indexKey = key;
+      indexAt = now;
+    }
+    return index;
+  };
+  const publish = () => {
+    if (typeof window !== 'undefined') (window as unknown as { __gaRoofs?: unknown }).__gaRoofs = { ...stats, layer: lidarRoofLayer(map)?.stats() ?? null };
+  };
   const onIdle = async () => {
     lidarRoofLayer(map)?.refreshElevation();
     if (busy || map.getZoom() < OVERTURE_FULL_ZOOM || !map.getLayer('buildings-3d')) return;
@@ -140,17 +161,19 @@ export function attachBuildingEnrichment(map: MapLibreMap, onStats?: (s: Buildin
       const nodes = gaLidarNodes(map);
       stats.lidarNodes = nodes.length;
       if (nodes.length) {
-        const h = applyLidarHeights(map, nodes, heightsDone);
+        const h = applyLidarHeights(map, nodes, heightsDone, returnIndex(nodes));
         stats.measured += h.measured;
         stats.skipped += h.skipped;
       }
+      // Roof shapes first (local CPU work), then roof photos (network), publishing stats after each.
+      if (map.getZoom() >= ROOF_MESH_MIN_ZOOM && nodes.length && !gpuLedgerPressure()) applyLidarRoofs(map, meshDone, rms, stats, returnIndex(nodes));
+      publish();
       if (map.getZoom() >= ROOF_MIN_ZOOM) {
         const r = await applyRoofImagery(map, visibleCentroids(map), roofsDone);
         stats.painted += r.painted;
         stats.failed += r.failed;
       }
-      if (map.getZoom() >= ROOF_MESH_MIN_ZOOM && nodes.length && !gpuLedgerPressure()) applyLidarRoofs(map, meshDone, rms, stats);
-      if (typeof window !== 'undefined') (window as unknown as { __gaRoofs?: unknown }).__gaRoofs = { ...stats, layer: lidarRoofLayer(map)?.stats() ?? null };
+      publish();
       onStats?.({ ...stats });
     } finally {
       busy = false;

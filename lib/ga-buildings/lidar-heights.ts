@@ -45,18 +45,100 @@ export interface MeasuredHeight {
  * Height of one footprint from 3DEP returns: the 95th-percentile height above ground of the
  * building/unclassified returns inside the ring. Returns null when too few returns fall inside.
  */
-export function measureRing(ring: Ring, nodes: readonly LidarNodeData[]): MeasuredHeight | null {
+export function measureRing(ring: Ring, nodes: readonly LidarNodeData[], index?: ReturnIndex): MeasuredHeight | null {
+  const idx = index ?? indexRoofReturns(nodes);
   const hits: number[] = [];
-  for (const n of nodes) {
-    for (let i = 0; i < n.count; i++) {
-      const h = n.hag[i];
-      if (h < MIN_ROOF_M || !ROOF_CLASSES.has(n.cls[i])) continue;
-      if (pointInRing(ring, n.minX + n.x[i], n.minY + n.y[i])) hits.push(h);
-    }
-  }
+  const [minX, minY, maxX, maxY] = ringBbox(ring);
+  forReturnsInBox(idx, minX, minY, maxX, maxY, (x, y, h) => {
+    if (pointInRing(ring, x, y)) hits.push(h);
+  });
   if (hits.length < MIN_POINTS) return null;
   hits.sort((a, b) => a - b);
   return { heightM: percentile(hits, ROOF_PERCENTILE), points: hits.length };
+}
+
+export function ringBbox(ring: Ring): [number, number, number, number] {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (let i = 0; i < ring.xy.length; i += 2) {
+    minX = Math.min(minX, ring.xy[i]);
+    maxX = Math.max(maxX, ring.xy[i]);
+    minY = Math.min(minY, ring.xy[i + 1]);
+    maxY = Math.max(maxY, ring.xy[i + 1]);
+  }
+  return [minX, minY, maxX, maxY];
+}
+
+/**
+ * Grid of the roof-candidate returns (building/unclassified, ≥ MIN_ROOF_M), so each footprint reads only nearby points.
+ * Compact on purpose (phones share one memory pool): points are stored cell-sorted as Float32 offsets from (ox, oy),
+ * 12 bytes per return plus two Map entries per occupied cell.
+ */
+export interface ReturnIndex {
+  cellM: number;
+  ox: number;
+  oy: number;
+  start: Map<number, number>;
+  count: Map<number, number>;
+  x: Float32Array;
+  y: Float32Array;
+  h: Float32Array;
+}
+
+export const RETURN_CELL_M = 4;
+const cellKey = (gx: number, gy: number) => (gx + 8388608) * 16777216 + (gy + 8388608);
+const keep = (n: LidarNodeData, i: number) => n.hag[i] >= MIN_ROOF_M && ROOF_CLASSES.has(n.cls[i]);
+
+export function indexRoofReturns(nodes: readonly LidarNodeData[], cellM = RETURN_CELL_M): ReturnIndex {
+  const ox = nodes[0]?.minX ?? 0;
+  const oy = nodes[0]?.minY ?? 0;
+  const count = new Map<number, number>();
+  let n = 0;
+  for (const nd of nodes) {
+    for (let i = 0; i < nd.count; i++) {
+      if (!keep(nd, i)) continue;
+      const key = cellKey(Math.floor((nd.minX + nd.x[i]) / cellM), Math.floor((nd.minY + nd.y[i]) / cellM));
+      count.set(key, (count.get(key) ?? 0) + 1);
+      n++;
+    }
+  }
+  const start = new Map<number, number>();
+  let off = 0;
+  for (const [key, c] of count) {
+    start.set(key, off);
+    off += c;
+  }
+  const fill = new Map(start);
+  const x = new Float32Array(n), y = new Float32Array(n), h = new Float32Array(n);
+  for (const nd of nodes) {
+    for (let i = 0; i < nd.count; i++) {
+      if (!keep(nd, i)) continue;
+      const px = nd.minX + nd.x[i], py = nd.minY + nd.y[i];
+      const key = cellKey(Math.floor(px / cellM), Math.floor(py / cellM));
+      const k = fill.get(key)!;
+      fill.set(key, k + 1);
+      x[k] = px - ox;
+      y[k] = py - oy;
+      h[k] = nd.hag[i];
+    }
+  }
+  return { cellM, ox, oy, start, count, x, y, h };
+}
+
+/** Visits returns inside the EPSG:3857 box with their absolute coordinates. */
+export function forReturnsInBox(idx: ReturnIndex, minX: number, minY: number, maxX: number, maxY: number, visit: (x: number, y: number, h: number) => void): void {
+  const c = idx.cellM;
+  for (let gx = Math.floor(minX / c); gx <= Math.floor(maxX / c); gx++) {
+    for (let gy = Math.floor(minY / c); gy <= Math.floor(maxY / c); gy++) {
+      const key = cellKey(gx, gy);
+      const s = idx.start.get(key);
+      if (s === undefined) continue;
+      const e = s + idx.count.get(key)!;
+      for (let i = s; i < e; i++) {
+        const px = idx.x[i] + idx.ox, py = idx.y[i] + idx.oy;
+        if (px >= minX && px <= maxX && py >= minY && py <= maxY) visit(px, py, idx.h[i]);
+      }
+    }
+  }
 }
 
 export function ringFromCoordinates(coords: readonly (readonly number[])[]): Ring {
@@ -78,7 +160,7 @@ export interface HeightStats {
  * Writes measured roof heights onto the Overture buildings in view as feature-state `lidarHeight`,
  * which the extrusion height expression prefers over Overture's recorded height.
  */
-export function applyLidarHeights(map: MapLibreMap, nodes: readonly LidarNodeData[], done = new Set<string>()): HeightStats {
+export function applyLidarHeights(map: MapLibreMap, nodes: readonly LidarNodeData[], done = new Set<string>(), index?: ReturnIndex): HeightStats {
   const stats: HeightStats = { measured: 0, skipped: 0 };
   if (!map.getLayer('buildings-3d') || !nodes.length) return stats;
   let features: GeoJSON.Feature[];
@@ -95,7 +177,7 @@ export function applyLidarHeights(map: MapLibreMap, nodes: readonly LidarNodeDat
     const g = f.geometry;
     const outer = g.type === 'Polygon' ? g.coordinates[0] : g.type === 'MultiPolygon' ? g.coordinates[0]?.[0] : null;
     if (!outer || outer.length < 4) continue;
-    const m = measureRing(ringFromCoordinates(outer), nodes);
+    const m = measureRing(ringFromCoordinates(outer), nodes, (index ??= indexRoofReturns(nodes)));
     done.add(key);
     if (!m) {
       stats.skipped++;

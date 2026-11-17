@@ -36,3 +36,11 @@ test("LiDAR point ceiling is its slice divided by bytes per point", () => {
   assert.equal(lidarSliceCeiling(512 * MB, 9), Math.floor(128 * MB / 9));
   assert.equal(ledgerState({ telemetry: 0, map: 0, lidar: 0 }, 0).ratio, 0);
 });
+
+test("a phone's LiDAR share counts both copies of each point: 23 bytes, so 128 MB holds ~5.8M points, not 14.9M", async () => {
+  const { lidarBytesPerPoint } = await import("../../lib/map/vram-budget");
+  const phone = lidarSliceCeiling(512 * MB, lidarBytesPerPoint(true));
+  assert.equal(lidarBytesPerPoint(true), 23);
+  assert.equal(phone, Math.floor(128 * MB / 23));
+  assert.ok(phone * 23 <= 128 * MB);
+});

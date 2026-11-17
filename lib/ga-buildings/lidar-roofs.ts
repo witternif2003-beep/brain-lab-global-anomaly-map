@@ -1,6 +1,6 @@
 import earcut from 'earcut';
 import type { LidarNodeData } from '../ga-lidar/ept';
-import { MIN_ROOF_M, ROOF_CLASSES, pointInRing, type Ring } from './lidar-heights';
+import { MIN_ROOF_M, forReturnsInBox, indexRoofReturns, pointInRing, ringBbox, type ReturnIndex, type Ring } from './lidar-heights';
 
 /**
  * Roof shape reconstruction from USGS 3DEP returns (keyless, public domain): sequential RANSAC finds the roof planes
@@ -37,27 +37,16 @@ export interface RoofPoints {
 }
 
 /** Building/unclassified returns ≥ 2 m above ground inside the ring, relative to (ox, oy), evenly thinned to a cap. */
-export function roofPoints(ring: Ring, nodes: readonly LidarNodeData[], ox: number, oy: number, cap = MAX_POINTS_PER_ROOF): RoofPoints {
+export function roofPoints(ring: Ring, nodes: readonly LidarNodeData[], ox: number, oy: number, cap = MAX_POINTS_PER_ROOF, index?: ReturnIndex): RoofPoints {
+  const idx = index ?? indexRoofReturns(nodes);
   const xs: number[] = [], ys: number[] = [], zs: number[] = [];
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  for (let i = 0; i < ring.xy.length; i += 2) {
-    minX = Math.min(minX, ring.xy[i]);
-    maxX = Math.max(maxX, ring.xy[i]);
-    minY = Math.min(minY, ring.xy[i + 1]);
-    maxY = Math.max(maxY, ring.xy[i + 1]);
-  }
-  for (const n of nodes) {
-    if (n.minX > maxX || n.minY > maxY || n.minX + n.width < minX || n.minY + n.width < minY) continue;
-    for (let i = 0; i < n.count; i++) {
-      const h = n.hag[i];
-      if (h < MIN_ROOF_M || !ROOF_CLASSES.has(n.cls[i])) continue;
-      const x = n.minX + n.x[i], y = n.minY + n.y[i];
-      if (x < minX || x > maxX || y < minY || y > maxY || !pointInRing(ring, x, y)) continue;
-      xs.push(x - ox);
-      ys.push(y - oy);
-      zs.push(h);
-    }
-  }
+  const [minX, minY, maxX, maxY] = ringBbox(ring);
+  forReturnsInBox(idx, minX, minY, maxX, maxY, (x, y, h) => {
+    if (!pointInRing(ring, x, y)) return;
+    xs.push(x - ox);
+    ys.push(y - oy);
+    zs.push(h);
+  });
   const step = Math.max(1, xs.length / cap);
   const m = Math.floor(xs.length / step);
   const out = { x: new Float64Array(m), y: new Float64Array(m), z: new Float64Array(m) };
