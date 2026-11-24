@@ -19,6 +19,10 @@ Done means: each change measured in a phone-sized browser, `npx tsc --noEmit -p 
 4. Rain/snow: build from NOAA MRMS (precip rate, type, update interval); show source grid size and timestamp.
 5. Older pending items: see task list in Devin session (elections modules, ICAO aircraft classes, NOAA audit, /sim-nodes).
 
+## Git
+PR #4 head branch is `devin/1790587184-jurisdiction-cards`. The /home/ubuntu/wt-fix checkout is on `devin/tmp-render-fix`; push with
+`git push origin HEAD:devin/1790587184-jurisdiction-cards` (plain `git push origin HEAD` misses the PR). Commits e3580be..2c5b844 reached the PR branch only on 2026-11-24.
+
 ## Verify on resume
 `npx tsc --noEmit -p .` · `npm test` · `curl -s https://brain-lab-six.vercel.app/api/health | grep -o '"commit":"[^"]*"'`
 
