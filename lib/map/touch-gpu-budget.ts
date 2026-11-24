@@ -25,6 +25,20 @@ export function markerPixelRatio(devicePixelRatio: number, touch: boolean, crash
   return Math.min(crashes > 0 ? TOUCH_MAX_PIXEL_RATIO : TOUCH_FULL_PIXEL_RATIO, dpr);
 }
 
+/** WebGL context attributes the marker and simulated-traffic deck.gl canvases request. */
+export interface OverlayContextAttributes { preserveDrawingBuffer: boolean; antialias: boolean }
+
+/**
+ * luma.gl creates deck.gl canvases with `preserveDrawingBuffer: true` and the browser's default `antialias: true` (multisampled).
+ * On touch devices both overlay canvases instead request a single-sample buffer that the compositor may swap, so each holds one
+ * colour + depth-stencil buffer rather than a multisampled set plus a resolve copy. Every marker is still drawn; exports read
+ * the canvas right after its frame (onNextGaDeckFrame), which does not need a preserved buffer. `?overlaybuf=default` restores luma.gl's defaults.
+ */
+export function overlayContextAttributes(touch: boolean, search = ''): OverlayContextAttributes | null {
+  if (!touch || new URLSearchParams(search).get('overlaybuf') === 'default') return null;
+  return { preserveDrawingBuffer: false, antialias: false };
+}
+
 /**
  * Scale for the offscreen WebGL sky photo relative to the sky canvas. Touch devices render it at no more than the 2× cap
  * and stretch it onto the full-density canvas (the catalogue stars stay full density), so the preserveDrawingBuffer sky

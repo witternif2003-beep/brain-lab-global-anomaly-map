@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cappedPixelRatio, LIDAR_CRASH_FLOOR, LIDAR_DESKTOP_POINT_CEILING, LIDAR_POINT_CEILING, lidarBudget, skyRenderScale, TOUCH_MAX_PIXEL_RATIO } from "../../lib/map/touch-gpu-budget";
+import { cappedPixelRatio, LIDAR_CRASH_FLOOR, LIDAR_DESKTOP_POINT_CEILING, LIDAR_POINT_CEILING, lidarBudget, overlayContextAttributes, skyRenderScale, TOUCH_MAX_PIXEL_RATIO } from "../../lib/map/touch-gpu-budget";
 
 test("touch devices cap the drawing-buffer pixel ratio; desktop keeps the device ratio", () => {
   assert.equal(cappedPixelRatio(3, true), TOUCH_MAX_PIXEL_RATIO);
@@ -58,4 +58,11 @@ test("touch devices render the sky photo at no more than the 2x cap; desktop kee
   assert.equal(skyRenderScale(1, true), 1);
   assert.equal(skyRenderScale(3, false), 1);
   assert.equal(skyRenderScale(Number.NaN, true), 1);
+});
+
+test("touch overlay canvases drop the preserved and multisampled buffers; desktop and ?overlaybuf=default keep luma.gl's defaults", () => {
+  assert.deepEqual(overlayContextAttributes(true), { preserveDrawingBuffer: false, antialias: false });
+  assert.deepEqual(overlayContextAttributes(true, "?deck=x"), { preserveDrawingBuffer: false, antialias: false });
+  assert.equal(overlayContextAttributes(false), null);
+  assert.equal(overlayContextAttributes(true, "?overlaybuf=default"), null);
 });

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { drawingBufferBytes, LIDAR_BYTES_PER_POINT, LIDAR_MIN_POINTS, lidarPointBudget, vramTargetBytes } from "../../lib/map/vram-budget";
+import { ASSUMED_MSAA_SAMPLES, contextDrawingBufferBytes, drawingBufferBytes, LIDAR_BYTES_PER_POINT, LIDAR_MIN_POINTS, lidarPointBudget, vramTargetBytes } from "../../lib/map/vram-budget";
 import { bytesPerPixel } from "../../lib/map/vram-meter";
 
 const MB = 1024 * 1024;
@@ -39,4 +39,12 @@ test('stats() reports LiDAR GPU memory, and the 9.65 M points measured downtown 
   assert.ok(s.loadedGB <= 0.9 * s.targetGB);
   const full = lidarVramStats(40_000_000, VRAM_TARGET_MB.desktop * MB);
   assert.ok(full.loadedGB <= 0.9 * full.targetGB, `40 M points use ${full.loadedGB.toFixed(2)} GB`);
+});
+
+test("context drawing-buffer model: luma.gl defaults on a 3x iPhone canvas vs single-sample, unpreserved", () => {
+  const w = 1179, h = 2556, px = w * h;
+  assert.equal(contextDrawingBufferBytes(w, h, { antialias: false, preserveDrawingBuffer: false }), px * 8);
+  assert.equal(contextDrawingBufferBytes(w, h, { antialias: true, preserveDrawingBuffer: true }), px * 8 * ASSUMED_MSAA_SAMPLES + px * 4 + px * 4);
+  assert.equal(contextDrawingBufferBytes(w, h, null), px * 8);
+  assert.equal(contextDrawingBufferBytes(-1, h, { antialias: true }), 0);
 });

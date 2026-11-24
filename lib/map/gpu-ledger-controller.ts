@@ -5,8 +5,8 @@ import { reportGaFeed } from '../ga-live-status';
 import { gpuSafeMode } from './crash-guard';
 import { NO_SHED, PRESSURE_ON, ledgerState, nextShed, type LedgerState, type ShedLevels } from './gpu-ledger';
 import { setTileTexturePool } from './tile-texture-pool';
-import { isTouchDevice, TOUCH_MAX_PIXEL_RATIO } from './touch-gpu-budget';
-import { drawingBufferBytes, LIDAR_BYTES_PER_POINT, vramTargetBytes } from './vram-budget';
+import { isTouchDevice, overlayContextAttributes, TOUCH_MAX_PIXEL_RATIO } from './touch-gpu-budget';
+import { contextDrawingBufferBytes, drawingBufferBytes, LIDAR_BYTES_PER_POINT, vramTargetBytes } from './vram-budget';
 import { canvasBytes, vramMeterInstalled, vramSnapshot } from './vram-meter';
 
 const MB = 1024 * 1024;
@@ -31,6 +31,15 @@ function setTileCache(map: MapLibreMap, size: number | null): void {
   if ('_maxTileCacheSize' in m) m._maxTileCacheSize = size;
   for (const tm of Object.values(m.style?.tileManagers ?? {})) tm._maxTileCacheSize = size;
 }
+
+/** luma.gl's defaults for a deck.gl canvas (preserveDrawingBuffer: true; antialias unset, so the browser default true). */
+const LUMA_DEFAULT_ATTRS = { antialias: true, preserveDrawingBuffer: true } as const;
+
+/**
+ * The attributes the overlay canvases were configured with. Read from the same config the overlays use rather than from
+ * getContext(), which would create a default context if called before deck.gl's asynchronous device creation.
+ */
+const overlayAttrs = (touch: boolean) => overlayContextAttributes(touch, window.location.search) ?? LUMA_DEFAULT_ATTRS;
 
 /** Measures the ledger every 2 s and sheds or restores detail per slice; returns a stop function. */
 export function startGpuLedger(map: MapLibreMap, mapPixelRatio: () => number): () => void {
@@ -63,9 +72,11 @@ export function startGpuLedger(map: MapLibreMap, mapPixelRatio: () => number): (
     const mapCanvas = map.getCanvas();
     const deck = gaDeckCanvas(map);
     const traffic = gaTrafficCanvas(map);
-    const trafficBuffer = traffic ? drawingBufferBytes(traffic.width, traffic.height, 1) : 0;
-    const total = vramSnapshot().bytes + drawingBufferBytes(mapCanvas.width, mapCanvas.height, touch ? 1 : 4) + (deck ? drawingBufferBytes(deck.width, deck.height, 1) : 0) + trafficBuffer;
-    const telemetry = (deck ? canvasBytes(deck) + drawingBufferBytes(deck.width, deck.height, 1) : 0) + (traffic ? canvasBytes(traffic) + trafficBuffer : 0);
+    const trafficBuffer = traffic ? contextDrawingBufferBytes(traffic.width, traffic.height, overlayAttrs(touch)) : 0;
+    const deckBuffer = deck ? contextDrawingBufferBytes(deck.width, deck.height, overlayAttrs(touch)) : 0;
+    const total = vramSnapshot().bytes + drawingBufferBytes(mapCanvas.width, mapCanvas.height, touch ? 1 : 4) + deckBuffer + trafficBuffer;
+    const telemetry = (deck ? canvasBytes(deck) + deckBuffer : 0) + (traffic ? canvasBytes(traffic) + trafficBuffer : 0);
+    window.__gaOverlayBuffers = { deckBytes: deckBuffer, trafficBytes: trafficBuffer, deck: deck ? overlayAttrs(touch) : null, traffic: traffic ? overlayAttrs(touch) : null };
     const points = (window as unknown as { __gaLidar?: { pointsDrawn?: number } }).__gaLidar?.pointsDrawn ?? 0;
     const lidar = Math.min(total - telemetry, points * LIDAR_BYTES_PER_POINT);
     const state = ledgerState({ telemetry, lidar, map: total - telemetry - lidar }, target, stats.state?.pressure ?? false);
@@ -100,5 +111,9 @@ export function startGpuLedger(map: MapLibreMap, mapPixelRatio: () => number): (
 export const gpuLedgerPressure = (): boolean => window.__gaLedger?.state?.pressure ?? false;
 
 declare global {
-  interface Window { __gaLedger?: GpuLedgerStats }
+  interface Window {
+    __gaLedger?: GpuLedgerStats;
+    /** Modelled default-framebuffer bytes of the two deck.gl overlay canvases and the attributes they were configured with. */
+    __gaOverlayBuffers?: { deckBytes: number; trafficBytes: number; deck: { antialias: boolean; preserveDrawingBuffer: boolean } | null; traffic: { antialias: boolean; preserveDrawingBuffer: boolean } | null };
+  }
 }

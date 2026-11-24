@@ -8,7 +8,7 @@ import { reportGaFeed } from './ga-live-status';
 import { GA_MARKER_SCALE, gaGlowMultiplier } from './ga-marker-scale';
 import { GA_ICON_CELL_SCALE, gaIconAtlas, gaIconKey, type GaIconAtlas, type GaIconShape } from './ga-marker-icons';
 import { gaMeshIfReady, gaLiveryMeshIfReady, gaMeshScale, gaModelReach, isFgKind, type GaModelKind } from './ga-mesh-models';
-import { isTouchDevice, LIDAR_POINT_CEILING, markerPixelRatio } from './map/touch-gpu-budget';
+import { isTouchDevice, LIDAR_POINT_CEILING, markerPixelRatio, overlayContextAttributes } from './map/touch-gpu-budget';
 import { allowRebuild, gpuCrashCount, noteContextLost } from './map/crash-guard';
 import { declutterMarkers, type DeclutterCandidate, fitsViewport } from './ga-marker-declutter';
 import type { CloudPuff } from './ga-clouds/cloud-puffs';
@@ -1016,6 +1016,7 @@ fragColor.a *= smoothstep(${CLOUD_SHEET_WALL_FADE[0].toFixed(3)}, ${CLOUD_SHEET_
 
 async function addRenderer(map: MapLibreMap, state: DeckState, renderer: Renderer, modules: DeckModules, deviceProps?: Record<string, unknown>): Promise<void> {
   state.device = null;
+  const webglAttrs = overlayContextAttributes(isTouchDevice(), window.location.search);
   const overlay = new modules.MapLibreOverlay({
     interleaved: false,
     onDeviceInitialized: (device: Device) => {
@@ -1025,7 +1026,7 @@ async function addRenderer(map: MapLibreMap, state: DeckState, renderer: Rendere
     },
     layers: [],
     useDevicePixels: defaultDevicePixels(),
-    ...(deviceProps ? { deviceProps } : {}),
+    ...(deviceProps ? { deviceProps } : renderer === 'webgl2' && webglAttrs ? { deviceProps: { webgl: webglAttrs } } : {}),
     _onMetrics: (m: { gpuTimePerFrame: number; cpuTimePerFrame: number }) => {
       if (state.overlay === overlay) window.__gaDeckMetrics = { gpuMsPerFrame: m.gpuTimePerFrame, cpuMsPerFrame: m.cpuTimePerFrame, renderer };
     },

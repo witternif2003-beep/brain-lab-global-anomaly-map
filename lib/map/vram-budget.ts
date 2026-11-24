@@ -30,6 +30,19 @@ export function drawingBufferBytes(width: number, height: number, samples = 1): 
   return Math.max(0, width) * Math.max(0, height) * 8 * Math.max(1, samples);
 }
 
+/** Samples per pixel assumed for a multisampled (antialias: true) default framebuffer; WebGL does not expose the default framebuffer's count. */
+export const ASSUMED_MSAA_SAMPLES = 4;
+
+/**
+ * Modelled bytes of a WebGL default framebuffer from its context attributes: colour + depth-stencil per sample, a single-sample
+ * resolve colour buffer when multisampled, and one more colour buffer when preserveDrawingBuffer keeps the last frame.
+ */
+export function contextDrawingBufferBytes(width: number, height: number, attrs: { antialias?: boolean; preserveDrawingBuffer?: boolean } | null): number {
+  const px = Math.max(0, width) * Math.max(0, height);
+  const ms = attrs?.antialias ? ASSUMED_MSAA_SAMPLES : 1;
+  return drawingBufferBytes(width, height, ms) + (ms > 1 ? px * 4 : 0) + (attrs?.preserveDrawingBuffer ? px * 4 : 0);
+}
+
 export interface PointBudgetInput {
   ceiling: number;
   targetBytes: number;
