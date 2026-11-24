@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { Globe, MapPin, Search, ChevronLeft, ChevronRight, Clock, ShieldCheck } from "lucide-react";
-import { STATEWIDE_ANOMALIES_1000 } from "../lib/statewide-anomalies";
+import { useStatewideAnomalies } from "../lib/statewide-anomalies-lazy";
 import {
   JURISDICTIONS,
   BATCH_SIZE,
@@ -47,6 +47,7 @@ const GROUPS = [
 ] as const;
 
 export default function TerritoryCatalogPanel() {
+  const STATEWIDE_ANOMALIES_1000 = useStatewideAnomalies();
   const [jurisdiction, setJurisdiction] = useState<string>("GA");
   const [batch, setBatch] = useState<number>(1);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
@@ -117,7 +118,7 @@ export default function TerritoryCatalogPanel() {
       curated: a.verified === true,
       sector: "CURATED CORPUS"
     }));
-  }, [isGA, batch]);
+  }, [isGA, batch, STATEWIDE_ANOMALIES_1000]);
 
   // Realtime query across the FULL GA corpus when searching. Non-GA tabs have no
   // mapped feed, so queries there honestly return zero matches.
@@ -135,7 +136,7 @@ export default function TerritoryCatalogPanel() {
         sector: "CURATED CORPUS"
       })
     );
-  }, [querying, query, isGA]);
+  }, [querying, query, isGA, STATEWIDE_ANOMALIES_1000]);
 
   const baseRows = querying ? queryRows.slice(0, 50) : tabRows;
   const rows = baseRows.filter((r) => (statusFilter === "ALL" ? true : r.curated));
@@ -945,6 +946,7 @@ function StateCard({ r, cfg }: { r: Record<string, any>; cfg: StateDatasetConfig
 }
 
 function RecordDetail({ id, curated }: { id: string; curated: boolean }) {
+  const STATEWIDE_ANOMALIES_1000 = useStatewideAnomalies();
   const detail = useMemo(() => {
     if (!curated) return null;
     const a = STATEWIDE_ANOMALIES_1000.find((x) => x.id === id);
@@ -954,7 +956,7 @@ function RecordDetail({ id, curated }: { id: string; curated: boolean }) {
       implications: a.interstateImplications ?? "Georgia intrastate",
       validation: `${a.id}-VERIFIED`
     };
-  }, [id, curated]);
+  }, [id, curated, STATEWIDE_ANOMALIES_1000]);
 
   if (!detail) return null;
   return (

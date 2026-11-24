@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect, useMemo } from "react";
-import { STATEWIDE_ANOMALIES_1000, AnomalyReport } from "../lib/statewide-anomalies";
+import type { AnomalyReport } from "../lib/statewide-anomalies";
+import { useStatewideAnomalies } from "../lib/statewide-anomalies-lazy";
 import { 
   ShieldAlert, 
   Terminal, 
@@ -22,7 +23,7 @@ import {
   ExternalLink
 } from "lucide-react";
 
-export default function StatewideAnomalyDashboard() {
+function StatewideAnomalyDashboardLoaded({ STATEWIDE_ANOMALIES_1000 }: { STATEWIDE_ANOMALIES_1000: AnomalyReport[] }) {
   const [activeAnomalyIndex, setActiveAnomalyIndex] = useState<number>(0);
   const [selectedBatch, setSelectedBatch] = useState<number>(1); // Batch 1 to 40 (25 anomalies each = 1,000)
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
@@ -768,4 +769,16 @@ export default function StatewideAnomalyDashboard() {
       </div>
     </div>
   );
+}
+
+export default function StatewideAnomalyDashboard() {
+  const STATEWIDE_ANOMALIES_1000 = useStatewideAnomalies();
+  if (!STATEWIDE_ANOMALIES_1000.length) {
+    return (
+      <div role="status" className="w-full rounded-2xl border border-cyan-500/30 bg-black/60 p-6 font-mono text-xs font-bold tracking-widest text-cyan-300">
+        LOADING 1,000-ANOMALY REPORT…
+      </div>
+    );
+  }
+  return <StatewideAnomalyDashboardLoaded STATEWIDE_ANOMALIES_1000={STATEWIDE_ANOMALIES_1000} />;
 }
