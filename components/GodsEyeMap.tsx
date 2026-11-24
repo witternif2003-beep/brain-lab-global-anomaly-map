@@ -64,6 +64,7 @@ import { sharpenBasemap } from '../lib/map/sharp-raster';
 import { installVramMeter } from '../lib/map/vram-meter';
 import { governDrapeMemory } from '../lib/map/terrain-rtt';
 import { installDrapeGuard } from '../lib/map/drape-guard';
+import { installDrapeStack } from '../lib/map/drape-stack';
 import { applyHorizonLod, horizonLod } from '../lib/map/horizon-lod';
 import { capTileTexturePool } from '../lib/map/tile-texture-pool';
 import { startGpuLedger } from '../lib/map/gpu-ledger-controller';
@@ -1616,6 +1617,7 @@ export default function GodsEyeMap({
     const stopDrapeGovernor = governDrapeMemory(map);
     map.once('remove', stopDrapeGovernor);
     map.once('remove', installDrapeGuard(map, window.location.search));
+    map.once('remove', installDrapeStack(map, window.location.search));
     map.once('remove', watchNaipHealth(map));
     map.once('remove', applyHorizonLod(map, horizonLod(isTouchDevice(), gpuCrashCount())));
     if (isTouchDevice()) capTileTexturePool(map);
