@@ -3,7 +3,7 @@ import { reportGaFeed } from './ga-live-status';
 import { MAX_AGENTS_DESKTOP, MAX_AGENTS_TOUCH, MAX_FLOW_EDGES, SLOW_MS, carLabel, carStatus, haversineM, labelCandidates, msToMph, TrafficSim, type CarAgent, type LineFlow, type LngLat } from './traffic-sim';
 import { FLOW_COLORS, FLOW_SOURCE_LAYER, TOMTOM_FLOW_DOCS_URL, flowBand } from './ga-traffic-flow/flow';
 import { GA_TRAFFIC_FLOW_SOURCE } from './ga-traffic-flow-layer';
-import { BRIDGE_LAYER_M, bridgeLine, bridgeSegments, buildBridgeIndex, deckPolygons, flowStripePolygons, levelSharedDecks, type BridgeIndex, type DeckFeature } from './traffic-bridges';
+import { BRIDGE_LAYER_M, bridgeLine, bridgeSegments, buildBridgeIndex, deckPolygons, flowStripePolygons, levelSharedDecks, type BridgeIndex, type DeckFeature, INTERSTATE_DECK_WIDTH_M } from './traffic-bridges';
 
 export const TRAFFIC_SIM_PARAM = 'traffic';
 const ROAD_SOURCE = 'ofm-buildings';
@@ -179,7 +179,7 @@ export async function addGaTrafficSim(map: MapLibreMap): Promise<void> {
     const lines = lifted.map((b) => b.coords);
     const elev = lifted.map((b) => b.ground.map((g, j) => g + b.offsets[j]));
     const onBridge = lifted.filter((b) => b.onBridge);
-    const decks = onBridge.flatMap((b) => deckPolygons(b, undefined, terrainAt));
+    const decks = onBridge.flatMap((b) => deckPolygons(b, INTERSTATE_DECK_WIDTH_M, terrainAt));
     const stripes = onFlow ? lifted.flatMap((b, i) => (b.onBridge ? flowStripePolygons(b, FLOW_COLORS[flowBand(tt.flows[i].level, tt.flows[i].closed)], undefined, terrainAt) : [])) : [];
     setBridgeDecks(map, [...decks, ...stripes]);
     const bridgeDiag = {

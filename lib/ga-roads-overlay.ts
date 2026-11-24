@@ -4,7 +4,28 @@ import type { Map as MapLibreMap } from 'maplibre-gl';
 const SOURCE = 'ofm-buildings';
 export const GA_ROAD_LAYERS = ['ga-roads-casing', 'ga-roads-line'] as const;
 
-const width = (k: number) => ['interpolate', ['exponential', 1.6], ['zoom'], 8, ['match', ['get', 'class'], ['motorway', 'trunk'], 1.2 * k, 'primary', 0.8 * k, 0.3 * k], 14, ['match', ['get', 'class'], ['motorway', 'trunk'], 4 * k, 'primary', 3 * k, ['secondary', 'tertiary'], 2.2 * k, 1.2 * k], 20, ['match', ['get', 'class'], ['motorway', 'trunk'], 28 * k, 'primary', 22 * k, ['secondary', 'tertiary'], 16 * k, 9 * k]] as never;
+const FT = 0.3048;
+/**
+ * Paved width in metres of one OpenMapTiles road line, so at street zoom the overlay covers the road in the imagery.
+ * Motorway/trunk lines are one carriageway each way: FHWA's Interstate minimum is 12-ft lanes, a 10-ft right and a 4-ft
+ * left shoulder (fhwa.dot.gov/programadmin/interstate.cfm); 3 lanes are assumed for motorways and 2 for trunks.
+ * Other classes are two-way lines with typical lane counts. OpenMapTiles has no lane count, so these are class estimates.
+ */
+export const ROAD_WIDTH_M: Record<string, number> = {
+  motorway: (3 * 12 + 10 + 4) * FT,
+  trunk: (2 * 12 + 10 + 4) * FT,
+  primary: (4 * 12 + 2 * 4) * FT,
+  secondary: (2 * 12 + 2 * 4) * FT,
+  tertiary: (2 * 11 + 2 * 2) * FT,
+  minor: 2 * 10 * FT,
+  service: 12 * FT,
+};
+/** Ground metres per CSS pixel at zoom 16 for MapLibre's 512 px tiles, at Georgia's mid-latitude (32.7°N). */
+export const M_PER_PX_Z16 = (40_075_016.686 * Math.cos((32.7 * Math.PI) / 180)) / (512 * 2 ** 16);
+export const roadPxAt = (cls: string, zoom: number) => ((ROAD_WIDTH_M[cls] ?? ROAD_WIDTH_M.minor) / M_PER_PX_Z16) * 2 ** (zoom - 16);
+const metric = (z: number, k: number) => ['match', ['get', 'class'], ...Object.keys(ROAD_WIDTH_M).flatMap((c) => [c, roadPxAt(c, z) * k]), roadPxAt('minor', z) * k];
+/** Pixel widths up to z14 (unchanged), then true ground width from z16 (exponential base 2 keeps it metre-exact between stops). */
+const width = (k: number) => ['interpolate', ['exponential', 2], ['zoom'], 8, ['match', ['get', 'class'], ['motorway', 'trunk'], 1.2 * k, 'primary', 0.8 * k, 0.3 * k], 14, ['match', ['get', 'class'], ['motorway', 'trunk'], 4 * k, 'primary', 3 * k, ['secondary', 'tertiary'], 2.2 * k, 1.2 * k], 16, metric(16, k === 1 ? 1 : 1.12), 22, metric(22, k === 1 ? 1 : 1.12)] as never;
 const ROAD_CLASSES = ['motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'minor', 'service'];
 
 export function addGaRoadOverlay(map: MapLibreMap): void {

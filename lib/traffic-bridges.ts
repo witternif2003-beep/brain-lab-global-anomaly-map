@@ -3,6 +3,7 @@ import { bearingDeg, haversineM, type LngLat } from "./traffic-sim";
 /**
  * Deck height per OSM `layer` step, in metres. An ESTIMATE: OSM `layer` is stacking order, not height
  * (https://wiki.openstreetmap.org/wiki/Key:layer), so a deck is drawn up to `layer × 7 m` above the lowest ground under it.
+ * 7 m covers FHWA's 16-ft (4.9 m) Interstate vertical clearance (fhwa.dot.gov/design/090415.cfm) plus the 1.2 m deck below.
  */
 export const BRIDGE_LAYER_M = 7;
 /** Steepest climb from an abutment onto a deck (6 %), so cars ramp up instead of jumping. An assumption, not survey data. */
@@ -15,6 +16,8 @@ export const MATCH_BEARING_DEG = 30;
 export const DENSIFY_STEP_M = 20;
 export const DECK_WIDTH_M = 8;
 export const DECK_THICKNESS_M = 1.2;
+/** Drawn deck width for one carriageway: FHWA Interstate minimum of two 12-ft lanes + 10-ft right + 4-ft left shoulder (fhwa.dot.gov/programadmin/interstate.cfm). */
+export const INTERSTATE_DECK_WIDTH_M = (2 * 12 + 10 + 4) * 0.3048;
 
 const CELL_DEG = 0.0005;
 

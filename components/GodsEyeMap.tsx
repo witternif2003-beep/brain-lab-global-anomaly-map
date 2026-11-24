@@ -22,6 +22,7 @@ import { addViewshedLayers, clearViewshed, onceOnMapClick, runViewshedAt, type V
 import { exportMap32k, pickPngSink, EXPORT_32K_WIDTH } from '../lib/map/export-32k';
 import { freezeAircraftForExport } from '../lib/ga-live-markers/export-snapshot';
 import { addGaRoadOverlay } from '../lib/ga-roads-overlay';
+import { addLabelInspector } from '../lib/map/label-inspector';
 import { addGaRetailParkingLayers } from '../lib/ga-retail-parking-layer';
 import { addGaCompetitorLayers } from '../lib/ga-competitors';
 import { addDisneyLiveBoard } from '../lib/disney-live';
@@ -1039,6 +1040,7 @@ export default function GodsEyeMap({
     }
     addGaLidarLayers(map);
     addGaRoadOverlay(map);
+    addLabelInspector(map);
     addGaH3Telemetry(map);
     addGaHydrometLayers(map);
     addGaTrafficLayers(map);
