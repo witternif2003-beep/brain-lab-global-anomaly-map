@@ -10,9 +10,6 @@ import { GA_ICON_CELL_SCALE, gaIconAtlas, gaIconKey, type GaIconAtlas, type GaIc
 import { gaMeshIfReady, gaLiveryMeshIfReady, gaMeshScale, gaModelReach, isFgKind, type GaModelKind } from './ga-mesh-models';
 import { isTouchDevice, LIDAR_POINT_CEILING, markerPixelRatio } from './map/touch-gpu-budget';
 import { allowRebuild, gpuCrashCount, noteContextLost } from './map/crash-guard';
-import { useInterleavedDeck } from './map/deck-mode';
-
-export { useInterleavedDeck };
 import { declutterMarkers, type DeclutterCandidate, fitsViewport } from './ga-marker-declutter';
 import type { CloudPuff } from './ga-clouds/cloud-puffs';
 import { DENSITY_ANCHOR_MIN_ZOOM, densityAnchors, densityDotRadiusPx, DENSITY_RING_PX, type CensusBlocks } from './ga-census-density';
@@ -94,8 +91,6 @@ declare global {
 }
 
 interface DeckState {
-  /** True when deck.gl draws into MapLibre's own WebGL2 context instead of a second canvas. */
-  interleaved: boolean;
   map: MapLibreMap;
   groups: Map<GroupKey, GaDeckGroup>;
   overlay: MapLibreOverlay | null;
@@ -242,7 +237,6 @@ function getState(map: MapLibreMap): DeckState {
     meshGlobe: false,
     atlas: null,
     afterRender: new Set(),
-    interleaved: false,
     labelShown: null,
     labelVersion: 0,
     markerShown: null,
@@ -445,9 +439,7 @@ function publishState(map: MapLibreMap, state: DeckState): void {
     ? 'deck.gl 9.4 · WebGPU (experimental, overlaid)'
     : state.webgpuAdapterFound
       ? 'deck.gl 9.4 · WebGL2 (overlaid) · WebGPU adapter found; overlaid WebGPU is opt-in (?renderer=webgpu) until compositing is verified'
-      : state.interleaved
-        ? 'deck.gl 9.4 · WebGL2 (interleaved in the map context, phone)'
-        : 'deck.gl 9.4 · WebGL2 (overlaid)';
+      : 'deck.gl 9.4 · WebGL2 (overlaid)';
   reportGaFeed(map, {
     id: 'renderer',
     label: 'Map renderer',
@@ -510,15 +502,13 @@ function hitAt(map: MapLibreMap, state: DeckState, point: Point): { group: GaDec
 
 /** The overlaid deck.gl canvas drawn above the MapLibre canvas, if one is attached. */
 export function gaDeckCanvas(map: MapLibreMap): HTMLCanvasElement | null {
-  const state = states.get(map);
-  if (state?.interleaved) return null;
-  return state?.overlay?.getCanvas() ?? null;
+  return states.get(map)?.overlay?.getCanvas() ?? null;
 }
 
 /** Runs `draw` with the overlaid deck.gl canvas right after its next frame, while its drawing buffer is still valid. */
 export function onNextGaDeckFrame(map: MapLibreMap, draw: (canvas: HTMLCanvasElement) => void, timeoutMs: number): Promise<boolean> {
   const state = states.get(map);
-  if (!state?.overlay || state.interleaved) return Promise.resolve(false);
+  if (!state?.overlay) return Promise.resolve(false);
   return new Promise((resolve) => {
     const run = (canvas: HTMLCanvasElement) => {
       window.clearTimeout(timer);
@@ -1024,19 +1014,10 @@ fragColor.a *= smoothstep(${CLOUD_SHEET_WALL_FADE[0].toFixed(3)}, ${CLOUD_SHEET_
   return CloudSheetLayer;
 }
 
-const watchedRestore = new WeakSet<MapLibreMap>();
-
 async function addRenderer(map: MapLibreMap, state: DeckState, renderer: Renderer, modules: DeckModules, deviceProps?: Record<string, unknown>): Promise<void> {
   state.device = null;
-  const interleaved = useInterleavedDeck(renderer, isTouchDevice(), window.location.search);
-  if (interleaved && !watchedRestore.has(map)) {
-    watchedRestore.add(map);
-    map.on('webglcontextrestored', () => {
-      if (state.interleaved && !state.removed) void fallbackToWebGL(map, state, 'Map GPU context restored; markers rebuilt');
-    });
-  }
   const overlay = new modules.MapLibreOverlay({
-    interleaved,
+    interleaved: false,
     onDeviceInitialized: (device: Device) => {
       if (state.overlay !== overlay) return;
       state.device = device;
@@ -1049,11 +1030,7 @@ async function addRenderer(map: MapLibreMap, state: DeckState, renderer: Rendere
       if (state.overlay === overlay) window.__gaDeckMetrics = { gpuMsPerFrame: m.gpuTimePerFrame, cpuMsPerFrame: m.cpuTimePerFrame, renderer };
     },
     onAfterRender: () => {
-      if (state.overlay === overlay && state.interleaved) {
-        state.firstRender = true;
-        state.afterRender.clear();
-        publishState(map, state);
-      } else if (state.overlay === overlay) {
+      if (state.overlay === overlay) {
         const container = overlay.getCanvas()?.parentElement;
         const canvasContainer = map.getCanvasContainer();
         if (container && canvasContainer.nextElementSibling !== container) canvasContainer.after(container);
@@ -1076,7 +1053,6 @@ async function addRenderer(map: MapLibreMap, state: DeckState, renderer: Rendere
     },
   });
   state.renderer = renderer;
-  state.interleaved = interleaved;
   state.modules = modules;
   state.overlay = overlay;
   state.firstRender = false;
