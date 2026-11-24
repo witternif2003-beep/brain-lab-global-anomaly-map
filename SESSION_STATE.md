@@ -48,6 +48,11 @@ Done means: each change measured in a phone-sized browser, `npx tsc --noEmit -p 
    Fixes: lazyUrlAtlas (lib/ga-marker-icons.ts, puff-texture), ATLAS_PENDING_URL before deck device (lib/ga-deck-overlay.ts) -> toDataURL 0.1 s (cpu4.log);
    sky loads 4K then 8K (lib/sky-photo.ts); latch at QUALITY_LATCH_RATIO 0.7 (lib/map/gpu-ledger.ts): engaged at 361 MB during load, drape factor 1,
    ledger 268-338 MB of 512 at z18 (1 run). tests/lazy-url-atlas.test.ts. 499/499 tests, tsc 0, build 0.
+0h. [x] Telemetry stream + rendering completion (complete1.log, sse-prod.log vs sse-local.log): hooks/useAnomalyStream.ts reopened /api/telemetry/stream
+   on every GodsEyeMap re-render (inline callback in effect deps: prod 19 opened / 18 aborted in 78 s) and wrote the stream's {timestamp,tick,samples}
+   frames into the 'anomalies' source, replacing 6 valid features with 1 invalid one (0 rendered at +60 s). Fix: callbacks in refs, isAnomalyFeature filter;
+   local: 1 connection, 0 aborts, 6/6 features kept and rendered at +60 s. tests/anomaly-stream.test.ts. 500/500 tests, tsc 0, build 0.
+   Also measured: map.loaded()/areTilesLoaded() never true because 14 animated GeoJSON sources update continuously (not changed).
    Root cause measured in run8.log: 9 layer stacks x 22 terrain tiles = 198 pooled 512² drapes, 0 held by tiles.
 1. Ask user to retest on iPhone (Turner County, 100 m scale, hold 60 s; zoom 1 km -> 500 m) and send a recording.
 2. Terrain drapes: 512x512 render-to-texture tiles hold ~144 MB on phones (lib/map/terrain-rtt.ts, lib/map/horizon-lod.ts). Test touch LOD variants one at a time (parallel probes starve CPU): `node /home/ubuntu/gpuprobe/probe_lod.mjs <url> '[5,3]' B`.
