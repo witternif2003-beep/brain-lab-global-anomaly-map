@@ -32,6 +32,11 @@ Done means: each change measured in a phone-sized browser, `npx tsc --noEmit -p 
    sweep4-on.log vs sweep4-off.log (1 run each, same build): z18 hold 93.5 vs 323.5 MB textures; z20 hold 177.9 vs 346 MB (peak 525.6). 494/494 tests, tsc 0, build 0.
    Screenshots map-on-z18.png / map-off-z18.png look the same (satellite ground does not render in SwiftShader either way).
    Known: ScaleControl showed "NaN m" after jumpTo with stack on (2 of 2 runs); one 2-px pan fixed it (30 m). Not root-caused.
+0d. [x] Script-memory profile (heap1.log, 1 run, z16 -> z12 Atlanta -> z18): JS heap 164 / 256 / 205 MB, no single dominant retainer
+   (native buffers 50 MB, maplibre 22.5 MB, deck/three 19.7 MB of sampled live allocations). DOM nodes up to 44k.
+0e. [x] Scale bar NaN fix (lib/map/scale-refresh.ts, tests/map/scale-refresh.test.ts): probe now reads 30 m / 50 ft right after the jump.
+   MapDebugOverlay WebGL2 probe context now released (components/MapDebugOverlay.tsx). 495/495 tests, tsc 0, build 0.
+   Pending: user's answer on phone rendering quality (max where memory allows vs max always).
    Root cause measured in run8.log: 9 layer stacks x 22 terrain tiles = 198 pooled 512² drapes, 0 held by tiles.
 1. Ask user to retest on iPhone (Turner County, 100 m scale, hold 60 s; zoom 1 km -> 500 m) and send a recording.
 2. Terrain drapes: 512x512 render-to-texture tiles hold ~144 MB on phones (lib/map/terrain-rtt.ts, lib/map/horizon-lod.ts). Test touch LOD variants one at a time (parallel probes starve CPU): `node /home/ubuntu/gpuprobe/probe_lod.mjs <url> '[5,3]' B`.

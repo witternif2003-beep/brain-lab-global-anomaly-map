@@ -65,6 +65,7 @@ import { installVramMeter } from '../lib/map/vram-meter';
 import { governDrapeMemory } from '../lib/map/terrain-rtt';
 import { installDrapeGuard } from '../lib/map/drape-guard';
 import { installDrapeStack } from '../lib/map/drape-stack';
+import { refreshInvalidScales } from '../lib/map/scale-refresh';
 import { applyHorizonLod, horizonLod } from '../lib/map/horizon-lod';
 import { capTileTexturePool } from '../lib/map/tile-texture-pool';
 import { startGpuLedger } from '../lib/map/gpu-ledger-controller';
@@ -1594,6 +1595,7 @@ export default function GodsEyeMap({
       'bottom-left'
     );
     map.addControl(new maplibregl.ScaleControl({ maxWidth: 120, unit: 'metric' }), 'bottom-left');
+    map.once('remove', refreshInvalidScales(map));
 
     // Configure projection safely once style loads (per official MapLibre specification)
     map.on('style.load', () => {
