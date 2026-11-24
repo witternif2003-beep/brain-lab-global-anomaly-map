@@ -27,13 +27,28 @@ export function setDrapeQuality(map: MapLibreMap, factor: number): boolean {
   return true;
 }
 
+/**
+ * Destroys the drapes waiting in MapLibre's recycle pool (owned by no tile) and returns how many. MapLibre frees them itself at the
+ * end of a frame at rest; a phone probe held still at zoom 16.5 still found 198 pooled (9 layer stacks x 22 terrain tiles, ~263 MB at
+ * 512² with mipmaps) and none held by tiles. Tiles that need a drape again allocate a fresh one on their next frame.
+ */
+export function freeIdleDrapes(map: MapLibreMap): number {
+  const p = (map as unknown as { painter?: { _rttObjectRecyclePool?: unknown[]; clearRTTPool?: () => void } }).painter;
+  const n = p?._rttObjectRecyclePool?.length ?? 0;
+  if (n > 0 && p?.clearRTTPool) p.clearRTTPool();
+  return p?.clearRTTPool ? n : 0;
+}
+
 /** Touch devices always use low-memory drapes; desktops switch once measured GPU memory reaches the target. */
 export function governDrapeMemory(map: MapLibreMap): () => void {
-  let low = isTouchDevice();
+  const touch = isTouchDevice();
+  let low = touch;
+  let freed = 0;
   const apply = () => {
     if (!low && vramMeterInstalled() && vramSnapshot().bytes >= vramTargetBytes(false, gpuSafeMode())) low = true;
     if (low) setDrapeQuality(map, DRAPE_QUALITY_LOW);
-    window.__gaDrape = { low, factor: (map as unknown as DrapeInternals).terrain?.qualityFactor ?? null };
+    if (touch && !map.isMoving()) freed += freeIdleDrapes(map);
+    window.__gaDrape = { low, factor: (map as unknown as DrapeInternals).terrain?.qualityFactor ?? null, freed };
   };
   const onTerrain = () => apply();
   map.on('terrain', onTerrain);
@@ -48,5 +63,5 @@ export function governDrapeMemory(map: MapLibreMap): () => void {
 }
 
 declare global {
-  interface Window { __gaDrape?: { low: boolean; factor: number | null } }
+  interface Window { __gaDrape?: { low: boolean; factor: number | null; freed?: number } }
 }

@@ -12,7 +12,7 @@ Done means: each change measured in a phone-sized browser, `npx tsc --noEmit -p 
 - [x] 1,000-anomaly corpus (lib/statewide-anomalies.ts, 7.5 MB) loads as its own chunk after first paint — commit 83e0e1c; tsc exit 0; 486/486 tests; build exit 0;
   deployed, `/api/health` reports 83e0e1c, `/godseye-telemetry` HTTP 200. First-load JS 9.58 MB (prod before) -> 3.52 MB (local build). Time-to-map NOT improved in 1 run (local 34.4 s vs prod 23.7 s, different servers; unverified).
 
-- [~] Overlay drawing buffers (uncommitted): on touch, marker + traffic deck.gl canvases request `preserveDrawingBuffer:false, antialias:false`
+- [x] Overlay drawing buffers — commit 64a5cd8, deployed (prod chunk contains `overlaybuf`; /api/health commit field empty for CLI deploys): on touch, marker + traffic deck.gl canvases request `preserveDrawingBuffer:false, antialias:false`
   (luma.gl default was true/true; `?overlaybuf=default` restores). Ledger models each canvas buffer by attributes. Files: lib/map/touch-gpu-budget.ts,
   lib/map/vram-budget.ts, lib/ga-deck-overlay.ts, lib/traffic-overlay.ts, lib/map/gpu-ledger-controller.ts. tsc exit 0; 488/488 tests; build exit 0.
   Probe run7.log (local, 1 run): actual attrs aa=false pdb=false on both overlays; no page errors.
@@ -20,7 +20,9 @@ Done means: each change measured in a phone-sized browser, `npx tsc --noEmit -p 
   textures = 263 MB = terrain render-to-texture drapes (MapLibre tile.acquireRTT, one per tile per layer stack). Ledger shed to pixelRatio 1 but growth continued.
 
 ## Next (execute in order)
-0. Cap terrain RTT drape pool on touch (node_modules/maplibre-gl/src/webgl/render_to_texture.ts, tile.acquireRTT), re-probe once, commit, push PR #4, deploy.
+0. [x] Touch: free idle terrain drapes every 5 s at rest (lib/map/terrain-rtt.ts freeIdleDrapes; tests/map/terrain-rtt.test.ts). 489/489 tests, tsc 0, build 0.
+   Probe run9.log (1 run, z16.5 hold): textures 238.7 MB at +120 s vs 412.8 MB in run7; flat from +75 s; 1448 drapes freed; no page errors.
+   Root cause measured in run8.log: 9 layer stacks x 22 terrain tiles = 198 pooled 512² drapes, 0 held by tiles.
 1. Ask user to retest on iPhone (Turner County, 100 m scale, hold 60 s; zoom 1 km -> 500 m) and send a recording.
 2. Terrain drapes: 512x512 render-to-texture tiles hold ~144 MB on phones (lib/map/terrain-rtt.ts, lib/map/horizon-lod.ts). Test touch LOD variants one at a time (parallel probes starve CPU): `node /home/ubuntu/gpuprobe/probe_lod.mjs <url> '[5,3]' B`.
 3. Clouds: audit existing cloud layer against NOAA GOES cloud-top height (location, size, height, update interval); grade sources.
