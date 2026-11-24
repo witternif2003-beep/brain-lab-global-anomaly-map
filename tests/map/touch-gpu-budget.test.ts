@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cappedPixelRatio, LIDAR_CRASH_FLOOR, LIDAR_DESKTOP_POINT_CEILING, LIDAR_POINT_CEILING, lidarBudget, overlayContextAttributes, skyRenderScale, TOUCH_MAX_PIXEL_RATIO } from "../../lib/map/touch-gpu-budget";
+import { engageQualityLatch, qualityCrashes, qualityLatchEngaged, qualityTouch, resetQualityLatch, safeQualityRequested, cappedPixelRatio, LIDAR_CRASH_FLOOR, LIDAR_DESKTOP_POINT_CEILING, LIDAR_POINT_CEILING, lidarBudget, overlayContextAttributes, skyRenderScale, TOUCH_MAX_PIXEL_RATIO } from "../../lib/map/touch-gpu-budget";
 
 test("touch devices cap the drawing-buffer pixel ratio; desktop keeps the device ratio", () => {
   assert.equal(cappedPixelRatio(3, true), TOUCH_MAX_PIXEL_RATIO);
@@ -61,8 +61,30 @@ test("touch devices render the sky photo at no more than the 2x cap; desktop kee
 });
 
 test("touch overlay canvases drop the preserved and multisampled buffers; desktop and ?overlaybuf=default keep luma.gl's defaults", () => {
-  assert.deepEqual(overlayContextAttributes(true), { preserveDrawingBuffer: false, antialias: false });
-  assert.deepEqual(overlayContextAttributes(true, "?deck=x"), { preserveDrawingBuffer: false, antialias: false });
+  assert.deepEqual(overlayContextAttributes(true), { preserveDrawingBuffer: false, antialias: true });
+  assert.deepEqual(overlayContextAttributes(true, "?quality=safe"), { preserveDrawingBuffer: false, antialias: false });
+  assert.deepEqual(overlayContextAttributes(true, "?deck=x"), { preserveDrawingBuffer: false, antialias: true });
   assert.equal(overlayContextAttributes(false), null);
   assert.equal(overlayContextAttributes(true, "?overlaybuf=default"), null);
+});
+
+test("maximum quality by default: ?quality=safe is the only switch back to reduced phone settings and crash step-downs", () => {
+  assert.equal(safeQualityRequested(""), false);
+  assert.equal(safeQualityRequested("?quality=safe"), true);
+  assert.equal(safeQualityRequested("?quality=max"), false);
+  assert.equal(qualityTouch(), false);
+  assert.equal(qualityCrashes(3), 0);
+});
+
+test("memory latch: one-way switch to the reduced settings; ?quality=max refuses and overrides it", () => {
+  resetQualityLatch();
+  assert.equal(engageQualityLatch("test", "?quality=max"), false);
+  assert.equal(qualityLatchEngaged(), false);
+  assert.equal(engageQualityLatch("test"), true);
+  assert.equal(engageQualityLatch("again"), false);
+  assert.equal(safeQualityRequested(""), true);
+  assert.equal(qualityCrashes(2), 2);
+  assert.equal(safeQualityRequested("?quality=max"), false);
+  resetQualityLatch();
+  assert.equal(safeQualityRequested(""), false);
 });

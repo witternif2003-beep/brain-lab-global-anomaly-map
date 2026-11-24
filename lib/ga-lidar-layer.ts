@@ -34,7 +34,7 @@ import { nodeSpacings } from './ga-lidar/ept';
 import { cachedFetch } from './ga-lidar/disk-cache';
 import { fullArray, releaseAfterUpload } from './ga-lidar/gpu-upload';
 import { GpuPassTimer } from './ga-lidar/gpu-timer';
-import { isTouchDevice, lidarBudget } from './map/touch-gpu-budget';
+import { lidarBudget, qualityCrashes, qualityTouch, safeQualityRequested } from './map/touch-gpu-budget';
 import { gpuCrashCount, gpuSafeMode } from './map/crash-guard';
 import { drawingBufferBytes, LIDAR_BYTES_PER_POINT, LIDAR_MIN_POINTS, lidarBytesPerPoint, lidarPointBudget, vramTargetBytes } from './map/vram-budget';
 import { vramMeterInstalled, vramSnapshot } from './map/vram-meter';
@@ -199,7 +199,7 @@ export class GaLidar3DLayer implements CustomLayerInterface {
   private imageryCanvas: HTMLCanvasElement | null = null;
   private timer: ReturnType<typeof setTimeout> | null = null;
   private readonly stats: GaLidarStats = {
-    stats: () => lidarVramStats(this.stats.pointsDrawn, this.vramTarget(), lidarBytesPerPoint(isTouchDevice())),
+    stats: () => lidarVramStats(this.stats.pointsDrawn, this.vramTarget(), lidarBytesPerPoint(qualityTouch())),
     project: null,
     year: null,
     ql: null,
@@ -332,7 +332,7 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     }
 
     const half = (VIEW_TILES * WORLD_3857) / 2 ** zoom;
-    const targetDepth = Math.min(MAX_EPT_DEPTH, targetDepthFor(project, half, MAX_EPT_DEPTH) + (isTouchDevice() ? EXTRA_DEPTH : EXTRA_DEPTH_DESKTOP));
+    const targetDepth = Math.min(MAX_EPT_DEPTH, targetDepthFor(project, half, MAX_EPT_DEPTH) + (qualityTouch() ? EXTRA_DEPTH : EXTRA_DEPTH_DESKTOP));
     const view = { cx, cy, half, targetDepth, pointBudget: this.pointBudget() };
     this.stats.targetDepth = targetDepth;
     this.setStatus('loading hierarchy');
@@ -398,7 +398,7 @@ export class GaLidar3DLayer implements CustomLayerInterface {
         }
       }
     };
-    await Promise.all(Array.from({ length: lidarBudget(isTouchDevice(), gpuCrashCount()).fetchParallel }, worker));
+    await Promise.all(Array.from({ length: lidarBudget(qualityTouch(), qualityCrashes(gpuCrashCount())).fetchParallel }, worker));
     if (gen === this.generation) this.setStatus('ready');
   }
 
@@ -413,18 +413,18 @@ export class GaLidar3DLayer implements CustomLayerInterface {
   private measuredVram(): number | null {
     if (!vramMeterInstalled() || !this.map) return null;
     const c = this.map.getCanvas();
-    return vramSnapshot().bytes + drawingBufferBytes(c.width, c.height, isTouchDevice() ? 1 : 4);
+    return vramSnapshot().bytes + drawingBufferBytes(c.width, c.height, qualityTouch() ? 1 : 4);
   }
 
   private vramTarget(): number {
-    return vramTargetBytes(isTouchDevice(), gpuSafeMode());
+    return vramTargetBytes(qualityTouch(), (safeQualityRequested() && gpuSafeMode()));
   }
 
   /** LiDAR point budget: the 20,000,000 ceiling (capped at the ledger's LiDAR share, counting the JavaScript copy phones also hold), lowered to what fits in the GPU-memory target next to everything else on the map. */
   private pointBudget(): number {
-    const ceiling = Math.min(lidarBudget(isTouchDevice(), gpuCrashCount()).points, lidarSliceCeiling(this.vramTarget(), lidarBytesPerPoint(isTouchDevice())));
+    const ceiling = Math.min(lidarBudget(qualityTouch(), qualityCrashes(gpuCrashCount())).points, lidarSliceCeiling(this.vramTarget(), lidarBytesPerPoint(qualityTouch())));
     const used = this.measuredVram();
-    const budget = used === null ? ceiling : lidarPointBudget({ ceiling, targetBytes: this.vramTarget(), otherBytes: used - this.lidarBytes(), bytesPerPoint: lidarBytesPerPoint(isTouchDevice()) });
+    const budget = used === null ? ceiling : lidarPointBudget({ ceiling, targetBytes: this.vramTarget(), otherBytes: used - this.lidarBytes(), bytesPerPoint: lidarBytesPerPoint(qualityTouch()) });
     this.stats.pointBudget = budget;
     this.stats.vramLimited = budget < ceiling;
     return budget;
@@ -447,7 +447,7 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     const lidarMB = Math.round(this.lidarBytes() / MB);
     reportGaFeed(map, {
       id: 'gpu-memory', label: 'GPU memory (measured)', color: this.stats.vramLimited ? '#f43f5e' : '#22d3ee', count: this.stats.vramMB,
-      detail: `${this.stats.project ? `survey ${this.stats.project} (${this.stats.year}, USGS ${this.stats.ql === 'other' ? 'pre-standard' : this.stats.ql}) · ` : ''}${this.stats.vramMB} MB of ${this.stats.vramTargetMB} MB target · peak ${this.stats.vramPeakMB} MB · LiDAR ${lidarMB} MB, ${this.stats.pointsDrawn.toLocaleString()} of ${this.stats.pointBudget.toLocaleString()} allowed points${this.stats.vramLimited ? ' · LiDAR capped to fit' : ''}${gpuSafeMode() ? ' · safe mode after a recent crash' : ''} · counted from WebGL allocations (estimate)`,
+      detail: `${this.stats.project ? `survey ${this.stats.project} (${this.stats.year}, USGS ${this.stats.ql === 'other' ? 'pre-standard' : this.stats.ql}) · ` : ''}${this.stats.vramMB} MB of ${this.stats.vramTargetMB} MB target · peak ${this.stats.vramPeakMB} MB · LiDAR ${lidarMB} MB, ${this.stats.pointsDrawn.toLocaleString()} of ${this.stats.pointBudget.toLocaleString()} allowed points${this.stats.vramLimited ? ' · LiDAR capped to fit' : ''}${(safeQualityRequested() && gpuSafeMode()) ? ' · safe mode after a recent crash' : ''} · counted from WebGL allocations (estimate)`,
       updatedAt: new Date().toISOString(), sourceUrl: '',
     });
   }
@@ -505,7 +505,7 @@ export class GaLidar3DLayer implements CustomLayerInterface {
       }
     })();
     this.imagery.set(id, load);
-    if (this.imagery.size > lidarBudget(isTouchDevice(), gpuCrashCount()).imageryTiles) this.imagery.delete(this.imagery.keys().next().value as string);
+    if (this.imagery.size > lidarBudget(qualityTouch(), qualityCrashes(gpuCrashCount())).imageryTiles) this.imagery.delete(this.imagery.keys().next().value as string);
     return load;
   }
 
@@ -625,7 +625,7 @@ export class GaLidar3DLayer implements CustomLayerInterface {
     renderer.resetState();
     renderer.setViewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
     this.gpuTimer?.begin();
-    if (gpuSafeMode() || !this.edl.render(renderer, gl, this.scene, this.camera, mvp.elements, EDL_RADIUS_CSS_PX * dpr)) renderer.render(this.scene, this.camera);
+    if ((safeQualityRequested() && gpuSafeMode()) || !this.edl.render(renderer, gl, this.scene, this.camera, mvp.elements, EDL_RADIUS_CSS_PX * dpr)) renderer.render(this.scene, this.camera);
     this.gpuTimer?.end();
     if (this.gpuTimer) this.stats.gpuMsP95 = this.gpuTimer.poll();
   }

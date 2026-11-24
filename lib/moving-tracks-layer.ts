@@ -1,3 +1,4 @@
+import { safeQualityRequested } from './map/touch-gpu-budget';
 import { Popup } from 'maplibre-gl';
 import type { ExpressionSpecification, GeoJSONSource, Map as MapLibreMap, MapLayerMouseEvent } from 'maplibre-gl';
 import { reportGaFeed } from './ga-live-status';
@@ -114,7 +115,7 @@ export function addMovingTrackLayers(map: MapLibreMap): void {
   if (bound.has(map)) return;
   bound.add(map);
   const touch = typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches;
-  const tickMs = touch ? 4_000 : 2_000;
+  const tickMs = touch && safeQualityRequested() ? 4_000 : 2_000;
   const wallP = loadGaWallRing().catch(() => [] as LngLat[]);
   let tracks: MovingTrack[] = [];
 

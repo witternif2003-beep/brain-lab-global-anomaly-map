@@ -3,6 +3,47 @@ export const TOUCH_MAX_PIXEL_RATIO = 2;
 
 export const isTouchDevice = (): boolean => typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0;
 
+/**
+ * Every device renders at maximum quality (the user's choice, Nov 2026: "maximum everywhere") until the memory latch engages. `?quality=safe` restores the reduced
+ * phone settings and the automatic step-downs after a crash or under GPU-memory pressure. Memory-only optimisations that do not
+ * change what is drawn keep using isTouchDevice().
+ */
+export const QUALITY_LATCH_KEY = 'ga-quality-latch';
+let latched = false;
+const sessionLatch = (): boolean => {
+  try {
+    return typeof sessionStorage !== 'undefined' && sessionStorage.getItem(QUALITY_LATCH_KEY) === '1';
+  } catch {
+    return false;
+  }
+};
+/** Whether the memory latch has engaged in this tab (kept in sessionStorage so a crash reload starts latched). */
+export const qualityLatchEngaged = (): boolean => latched || sessionLatch();
+/**
+ * One-way latch: once measured GPU memory reaches the pressure threshold (or the page restarts after a crash) the reduced settings
+ * and automatic step-downs switch on and stay on until the tab closes, instead of toggling. `?quality=max` disables the latch.
+ */
+export function engageQualityLatch(reason: string, search = typeof location !== 'undefined' ? location.search : ''): boolean {
+  if (new URLSearchParams(search).get('quality') === 'max') return false;
+  const first = !qualityLatchEngaged();
+  latched = true;
+  try {
+    if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(QUALITY_LATCH_KEY, '1');
+  } catch { /* storage unavailable: latch holds for this page load */ }
+  if (typeof window !== 'undefined' && first) window.__gaQualityLatch = { engaged: true, reason, at: new Date().toISOString() };
+  return first;
+}
+/** Test hook: clears the in-memory latch. */
+export const resetQualityLatch = (): void => { latched = false; };
+export const safeQualityRequested = (search = typeof location !== 'undefined' ? location.search : ''): boolean => {
+  const q = new URLSearchParams(search).get('quality');
+  return q !== 'max' && (q === 'safe' || qualityLatchEngaged());
+};
+/** Touch flag for quality decisions: true only on a touch device with `?quality=safe`. */
+export const qualityTouch = (): boolean => isTouchDevice() && safeQualityRequested();
+/** Crash count for quality step-downs: ignored unless `?quality=safe`. */
+export const qualityCrashes = (crashes: number): number => (safeQualityRequested() ? crashes : 0);
+
 /** Drawing-buffer pixel ratio: the device ratio, capped on touch devices. */
 export function cappedPixelRatio(devicePixelRatio: number, touch: boolean): number {
   const dpr = devicePixelRatio > 0 ? devicePixelRatio : 1;
@@ -36,7 +77,7 @@ export interface OverlayContextAttributes { preserveDrawingBuffer: boolean; anti
  */
 export function overlayContextAttributes(touch: boolean, search = ''): OverlayContextAttributes | null {
   if (!touch || new URLSearchParams(search).get('overlaybuf') === 'default') return null;
-  return { preserveDrawingBuffer: false, antialias: false };
+  return { preserveDrawingBuffer: false, antialias: !safeQualityRequested(search) };
 }
 
 /**
@@ -74,4 +115,8 @@ export function lidarBudget(touch: boolean, crashes: number | boolean = 0): Lida
     fetchParallel: Math.max(1, Math.floor(b.fetchParallel / 2)),
     imageryTiles: b.imageryTiles / 2,
   };
+}
+
+declare global {
+  interface Window { __gaQualityLatch?: { engaged: boolean; reason: string; at: string } }
 }

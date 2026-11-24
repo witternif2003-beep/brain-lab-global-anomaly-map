@@ -1,6 +1,6 @@
 import type { Map as MapLibreMap, Popup } from 'maplibre-gl';
 import { reportGaFeed } from './ga-live-status';
-import { cappedPixelRatio, isTouchDevice, overlayContextAttributes } from './map/touch-gpu-budget';
+import { cappedPixelRatio, isTouchDevice, overlayContextAttributes, qualityTouch } from './map/touch-gpu-budget';
 import { MAX_AGENTS_DESKTOP, MAX_AGENTS_TOUCH, MAX_FLOW_EDGES, SLOW_MS, carLabel, carStatus, haversineM, labelCandidates, msToMph, TrafficSim, type CarAgent, type LineFlow, type LngLat } from './traffic-sim';
 import { FLOW_COLORS, FLOW_SOURCE_LAYER, TOMTOM_FLOW_DOCS_URL, flowBand } from './ga-traffic-flow/flow';
 import { GA_TRAFFIC_FLOW_SOURCE } from './ga-traffic-flow-layer';
@@ -136,7 +136,7 @@ export async function addGaTrafficSim(map: MapLibreMap): Promise<void> {
   const mesh = new CubeGeometry();
   const touch = isTouchDevice();
   const webglAttrs = overlayContextAttributes(touch, window.location.search);
-  const overlay = new MapLibreOverlay({ interleaved: false, layers: [], useDevicePixels: touch ? cappedPixelRatio(window.devicePixelRatio || 1, true) : true, ...(webglAttrs ? { deviceProps: { webgl: webglAttrs } } : {}) });
+  const overlay = new MapLibreOverlay({ interleaved: false, layers: [], useDevicePixels: qualityTouch() ? cappedPixelRatio(window.devicePixelRatio || 1, true) : true, ...(webglAttrs ? { deviceProps: { webgl: webglAttrs } } : {}) });
   map.addControl(overlay);
   trafficCanvases.set(map, () => overlay.getCanvas());
   let sim = new TrafficSim([], cap);

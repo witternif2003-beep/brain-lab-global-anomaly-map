@@ -57,7 +57,9 @@ import { SKY_PHOTO_SOURCE_URL, SkyPhotoRenderer, projectRaDec, skyBasis, skyBody
 import { staticRender } from '../lib/static-render';
 import { GA_1M_TERRAIN_ATTRIBUTION, GA_1M_TERRAIN_MAXZOOM, OPENFREEMAP_PLANET, ga1mTerrainTiles } from '../lib/lidar-globe-sources';
 import { CreditsControl } from '../lib/map/credits-control';
-import { gpuCrashCount, noteContextLost } from '../lib/map/crash-guard';
+import { gpuCrashCount as rawGpuCrashCount, noteContextLost } from '../lib/map/crash-guard';
+import { qualityCrashes, safeQualityRequested } from '../lib/map/touch-gpu-budget';
+import { engageQualityLatch } from '../lib/map/touch-gpu-budget';
 import { markerPixelRatio } from '../lib/map/touch-gpu-budget';
 import { skyRenderScale } from '../lib/map/touch-gpu-budget';
 import { sharpenBasemap } from '../lib/map/sharp-raster';
@@ -95,7 +97,11 @@ const MAP_CREDITS = [
   'Cesium Man © Cesium (CC BY 4.0)',
   'Cell tower data from <a href="https://opencellid.org" target="_blank" rel="noopener">OpenCellID</a>, licensed under <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank">CC BY-SA 4.0</a>',
 ].join(' | ');
-const isTouchDevice = () => typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0;
+const isTouchHardware = () => typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0;
+/** Phone-reduced quality only with ?quality=safe; otherwise phones use the desktop (maximum) settings. Memory-only caps use isTouchHardware(). */
+const isTouchDevice = () => isTouchHardware() && safeQualityRequested();
+/** Crash-based quality step-downs apply only with ?quality=safe. */
+const gpuCrashCount = () => qualityCrashes(rawGpuCrashCount());
 /** Full device ratio (≤3× on touch devices), 2× on touch after a recent GPU crash. */
 const mapPixelRatio = () => markerPixelRatio(window.devicePixelRatio || 1, isTouchDevice(), gpuCrashCount());
 
@@ -1530,6 +1536,7 @@ export default function GodsEyeMap({
       probeContext?.getExtension('WEBGL_lose_context')?.loseContext();
     }
 
+    if (rawGpuCrashCount() > 0) engageQualityLatch('restarted after a recent crash or GPU context loss');
     installVramMeter();
     const map = new maplibregl.Map({
       container: containerRef.current,
@@ -1623,6 +1630,7 @@ export default function GodsEyeMap({
     map.once('remove', watchNaipHealth(map));
     map.once('remove', applyHorizonLod(map, horizonLod(isTouchDevice(), gpuCrashCount())));
     if (isTouchDevice()) capTileTexturePool(map);
+    if (isTouchHardware() && !isTouchDevice()) capTileTexturePool(map);
     map.once('remove', startGpuLedger(map, mapPixelRatio));
     const gpu = { contextLost: 0, contextRestored: 0 };
     (window as unknown as { __gaGpu?: typeof gpu }).__gaGpu = gpu;

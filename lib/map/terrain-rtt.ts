@@ -1,6 +1,6 @@
 import type { Map as MapLibreMap } from 'maplibre-gl';
 import { gpuSafeMode } from './crash-guard';
-import { isTouchDevice } from './touch-gpu-budget';
+import { isTouchDevice, qualityTouch, safeQualityRequested } from './touch-gpu-budget';
 import { vramTargetBytes } from './vram-budget';
 import { vramSnapshot, vramMeterInstalled } from './vram-meter';
 
@@ -42,10 +42,11 @@ export function freeIdleDrapes(map: MapLibreMap): number {
 /** Touch devices always use low-memory drapes; desktops switch once measured GPU memory reaches the target. */
 export function governDrapeMemory(map: MapLibreMap): () => void {
   const touch = isTouchDevice();
-  let low = touch;
+  let low = qualityTouch();
   let freed = 0;
   const apply = () => {
-    if (!low && vramMeterInstalled() && vramSnapshot().bytes >= vramTargetBytes(false, gpuSafeMode())) low = true;
+    if (!low && qualityTouch()) low = true;
+    if (!low && vramMeterInstalled() && vramSnapshot().bytes >= vramTargetBytes(false, safeQualityRequested() && gpuSafeMode())) low = true;
     if (low) setDrapeQuality(map, DRAPE_QUALITY_LOW);
     if (touch && !map.isMoving()) freed += freeIdleDrapes(map);
     window.__gaDrape = { low, factor: (map as unknown as DrapeInternals).terrain?.qualityFactor ?? null, freed };

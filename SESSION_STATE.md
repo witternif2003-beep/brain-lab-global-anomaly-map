@@ -36,7 +36,13 @@ Done means: each change measured in a phone-sized browser, `npx tsc --noEmit -p 
    (native buffers 50 MB, maplibre 22.5 MB, deck/three 19.7 MB of sampled live allocations). DOM nodes up to 44k.
 0e. [x] Scale bar NaN fix (lib/map/scale-refresh.ts, tests/map/scale-refresh.test.ts): probe now reads 30 m / 50 ft right after the jump.
    MapDebugOverlay WebGL2 probe context now released (components/MapDebugOverlay.tsx). 495/495 tests, tsc 0, build 0.
-   Pending: user's answer on phone rendering quality (max where memory allows vs max always).
+   User decided "maximum everywhere" (2026-11-24 12:08), then asked for a VRAM/buffer latch (12:11).
+0f. [x] Max quality + memory latch (lib/map/touch-gpu-budget.ts safeQualityRequested/qualityTouch/qualityCrashes/engageQualityLatch; callers in
+   ga-lidar-layer, ga-deck-overlay, traffic-overlay, sharp-raster, terrain-rtt, gpu-ledger-controller, moving-tracks-layer, GodsEyeMap).
+   Phones start at desktop quality; the ledger latches (sessionStorage ga-quality-latch) at pressure (>=90% of 512 MB) and turns the phone-safe
+   settings + shedding on until the tab closes; a crash restart starts latched. `?quality=safe` forces safe, `?quality=max` disables the latch.
+   Probe (probe_latch*.mjs, 3 runs): max quality ~238-280 MB textures at load, 287-296 MB at z18; latch engaged in 2 of 3 runs (608-609 MB of 512),
+   map canvas then 373x754. Drape factor switch after latch not observed (unverified). 497/497 tests, tsc 0, build 0.
    Root cause measured in run8.log: 9 layer stacks x 22 terrain tiles = 198 pooled 512² drapes, 0 held by tiles.
 1. Ask user to retest on iPhone (Turner County, 100 m scale, hold 60 s; zoom 1 km -> 500 m) and send a recording.
 2. Terrain drapes: 512x512 render-to-texture tiles hold ~144 MB on phones (lib/map/terrain-rtt.ts, lib/map/horizon-lod.ts). Test touch LOD variants one at a time (parallel probes starve CPU): `node /home/ubuntu/gpuprobe/probe_lod.mjs <url> '[5,3]' B`.

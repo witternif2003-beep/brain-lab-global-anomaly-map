@@ -8,7 +8,7 @@ import { reportGaFeed } from './ga-live-status';
 import { GA_MARKER_SCALE, gaGlowMultiplier } from './ga-marker-scale';
 import { GA_ICON_CELL_SCALE, gaIconAtlas, gaIconKey, type GaIconAtlas, type GaIconShape } from './ga-marker-icons';
 import { gaMeshIfReady, gaLiveryMeshIfReady, gaMeshScale, gaModelReach, isFgKind, type GaModelKind } from './ga-mesh-models';
-import { isTouchDevice, LIDAR_POINT_CEILING, markerPixelRatio, overlayContextAttributes } from './map/touch-gpu-budget';
+import { isTouchDevice, LIDAR_POINT_CEILING, markerPixelRatio, overlayContextAttributes, qualityCrashes, qualityTouch } from './map/touch-gpu-budget';
 import { allowRebuild, gpuCrashCount, noteContextLost } from './map/crash-guard';
 import { declutterMarkers, type DeclutterCandidate, fitsViewport } from './ga-marker-declutter';
 import type { CloudPuff } from './ga-clouds/cloud-puffs';
@@ -526,7 +526,7 @@ export function onNextGaDeckFrame(map: MapLibreMap, draw: (canvas: HTMLCanvasEle
 
 /** Default deck.gl drawing-buffer pixel ratio: the device ratio, capped at 3× on touch devices (2× after a recent GPU crash). */
 const defaultDevicePixels = (): number | true =>
-  isTouchDevice() ? markerPixelRatio(window.devicePixelRatio || 1, true, gpuCrashCount()) : true;
+  qualityTouch() ? markerPixelRatio(window.devicePixelRatio || 1, true, qualityCrashes(gpuCrashCount())) : true;
 
 /** Sets the deck.gl drawing-buffer pixel ratio (`true` restores the default ratio). */
 export function setGaDeckPixelRatio(map: MapLibreMap, ratio: number | true): void {

@@ -1,3 +1,4 @@
+import { safeQualityRequested } from './touch-gpu-budget';
 /** Basemap raster sources that publish finer zoom levels than a 256-px tile at the current zoom shows on a 2×/3× screen. */
 const SHARP_SOURCES = new Set(['sat', 'naip', 'usgstopo']);
 
@@ -13,7 +14,7 @@ type Style = { sources?: Record<string, { type?: string; tileSize?: number; tile
  * satellite and NAIP tiles held ~290 MB of the map's ~380 MB of textures and kept growing while the view was still.
  */
 export const touchSkipsSharpening = (): boolean =>
-  typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0 && !(typeof location !== 'undefined' && new URLSearchParams(location.search).get('sharp') === 'on');
+  typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0 && safeQualityRequested() && !(typeof location !== 'undefined' && new URLSearchParams(location.search).get('sharp') === 'on');
 
 export function sharpenBasemap<T>(style: T, dpr: number, crashes = 0, touch = touchSkipsSharpening()): T {
   if (typeof style !== 'object' || style === null || dpr < 2 || crashes > 0 || touch) return style;

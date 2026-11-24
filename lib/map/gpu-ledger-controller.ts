@@ -5,7 +5,7 @@ import { reportGaFeed } from '../ga-live-status';
 import { gpuSafeMode } from './crash-guard';
 import { NO_SHED, PRESSURE_ON, ledgerState, nextShed, type LedgerState, type ShedLevels } from './gpu-ledger';
 import { setTileTexturePool } from './tile-texture-pool';
-import { isTouchDevice, overlayContextAttributes, TOUCH_MAX_PIXEL_RATIO } from './touch-gpu-budget';
+import { engageQualityLatch, isTouchDevice, overlayContextAttributes, qualityTouch, safeQualityRequested, TOUCH_MAX_PIXEL_RATIO } from './touch-gpu-budget';
 import { contextDrawingBufferBytes, drawingBufferBytes, LIDAR_BYTES_PER_POINT, vramTargetBytes } from './vram-budget';
 import { canvasBytes, vramMeterInstalled, vramSnapshot } from './vram-meter';
 
@@ -74,13 +74,15 @@ export function startGpuLedger(map: MapLibreMap, mapPixelRatio: () => number): (
     const traffic = gaTrafficCanvas(map);
     const trafficBuffer = traffic ? contextDrawingBufferBytes(traffic.width, traffic.height, overlayAttrs(touch)) : 0;
     const deckBuffer = deck ? contextDrawingBufferBytes(deck.width, deck.height, overlayAttrs(touch)) : 0;
-    const total = vramSnapshot().bytes + drawingBufferBytes(mapCanvas.width, mapCanvas.height, touch ? 1 : 4) + deckBuffer + trafficBuffer;
+    const total = vramSnapshot().bytes + drawingBufferBytes(mapCanvas.width, mapCanvas.height, qualityTouch() ? 1 : 4) + deckBuffer + trafficBuffer;
     const telemetry = (deck ? canvasBytes(deck) + deckBuffer : 0) + (traffic ? canvasBytes(traffic) + trafficBuffer : 0);
     window.__gaOverlayBuffers = { deckBytes: deckBuffer, trafficBytes: trafficBuffer, deck: deck ? overlayAttrs(touch) : null, traffic: traffic ? overlayAttrs(touch) : null };
     const points = (window as unknown as { __gaLidar?: { pointsDrawn?: number } }).__gaLidar?.pointsDrawn ?? 0;
     const lidar = Math.min(total - telemetry, points * LIDAR_BYTES_PER_POINT);
     const state = ledgerState({ telemetry, lidar, map: total - telemetry - lidar }, target, stats.state?.pressure ?? false);
-    const shed = nextShed(stats.shed, state);
+    if (state.pressure) engageQualityLatch(`GPU memory ${Math.round(state.totalBytes / MB)} MB of ${Math.round(target / MB)} MB target`);
+    const shedAllowed = safeQualityRequested();
+    const shed = shedAllowed ? nextShed(stats.shed, state) : NO_SHED;
     if (shed.telemetry !== stats.shed.telemetry || (shed.telemetry && state.pressure !== lastPressure)) applyTelemetry(shed.telemetry, state.pressure);
     if (shed.map !== stats.shed.map || (shed.map && state.pressure !== lastPressure)) applyMap(shed.map, state.pressure);
     stats.shedEvents += Number(shed.telemetry && !stats.shed.telemetry) + Number(shed.map && !stats.shed.map);
@@ -95,7 +97,7 @@ export function startGpuLedger(map: MapLibreMap, mapPixelRatio: () => number): (
       label: 'GPU memory shares (measured)',
       color: state.pressure ? '#f43f5e' : shed.telemetry || shed.map ? '#f59e0b' : '#22d3ee',
       count: mb(state.totalBytes),
-      detail: `MB used of ${mb(target)} MB app target · telemetry ${mb(telemetry)}/${mb(state.slices.telemetry)} reserved · map+terrain ${mb(state.usage.map)}/${mb(state.slices.map)} · LiDAR ${mb(lidar)}/${mb(state.slices.lidar)} · ${mb(state.slices.reserve)} kept free${state.pressure ? ` · over ${Math.round(PRESSURE_ON * 100)}%: LiDAR paused, detail reduced` : shed.telemetry || shed.map ? ' · reduced detail on the slice over its share' : ''} · app-set budget measured from WebGL allocations, not a hardware VRAM reading`,
+      detail: `MB used of ${mb(target)} MB app target · telemetry ${mb(telemetry)}/${mb(state.slices.telemetry)} reserved · map+terrain ${mb(state.usage.map)}/${mb(state.slices.map)} · LiDAR ${mb(lidar)}/${mb(state.slices.lidar)} · ${mb(state.slices.reserve)} kept free${state.pressure ? ` · over ${Math.round(PRESSURE_ON * 100)}%: LiDAR paused, detail reduced` : shed.telemetry || shed.map ? ' · reduced detail on the slice over its share' : ''} · app-set budget measured from WebGL allocations, not a hardware VRAM reading` + (shedAllowed ? '' : ' · maximum quality; memory latch engages at the pressure threshold (?quality=max disables it)'),
       updatedAt: new Date().toISOString(),
       sourceUrl: 'https://registry.khronos.org/webgl/specs/latest/1.0/',
     });
@@ -108,7 +110,7 @@ export function startGpuLedger(map: MapLibreMap, mapPixelRatio: () => number): (
 }
 
 /** Whether total use is at or above the pressure threshold (LiDAR stops loading new points). */
-export const gpuLedgerPressure = (): boolean => window.__gaLedger?.state?.pressure ?? false;
+export const gpuLedgerPressure = (): boolean => safeQualityRequested() && (window.__gaLedger?.state?.pressure ?? false);
 
 declare global {
   interface Window {
