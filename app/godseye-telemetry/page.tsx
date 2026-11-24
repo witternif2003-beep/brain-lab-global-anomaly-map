@@ -9,10 +9,31 @@ import React, { useState, useEffect } from "react";
 import GodsEyeMap from "../../components/GodsEyeMap";
 import PageEmblemHeader from "../../components/PageEmblemHeader";
 import { GODSEYE_INTEL_LAYERS } from "../../lib/godseye-layers";
+import { gaFeedStatuses, etClock, type GaFeedStatus } from "../../lib/ga-live-status";
+import { integrityState } from "../../lib/fbi-agencies/parse";
 import { Eye, ShieldAlert, Cpu, Activity, Radio, ExternalLink, Database } from "lucide-react";
+
+const STATE_COLOR: Record<string, string> = { LIVE: "#4ade80", STALE: "#fbbf24", ERROR: "#f87171", "NO TIMESTAMP": "#94a3b8", INTERNAL: "#94a3b8", LOADING: "#94a3b8" };
+
+/** LIVE = fresh timestamp from an HTTPS source inside its stale window; otherwise STALE / ERROR / NO TIMESTAMP. */
+function feedState(f: GaFeedStatus): string {
+  const s = integrityState(f, Date.now(), f.staleAfterMin ?? 90);
+  return s === "VERIFIED" ? "LIVE" : s;
+}
 
 export default function GodsEyeTelemetryPage() {
   const [telemetryTick, setTelemetryTick] = useState<number>(0);
+  const [feeds, setFeeds] = useState<GaFeedStatus[]>([]);
+
+  // Reads the map's own feed registry (the statuses its live legend shows) every 1.5 s.
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const map = (window as unknown as { __map?: Parameters<typeof gaFeedStatuses>[0] }).__map;
+      if (map) setFeeds(gaFeedStatuses(map));
+    }, 1500);
+    return () => clearInterval(timer);
+  }, []);
+  const liveFeeds = feeds.filter((f) => feedState(f) === "LIVE").length;
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -78,6 +99,9 @@ export default function GodsEyeTelemetryPage() {
           <div className="flex items-center gap-2 text-[10px] text-emerald-400 bg-[#062018]/90 px-3.5 py-1 rounded-full border border-emerald-500/50 font-bold uppercase tracking-wider self-start sm:self-auto shadow-[0_0_12px_rgba(52,211,153,0.25)]">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
             23+ INTELLIGENCE LAYERS • 20 PRODUCTION FEEDS LIVE
+            <span className="ml-2 rounded-full border border-[#4ade80]/60 bg-[#052e16] px-2 py-0.5 text-[11px] text-[#4ade80]" title="Measured now: map feeds with a fresh source timestamp">
+              MEASURED: {liveFeeds} OF {feeds.length || "…"} MAP FEEDS LIVE
+            </span>
           </div>
         </div>
 
@@ -87,6 +111,10 @@ export default function GodsEyeTelemetryPage() {
             const baseCount = parseInt(layer.entityCount.replace(/[^0-9]/g, '')) || 5000;
             const variance = ((telemetryTick * (index + 3)) % 142);
             const liveEntityCount = (baseCount + variance).toLocaleString() + "+ Live";
+            const wired = (layer.mapFeedIds ?? []).flatMap((id) => feeds.filter((f) => f.id === id));
+            const wiredCount = wired.some((f) => f.count !== null) ? wired.reduce((a, f) => a + (f.count ?? 0), 0) : null;
+            const wiredState = wired.length ? (wired.some((f) => feedState(f) === "LIVE") ? "LIVE" : feedState(wired[0])) : "LOADING";
+            const newest = wired.map((f) => f.updatedAt).filter((t): t is string => !!t).sort().at(-1) ?? null;
 
             return (
               <div
@@ -124,6 +152,11 @@ export default function GodsEyeTelemetryPage() {
                 <div className="text-[10px] text-slate-400 pt-2 border-t border-[#1e3a5f]/60 font-mono flex items-center justify-between">
                   <span className="truncate">Provider: <span className="text-slate-300 font-semibold">{layer.provider}</span></span>
                   <span className="text-emerald-400 font-bold shrink-0 ml-1">● 24/7 STREAM</span>
+                </div>
+                <div className="mt-1 text-[11px] font-bold" style={{ color: layer.mapFeedIds ? STATE_COLOR[wiredState] : "#94a3b8" }}>
+                  {layer.mapFeedIds
+                    ? `MEASURED ON MAP: ● ${wiredState}${wiredCount !== null ? ` · ${wiredCount.toLocaleString()} now` : ""}${newest ? ` · source ${etClock(newest)}` : ""}`
+                    : "MEASURED ON MAP: catalogue entry · no map feed"}
                 </div>
               </div>
             );

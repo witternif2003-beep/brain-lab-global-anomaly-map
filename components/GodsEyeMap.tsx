@@ -7,7 +7,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { useAnomalyStream, AnomalyFeature } from '../hooks/useAnomalyStream';
 import { registerGeoJSONVTSource, shouldUseTiledRendering } from '../lib/geojson-vt-protocol';
 import { GEORGIA_ANOMALIES } from '../lib/data';
-import { GODSEYE_INTEL_LAYERS, SAMPLE_LIVE_ENTITIES, LiveTelemetryEntity, IntelLayerConfig } from '../lib/godseye-layers';
+import { GODSEYE_INTEL_LAYERS, SAMPLE_ENTITY_NOTICE, SAMPLE_LIVE_ENTITIES, LiveTelemetryEntity, IntelLayerConfig } from '../lib/godseye-layers';
 import MapDebugOverlay from './MapDebugOverlay';
 import MapMenuOverlay from './MapMenuOverlay';
 import { GaWall3DLayer, GA_WALL_3D_MIN_ZOOM } from '../lib/ga-wall-3d';
@@ -1360,6 +1360,7 @@ export default function GodsEyeMap({
         .setLngLat(f.geometry.coordinates as [number, number])
         .setHTML(`
           <div style="font-family:monospace;padding:6px;background:#090d16;color:#f8fafc;border-radius:8px;border:1px solid #38bdf8;">
+            <div style="font-size:11px;color:#fbbf24;font-weight:800;margin-bottom:3px;">${SAMPLE_ENTITY_NOTICE}</div>
             <div style="font-size:10px;color:#38bdf8;font-weight:700;text-transform:uppercase;">
               ${props.layerId} • ${props.status}
             </div>
@@ -2618,6 +2619,7 @@ export default function GodsEyeMap({
                 {selectedEntity.status}
               </span>
             </div>
+            <div className="text-[11px] font-bold text-[#fbbf24]">{SAMPLE_ENTITY_NOTICE}</div>
             <div className="text-white font-bold text-xs">{selectedEntity.callsignOrName}</div>
             <div className="text-[11px] text-slate-300">
               Type: <span className="text-white">{selectedEntity.type}</span><br/>

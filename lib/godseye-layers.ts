@@ -6,6 +6,8 @@ export interface IntelLayerConfig {
   entityCount: string;
   updateCadence: string;
   provider: string;
+  /** Feeds this map actually ingests for the layer (ids reported to the live legend); absent = catalogue reference only. */
+  mapFeedIds?: string[];
   georgiaRelevance: string;
   active: boolean;
   color: string;
@@ -14,6 +16,7 @@ export interface IntelLayerConfig {
 export const GODSEYE_INTEL_LAYERS: IntelLayerConfig[] = [
   {
     id: "layer-adsb",
+    mapFeedIds: ["aircraft"],
     name: "ADS-B Live Aviation Tracking (10,000+ Aircraft)",
     category: "Aviation",
     icon: "Plane",
@@ -26,6 +29,7 @@ export const GODSEYE_INTEL_LAYERS: IntelLayerConfig[] = [
   },
   {
     id: "layer-ais",
+    mapFeedIds: ["vessels"],
     name: "AIS Maritime Commercial Fleet Tracking",
     category: "Maritime",
     icon: "Anchor",
@@ -38,6 +42,7 @@ export const GODSEYE_INTEL_LAYERS: IntelLayerConfig[] = [
   },
   {
     id: "layer-satellites",
+    mapFeedIds: ["satellites"],
     name: "CelesTrak Orbital Satellite Tracking (2,000+ Objects)",
     category: "Orbital",
     icon: "Satellite",
@@ -50,6 +55,7 @@ export const GODSEYE_INTEL_LAYERS: IntelLayerConfig[] = [
   },
   {
     id: "layer-cctv",
+    mapFeedIds: ["gdotcams", "webcams"],
     name: "Worldwide Public DOT & Port Traffic CCTV",
     category: "Surveillance",
     icon: "Camera",
@@ -62,6 +68,7 @@ export const GODSEYE_INTEL_LAYERS: IntelLayerConfig[] = [
   },
   {
     id: "layer-firms",
+    mapFeedIds: ["fires"],
     name: "NASA FIRMS Satellite Thermal Hotspots & Wildfires",
     category: "Thermal/Physical",
     icon: "Flame",
@@ -74,6 +81,7 @@ export const GODSEYE_INTEL_LAYERS: IntelLayerConfig[] = [
   },
   {
     id: "layer-seismic",
+    mapFeedIds: ["quakes"],
     name: "USGS Global Real-Time Seismic Activity",
     category: "Seismic/Geophysical",
     icon: "Activity",
@@ -268,6 +276,9 @@ export interface LiveTelemetryEntity {
   anomalyFlag?: string;
   source: string;
 }
+
+/** Shown with every SAMPLE_LIVE_ENTITIES marker: these are hand-placed examples, not tracked objects. */
+export const SAMPLE_ENTITY_NOTICE = 'SAMPLE ENTITY: illustrative placement, not live tracking';
 
 export const SAMPLE_LIVE_ENTITIES: LiveTelemetryEntity[] = [
   {

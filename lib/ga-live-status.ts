@@ -48,6 +48,13 @@ export function enableGaNodeField(map: MapLibreMap): void {
   controls.get(map)?.render();
 }
 
+/** Source timestamp as Eastern clock time, e.g. "10:42 PM ET", so a reader sees when the data was published, not only its age. */
+export function etClock(iso: string): string {
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) return 'no timestamp';
+  return `${new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(t)} ET`;
+}
+
 function age(iso: string | null, staleAfterMin = STALE_MIN): { text: string; stale: boolean } {
   if (!iso) return { text: 'no timestamp', stale: true };
   const min = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 60_000));
@@ -71,7 +78,7 @@ class GaLiveLegend implements IControl {
     el.className = 'maplibregl-ctrl';
     el.open = typeof window !== 'undefined' && window.innerWidth >= 640;
     el.style.cssText =
-      'background:rgba(7,14,28,.92);border:1px solid rgba(56,189,248,.5);border-radius:10px;color:#e2e8f0;font:10px ui-monospace,monospace;max-width:min(270px,70vw);padding:6px 8px;pointer-events:auto';
+      'background:rgba(7,14,28,.92);border:1px solid rgba(56,189,248,.5);border-radius:10px;color:#e2e8f0;font:11px/1.4 ui-monospace,monospace;max-width:min(300px,78vw);padding:6px 8px;pointer-events:auto';
     const summary = document.createElement('summary');
     summary.textContent = 'GEORGIA LIVE PUBLIC FEEDS';
     summary.style.cssText = 'cursor:pointer;font-weight:800;letter-spacing:.06em;color:#38bdf8';
@@ -116,12 +123,12 @@ class GaLiveLegend implements IControl {
       const badge = document.createElement('span');
       badge.textContent = state;
       badge.title = custodyText(this.map, f.id);
-      badge.style.cssText = `flex:none;border:1px solid ${INTEGRITY_COLORS[state]};color:${INTEGRITY_COLORS[state]};border-radius:6px;padding:0 4px;font-size:8px;font-weight:800;letter-spacing:.04em;cursor:help`;
+      badge.style.cssText = `flex:none;border:1px solid ${INTEGRITY_COLORS[state]};color:${INTEGRITY_COLORS[state]};border-radius:6px;padding:0 4px;font-size:9px;font-weight:800;letter-spacing:.04em;cursor:help`;
       head.append(dot, name, badge, n);
       const a = age(f.updatedAt, f.staleAfterMin);
       const sub = document.createElement('div');
       sub.style.cssText = `padding-left:14px;color:${f.error ? '#f87171' : a.stale ? '#fbbf24' : '#94a3b8'}`;
-      sub.textContent = f.error ? `feed error: ${f.error}` : [f.detail, `data ${a.text}`].filter(Boolean).join(' · ');
+      sub.textContent = f.error ? `feed error: ${f.error}` : [f.detail, `data ${a.text}${f.updatedAt ? ` (${etClock(f.updatedAt)})` : ''}`, `stale after ${f.staleAfterMin ?? STALE_MIN} min`].filter(Boolean).join(' · ');
       row.append(head, sub);
       if (f.sha256) {
         const h = document.createElement('div');

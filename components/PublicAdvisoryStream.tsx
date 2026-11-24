@@ -104,6 +104,11 @@ export default function PublicAdvisoryStream() {
             <RefreshCw className={`w-3 h-3 ${isAutoCycling ? "animate-spin" : ""}`} />
             {isAutoCycling ? "LIVE STREAMING" : "STREAM PAUSED"}
           </button>
+          {index?.generatedAt && (
+            <span className="text-[10px] text-[#fbbf24] bg-[#2a1a00] px-2.5 py-0.5 rounded-full border border-[#fbbf24]/60" title="Records are a stored snapshot of the NIST NVD API, not a live stream">
+              SNAPSHOT {new Date(index.generatedAt).toISOString().slice(0, 10)} · NOT LIVE
+            </span>
+          )}
           <span className="text-[10px] text-[#80deea] bg-[#031d38] px-2.5 py-0.5 rounded-full border border-[#00e5ff]/50">
             RECORD # {total ? (cursor + 1).toLocaleString() : "—"} OF {total ? total.toLocaleString() : "…"}
           </span>

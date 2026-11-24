@@ -12,7 +12,7 @@ export async function GET(request: Request) {
     return NextResponse.json(
       { error: "Unauthorized: Invalid or missing CRON_SECRET" },
       {
-        status: 503,
+        status: 401,
         headers: { "Cache-Control": "no-store" }
       }
     );
