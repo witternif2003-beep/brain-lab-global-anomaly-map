@@ -136,11 +136,14 @@ export class SkyPhotoRenderer {
       this.gl = null;
       return;
     }
+    // With 8K chosen, the 2.2 MB 4K map loads first and is replaced by the 11.9 MB 8K one when that arrives, so the sky is not
+    // blank while 8K downloads (a phone-sized load fetched the 8K file 1.7 s in, ahead of the map's own data).
+    const progressive = this.textureWidth === 8192;
     const img = new Image();
     img.decoding = 'async';
     img.onload = () => {
       if (!this.gl) return;
-      const tex = gl.createTexture();
+      const tex = this.baseTexture ?? gl.createTexture();
       this.baseTexture = tex;
       gl.bindTexture(gl.TEXTURE_2D, tex);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, img);
@@ -149,8 +152,9 @@ export class SkyPhotoRenderer {
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
       this.ready = true;
+      if (progressive && img.src.endsWith(urls.url4k)) img.src = urls.url8k;
     };
-    img.src = this.textureWidth === 8192 ? urls.url8k : urls.url4k;
+    img.src = urls.url4k;
   }
 
   private setup(gl: WebGLRenderingContext): boolean {

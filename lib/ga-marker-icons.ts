@@ -100,6 +100,21 @@ function drawGlyph(ctx: CanvasRenderingContext2D, shape: GaIconShape, fill: RGBA
  * Pre-rasterised PNG atlas holding every glyph/colour pair seen so far, so deck.gl never has to decode SVG
  * (which some mobile WebKit builds fail to turn into textures). Rebuilt only when a new pair appears.
  */
+/**
+ * The PNG data URL is only a fallback (ga-deck-overlay uploads `canvas` as one shared texture), so it is encoded on first read.
+ * A phone-sized load profile spent 21.6 s of 90 s main-thread time in toDataURL here, re-encoding the atlas each time a glyph was added.
+ */
+export function lazyUrlAtlas<M>(canvas: HTMLCanvasElement, mapping: M): { readonly url: string; canvas: HTMLCanvasElement; mapping: M } {
+  let url: string | null = null;
+  return {
+    get url() {
+      return (url ??= canvas.toDataURL('image/png'));
+    },
+    canvas,
+    mapping,
+  };
+}
+
 export function gaIconAtlas(entries: Iterable<{ icon?: GaIconShape; fill: RGBA; stroke: RGBA }>): GaIconAtlas | null {
   let added = false;
   for (const { icon, fill, stroke } of entries) {
@@ -125,6 +140,6 @@ export function gaIconAtlas(entries: Iterable<{ icon?: GaIconShape; fill: RGBA; 
     ctx.restore();
     mapping[key] = { x, y, width: CELL, height: CELL, mask: false };
   });
-  atlas = { url: canvas.toDataURL('image/png'), canvas, mapping };
+  atlas = lazyUrlAtlas(canvas, mapping);
   return atlas;
 }

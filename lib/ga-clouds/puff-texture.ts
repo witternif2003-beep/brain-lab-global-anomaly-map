@@ -1,3 +1,4 @@
+import { lazyUrlAtlas } from '../ga-marker-icons';
 /** Soft cumulus sprites for the radar cloud puffs: feathered lobe clusters (alpha only, tinted per puff). */
 export interface PuffAtlas {
   url: string;
@@ -66,6 +67,6 @@ export function puffAtlas(): PuffAtlas {
     }
     ctx.putImageData(img, k * PUFF_SIZE, 0);
   }
-  cached = { url: canvas.toDataURL('image/png'), canvas, mapping };
+  cached = lazyUrlAtlas(canvas, mapping);
   return cached;
 }

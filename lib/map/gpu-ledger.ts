@@ -10,6 +10,8 @@ export const LEDGER_SHARES: Record<LedgerSlice, number> = { telemetry: 3 / 16, m
 
 /** Total use at or above this share of the target turns on the pressure gate (LiDAR stops loading, all shedding on). */
 export const PRESSURE_ON = 0.9;
+/** Share of the target at which the one-way quality latch engages, early enough to act before the pressure gate (a probe reached 608 MB of 512 before the gate fired). */
+export const QUALITY_LATCH_RATIO = 0.7;
 /** The gate and a slice's shedding turn off again only below this share (hysteresis, so detail doesn't flap). */
 export const RESTORE_BELOW = 0.75;
 

@@ -3,7 +3,7 @@ import { gaDeckCanvas, setGaDeckPixelRatio } from '../ga-deck-overlay';
 import { gaTrafficCanvas } from '../traffic-overlay';
 import { reportGaFeed } from '../ga-live-status';
 import { gpuSafeMode } from './crash-guard';
-import { NO_SHED, PRESSURE_ON, ledgerState, nextShed, type LedgerState, type ShedLevels } from './gpu-ledger';
+import { NO_SHED, PRESSURE_ON, QUALITY_LATCH_RATIO, ledgerState, nextShed, type LedgerState, type ShedLevels } from './gpu-ledger';
 import { setTileTexturePool } from './tile-texture-pool';
 import { engageQualityLatch, isTouchDevice, overlayContextAttributes, qualityTouch, safeQualityRequested, TOUCH_MAX_PIXEL_RATIO } from './touch-gpu-budget';
 import { contextDrawingBufferBytes, drawingBufferBytes, LIDAR_BYTES_PER_POINT, vramTargetBytes } from './vram-budget';
@@ -80,7 +80,7 @@ export function startGpuLedger(map: MapLibreMap, mapPixelRatio: () => number): (
     const points = (window as unknown as { __gaLidar?: { pointsDrawn?: number } }).__gaLidar?.pointsDrawn ?? 0;
     const lidar = Math.min(total - telemetry, points * LIDAR_BYTES_PER_POINT);
     const state = ledgerState({ telemetry, lidar, map: total - telemetry - lidar }, target, stats.state?.pressure ?? false);
-    if (state.pressure) engageQualityLatch(`GPU memory ${Math.round(state.totalBytes / MB)} MB of ${Math.round(target / MB)} MB target`);
+    if (state.pressure || state.ratio >= QUALITY_LATCH_RATIO) engageQualityLatch(`GPU memory ${Math.round(state.totalBytes / MB)} MB of ${Math.round(target / MB)} MB target`);
     const shedAllowed = safeQualityRequested();
     const shed = shedAllowed ? nextShed(stats.shed, state) : NO_SHED;
     if (shed.telemetry !== stats.shed.telemetry || (shed.telemetry && state.pressure !== lastPressure)) applyTelemetry(shed.telemetry, state.pressure);

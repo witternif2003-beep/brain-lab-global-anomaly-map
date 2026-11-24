@@ -926,11 +926,16 @@ function createLayers(state: DeckState): Layer[] {
  * view). The atlas canvas is uploaded once per device instead and that texture is shared by all of them.
  */
 const sharedAtlases = new WeakMap<Device, Map<string, { canvas: HTMLCanvasElement; tex: Texture }>>();
+/** Transparent 1×1 PNG used as the atlas until deck.gl's device is ready. */
+export const ATLAS_PENDING_URL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
 const ATLAS_SAMPLER = { minFilter: 'linear', mipmapFilter: 'linear', magFilter: 'linear', addressModeU: 'clamp-to-edge', addressModeV: 'clamp-to-edge' } as const;
 
 /** deck.gl returns a Texture `iconAtlas` as-is and only destroys textures it created, so the shared one outlives each layer. */
 function sharedAtlas(state: DeckState, kind: 'icons' | 'clouds', atlas: { url: string; canvas?: HTMLCanvasElement }): string | Texture {
   const { device } = state;
+  // Nothing draws before deck.gl's device exists, and onDeviceInitialized rebuilds every layer with the shared texture, so
+  // layers built earlier get a 1×1 placeholder instead of forcing a PNG encode of the atlas (15.3 s of a phone-sized load profile).
+  if (!device && atlas.canvas) return ATLAS_PENDING_URL;
   if (!device || !atlas.canvas) return atlas.url;
   let kinds = sharedAtlases.get(device);
   if (!kinds) sharedAtlases.set(device, (kinds = new Map()));

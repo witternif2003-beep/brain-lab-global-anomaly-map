@@ -43,6 +43,11 @@ Done means: each change measured in a phone-sized browser, `npx tsc --noEmit -p 
    settings + shedding on until the tab closes; a crash restart starts latched. `?quality=safe` forces safe, `?quality=max` disables the latch.
    Probe (probe_latch*.mjs, 3 runs): max quality ~238-280 MB textures at load, 287-296 MB at z18; latch engaged in 2 of 3 runs (608-609 MB of 512),
    map canvas then 373x754. Drape factor switch after latch not observed (unverified). 497/497 tests, tsc 0, build 0.
+0g. [x] Slow load + earlier latch. Load probe on prod (load9.log): map 'load' at 145 s in SwiftShader, 485 requests / 32.9 MB, 8K starmap 11.4 MB first.
+   CPU profile (cpu1/cpu2.log): toDataURL 33.7 s of 87 s main thread = marker-icon atlas PNG re-encoded per rebuild via sharedAtlas's no-device fallback.
+   Fixes: lazyUrlAtlas (lib/ga-marker-icons.ts, puff-texture), ATLAS_PENDING_URL before deck device (lib/ga-deck-overlay.ts) -> toDataURL 0.1 s (cpu4.log);
+   sky loads 4K then 8K (lib/sky-photo.ts); latch at QUALITY_LATCH_RATIO 0.7 (lib/map/gpu-ledger.ts): engaged at 361 MB during load, drape factor 1,
+   ledger 268-338 MB of 512 at z18 (1 run). tests/lazy-url-atlas.test.ts. 499/499 tests, tsc 0, build 0.
    Root cause measured in run8.log: 9 layer stacks x 22 terrain tiles = 198 pooled 512² drapes, 0 held by tiles.
 1. Ask user to retest on iPhone (Turner County, 100 m scale, hold 60 s; zoom 1 km -> 500 m) and send a recording.
 2. Terrain drapes: 512x512 render-to-texture tiles hold ~144 MB on phones (lib/map/terrain-rtt.ts, lib/map/horizon-lod.ts). Test touch LOD variants one at a time (parallel probes starve CPU): `node /home/ubuntu/gpuprobe/probe_lod.mjs <url> '[5,3]' B`.
