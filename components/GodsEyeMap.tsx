@@ -23,6 +23,7 @@ import { exportMap32k, pickPngSink, EXPORT_32K_WIDTH } from '../lib/map/export-3
 import { freezeAircraftForExport } from '../lib/ga-live-markers/export-snapshot';
 import { addGaRoadOverlay } from '../lib/ga-roads-overlay';
 import { addLabelInspector } from '../lib/map/label-inspector';
+import { watchNaipHealth } from '../lib/map/naip-health';
 import { addGaRetailParkingLayers } from '../lib/ga-retail-parking-layer';
 import { addGaCompetitorLayers } from '../lib/ga-competitors';
 import { addDisneyLiveBoard } from '../lib/disney-live';
@@ -1610,6 +1611,7 @@ export default function GodsEyeMap({
 
     const stopDrapeGovernor = governDrapeMemory(map);
     map.once('remove', stopDrapeGovernor);
+    map.once('remove', watchNaipHealth(map));
     map.once('remove', applyHorizonLod(map, horizonLod(isTouchDevice(), gpuCrashCount())));
     if (isTouchDevice()) capTileTexturePool(map);
     map.once('remove', startGpuLedger(map, mapPixelRatio));
