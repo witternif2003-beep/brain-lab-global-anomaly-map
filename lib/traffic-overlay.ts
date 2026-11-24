@@ -1,5 +1,6 @@
 import type { Map as MapLibreMap, Popup } from 'maplibre-gl';
 import { reportGaFeed } from './ga-live-status';
+import { cappedPixelRatio, isTouchDevice } from './map/touch-gpu-budget';
 import { MAX_AGENTS_DESKTOP, MAX_AGENTS_TOUCH, MAX_FLOW_EDGES, SLOW_MS, carLabel, carStatus, haversineM, labelCandidates, msToMph, TrafficSim, type CarAgent, type LineFlow, type LngLat } from './traffic-sim';
 import { FLOW_COLORS, FLOW_SOURCE_LAYER, TOMTOM_FLOW_DOCS_URL, flowBand } from './ga-traffic-flow/flow';
 import { GA_TRAFFIC_FLOW_SOURCE } from './ga-traffic-flow-layer';
@@ -13,6 +14,10 @@ const HALF = { length: 2, width: 1, height: 0.75 };
 /** Lifts the car body 5 cm off the road (centre at 0.8 m) so it doesn't z-fight with the flow line. */
 const ROAD_CLEARANCE_M = 0.05;
 const bound = new WeakSet<MapLibreMap>();
+const trafficCanvases = new WeakMap<MapLibreMap, () => HTMLCanvasElement | null>();
+
+/** The simulated-traffic deck.gl canvas (a separate WebGL2 context), so the GPU ledger can count it. */
+export const gaTrafficCanvas = (map: MapLibreMap): HTMLCanvasElement | null => trafficCanvases.get(map)?.() ?? null;
 export const BRIDGE_DECK_SOURCE = 'ga-bridge-decks';
 export const BRIDGE_DECK_LAYER = 'ga-bridge-decks-3d';
 
@@ -129,8 +134,10 @@ export async function addGaTrafficSim(map: MapLibreMap): Promise<void> {
   const cap = window.matchMedia('(pointer: coarse)').matches ? MAX_AGENTS_TOUCH : MAX_AGENTS_DESKTOP;
   const [{ Popup: PopupCtor }, { MapLibreOverlay }, { SimpleMeshLayer }, { TextLayer }, { CubeGeometry }] = await Promise.all([import('maplibre-gl'), import('@deck.gl/maplibre'), import('@deck.gl/mesh-layers'), import('@deck.gl/layers'), import('@luma.gl/engine')]);
   const mesh = new CubeGeometry();
-  const overlay = new MapLibreOverlay({ interleaved: false, layers: [] });
+  const touch = isTouchDevice();
+  const overlay = new MapLibreOverlay({ interleaved: false, layers: [], useDevicePixels: touch ? cappedPixelRatio(window.devicePixelRatio || 1, true) : true });
   map.addControl(overlay);
+  trafficCanvases.set(map, () => overlay.getCanvas());
   let sim = new TrafficSim([], cap);
   let raf = 0;
   let last = performance.now();

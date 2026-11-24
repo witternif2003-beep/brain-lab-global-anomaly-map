@@ -180,14 +180,20 @@ export class SkyPhotoRenderer {
     return true;
   }
 
+  /** Fraction of the caller's canvas size the sky is drawn at (lib/map/touch-gpu-budget.ts skyRenderScale). */
+  renderScale = 1;
+
   get failed(): boolean {
     return !this.gl;
   }
 
-  /** Draws the sky for `basis` at `pixelWidth`×`pixelHeight`; returns false until the star map has loaded. */
-  render(basis: SkyBasis, pixelWidth: number, pixelHeight: number, gain: number, night: boolean): boolean {
+  /** Draws the sky for `basis` at `pixelWidth`×`pixelHeight`; returns false until the star map has loaded.
+   * The WebGL buffer is `renderScale` times that size; callers stretch it back onto their canvas. */
+  render(basis: SkyBasis, canvasWidth: number, canvasHeight: number, gain: number, night: boolean): boolean {
     const gl = this.gl;
     if (!gl || !this.ready) return false;
+    const pixelWidth = Math.max(1, Math.round(canvasWidth * this.renderScale));
+    const pixelHeight = Math.max(1, Math.round(canvasHeight * this.renderScale));
     if (this.canvas.width !== pixelWidth || this.canvas.height !== pixelHeight) {
       this.canvas.width = pixelWidth;
       this.canvas.height = pixelHeight;

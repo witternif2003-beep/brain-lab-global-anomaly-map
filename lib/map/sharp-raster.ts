@@ -8,8 +8,15 @@ type Style = { sources?: Record<string, { type?: string; tileSize?: number; tile
  * tile services draw their 256-px tiles at 128 CSS px (next zoom), and the NAIP exportImage asks for 512×512 pixels.
  * Each source's own `maxzoom` still caps the request, so nothing is upscaled beyond what the service publishes.
  */
-export function sharpenBasemap<T>(style: T, dpr: number, crashes = 0): T {
-  if (typeof style !== 'object' || style === null || dpr < 2 || crashes > 0) return style;
+/**
+ * Touch devices skip the finer level unless `?sharp=on`: measured on a 3x phone viewport at zoom 16.5, the sharpened
+ * satellite and NAIP tiles held ~290 MB of the map's ~380 MB of textures and kept growing while the view was still.
+ */
+export const touchSkipsSharpening = (): boolean =>
+  typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0 && !(typeof location !== 'undefined' && new URLSearchParams(location.search).get('sharp') === 'on');
+
+export function sharpenBasemap<T>(style: T, dpr: number, crashes = 0, touch = touchSkipsSharpening()): T {
+  if (typeof style !== 'object' || style === null || dpr < 2 || crashes > 0 || touch) return style;
   const s = style as unknown as Style;
   if (!s.sources) return style;
   const sources: Style['sources'] = {};

@@ -1,5 +1,6 @@
 import type { Map as MapLibreMap } from 'maplibre-gl';
 import { gaDeckCanvas, setGaDeckPixelRatio } from '../ga-deck-overlay';
+import { gaTrafficCanvas } from '../traffic-overlay';
 import { reportGaFeed } from '../ga-live-status';
 import { gpuSafeMode } from './crash-guard';
 import { NO_SHED, PRESSURE_ON, ledgerState, nextShed, type LedgerState, type ShedLevels } from './gpu-ledger';
@@ -61,8 +62,10 @@ export function startGpuLedger(map: MapLibreMap, mapPixelRatio: () => number): (
     const target = vramTargetBytes(touch, gpuSafeMode());
     const mapCanvas = map.getCanvas();
     const deck = gaDeckCanvas(map);
-    const total = vramSnapshot().bytes + drawingBufferBytes(mapCanvas.width, mapCanvas.height, touch ? 1 : 4) + (deck ? drawingBufferBytes(deck.width, deck.height, 1) : 0);
-    const telemetry = deck ? canvasBytes(deck) + drawingBufferBytes(deck.width, deck.height, 1) : 0;
+    const traffic = gaTrafficCanvas(map);
+    const trafficBuffer = traffic ? drawingBufferBytes(traffic.width, traffic.height, 1) : 0;
+    const total = vramSnapshot().bytes + drawingBufferBytes(mapCanvas.width, mapCanvas.height, touch ? 1 : 4) + (deck ? drawingBufferBytes(deck.width, deck.height, 1) : 0) + trafficBuffer;
+    const telemetry = (deck ? canvasBytes(deck) + drawingBufferBytes(deck.width, deck.height, 1) : 0) + (traffic ? canvasBytes(traffic) + trafficBuffer : 0);
     const points = (window as unknown as { __gaLidar?: { pointsDrawn?: number } }).__gaLidar?.pointsDrawn ?? 0;
     const lidar = Math.min(total - telemetry, points * LIDAR_BYTES_PER_POINT);
     const state = ledgerState({ telemetry, lidar, map: total - telemetry - lidar }, target, stats.state?.pressure ?? false);

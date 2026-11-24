@@ -59,6 +59,7 @@ import { GA_1M_TERRAIN_ATTRIBUTION, GA_1M_TERRAIN_MAXZOOM, OPENFREEMAP_PLANET, g
 import { CreditsControl } from '../lib/map/credits-control';
 import { gpuCrashCount, noteContextLost } from '../lib/map/crash-guard';
 import { markerPixelRatio } from '../lib/map/touch-gpu-budget';
+import { skyRenderScale } from '../lib/map/touch-gpu-budget';
 import { sharpenBasemap } from '../lib/map/sharp-raster';
 import { installVramMeter } from '../lib/map/vram-meter';
 import { governDrapeMemory } from '../lib/map/terrain-rtt';
@@ -624,7 +625,9 @@ export default function GodsEyeMap({
       });
       const dpr = canvas.width / Math.max(1, width);
       ctx.setTransform(1, 0, 0, 1, 0, 0);
+      sky.renderScale = skyRenderScale(dpr, isTouchDevice());
       if (sky.render(basis, canvas.width, canvas.height, 1 + 1.4 * starFinderMilkyWayBrightness, starFinderNightMode)) {
+        ctx.setTransform(1 / sky.renderScale, 0, 0, 1 / sky.renderScale, 0, 0);
         ctx.drawImage(sky.canvas, 0, 0);
       } else {
         ctx.fillStyle = '#020612';

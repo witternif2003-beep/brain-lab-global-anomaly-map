@@ -27,5 +27,6 @@ test("2×/3× screens fetch one zoom finer for imagery sources only, keeping max
 test("1× screens, a recent GPU crash, and style URLs are left unchanged", () => {
   assert.equal(sharpenBasemap(style, 1), style);
   assert.equal(sharpenBasemap(style, 3, 1), style);
+  assert.equal(sharpenBasemap(style, 3, 0, true), style);
   assert.equal(sharpenBasemap("https://demotiles.maplibre.org/style.json", 3), "https://demotiles.maplibre.org/style.json");
 });

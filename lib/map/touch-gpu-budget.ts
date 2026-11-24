@@ -25,6 +25,16 @@ export function markerPixelRatio(devicePixelRatio: number, touch: boolean, crash
   return Math.min(crashes > 0 ? TOUCH_MAX_PIXEL_RATIO : TOUCH_FULL_PIXEL_RATIO, dpr);
 }
 
+/**
+ * Scale for the offscreen WebGL sky photo relative to the sky canvas. Touch devices render it at no more than the 2× cap
+ * and stretch it onto the full-density canvas (the catalogue stars stay full density), so the preserveDrawingBuffer sky
+ * context holds 4/9 of the pixels on a 3× iPhone.
+ */
+export function skyRenderScale(canvasDpr: number, touch: boolean): number {
+  const dpr = Number.isFinite(canvasDpr) && canvasDpr > 0 ? canvasDpr : 1;
+  return touch ? Math.min(1, TOUCH_MAX_PIXEL_RATIO / dpr) : 1;
+}
+
 /** Hard ceiling on LiDAR points drawn at once on touch devices. */
 export const LIDAR_POINT_CEILING = 20_000_000;
 /** Desktop ceiling; the GPU-memory target usually stops loading first. */

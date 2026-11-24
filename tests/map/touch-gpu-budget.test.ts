@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cappedPixelRatio, LIDAR_CRASH_FLOOR, LIDAR_DESKTOP_POINT_CEILING, LIDAR_POINT_CEILING, lidarBudget, TOUCH_MAX_PIXEL_RATIO } from "../../lib/map/touch-gpu-budget";
+import { cappedPixelRatio, LIDAR_CRASH_FLOOR, LIDAR_DESKTOP_POINT_CEILING, LIDAR_POINT_CEILING, lidarBudget, skyRenderScale, TOUCH_MAX_PIXEL_RATIO } from "../../lib/map/touch-gpu-budget";
 
 test("touch devices cap the drawing-buffer pixel ratio; desktop keeps the device ratio", () => {
   assert.equal(cappedPixelRatio(3, true), TOUCH_MAX_PIXEL_RATIO);
@@ -50,4 +50,12 @@ test("marker canvas uses the full 3× ratio on touch devices until a recent GPU 
   assert.equal(markerPixelRatio(2, true), 2);
   assert.equal(markerPixelRatio(4, false), 4);
   assert.equal(markerPixelRatio(0, true), 1);
+});
+
+test("touch devices render the sky photo at no more than the 2x cap; desktop keeps full density", () => {
+  assert.equal(skyRenderScale(3, true), 2 / 3);
+  assert.equal(skyRenderScale(2, true), 1);
+  assert.equal(skyRenderScale(1, true), 1);
+  assert.equal(skyRenderScale(3, false), 1);
+  assert.equal(skyRenderScale(Number.NaN, true), 1);
 });
