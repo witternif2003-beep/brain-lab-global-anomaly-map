@@ -22,6 +22,7 @@ Done means: each change measured in a phone-sized browser, `npx tsc --noEmit -p 
 ## Next (execute in order)
 0. [x] Touch: free idle terrain drapes every 5 s at rest (lib/map/terrain-rtt.ts freeIdleDrapes; tests/map/terrain-rtt.test.ts). 489/489 tests, tsc 0, build 0.
    Probe run9.log (1 run, z16.5 hold): textures 238.7 MB at +120 s vs 412.8 MB in run7; flat from +75 s; 1448 drapes freed; no page errors.
+   Deployed (CLI, commit 561c502): prod chunk 3ubylmephgjci.js contains freeIdleDrapes; /godseye-telemetry 200, /api/health 200.
    Root cause measured in run8.log: 9 layer stacks x 22 terrain tiles = 198 pooled 512² drapes, 0 held by tiles.
 1. Ask user to retest on iPhone (Turner County, 100 m scale, hold 60 s; zoom 1 km -> 500 m) and send a recording.
 2. Terrain drapes: 512x512 render-to-texture tiles hold ~144 MB on phones (lib/map/terrain-rtt.ts, lib/map/horizon-lod.ts). Test touch LOD variants one at a time (parallel probes starve CPU): `node /home/ubuntu/gpuprobe/probe_lod.mjs <url> '[5,3]' B`.
