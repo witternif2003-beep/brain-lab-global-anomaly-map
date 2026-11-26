@@ -32,7 +32,7 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
   return 12_742 * Math.asin(Math.sqrt(a));
 }
 
-interface StationBase { id: string; lat: number; lng: number; baseM: number; observed: string | null }
+export interface StationBase { id: string; lat: number; lng: number; baseM: number; observed: string | null }
 
 /** Lowest reported cloud base at each METAR station (ceilometer, feet above ground → metres). */
 export function stationBases(metars: Metar[]): StationBase[] {
@@ -45,7 +45,7 @@ export function stationBases(metars: Metar[]): StationBase[] {
   return out;
 }
 
-function nearestBase(stations: StationBase[], lat: number, lng: number): StationBase | null {
+export function nearestBase(stations: StationBase[], lat: number, lng: number): StationBase | null {
   let best: StationBase | null = null;
   let bestKm = BASE_SEARCH_KM;
   for (const s of stations) {

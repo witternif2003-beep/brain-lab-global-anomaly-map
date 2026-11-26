@@ -138,6 +138,9 @@ interface DeckState {
   clouds: CloudPuff[];
   /** NOAA MRMS rain/snow/hail cells, drawn above the Census density dots so the dots do not hide them. */
   precip: GaDeckPrecipCell[];
+  /** Falling-drop streaks (xyz pairs) and the per-frame updater the pulse loop calls. */
+  rain: { n: number; src: Float32Array; dst: Float32Array; color: [number, number, number, number] } | null;
+  rainTick: ((now: number) => boolean) | null;
   /** GOES satellite cloud image on the GOES cloud-top-height mesh. */
   cloudSheet: GaCloudSheet | null;
   /** Census 2020 populated blocks, drawn under every marker group while the density toggle is on. */
@@ -249,6 +252,8 @@ function getState(map: MapLibreMap): DeckState {
     groundVersion: 0,
     clouds: [],
     precip: [],
+    rain: null,
+    rainTick: null,
     cloudSheet: null,
     density: null,
     densityView: null,
@@ -749,6 +754,18 @@ function createLayers(state: DeckState): Layer[] {
       parameters: DEPTH_PARAMETERS,
     }));
   }
+  if (state.rain && state.rain.n) {
+    const r = state.rain;
+    layers.push(new LineLayer({
+      id: 'ga-deck-rain',
+      data: { length: r.n, attributes: { getSourcePosition: { value: r.src, size: 3 }, getTargetPosition: { value: r.dst, size: 3 } } },
+      getColor: r.color,
+      getWidth: 1.2,
+      widthUnits: 'pixels',
+      pickable: false,
+      parameters: { depthWriteEnabled: false },
+    }));
+  }
   if (state.precip.length) {
     layers.push(new SolidPolygonLayer<GaDeckPrecipCell>({
       id: 'ga-deck-precip',
@@ -984,7 +1001,8 @@ function startPulse(map: MapLibreMap, state: DeckState): void {
     state.pulseRadiusScale = 1.9;
     state.pulseOpacity = on ? 0.95 : 0;
     state.lightBar = crimeStrobePhase(now);
-    if ([...state.groups.values()].some((group) => group.items.some((item) => item.pulse))) {
+    const rainMoved = state.rainTick?.(now) ?? false;
+    if (rainMoved || [...state.groups.values()].some((group) => group.items.some((item) => item.pulse))) {
       updateLayers(state);
     }
     publishState(map, state);
@@ -1320,6 +1338,14 @@ export function setGaDeckDensityPaused(map: MapLibreMap, paused: boolean): void 
 
 /** Replaces the radar cloud puffs (drawn under every marker group). */
 export interface GaDeckPrecipCell { polygon: [number, number][]; color: [number, number, number, number] }
+
+export function setGaDeckRain(map: MapLibreMap, rain: DeckState['rain'], tick: DeckState['rainTick']): void {
+  const state = getState(map);
+  state.rain = rain;
+  state.rainTick = tick;
+  if (state.overlay) updateLayers(state);
+  if (!state.initPromise) state.initPromise = initialize(map, state);
+}
 
 export function setGaDeckPrecip(map: MapLibreMap, cells: GaDeckPrecipCell[]): void {
   const state = getState(map);

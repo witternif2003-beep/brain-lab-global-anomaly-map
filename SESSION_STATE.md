@@ -71,6 +71,13 @@ Done means: each change measured in a phone-sized browser, `npx tsc --noEmit -p 
    Sources verified via Crossref: Marshall & Palmer 1948 J. Meteor. 5:165-166; Gunn & Kinzer 1949 J. Meteor. 6:243-248; Atlas, Srivastava & Sekhon
    1973 Rev. Geophys. 11:1-35; Locatelli & Hobbs 1974 JGR 79:2185-2197. MRMS BrightBandTop/BottomHeight (m AGL, 2-min) and Model_0degC_Height
    (m MSL, 60-min) exist but are 10-16 MB per file (not used).
+   PROGRESS (uncommitted in working tree): lib/ga-precip/droplets.ts + tests/ga-droplets.test.ts (3 pass); route adds baseM/baseStation per feature
+   (local: 89 METAR stations, 5856/5856 features got a station base); overlay LineLayer 'ga-deck-rain' + rainTick in pulse loop; fill opacity 0
+   unless ?rainbase=on; ?rain=off disables drops. tsc 0, npm test 508/508, build 0. Probe: __gaRain drawn 8192 (latch on) in 2 runs, no page errors.
+   FAILED TWICE: screenshots (Playwright screenshot timed out 30 s and 150 s while drops animate); rain_view.mjs (iPhone UA + inject.js) saw
+   window.__map never set in 300 s (2 runs). Diagnostic next: same script with ?rain=off (/home/ubuntu/gpuprobe/rain_view.mjs). If off loads and
+   on does not, drops starve load on SwiftShader -> defer seeding until map 'idle' after load and cap at 8,192 before latch.
+   RESULT: ?rain=off ALSO never set window.__map in 300 s -> probe-harness problem, not the drops (unresolved). Visual check UNVERIFIED.
    Root cause measured in run8.log: 9 layer stacks x 22 terrain tiles = 198 pooled 512² drapes, 0 held by tiles.
 1. Ask user to retest on iPhone (Turner County, 100 m scale, hold 60 s; zoom 1 km -> 500 m) and send a recording.
 2. Terrain drapes: 512x512 render-to-texture tiles hold ~144 MB on phones (lib/map/terrain-rtt.ts, lib/map/horizon-lod.ts). Test touch LOD variants one at a time (parallel probes starve CPU): `node /home/ubuntu/gpuprobe/probe_lod.mjs <url> '[5,3]' B`.

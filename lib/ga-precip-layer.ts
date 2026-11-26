@@ -1,6 +1,7 @@
 import { Popup } from 'maplibre-gl';
 import type { GeoJSONSource, MapLayerMouseEvent, Map as MapLibreMap } from 'maplibre-gl';
-import { hitsGaDeck, setGaDeckPrecip } from './ga-deck-overlay';
+import { hitsGaDeck, setGaDeckPrecip, setGaDeckRain } from './ga-deck-overlay';
+import { DEFAULT_BASE_M, dropletPositions, seedDroplets, type Droplets, type RainCell } from './ga-precip/droplets';
 import { reportGaFeed } from './ga-live-status';
 import { qualityTouch } from './map/touch-gpu-budget';
 import { precipColor, type PrecipPhase, type PrecipSummary } from './ga-precip/precip-cells';
@@ -56,6 +57,53 @@ function popup(map: MapLibreMap, e: MapLayerMouseEvent) {
   new Popup({ maxWidth: '290px' }).setLngLat(e.lngLat).setDOMContent(el).addTo(map);
 }
 
+const rainBase = () => typeof location !== 'undefined' && new URLSearchParams(location.search).get('rainbase') === 'on';
+/** Drawn drops in view: 32,768, or 8,192 with the phone-safe settings. */
+const dropBudget = () => (qualityTouch() ? 8_192 : 32_768);
+const STREAK_PX = 14;
+const cells = new WeakMap<MapLibreMap, RainCell[]>();
+const drops = new WeakMap<MapLibreMap, Droplets>();
+
+function toCells(fc: GeoJSON.FeatureCollection): RainCell[] {
+  return fc.features.flatMap((f) => {
+    if (f.geometry.type !== 'Polygon') return [];
+    const r = f.geometry.coordinates[0];
+    const p = f.properties ?? {};
+    return [{ west: r[0][0], north: r[0][1], east: r[1][0], south: r[2][1], rateMmH: Number(p.rateMmH) || 0, phase: (p.phase as RainCell['phase']) ?? 'rain', baseM: Number(p.baseM) || DEFAULT_BASE_M }];
+  });
+}
+
+function reseed(map: MapLibreMap) {
+  if (new URLSearchParams(location.search).get('rain') === 'off') return;
+  const list = cells.get(map) ?? [];
+  const b = map.getBounds();
+  const cache = new Map<string, number>();
+  const groundAt = (lng: number, lat: number) => {
+    const k = `${lng.toFixed(3)},${lat.toFixed(3)}`;
+    let g = cache.get(k);
+    if (g === undefined) cache.set(k, (g = map.queryTerrainElevation([lng, lat]) ?? 0));
+    return g;
+  };
+  const d = seedDroplets(list, { west: b.getWest(), south: b.getSouth(), east: b.getEast(), north: b.getNorth() }, dropBudget(), groundAt);
+  drops.set(map, d);
+  const src = new Float32Array(d.n * 3), dst = new Float32Array(d.n * 3);
+  const rain = { n: d.n, src, dst, color: [190, 215, 255, 190] as [number, number, number, number] };
+  const tick = () => {
+    const c = map.getCenter();
+    const mpp = (40_075_016 * Math.cos((c.lat * Math.PI) / 180)) / (512 * 2 ** map.getZoom());
+    dropletPositions(d, performance.now() / 1000, STREAK_PX * mpp, map.getTerrain()?.exaggeration ?? 1, src, dst);
+    rain.src = src; rain.dst = dst;
+    return d.n > 0;
+  };
+  tick();
+  setGaDeckRain(map, rain, tick);
+  if (typeof window !== 'undefined') window.__gaRain = { drawn: d.n, realPerDrawn: Math.round(d.realPerDrawn), cells: list.length };
+}
+
+declare global {
+  interface Window { __gaRain?: { drawn: number; realPerDrawn: number; cells: number } }
+}
+
 /** Adds the rain/snow/hail layer (visible by default) and keeps it refreshed (idempotent). */
 export function addGaPrecipLayer(map: MapLibreMap): void {
   if (!map.getSource(PRECIP_SOURCE)) map.addSource(PRECIP_SOURCE, { type: 'geojson', data: EMPTY, attribution: 'Rain/snow: NOAA MRMS' });
@@ -72,7 +120,8 @@ export function addGaPrecipLayer(map: MapLibreMap): void {
           'hail', ['interpolate', ['linear'], ['get', 'rateMmH'], 0.1, '#f9a8d4', 16, '#ec4899', 50, '#be185d'],
           ['interpolate', ['linear'], ['get', 'rateMmH'], 0.1, '#7dd3fc', 2.5, '#22c55e', 7.6, '#eab308', 16, '#f97316', 50, '#dc2626'],
         ],
-        'fill-opacity': ['interpolate', ['linear'], ['get', 'rateMmH'], 0.1, 0.28, 7.6, 0.5, 50, 0.7],
+        // The user asked for rain in the sky, not on the ground: the fill stays as an invisible tap target unless ?rainbase=on.
+        'fill-opacity': rainBase() ? ['interpolate', ['linear'], ['get', 'rateMmH'], 0.1, 0.28, 7.6, 0.5, 50, 0.7] : 0,
         'fill-antialias': false,
       },
     });
@@ -80,6 +129,7 @@ export function addGaPrecipLayer(map: MapLibreMap): void {
   if (bound.has(map)) return;
   bound.add(map);
   map.on('click', PRECIP_LAYER, (e) => popup(map, e));
+  map.on('moveend', () => reseed(map));
 
   const refresh = async () => {
     try {
@@ -88,7 +138,9 @@ export function addGaPrecipLayer(map: MapLibreMap): void {
       if (!r.ok || !d.geojson) throw new Error(d.error ?? `HTTP ${r.status}`);
       state.set(map, { observedAt: d.observedAt ?? null, qpeAt: d.qpeAt ?? null, cellDeg: d.cellDeg ?? 0 });
       (map.getSource(PRECIP_SOURCE) as GeoJSONSource | undefined)?.setData(d.geojson);
-      setGaDeckPrecip(map, d.geojson.features.flatMap((f) => (f.geometry.type === 'Polygon'
+      cells.set(map, toCells(d.geojson));
+      reseed(map);
+      if (rainBase()) setGaDeckPrecip(map, d.geojson.features.flatMap((f) => (f.geometry.type === 'Polygon'
         ? [{ polygon: f.geometry.coordinates[0] as [number, number][], color: precipColor(String(f.properties?.phase) as PrecipPhase, Number(f.properties?.rateMmH)) }]
         : [])));
       const s = d.summary;
