@@ -104,9 +104,9 @@ function radarPopup(map: MapLibreMap, e: MapLayerMouseEvent) {
   rowsPopup(map, e, [
     ['Radar', 'NOAA MRMS multi-radar mosaic (observed)'],
     ['Scanned', t ? new Date(t).toLocaleString() : ''],
-    ['Echo top', `${Number(p.topM).toLocaleString()} m above sea level (highest 18 dBZ return)`],
+    ['Echo top', `${Number(p.echoTopM ?? p.topM).toLocaleString()} m above sea level (highest 18 dBZ return)${Number(p.topM) > Number(p.echoTopM ?? p.topM) ? `; drawn to ${Number(p.topM).toLocaleString()} m so the cloud sits above its measured base` : ''}`],
     ['Reflectivity', `${RADAR_BAND_TEXT[String(p.band)] ?? ''}, peak ${p.dbz} dBZ`],
-    ['Cloud base', p.baseStation ? `${Number(p.baseM).toLocaleString()} m, lowest base reported at ${p.baseStation}` : 'no METAR base within 100 km; drawn from the ground'],
+    ['Cloud base', p.baseStation ? `${Number(p.baseM).toLocaleString()} m, lowest base reported at ${p.baseStation}` : `${Number(p.baseM).toLocaleString()} m above ground, assumed: no METAR base within 100 km`],
     ['Note', 'Radar sees rain, snow and hail in the cloud, not thin cloud without precipitation'],
   ], RADAR_DOCS, 'NOAA MRMS ↗');
 }

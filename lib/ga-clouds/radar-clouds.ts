@@ -45,6 +45,9 @@ export function stationBases(metars: Metar[]): StationBase[] {
   return out;
 }
 
+/** Cloud base used where no METAR station is within range (assumed, not measured). */
+export const ASSUMED_BASE_M = 1500;
+
 export function nearestBase(stations: StationBase[], lat: number, lng: number): StationBase | null {
   let best: StationBase | null = null;
   let bestKm = BASE_SEARCH_KM;
@@ -102,14 +105,15 @@ export function radarCloudBlocks(top: MrmsGrid, dbz: MrmsGrid, metars: Metar[], 
     const lat = (north + south) / 2;
     const lng = (west + east) / 2;
     const st = nearestBase(stations, lat, lng);
-    const topM = r.q * opts.topStepM;
-    const baseM = st ? Math.min(st.baseM, topM - opts.topStepM) : 0;
+    // Base is the measured METAR ceiling (never lowered to fit a shallow echo); with no station it is an assumed 1,500 m, never the ground.
+    const baseM = st ? st.baseM : ASSUMED_BASE_M;
+    const topM = Math.max(r.q * opts.topStepM, baseM + opts.topStepM);
     const rd = (v: number) => Math.round(v * 1e4) / 1e4;
     features.push({
       type: 'Feature',
       geometry: { type: 'Polygon', coordinates: [[[rd(west), rd(north)], [rd(east), rd(north)], [rd(east), rd(south)], [rd(west), rd(south)], [rd(west), rd(north)]]] },
       properties: {
-        band: RADAR_BANDS[r.b][0], topM, baseM: Math.max(0, baseM), dbz: Math.round(r.zMax), baseStation: st?.id ?? null, baseObserved: st?.observed ?? null,
+        band: RADAR_BANDS[r.b][0], topM, baseM, echoTopM: r.q * opts.topStepM, dbz: Math.round(r.zMax), baseStation: st?.id ?? null, baseObserved: st?.observed ?? null,
         night: Math.round(nightFactor(sunAltitudeDeg(sun, lng, lat)) * 10) / 10,
       },
     });

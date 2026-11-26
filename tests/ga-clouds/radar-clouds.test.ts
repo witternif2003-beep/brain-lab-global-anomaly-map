@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { deflateSync } from "node:zlib";
 import { decodePng16, readMrmsGrib2, type MrmsGrid } from "../../lib/ga-clouds/mrms";
-import { radarCloudBlocks } from "../../lib/ga-clouds/radar-clouds";
+import { ASSUMED_BASE_M, radarCloudBlocks } from "../../lib/ga-clouds/radar-clouds";
 
 function png16(w: number, h: number, px: number[]): Buffer {
   const rows: number[] = [];
@@ -84,7 +84,7 @@ test("radarCloudBlocks follows the echo cell by cell, not a circle", () => {
   for (const f of fc.features) {
     assert.equal(f.geometry.coordinates[0].length, 5);
     assert.equal(f.properties?.topM, 5000);
-    assert.equal(f.properties?.baseM, 0);
+    assert.equal(f.properties?.baseM, ASSUMED_BASE_M);
     assert.equal(f.properties?.band, "light");
   }
   const area = fc.features.reduce((s, f) => {
@@ -105,4 +105,13 @@ test("radarCloudBlocks splits by echo-top step and reflectivity band and uses ME
 test("radarCloudBlocks drops cells without an echo top and rejects mismatched grids", () => {
   assert.equal(radarCloudBlocks(grid(2, 1, [0, -1]), grid(2, 1, [10, 40]), [], { factor: 1, topStepM: 250, now: new Date() }).features.length, 0);
   assert.throws(() => radarCloudBlocks(grid(2, 1, [1, 1]), grid(1, 1, [20]), [], { factor: 1, topStepM: 250, now: new Date() }));
+});
+
+test("radarCloudBlocks never puts a cloud base on the ground: shallow echo with no METAR keeps the assumed base", () => {
+  const top = grid(1, 1, [0.5]);
+  const dbz = grid(1, 1, [25]);
+  const [f] = radarCloudBlocks(top, dbz, [], { factor: 1, topStepM: 250, now: new Date("2026-10-17T18:00:00Z") }).features;
+  assert.equal(f.properties?.baseM, ASSUMED_BASE_M);
+  assert.equal(f.properties?.echoTopM, 500);
+  assert.ok(Number(f.properties?.topM) > ASSUMED_BASE_M);
 });

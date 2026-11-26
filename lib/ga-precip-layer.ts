@@ -93,7 +93,14 @@ function reseed(map: MapLibreMap) {
     if (g === undefined) cache.set(k, (g = map.queryTerrainElevation([lng, lat]) ?? 0));
     return g;
   };
-  const d = seedDroplets(list, { west: b.getWest(), south: b.getSouth(), east: b.getEast(), north: b.getNorth() }, dropBudget(), groundAt);
+  // A tilted view reaches the horizon; spread over all of it the drops near the camera vanish, so seed around the map centre only
+  // (half-width = 2 screen widths, at least 600 m), clipped to what is on screen.
+  const c = map.getCenter();
+  const mpp = (40_075_016 * Math.cos((c.lat * Math.PI) / 180)) / (512 * 2 ** map.getZoom());
+  const halfM = Math.max(600, 2 * map.getCanvas().clientWidth * mpp);
+  const dLat = halfM / 111_320, dLng = halfM / (111_320 * Math.cos((c.lat * Math.PI) / 180));
+  const view = { west: Math.max(b.getWest(), c.lng - dLng), south: Math.max(b.getSouth(), c.lat - dLat), east: Math.min(b.getEast(), c.lng + dLng), north: Math.min(b.getNorth(), c.lat + dLat) };
+  const d = seedDroplets(list, view, dropBudget(), groundAt);
   drops.set(map, d);
   const src = new Float32Array(d.n * 3), dst = new Float32Array(d.n * 3);
   const colors = new Uint8Array(d.n * 4);
@@ -109,11 +116,11 @@ function reseed(map: MapLibreMap) {
   };
   tick();
   setGaDeckRain(map, rain, tick);
-  if (typeof window !== 'undefined') window.__gaRain = { drawn: d.n, realPerDrawn: Math.round(d.realPerDrawn), cells: list.length };
+  if (typeof window !== 'undefined') window.__gaRain = { drawn: d.n, realPerDrawn: Math.round(d.realPerDrawn), cells: list.length, halfKm: Math.round(halfM / 100) / 10 };
 }
 
 declare global {
-  interface Window { __gaRain?: { drawn: number; realPerDrawn: number; cells: number } }
+  interface Window { __gaRain?: { drawn: number; realPerDrawn: number; cells: number; halfKm: number } }
 }
 
 /** Adds the rain/snow/hail layer (visible by default) and keeps it refreshed (idempotent). */
