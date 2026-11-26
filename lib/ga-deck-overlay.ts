@@ -17,6 +17,10 @@ import { puffAtlas } from './ga-clouds/puff-texture';
 import { cloudTopMesh, type CloudTopGrid, type CloudTopMesh } from './ga-goes-clouds/cloud-tops';
 import { crimeStrobePhase } from './ga-live-markers/strobe';
 import { staticRender } from './static-render';
+import { teardropMesh, type TeardropMesh } from './ga-precip/teardrop-mesh';
+
+let teardrop: TeardropMesh | null = null;
+const rainTeardrop = (): TeardropMesh => (teardrop ??= teardropMesh());
 
 export type RGBA = [number, number, number, number];
 export interface GaDeckItem {
@@ -139,7 +143,7 @@ interface DeckState {
   /** NOAA MRMS rain/snow/hail cells, drawn above the Census density dots so the dots do not hide them. */
   precip: GaDeckPrecipCell[];
   /** Falling-drop streaks (xyz pairs) and the per-frame updater the pulse loop calls. */
-  rain: { n: number; src: Float32Array; dst: Float32Array; colors: Uint8Array } | null;
+  rain: { n: number; src: Float32Array; dst: Float32Array; colors: Uint8Array; scale: number; meshScales: Float32Array; headRadii: Float32Array } | null;
   rainTick: ((now: number) => boolean) | null;
   /** GOES satellite cloud image on the GOES cloud-top-height mesh. */
   cloudSheet: GaCloudSheet | null;
@@ -948,11 +952,20 @@ function createLayers(state: DeckState): Layer[] {
       pickable: false,
       parameters: { depthCompare: 'always', depthWriteEnabled: false },
     }));
-    // A vertical streak seen from above has no length, so each drop also gets a dot at its head.
+    // Rain drops are 3D teardrops (artistic shape); snow and hail keep a round dot (per-instance size 0 hides the other).
+    layers.push(new SimpleMeshLayer({
+      id: 'ga-deck-rain-drops',
+      data: { length: r.n, attributes: { getPosition: { value: r.dst, size: 3 }, getColor: { value: r.colors, size: 4 }, getScale: { value: r.meshScales, size: 3 } } },
+      mesh: rainTeardrop(),
+      getOrientation: [0, 0, 0],
+      sizeScale: r.scale,
+      material: { ambient: 0.45, diffuse: 0.55, shininess: 96, specularColor: [255, 255, 255] },
+      pickable: false,
+      parameters: { depthCompare: 'always', depthWriteEnabled: false, cullMode: 'back' },
+    }));
     layers.push(new ScatterplotLayer({
       id: 'ga-deck-rain-heads',
-      data: { length: r.n, attributes: { getPosition: { value: r.dst, size: 3 }, getFillColor: { value: r.colors, size: 4 } } },
-      getRadius: 1.6,
+      data: { length: r.n, attributes: { getPosition: { value: r.dst, size: 3 }, getFillColor: { value: r.colors, size: 4 }, getRadius: { value: r.headRadii, size: 1 } } },
       radiusUnits: 'pixels',
       stroked: false,
       pickable: false,

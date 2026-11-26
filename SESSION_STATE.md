@@ -93,6 +93,11 @@ Done means: each change measured in a phone-sized browser, `npx tsc --noEmit -p 
    KEZM OVC004 DZ (91-122 m). tsc 0, 509/509 tests, build 0, push 0, npx vercel deploy --prod 0; live page/health/ga-precip/ga-radar-clouds 200,
    radar features 30373, zero-base 0, 70 tops raised above base. Local probe at z18.5 pitch 75 over heaviest cell: 32,768 drawn within 600 m,
    errors []. NOTE: `vercel` is not on PATH; use `npx --yes vercel deploy --prod --yes`.
+0m. [x] DONE (user 22:55 "rain must be tear drop shape 3d"; answer: "3d teardrop never flat proof grade from photo"): rain drops are a
+   deck SimpleMeshLayer of a procedural 3D teardrop (lib/ga-precip/teardrop-mesh.ts: tip up, round bottom, 140 tris, outward winding,
+   back-face culled), 4 px tall at z<=8 to 10 px at z>=15; snow/hail keep 1.6 px dots (per-instance getScale/getRadius); `?drop=dot`
+   restores dots. Popup note says teardrop is artistic (NASA GPM: real drops are hamburger-bun shaped). tsc 0, 512/512 tests, build 0.
+   Local probe (rain cell -81.55,30.35, z18.5 pitch 75): 32,768 drawn, errors [], screenshot ~/gpuprobe/precip-tear-pitch.png shows teardrops.
 1. Ask user to retest on iPhone (Turner County, 100 m scale, hold 60 s; zoom 1 km -> 500 m) and send a recording.
 2. Terrain drapes: 512x512 render-to-texture tiles hold ~144 MB on phones (lib/map/terrain-rtt.ts, lib/map/horizon-lod.ts). Test touch LOD variants one at a time (parallel probes starve CPU): `node /home/ubuntu/gpuprobe/probe_lod.mjs <url> '[5,3]' B`.
 3. Clouds: audit existing cloud layer against NOAA GOES cloud-top height (location, size, height, update interval); grade sources.

@@ -1,5 +1,6 @@
 import { Popup } from 'maplibre-gl';
 import type { GeoJSONSource, MapLayerMouseEvent, Map as MapLibreMap } from 'maplibre-gl';
+import { teardropPx } from './ga-precip/teardrop-mesh';
 import { hitsGaDeck, setGaDeckPrecip, setGaDeckRain } from './ga-deck-overlay';
 import { DEFAULT_BASE_M, dropletPositions, seedDroplets, type Droplets, type RainCell } from './ga-precip/droplets';
 import { reportGaFeed } from './ga-live-status';
@@ -36,7 +37,7 @@ function popup(map: MapLibreMap, e: MapLayerMouseEvent) {
     ['Last hour', `${qpe} mm (${mm2in(qpe)} in), radar-only estimate`],
     ['Grid', `${cell}° cells (~${km(cell)} km); native MRMS grid 0.01° (~1.1 km); ${p.cells} native cells here`],
     ['Observed', s?.observedAt ? new Date(s.observedAt).toLocaleString() : ''],
-    ['Note', 'Radar estimate near the ground, not a gauge reading; rain/snow/hail type is MRMS’s automated classification'],
+    ['Note', 'Radar estimate near the ground, not a gauge reading; rain/snow/hail type is MRMS’s automated classification; falling drops are drawn as 3D teardrops, an artistic shape (real raindrops are round or flat-bottomed)'],
   ];
   const el = document.createElement('div');
   el.style.cssText = 'font:11px ui-monospace,monospace;color:#0f172a;line-height:1.45;max-width:270px';
@@ -61,6 +62,7 @@ const rainBase = () => typeof location !== 'undefined' && new URLSearchParams(lo
 /** Drawn drops in view: 32,768 on every device (≈0.8 MB of vertex data), per the user's 32K requirement. */
 const dropBudget = () => 32_768;
 const STREAK_PX = 14;
+const dropDots = () => typeof location !== 'undefined' && new URLSearchParams(location.search).get('drop') === 'dot';
 const cells = new WeakMap<MapLibreMap, RainCell[]>();
 const drops = new WeakMap<MapLibreMap, Droplets>();
 
@@ -104,12 +106,20 @@ function reseed(map: MapLibreMap) {
   drops.set(map, d);
   const src = new Float32Array(d.n * 3), dst = new Float32Array(d.n * 3);
   const colors = new Uint8Array(d.n * 4);
-  const rain = { n: d.n, src, dst, colors };
+  const meshScales = new Float32Array(d.n * 3), headRadii = new Float32Array(d.n);
+  const dots = dropDots();
+  for (let i = 0; i < d.n; i++) {
+    const tear = !dots && !d.snow[i];
+    meshScales.fill(tear ? 1 : 0, i * 3, i * 3 + 3);
+    headRadii[i] = tear ? 0 : 1.6;
+  }
+  const rain = { n: d.n, src, dst, colors, scale: 1, meshScales, headRadii };
   const tick = () => {
     const c = map.getCenter();
     const mpp = (40_075_016 * Math.cos((c.lat * Math.PI) / 180)) / (512 * 2 ** map.getZoom());
     const t = performance.now() / 1000;
     dropletPositions(d, t, STREAK_PX * mpp, map.getTerrain()?.exaggeration ?? 1, src, dst);
+    rain.scale = teardropPx(map.getZoom()) * mpp;
     sparkle(d, t, colors);
     rain.src = src; rain.dst = dst;
     return d.n > 0;
