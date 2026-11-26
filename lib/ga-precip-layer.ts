@@ -104,7 +104,7 @@ function reseed(map: MapLibreMap) {
   for (let i = 0; i < d.n; i++) {
     const tear = !dots && !d.snow[i];
     meshScales.fill(tear ? 1 : 0, i * 3, i * 3 + 3);
-    headRadii[i] = tear ? 0 : 1.6;
+    headRadii[i] = tear ? 0 : 0.8;
   }
   const rain = { n: d.n, src, dst, colors, scale: 1, meshScales, headRadii };
   const tick = () => {

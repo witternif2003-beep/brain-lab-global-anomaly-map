@@ -39,8 +39,8 @@ test("teardrop mesh: triangles wind outward so back-face culling keeps the visib
   for (let i = 0; i < nr.length; i += 3) assert.ok(Math.abs(Math.hypot(nr[i], nr[i + 1], nr[i + 2]) - 1) < 1e-5);
 });
 
-test("teardrop on-screen size grows from 4 px at state zoom to 10 px at street zoom", () => {
-  assert.equal(teardropPx(6), 4);
-  assert.equal(teardropPx(15), 10);
-  assert.equal(teardropPx(20), 10);
+test("teardrop on-screen size grows from 2 px at state zoom to 5 px at street zoom", () => {
+  assert.equal(teardropPx(6), 2);
+  assert.equal(teardropPx(15), 5);
+  assert.equal(teardropPx(20), 5);
 });

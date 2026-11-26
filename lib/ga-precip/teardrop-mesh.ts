@@ -8,8 +8,8 @@ export interface TeardropMesh {
   indices: { value: Uint32Array; size: 1 };
 }
 
-/** On-screen teardrop height: 4 px at state zoom (so 32,768 don't blanket the map), 10 px from street zoom (z15). */
-export const teardropPx = (zoom: number): number => 4 + 6 * Math.min(1, Math.max(0, (zoom - 8) / 7));
+/** On-screen teardrop height: 2 px at state zoom up to 5 px from street zoom (z15); halved from 4–10 px at the user's request. */
+export const teardropPx = (zoom: number): number => 2 + 3 * Math.min(1, Math.max(0, (zoom - 8) / 7));
 
 export const TEARDROP_HALF_WIDTH = 0.45;
 
