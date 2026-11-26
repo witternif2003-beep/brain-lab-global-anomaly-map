@@ -1,0 +1,30 @@
+# Self-hosted renderer: the real Next.js server plus a kiosk Chrome on Xvfb, viewable over VNC.
+# Production on Vercel does not use this file. See docker-compose.renderer.yml.
+FROM node:24-bookworm-slim AS deps
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --no-audit --no-fund && npm cache clean --force
+
+FROM node:24-bookworm-slim AS build
+WORKDIR /app
+ENV NEXT_TELEMETRY_DISABLED=1
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+RUN npx next build && rm -rf .next/cache
+
+FROM node:24-bookworm-slim AS run
+ENV DEBIAN_FRONTEND=noninteractive NODE_ENV=production NEXT_TELEMETRY_DISABLED=1
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates curl xvfb x11vnc fluxbox x11-utils x11-apps fonts-liberation \
+ && curl -fsSLo /tmp/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb \
+ && apt-get install -y --no-install-recommends /tmp/chrome.deb \
+ && rm -rf /tmp/chrome.deb /var/lib/apt/lists/*
+RUN groupadd -r -g 10001 app && useradd -r -m -u 10001 -g app app
+WORKDIR /app
+COPY --from=build --chown=app:app /app ./
+COPY --chmod=0755 deploy/renderer/launch.sh /usr/local/bin/launch-renderer
+USER 10001:10001
+ENV HOME=/home/app
+EXPOSE 3000 5900
+HEALTHCHECK --interval=30s --timeout=5s --start-period=120s CMD node -e "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"
+CMD ["/usr/local/bin/launch-renderer"]

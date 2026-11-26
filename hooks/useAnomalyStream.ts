@@ -14,13 +14,31 @@ export interface AnomalyFeature {
   };
 }
 
+/**
+ * Only GeoJSON Point Features are written to the map source. /api/telemetry/stream sends `{ timestamp, tick, samples }` frames,
+ * which, written as "features", replaced the source's records with invalid ones every 2.5 s.
+ */
+export function isAnomalyFeature(v: unknown): v is AnomalyFeature {
+  const f = v as AnomalyFeature | null;
+  const c = f?.geometry?.coordinates;
+  return !!f && f.type === 'Feature' && f.geometry?.type === 'Point' && Array.isArray(c) && c.length >= 2 && Number.isFinite(c[0]) && Number.isFinite(c[1]);
+}
+
 export function useAnomalyStream(
   sourceId: string,
   map: any | null, // maplibregl.Map
-  onAnomalyReceived?: (anomaly: AnomalyFeature) => void
+  onAnomalyReceived?: (anomaly: AnomalyFeature) => void,
+  /** While true, buffered features are held back (e.g. so a tiled export sees a stable source). */
+  paused?: () => boolean,
 ) {
   const retryCountRef = useRef(0);
   const esRef = useRef<EventSource | null>(null);
+  // Callers pass inline callbacks; keeping them in refs stops each re-render from closing and reopening the EventSource
+  // (a phone-sized probe saw 31 aborted /api/telemetry/stream connections in 3 minutes).
+  const onAnomalyRef = useRef(onAnomalyReceived);
+  const pausedRef = useRef(paused);
+  onAnomalyRef.current = onAnomalyReceived;
+  pausedRef.current = paused;
 
   useEffect(() => {
     if (!map) return;
@@ -31,6 +49,10 @@ export function useAnomalyStream(
 
     // Flush the buffer to the MapLibre source once per animation frame (60fps ceiling)
     const flush = () => {
+      if (pausedRef.current?.()) {
+        rafHandle = requestAnimationFrame(flush);
+        return;
+      }
       try {
         const src = map.getSource(sourceId) as any;
         if (src && buffer.length > 0 && typeof src.setData === 'function') {
@@ -57,10 +79,11 @@ export function useAnomalyStream(
       esRef.current.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          const anomaly = data as AnomalyFeature;
+          if (!isAnomalyFeature(data)) return;
+          const anomaly = data;
 
           buffer.push(anomaly);
-          if (onAnomalyReceived) onAnomalyReceived(anomaly);
+          onAnomalyRef.current?.(anomaly);
 
           // Coalesce updates: only schedule one flush per animation frame
           if (rafHandle === null) {
@@ -94,5 +117,5 @@ export function useAnomalyStream(
       if (esRef.current) esRef.current.close();
       if (rafHandle !== null) cancelAnimationFrame(rafHandle);
     };
-  }, [map, sourceId, onAnomalyReceived]);
+  }, [map, sourceId]);
 }

@@ -6,6 +6,8 @@ export interface IntelLayerConfig {
   entityCount: string;
   updateCadence: string;
   provider: string;
+  /** Feeds this map actually ingests for the layer (ids reported to the live legend); absent = catalogue reference only. */
+  mapFeedIds?: string[];
   georgiaRelevance: string;
   active: boolean;
   color: string;
@@ -14,6 +16,7 @@ export interface IntelLayerConfig {
 export const GODSEYE_INTEL_LAYERS: IntelLayerConfig[] = [
   {
     id: "layer-adsb",
+    mapFeedIds: ["aircraft"],
     name: "ADS-B Live Aviation Tracking (10,000+ Aircraft)",
     category: "Aviation",
     icon: "Plane",
@@ -26,6 +29,7 @@ export const GODSEYE_INTEL_LAYERS: IntelLayerConfig[] = [
   },
   {
     id: "layer-ais",
+    mapFeedIds: ["vessels"],
     name: "AIS Maritime Commercial Fleet Tracking",
     category: "Maritime",
     icon: "Anchor",
@@ -38,6 +42,7 @@ export const GODSEYE_INTEL_LAYERS: IntelLayerConfig[] = [
   },
   {
     id: "layer-satellites",
+    mapFeedIds: ["satellites"],
     name: "CelesTrak Orbital Satellite Tracking (2,000+ Objects)",
     category: "Orbital",
     icon: "Satellite",
@@ -50,6 +55,7 @@ export const GODSEYE_INTEL_LAYERS: IntelLayerConfig[] = [
   },
   {
     id: "layer-cctv",
+    mapFeedIds: ["gdotcams", "webcams"],
     name: "Worldwide Public DOT & Port Traffic CCTV",
     category: "Surveillance",
     icon: "Camera",
@@ -62,6 +68,7 @@ export const GODSEYE_INTEL_LAYERS: IntelLayerConfig[] = [
   },
   {
     id: "layer-firms",
+    mapFeedIds: ["fires"],
     name: "NASA FIRMS Satellite Thermal Hotspots & Wildfires",
     category: "Thermal/Physical",
     icon: "Flame",
@@ -74,6 +81,7 @@ export const GODSEYE_INTEL_LAYERS: IntelLayerConfig[] = [
   },
   {
     id: "layer-seismic",
+    mapFeedIds: ["quakes"],
     name: "USGS Global Real-Time Seismic Activity",
     category: "Seismic/Geophysical",
     icon: "Activity",
@@ -118,7 +126,7 @@ export const GODSEYE_INTEL_LAYERS: IntelLayerConfig[] = [
     provider: "GPSJam.org & ADS-B Signal Integrity Vectors",
     georgiaRelevance: "Signals warfare monitoring across military air corridors including Moody AFB, Robins AFB, and Kings Bay Submarine Base.",
     active: true,
-    color: "#fb923c"
+    color: "#ff4fd8"
   },
   {
     id: "layer-osint",
@@ -142,7 +150,7 @@ export const GODSEYE_INTEL_LAYERS: IntelLayerConfig[] = [
     provider: "NOAA Space Weather Prediction Center (SWPC)",
     georgiaRelevance: "Ionospheric disturbance impacts on high-frequency emergency communications and electrical transmission grid harmonics.",
     active: true,
-    color: "#f59e0b"
+    color: "#ff2ec4"
   },
   {
     id: "layer-conflicts",
@@ -202,7 +210,7 @@ export const GODSEYE_INTEL_LAYERS: IntelLayerConfig[] = [
     provider: "UN / EC Global Disaster Alert and Coordination System",
     georgiaRelevance: "Monitors East Coast tropical cyclones, storm surge vectors, and regional FEMA Region IV emergency declarations.",
     active: true,
-    color: "#f59e0b"
+    color: "#ff2ec4"
   },
   {
     id: "layer-ocean-buoys",
@@ -238,7 +246,7 @@ export const GODSEYE_INTEL_LAYERS: IntelLayerConfig[] = [
     provider: "US Department of Energy ODIN & WRI Energy Database",
     georgiaRelevance: "Monitors Plant Vogtle Units 1-4 nuclear baseload, Southern Company distribution nodes, and statewide county-by-county power outages.",
     active: true,
-    color: "#fbbf24"
+    color: "#ff4fd8"
   },
   {
     id: "layer-volcanoes",
@@ -268,6 +276,9 @@ export interface LiveTelemetryEntity {
   anomalyFlag?: string;
   source: string;
 }
+
+/** Shown with every SAMPLE_LIVE_ENTITIES marker: these are hand-placed examples, not tracked objects. */
+export const SAMPLE_ENTITY_NOTICE = 'SAMPLE ENTITY: illustrative placement, not live tracking';
 
 export const SAMPLE_LIVE_ENTITIES: LiveTelemetryEntity[] = [
   {

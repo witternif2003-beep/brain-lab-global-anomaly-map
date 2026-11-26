@@ -10,7 +10,6 @@ export async function GET() {
   const sampleTensor = computeTensorNorm(0.98, 0.95, 0.02, 0.01);
 
   return NextResponse.json({
-    classification: 'TOP SECRET//SI//NOFORN//ORCON//HCS-PII//LIMDIS//OMEGA BLACK//ABSOLUTE//INFINITE',
     eyesOnly: 'LUCID-1 / NSA ORACLE-SYNAPSE AIP-20',
     hardeningStatus: 'ACTIVE_ANTI_HALLUCINATION_4D_TRACE',
     protocol: ORACLE_SYNAPSE_SUPER_TIER,

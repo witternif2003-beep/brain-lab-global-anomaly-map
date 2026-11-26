@@ -1,0 +1,90 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { engageQualityLatch, qualityCrashes, qualityLatchEngaged, qualityTouch, resetQualityLatch, safeQualityRequested, cappedPixelRatio, LIDAR_CRASH_FLOOR, LIDAR_DESKTOP_POINT_CEILING, LIDAR_POINT_CEILING, lidarBudget, overlayContextAttributes, skyRenderScale, TOUCH_MAX_PIXEL_RATIO } from "../../lib/map/touch-gpu-budget";
+
+test("touch devices cap the drawing-buffer pixel ratio; desktop keeps the device ratio", () => {
+  assert.equal(cappedPixelRatio(3, true), TOUCH_MAX_PIXEL_RATIO);
+  assert.equal(cappedPixelRatio(1.5, true), 1.5);
+  assert.equal(cappedPixelRatio(3, false), 3);
+  assert.equal(cappedPixelRatio(0, true), 1);
+});
+
+test("touch LiDAR budget downloads and caches less than desktop", () => {
+  const t = lidarBudget(true);
+  const d = lidarBudget(false);
+  assert.ok(t.fetchParallel < d.fetchParallel && t.imageryTiles < d.imageryTiles);
+});
+
+test("with no recent crash touch devices draw up to 20,000,000 LiDAR points and desktops up to 40,000,000", () => {
+  assert.equal(LIDAR_POINT_CEILING, 20_000_000);
+  assert.equal(LIDAR_DESKTOP_POINT_CEILING, 80_000_000);
+  for (const [touch, ceiling] of [[true, LIDAR_POINT_CEILING], [false, LIDAR_DESKTOP_POINT_CEILING]] as const) {
+    assert.equal(lidarBudget(touch).points, ceiling);
+    assert.equal(lidarBudget(touch, 0).points, ceiling);
+    assert.equal(lidarBudget(touch, false).points, ceiling);
+  }
+});
+
+test("each recent crash halves the LiDAR point ceiling down to the 1,000,000 floor", () => {
+  assert.equal(lidarBudget(true, 1).points, 10_000_000);
+  assert.equal(lidarBudget(true, true).points, 10_000_000);
+  assert.equal(lidarBudget(true, 2).points, 5_000_000);
+  assert.equal(lidarBudget(true, 3).points, 2_500_000);
+  assert.equal(lidarBudget(true, 4).points, 1_250_000);
+  assert.equal(lidarBudget(true, 5).points, LIDAR_CRASH_FLOOR);
+  assert.equal(lidarBudget(false, 20).points, LIDAR_CRASH_FLOOR);
+  assert.equal(lidarBudget(true, -1).points, LIDAR_POINT_CEILING);
+});
+
+test("lidarBudget halves downloads and imagery cache in crash safe mode", () => {
+  const t = lidarBudget(true, true);
+  assert.ok(t.fetchParallel >= 1 && t.fetchParallel < lidarBudget(true).fetchParallel);
+  assert.equal(t.imageryTiles, lidarBudget(true).imageryTiles / 2);
+});
+
+test("marker canvas uses the full 3× ratio on touch devices until a recent GPU crash", async () => {
+  const { markerPixelRatio, TOUCH_FULL_PIXEL_RATIO } = await import("../../lib/map/touch-gpu-budget");
+  assert.equal(markerPixelRatio(3, true), TOUCH_FULL_PIXEL_RATIO);
+  assert.equal(markerPixelRatio(3, true, 1), TOUCH_MAX_PIXEL_RATIO);
+  assert.equal(markerPixelRatio(4, true), 3);
+  assert.equal(markerPixelRatio(2, true), 2);
+  assert.equal(markerPixelRatio(4, false), 4);
+  assert.equal(markerPixelRatio(0, true), 1);
+});
+
+test("touch devices render the sky photo at no more than the 2x cap; desktop keeps full density", () => {
+  assert.equal(skyRenderScale(3, true), 2 / 3);
+  assert.equal(skyRenderScale(2, true), 1);
+  assert.equal(skyRenderScale(1, true), 1);
+  assert.equal(skyRenderScale(3, false), 1);
+  assert.equal(skyRenderScale(Number.NaN, true), 1);
+});
+
+test("touch overlay canvases drop the preserved and multisampled buffers; desktop and ?overlaybuf=default keep luma.gl's defaults", () => {
+  assert.deepEqual(overlayContextAttributes(true), { preserveDrawingBuffer: false, antialias: true });
+  assert.deepEqual(overlayContextAttributes(true, "?quality=safe"), { preserveDrawingBuffer: false, antialias: false });
+  assert.deepEqual(overlayContextAttributes(true, "?deck=x"), { preserveDrawingBuffer: false, antialias: true });
+  assert.equal(overlayContextAttributes(false), null);
+  assert.equal(overlayContextAttributes(true, "?overlaybuf=default"), null);
+});
+
+test("maximum quality by default: ?quality=safe is the only switch back to reduced phone settings and crash step-downs", () => {
+  assert.equal(safeQualityRequested(""), false);
+  assert.equal(safeQualityRequested("?quality=safe"), true);
+  assert.equal(safeQualityRequested("?quality=max"), false);
+  assert.equal(qualityTouch(), false);
+  assert.equal(qualityCrashes(3), 0);
+});
+
+test("memory latch: one-way switch to the reduced settings; ?quality=max refuses and overrides it", () => {
+  resetQualityLatch();
+  assert.equal(engageQualityLatch("test", "?quality=max"), false);
+  assert.equal(qualityLatchEngaged(), false);
+  assert.equal(engageQualityLatch("test"), true);
+  assert.equal(engageQualityLatch("again"), false);
+  assert.equal(safeQualityRequested(""), true);
+  assert.equal(qualityCrashes(2), 2);
+  assert.equal(safeQualityRequested("?quality=max"), false);
+  resetQualityLatch();
+  assert.equal(safeQualityRequested(""), false);
+});

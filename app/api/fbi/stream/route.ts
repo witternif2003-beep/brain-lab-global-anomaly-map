@@ -11,7 +11,7 @@ async function fetchWithBackoff(url: string, retries = 4): Promise<Response> {
   let delay = 1000;
   for (let i = 0; i <= retries; i++) {
     try {
-      const res = await fetch(url, { headers: { 'User-Agent': 'BrainLab-DigitalTwin/1.0' } });
+      const res = await fetch(url, { signal: AbortSignal.timeout(15_000), headers: { 'User-Agent': 'BrainLab-DigitalTwin/1.0' } });
       if (res.ok || res.status === 404) return res;
       if (res.status === 429) {
         throw new Error('FBI CDE rate limit reached (1,000 req/hr allocation)');

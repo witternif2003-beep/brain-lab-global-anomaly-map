@@ -21,12 +21,12 @@ export async function GET(request: Request) {
       fbiUrl.searchParams.set('field_offices', fieldOffice);
     }
 
-    const res = await fetch(fbiUrl.toString(), {
+    const res = await fetch(fbiUrl.toString(), { signal: AbortSignal.timeout(15_000),
       headers: {
         'Accept': 'application/json',
         'User-Agent': 'BrainLab-Research-Platform/1.0',
       },
-      next: { revalidate: 3600 },
+      next: { revalidate: 600 },
     });
 
     if (!res.ok) {
@@ -45,7 +45,7 @@ export async function GET(request: Request) {
       fetchedAt: new Date().toISOString(),
     });
 
-    response.headers.set('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400');
+    response.headers.set('Cache-Control', 'public, s-maxage=600, stale-while-revalidate=600');
     return response;
   } catch (err: any) {
     return NextResponse.json(

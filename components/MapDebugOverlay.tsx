@@ -2,6 +2,19 @@
 
 import React, { useEffect, useState } from 'react';
 
+// Probe once: every getContext() on a new canvas creates a WebGL context, and browsers drop the
+// oldest live context (the map's or deck.gl's) once about 16 exist.
+let webgl2Support: boolean | undefined;
+const hasWebgl2 = () => (webgl2Support ??= typeof document === 'undefined' || !!document.createElement('canvas').getContext('webgl2'));
+/** Same probe, but releases its WebGL context afterwards so it does not hold one of the browser's ~16 context slots. */
+const hasWebgl2Released = () => {
+  if (webgl2Support !== undefined || typeof document === 'undefined') return hasWebgl2();
+  const gl = document.createElement('canvas').getContext('webgl2');
+  webgl2Support = !!gl;
+  gl?.getExtension('WEBGL_lose_context')?.loseContext();
+  return webgl2Support;
+};
+
 export default function MapDebugOverlay({ mapRef, embedded = false }: { mapRef: React.MutableRefObject<any>; embedded?: boolean }) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'TELEMETRY' | 'HONESTY' | 'SYS'>('TELEMETRY');
@@ -27,7 +40,7 @@ export default function MapDebugOverlay({ mapRef, embedded = false }: { mapRef: 
         const m = mapRef?.current;
         if (!m) return;
 
-        const webgl2 = typeof document !== 'undefined' ? !!document.createElement('canvas').getContext('webgl2') : true;
+        const webgl2 = hasWebgl2Released();
         const canvas = m.getCanvas?.() as HTMLCanvasElement | undefined;
         const rect = canvas?.getBoundingClientRect?.();
         const zoom = typeof m.getZoom === 'function' ? m.getZoom() : 6.0;

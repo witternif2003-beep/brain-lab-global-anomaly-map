@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { CheckCircle2, Radio, ShieldCheck } from "lucide-react";
 
 // 4-D methodology trace phases rendered from the console's own verified state.
@@ -27,36 +27,16 @@ const TRACE_PHASES = [
   }
 ];
 
-interface HealthScale {
-  recommendationsScale?: string;
-  telemetryUpdatePlan?: string;
-  directivesAvailable?: number;
-  vectorsCovered?: number;
-  honestyProtocol?: string;
-}
+/** Theme figures from the user's brief; not measured values. */
+const SCALE = {
+  recommendationsScale: "+10,000% P1 Tier-1 Scaled Directives",
+  telemetryUpdatePlan: "+7,000 P1 Tier-1 State-of-the-Art Telemetry Streams",
+  directivesAvailable: 3800000,
+  vectorsCovered: 32,
+};
 
 export default function LucidMethodologyTrace() {
-  // Live P1 scale figures, read verbatim from the app's own /api/health endpoint.
-  const [scale, setScale] = useState<HealthScale | null>(null);
-
-  useEffect(() => {
-    let alive = true;
-    const load = async () => {
-      try {
-        const res = await fetch("/api/health", { cache: "no-store" });
-        const json = (await res.json()) as HealthScale;
-        if (alive) setScale(json);
-      } catch {
-        /* keep last good state on transient failure */
-      }
-    };
-    load();
-    const timer = setInterval(load, 30000);
-    return () => {
-      alive = false;
-      clearInterval(timer);
-    };
-  }, []);
+  const scale = SCALE;
 
   return (
     <div className="rounded-2xl bg-[#020b18]/95 border-2 border-[#00ff88]/40 p-4 sm:p-5 space-y-4 shadow-xl font-mono">
@@ -94,24 +74,23 @@ export default function LucidMethodologyTrace() {
         ))}
       </div>
 
-      {/* Live P1 Tier-1 scale strip — verbatim from /api/health */}
+      {/* P1 Tier-1 scale strip — fictional theme figures */}
       <div className="rounded-xl bg-[#031528]/80 border border-[#00e5ff]/35 p-3 space-y-2">
         <div className="flex items-center gap-2 text-[#00e5ff] font-bold text-[11px] sm:text-xs">
-          <Radio className="w-4 h-4 animate-pulse shrink-0" />
-          <span>P1 TIER-1 SCALE — LIVE FROM /api/health</span>
+          <Radio className="w-4 h-4 shrink-0" />
+          <span>P1 TIER-1 SCALE — THEME FIGURES, NOT MEASURED</span>
         </div>
-        {scale ? (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
             <div className="rounded-lg bg-[#020b18]/85 border border-slate-700/60 px-3 py-2">
               <div className="text-[9px] text-slate-400 font-bold tracking-widest">DIRECTIVES</div>
               <div className="text-sm sm:text-base text-white font-black tabular-nums">
-                {(scale.directivesAvailable ?? 0).toLocaleString()}
+                {scale.directivesAvailable.toLocaleString()}
               </div>
             </div>
             <div className="rounded-lg bg-[#020b18]/85 border border-slate-700/60 px-3 py-2">
               <div className="text-[9px] text-slate-400 font-bold tracking-widest">VECTORS</div>
               <div className="text-sm sm:text-base text-white font-black tabular-nums">
-                {scale.vectorsCovered ?? "—"}
+                {scale.vectorsCovered}
               </div>
             </div>
             <div className="rounded-lg bg-[#020b18]/85 border border-slate-700/60 px-3 py-2 col-span-2 lg:col-span-1">
@@ -119,21 +98,16 @@ export default function LucidMethodologyTrace() {
                 RECOMMENDATIONS
               </div>
               <div className="text-[11px] sm:text-xs text-[#69f0ae] font-bold leading-snug break-words">
-                {scale.recommendationsScale ?? "—"}
+                {scale.recommendationsScale}
               </div>
             </div>
             <div className="rounded-lg bg-[#020b18]/85 border border-slate-700/60 px-3 py-2 col-span-2 lg:col-span-1">
               <div className="text-[9px] text-slate-400 font-bold tracking-widest">TELEMETRY</div>
               <div className="text-[11px] sm:text-xs text-[#80deea] font-bold leading-snug break-words">
-                {scale.telemetryUpdatePlan ?? "—"}
+                {scale.telemetryUpdatePlan}
               </div>
             </div>
           </div>
-        ) : (
-          <p className="text-[11px] text-slate-400 font-bold animate-pulse">
-            Reading live scale figures…
-          </p>
-        )}
       </div>
     </div>
   );

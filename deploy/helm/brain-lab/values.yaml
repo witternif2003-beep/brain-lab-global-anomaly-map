@@ -1,0 +1,23 @@
+image:
+  repository: ghcr.io/witternif2003-beep/brain-lab
+  tag: latest
+  pullPolicy: IfNotPresent
+replicas: 2
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  cpuUtilization: 70
+resources:
+  requests: { cpu: 250m, memory: 512Mi }
+  limits: { cpu: "1", memory: 1Gi }
+service:
+  port: 80
+env: {}
+collector:
+  enabled: true
+  image: otel/opentelemetry-collector-contrib:0.115.1
+  # Extra exporter for a real trace backend, e.g. { otlphttp: { endpoint: https://otlp.example } }.
+  exporters: {}
+  resources:
+    limits: { memory: 384Mi }
