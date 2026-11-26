@@ -1,6 +1,7 @@
 import { Popup } from 'maplibre-gl';
 import type { GeoJSONSource, MapLayerMouseEvent, Map as MapLibreMap } from 'maplibre-gl';
 import { teardropPx } from './ga-precip/teardrop-mesh';
+import { sparkle } from './ga-precip/drop-colors';
 import { hitsGaDeck, setGaDeckPrecip, setGaDeckRain } from './ga-deck-overlay';
 import { DEFAULT_BASE_M, dropletPositions, seedDroplets, type Droplets, type RainCell } from './ga-precip/droplets';
 import { reportGaFeed } from './ga-live-status';
@@ -75,14 +76,6 @@ function toCells(fc: GeoJSON.FeatureCollection): RainCell[] {
   });
 }
 
-/** Sun-shower glint: each drop flashes white at its own rate (visual effect only, not measured). */
-function sparkle(d: Droplets, t: number, out: Uint8Array) {
-  for (let i = 0; i < d.n; i++) {
-    const g = Math.max(0, Math.sin(t * (2 + d.speed[i]) + d.phase[i] * 6.283)) ** 12;
-    const j = i * 4;
-    out[j] = 185 + 70 * g; out[j + 1] = 215 + 40 * g; out[j + 2] = 255; out[j + 3] = 200 + 55 * g;
-  }
-}
 
 function reseed(map: MapLibreMap) {
   if (new URLSearchParams(location.search).get('rain') === 'off') return;

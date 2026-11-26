@@ -98,6 +98,10 @@ Done means: each change measured in a phone-sized browser, `npx tsc --noEmit -p 
    back-face culled), 4 px tall at z<=8 to 10 px at z>=15; snow/hail keep 1.6 px dots (per-instance getScale/getRadius); `?drop=dot`
    restores dots. Popup note says teardrop is artistic (NASA GPM: real drops are hamburger-bun shaped). tsc 0, 512/512 tests, build 0.
    Local probe (rain cell -81.55,30.35, z18.5 pitch 75): 32,768 drawn, errors [], screenshot ~/gpuprobe/precip-tear-pitch.png shows teardrops.
+0n. [x] DONE (user 23:11 "the drops must be the color of water"): drop colour moved to lib/ga-precip/drop-colors.ts (WATER_RGBA 60,150,215,175
+   translucent blue from the user's photo, glint toward 235,248,255; snow stays white). 0m teardrop commit 70eb783 deployed (npx vercel exit 0,
+   page/health/ga-precip 200). This step: tsc 0, 513/513 tests, build 0; probe at -81.52,30.41 z18.5 pitch 75: 32,768 drawn, errors [],
+   ~/gpuprobe/precip-water-pitch.png.
 1. Ask user to retest on iPhone (Turner County, 100 m scale, hold 60 s; zoom 1 km -> 500 m) and send a recording.
 2. Terrain drapes: 512x512 render-to-texture tiles hold ~144 MB on phones (lib/map/terrain-rtt.ts, lib/map/horizon-lod.ts). Test touch LOD variants one at a time (parallel probes starve CPU): `node /home/ubuntu/gpuprobe/probe_lod.mjs <url> '[5,3]' B`.
 3. Clouds: audit existing cloud layer against NOAA GOES cloud-top height (location, size, height, update interval); grade sources.
