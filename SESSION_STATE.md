@@ -86,6 +86,13 @@ Done means: each change measured in a phone-sized browser, `npx tsc --noEmit -p 
    0 page errors; z6.6 screenshot shows white drops over the map. Probe-harness failure earlier = stale `next start` serving an old .next after rebuild
    (fix: `fuser -k 3217/tcp` before restarting; never `pkill -f` a pattern that appears in your own shell command).
    Root cause measured in run8.log: 9 layer stacks x 22 terrain tiles = 198 pooled 512² drapes, 0 held by tiles.
+0l. [x] DONE (user 22:44 "rain is not visible and cloud touches ground"; 22:51 "leave cloud layer alone if that is the correct location"):
+   commit d028f4e. Drops seeded within max(600 m, 2 screen widths) of view centre (lib/ga-precip-layer.ts); radar clouds keep the
+   measured METAR base, never lowered to fit a shallow echo, assumed 1,500 m with no station (lib/ga-clouds/radar-clouds.ts, ASSUMED_BASE_M);
+   popup shows echo top vs drawn top. Cloud LOCATIONS untouched per user. Evidence the low cloud is real: METAR KVDI/KAZE OVC003 BR,
+   KEZM OVC004 DZ (91-122 m). tsc 0, 509/509 tests, build 0, push 0, npx vercel deploy --prod 0; live page/health/ga-precip/ga-radar-clouds 200,
+   radar features 30373, zero-base 0, 70 tops raised above base. Local probe at z18.5 pitch 75 over heaviest cell: 32,768 drawn within 600 m,
+   errors []. NOTE: `vercel` is not on PATH; use `npx --yes vercel deploy --prod --yes`.
 1. Ask user to retest on iPhone (Turner County, 100 m scale, hold 60 s; zoom 1 km -> 500 m) and send a recording.
 2. Terrain drapes: 512x512 render-to-texture tiles hold ~144 MB on phones (lib/map/terrain-rtt.ts, lib/map/horizon-lod.ts). Test touch LOD variants one at a time (parallel probes starve CPU): `node /home/ubuntu/gpuprobe/probe_lod.mjs <url> '[5,3]' B`.
 3. Clouds: audit existing cloud layer against NOAA GOES cloud-top height (location, size, height, update interval); grade sources.
