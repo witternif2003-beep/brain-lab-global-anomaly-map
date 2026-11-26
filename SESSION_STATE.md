@@ -59,7 +59,7 @@ Done means: each change measured in a phone-sized browser, `npx tsc --noEmit -p 
    'precip', stale after 10 min), deck SolidPolygonLayer 'ga-deck-precip' above the cyan Census dots (which hid MapLibre layers). tests/ga-precip.test.ts.
    Local 2026-11-25 23:18Z: 140,024 wet cells (all rain), peak 49.6 mm/h, peak 1-h 23.9 mm, 6,897 features at 0.02° (1.79 MB), screenshot precip-deck2.png.
    505/505 tests, tsc 0, build 0.
-0j. [ ] IN PROGRESS: falling-droplet rain (user 2026-11-25 20:55: remove flat rain from base layer, droplets in the sky at source location/altitude,
+0j. [x] DONE (commit 3f9c716, deployed 2026-11-26): falling-droplet rain (user 2026-11-25 20:55: remove flat rain from base layer, droplets in the sky at source location/altitude,
    real time; 20:57 "resume deploy to vercel and GitHub"). Plan: lib/ga-precip-layer.ts keeps fill at opacity 0 (tap target) and stops pushing
    'ga-deck-precip' (keep behind ?rainbase=on); new deck LineLayer 'ga-deck-rain' in lib/ga-deck-overlay.ts fed by setGaDeckRain(map, droplets),
    animated from the existing startPulse loop (add `|| state.rain` condition). Droplets: budget 32,768 (8,192 when qualityTouch()), seeded on
@@ -78,6 +78,9 @@ Done means: each change measured in a phone-sized browser, `npx tsc --noEmit -p 
    window.__map never set in 300 s (2 runs). Diagnostic next: same script with ?rain=off (/home/ubuntu/gpuprobe/rain_view.mjs). If off loads and
    on does not, drops starve load on SwiftShader -> defer seeding until map 'idle' after load and cap at 8,192 before latch.
    RESULT: ?rain=off ALSO never set window.__map in 300 s -> probe-harness problem, not the drops (unresolved). Visual check UNVERIFIED.
+   DEPLOY: vercel deploy --prod exit 0; live /godseye-telemetry 200, /api/health 200, /api/ga-precip returns baseRule + metarStations 89
+   (2026-11-26T02:36Z, 131,786 rain cells). Client chunk hashes differ from local build (remote build), so the drops on screen are UNVERIFIED.
+   NEXT for this item: user iPhone check; if drops are invisible or slow, fix probe harness (map 'load' never fires in rain_view.mjs).
    Root cause measured in run8.log: 9 layer stacks x 22 terrain tiles = 198 pooled 512² drapes, 0 held by tiles.
 1. Ask user to retest on iPhone (Turner County, 100 m scale, hold 60 s; zoom 1 km -> 500 m) and send a recording.
 2. Terrain drapes: 512x512 render-to-texture tiles hold ~144 MB on phones (lib/map/terrain-rtt.ts, lib/map/horizon-lod.ts). Test touch LOD variants one at a time (parallel probes starve CPU): `node /home/ubuntu/gpuprobe/probe_lod.mjs <url> '[5,3]' B`.
