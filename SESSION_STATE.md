@@ -59,6 +59,18 @@ Done means: each change measured in a phone-sized browser, `npx tsc --noEmit -p 
    'precip', stale after 10 min), deck SolidPolygonLayer 'ga-deck-precip' above the cyan Census dots (which hid MapLibre layers). tests/ga-precip.test.ts.
    Local 2026-11-25 23:18Z: 140,024 wet cells (all rain), peak 49.6 mm/h, peak 1-h 23.9 mm, 6,897 features at 0.02° (1.79 MB), screenshot precip-deck2.png.
    505/505 tests, tsc 0, build 0.
+0j. [ ] IN PROGRESS: falling-droplet rain (user 2026-11-25 20:55: remove flat rain from base layer, droplets in the sky at source location/altitude,
+   real time; 20:57 "resume deploy to vercel and GitHub"). Plan: lib/ga-precip-layer.ts keeps fill at opacity 0 (tap target) and stops pushing
+   'ga-deck-precip' (keep behind ?rainbase=on); new deck LineLayer 'ga-deck-rain' in lib/ga-deck-overlay.ts fed by setGaDeckRain(map, droplets),
+   animated from the existing startPulse loop (add `|| state.rain` condition). Droplets: budget 32,768 (8,192 when qualityTouch()), seeded on
+   moveend over precip features in view, weight = Marshall-Palmer N_T(R)=N0/Λ (N0=8000 m^-3 mm^-1, Λ=4.1 R^-0.21 mm^-1) × area × base height;
+   D sampled exponential, v = 9.65 - 10.3 exp(-0.6 D) m/s (Atlas et al. 1973) rain, ~1 m/s snow (Locatelli & Hobbs 1974); start height = nearest
+   METAR lowest cloud base (stationBases in lib/ga-clouds/radar-clouds.ts, 100 km) else 1,500 m AGL "assumed" — add baseM to /api/ga-precip
+   features; ground = map.queryTerrainElevation (includes exaggeration; deck z = MSL × exaggeration like cloud puffs). Streak length = ~14 px at
+   current zoom (visibility, labelled). Research plan file: /home/ubuntu/rain-research-plan.md (attach; not committed).
+   Sources verified via Crossref: Marshall & Palmer 1948 J. Meteor. 5:165-166; Gunn & Kinzer 1949 J. Meteor. 6:243-248; Atlas, Srivastava & Sekhon
+   1973 Rev. Geophys. 11:1-35; Locatelli & Hobbs 1974 JGR 79:2185-2197. MRMS BrightBandTop/BottomHeight (m AGL, 2-min) and Model_0degC_Height
+   (m MSL, 60-min) exist but are 10-16 MB per file (not used).
    Root cause measured in run8.log: 9 layer stacks x 22 terrain tiles = 198 pooled 512² drapes, 0 held by tiles.
 1. Ask user to retest on iPhone (Turner County, 100 m scale, hold 60 s; zoom 1 km -> 500 m) and send a recording.
 2. Terrain drapes: 512x512 render-to-texture tiles hold ~144 MB on phones (lib/map/terrain-rtt.ts, lib/map/horizon-lod.ts). Test touch LOD variants one at a time (parallel probes starve CPU): `node /home/ubuntu/gpuprobe/probe_lod.mjs <url> '[5,3]' B`.
