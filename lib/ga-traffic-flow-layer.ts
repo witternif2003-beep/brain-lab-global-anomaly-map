@@ -36,15 +36,15 @@ export function gaTrafficFlowStatus(map: MapLibreMap): Promise<FlowStatus> {
   return p;
 }
 
-const WIDTH = ['interpolate', ['linear'], ['zoom'], 8, 1.5, 12, 3, 16, 6, 18, 8, 22, 12] as ExpressionSpecification;
-const OPACITY = 0.85;
+export const FLOW_LINE_WIDTH = ['interpolate', ['linear'], ['zoom'], 8, 1.5, 12, 3, 16, 6, 18, 8, 22, 12] as ExpressionSpecification;
+export const FLOW_LINE_OPACITY = 0.85;
 /** Live flow tiles are re-fetched this often; the minute stamp lets every visitor share one CDN copy per minute. */
 export const FLOW_REFRESH_MS = 60_000;
 
 export const flowTilesUrl = (origin: string, path: string, now = Date.now()): string =>
   `${origin}${path}${path.includes('?') ? '&' : '?'}t=${Math.floor(now / FLOW_REFRESH_MS)}`;
 const polling = new WeakSet<MapLibreMap>();
-const clickable = new WeakSet<MapLibreMap>();
+const clickable = new WeakMap<MapLibreMap, Set<string>>();
 
 type SegmentReply = SegmentSummary & { error?: string; source?: string; retrievedAt?: string };
 
@@ -61,10 +61,12 @@ function segmentRows(j: SegmentReply): [string, string][] {
 }
 
 /** Tap a flow line: TomTom's measured speeds for the nearest road segment, fetched through the server proxy. */
-function enableSegmentReadout(map: MapLibreMap): void {
-  if (clickable.has(map)) return;
-  clickable.add(map);
-  map.on('click', GA_TRAFFIC_FLOW_LAYER, async (e) => {
+export function enableSegmentReadout(map: MapLibreMap, layer: string = GA_TRAFFIC_FLOW_LAYER): void {
+  const done = clickable.get(map) ?? new Set<string>();
+  clickable.set(map, done);
+  if (done.has(layer)) return;
+  done.add(layer);
+  map.on('click', layer, async (e) => {
     const { Popup } = await import('maplibre-gl');
     const { lat, lng } = e.lngLat;
     const el = document.createElement('div');
@@ -106,8 +108,8 @@ function enableSegmentReadout(map: MapLibreMap): void {
       })
       .catch((err) => { if (popup.isOpen()) el.textContent = `TomTom segment error: ${String(err)}`; });
   });
-  map.on('mouseenter', GA_TRAFFIC_FLOW_LAYER, () => { map.getCanvas().style.cursor = 'pointer'; });
-  map.on('mouseleave', GA_TRAFFIC_FLOW_LAYER, () => { map.getCanvas().style.cursor = ''; });
+  map.on('mouseenter', layer, () => { map.getCanvas().style.cursor = 'pointer'; });
+  map.on('mouseleave', layer, () => { map.getCanvas().style.cursor = ''; });
 }
 
 /** Congestion polylines (not vehicles): live TomTom tiles via the server proxy when a key is set, labelled mock data only when TRAFFIC_FLOW_MOCK=1, otherwise nothing. Thin (1.5–6 px by zoom), 85% opaque and re-fetched every 60 s, drawn under 3D buildings and LiDAR, so the road and satellite stay visible underneath. */
@@ -139,7 +141,7 @@ export async function addGaTrafficFlowLayer(map: MapLibreMap): Promise<void> {
       ...sourceLayer,
       minzoom: FLOW_MIN_ZOOM,
       layout: { 'line-join': 'round', 'line-cap': 'round' },
-      paint: { 'line-color': FLOW_COLOR_EXPRESSION, 'line-opacity': OPACITY, 'line-width': WIDTH },
+      paint: { 'line-color': FLOW_COLOR_EXPRESSION, 'line-opacity': FLOW_LINE_OPACITY, 'line-width': FLOW_LINE_WIDTH },
     }, below);
   }
   if (s.mode === 'live') enableSegmentReadout(map);

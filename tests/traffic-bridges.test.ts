@@ -179,3 +179,72 @@ test("overlapping decks from two lines on one bridge are levelled to the higher 
   assert.deepEqual(far.offsets, [3, 3], "110 m away: separate deck");
   assert.deepEqual(other.offsets, [2, 2], "different OSM layer: stacked bridge stays below");
 });
+
+import { bridgeWays, deckProfile, groundRuns, mergeBridgeWays, osmDeckPolygons, OSM_DECK_MIN_TOP_M, profiledBridgeIndex } from "../lib/traffic-bridges";
+
+/** I-75 over SR 83 (Monroe Co.) shape: 72 m span, abutments at 195.9 m, valley floor at 188.6 m (1 m DEM × 1.5 as drawn). */
+const SPAN: LngLat[] = [[-83.9385, 33.0420], [-83.9385, 33.0420 + 72 / 110_574]];
+const valley = (c: LngLat) => {
+  const t = (c[1] - SPAN[0][1]) / (SPAN[1][1] - SPAN[0][1]);
+  return 195.9 - 7.3 * Math.sin(Math.PI * Math.max(0, Math.min(1, t)));
+};
+
+test("bridgeWays: OSM bridges without a layer tag count as layer 1; negative layers and other classes are skipped", () => {
+  const ways = bridgeWays(
+    [
+      feat(SPAN, { brunnel: "bridge", class: "motorway" }),
+      feat(SPAN, { brunnel: "bridge", class: "motorway", layer: -1 }),
+      feat(SPAN, { brunnel: "bridge", class: "rail", layer: 1 }),
+      feat(SPAN, { class: "motorway" }),
+    ],
+    ["motorway"],
+  );
+  assert.equal(ways.length, 1);
+  assert.equal(ways[0].layer, 1);
+});
+
+test("mergeBridgeWays joins a bridge cut at a tile edge (overlapping pieces) and drops a piece lying on another", () => {
+  const n = (f: number): LngLat => [SPAN[0][0], SPAN[0][1] + (f * 72) / 110_574];
+  const merged = mergeBridgeWays([
+    { coords: [n(0), n(0.55)], cls: "motorway", layer: 1 },
+    { coords: [n(0.5), n(1)], cls: "motorway", layer: 1 },
+    { coords: [n(0.2), n(0.3)], cls: "motorway", layer: 1 },
+    { coords: [n(0.5), n(1)], cls: "primary", layer: 1 },
+  ]);
+  assert.equal(merged.length, 2);
+  const mw = merged.find((w) => w.cls === "motorway")!;
+  assert.ok(Math.abs(mw.coords[0][1] - n(0)[1]) < 1e-9 && Math.abs(mw.coords[mw.coords.length - 1][1] - n(1)[1]) < 1e-9);
+});
+
+test("deckProfile: deck spans the valley abutment to abutment instead of draping into it", () => {
+  const p = deckProfile({ coords: SPAN, cls: "motorway", layer: 1 }, valley);
+  const tops = p.ground.map((g, i) => g + p.offsets[i]);
+  assert.ok(Math.abs(tops[0] - 195.9) < 1e-6 && Math.abs(tops[tops.length - 1] - 195.9) < 1e-6);
+  const mid = Math.floor(tops.length / 2);
+  assert.ok(tops[mid] >= 195.9 - 1e-6, `mid-span top ${tops[mid]} sagged below the abutments`);
+  assert.ok(p.offsets[mid] > 7, "mid-span sits > 7 m over the valley floor");
+  assert.ok(Math.max(...p.offsets) <= BRIDGE_LAYER_M + 7.3 + 1e-6);
+});
+
+test("car lines ride the drawn OSM deck top and only their off-bridge parts stay draped", () => {
+  const prof = deckProfile({ coords: SPAN, cls: "motorway", layer: 1 }, valley);
+  const idx = profiledBridgeIndex([prof]);
+  const car: LngLat[] = [[SPAN[0][0] + 3 / 93_000, SPAN[0][1] - 100 / 110_574], [SPAN[0][0] + 3 / 93_000, SPAN[1][1] + 100 / 110_574]];
+  const b = bridgeLine(idx, car, valley);
+  assert.ok(b.onBridge);
+  b.coords.forEach((_, i) => {
+    if (b.layers[i] > 0) {
+      assert.ok(b.ground[i] + b.offsets[i] >= 195.9 - 0.5, `car top ${b.ground[i] + b.offsets[i]} below deck at vertex ${i}`);
+    } else assert.equal(b.offsets[i], 0);
+  });
+  const runs = groundRuns(b);
+  assert.equal(runs.length, 2, "approach and departure stay draped, the span is cut out");
+});
+
+test("osmDeckPolygons draws every slab of the span, never lower than OSM_DECK_MIN_TOP_M, in the given colour", () => {
+  const prof = deckProfile({ coords: SPAN, cls: "motorway", layer: 1 }, valley);
+  const slabs = osmDeckPolygons(prof, 15, "#cbd5e1", valley);
+  assert.ok(slabs.length >= 72 / SLAB_STEP_M);
+  assert.ok(slabs.every((s) => s.properties.height >= OSM_DECK_MIN_TOP_M && s.properties.color === "#cbd5e1"));
+  assert.ok(slabs.every((s) => s.properties.base >= 0 && s.properties.base < s.properties.height));
+});

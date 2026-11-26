@@ -26,11 +26,14 @@ export const roadPxAt = (cls: string, zoom: number) => ((ROAD_WIDTH_M[cls] ?? RO
 const metric = (z: number, k: number) => ['match', ['get', 'class'], ...Object.keys(ROAD_WIDTH_M).flatMap((c) => [c, roadPxAt(c, z) * k]), roadPxAt('minor', z) * k];
 /** Pixel widths up to z14 (unchanged), then true ground width from z16 (exponential base 2 keeps it metre-exact between stops). */
 const width = (k: number) => ['interpolate', ['exponential', 2], ['zoom'], 8, ['match', ['get', 'class'], ['motorway', 'trunk'], 1.2 * k, 'primary', 0.8 * k, 0.3 * k], 14, ['match', ['get', 'class'], ['motorway', 'trunk'], 4 * k, 'primary', 3 * k, ['secondary', 'tertiary'], 2.2 * k, 1.2 * k], 16, metric(16, k === 1 ? 1 : 1.12), 22, metric(22, k === 1 ? 1 : 1.12)] as never;
-const ROAD_CLASSES = ['motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'minor', 'service'];
+export const ROAD_CLASSES = ['motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'minor', 'service'] as const;
+/** From this zoom OSM road bridges are drawn as 3D decks (lib/traffic-overlay.ts), so the draped line skips them instead of sagging into the valley under the span. */
+export const BRIDGE_DECK_MIN_ZOOM = 13;
+export const ROAD_LINE_COLOR: Record<string, string> = { motorway: '#cbd5e1', trunk: '#cbd5e1', primary: '#7ff7f2', secondary: '#e2e8f0', tertiary: '#e2e8f0', minor: '#94a3b8', service: '#94a3b8' };
 
 export function addGaRoadOverlay(map: MapLibreMap): void {
   if (!map.getSource(SOURCE)) return;
-  const filter = ['all', ['==', ['geometry-type'], 'LineString'], ['in', ['get', 'class'], ['literal', ROAD_CLASSES]]] as never;
+  const filter = ['all', ['==', ['geometry-type'], 'LineString'], ['in', ['get', 'class'], ['literal', ROAD_CLASSES]], ['any', ['<', ['zoom'], BRIDGE_DECK_MIN_ZOOM], ['!=', ['get', 'brunnel'], 'bridge']]] as never;
   if (!map.getLayer('ga-roads-casing')) {
     map.addLayer({ id: 'ga-roads-casing', type: 'line', source: SOURCE, 'source-layer': 'transportation', minzoom: 8, filter, layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#0b0e14', 'line-opacity': 0.55, 'line-width': width(1.6) } });
   }
@@ -44,7 +47,7 @@ export function addGaRoadOverlay(map: MapLibreMap): void {
       filter,
       layout: { 'line-join': 'round', 'line-cap': 'round' },
       paint: {
-        'line-color': ['match', ['get', 'class'], ['motorway', 'trunk'], '#cbd5e1', 'primary', '#7ff7f2', ['secondary', 'tertiary'], '#e2e8f0', '#94a3b8'] as never,
+        'line-color': ['match', ['get', 'class'], ...Object.entries(ROAD_LINE_COLOR).flat(), '#94a3b8'] as never,
         'line-opacity': ['interpolate', ['linear'], ['zoom'], 8, 0.55, 14, 0.75, 18, 0.85] as never,
         'line-width': width(1),
       },
@@ -54,5 +57,5 @@ export function addGaRoadOverlay(map: MapLibreMap): void {
 
 /** Re-stacks the road overlay above layers added later (e.g. LiDAR re-added after a WebGL context restore). */
 export function raiseGaRoadOverlay(map: MapLibreMap): void {
-  for (const id of [...GA_ROAD_LAYERS, 'ga-traffic-flow-line']) if (map.getLayer(id)) map.moveLayer(id);
+  for (const id of [...GA_ROAD_LAYERS, 'ga-traffic-flow-line', 'ga-traffic-flow-ground-line']) if (map.getLayer(id)) map.moveLayer(id);
 }

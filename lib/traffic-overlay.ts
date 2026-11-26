@@ -3,15 +3,15 @@ import { reportGaFeed } from './ga-live-status';
 import { cappedPixelRatio, isTouchDevice, overlayContextAttributes, qualityTouch } from './map/touch-gpu-budget';
 import { MAX_AGENTS_DESKTOP, MAX_AGENTS_TOUCH, MAX_FLOW_EDGES, SLOW_MS, carLabel, carStatus, haversineM, labelCandidates, msToMph, TrafficSim, type CarAgent, type LineFlow, type LngLat } from './traffic-sim';
 import { FLOW_COLORS, FLOW_SOURCE_LAYER, TOMTOM_FLOW_DOCS_URL, flowBand } from './ga-traffic-flow/flow';
-import { GA_TRAFFIC_FLOW_SOURCE } from './ga-traffic-flow-layer';
-import { BRIDGE_LAYER_M, bridgeLine, bridgeSegments, buildBridgeIndex, deckPolygons, flowStripePolygons, levelSharedDecks, type BridgeIndex, type DeckFeature, INTERSTATE_DECK_WIDTH_M } from './traffic-bridges';
+import { FLOW_LINE_OPACITY, FLOW_LINE_WIDTH, GA_TRAFFIC_FLOW_LAYER, GA_TRAFFIC_FLOW_SOURCE, enableSegmentReadout } from './ga-traffic-flow-layer';
+import { BRIDGE_LAYER_M, bridgeLine, bridgeWays, buildBridgeIndex, deckProfile, flowStripePolygons, groundRuns, levelSharedDecks, mergeBridgeWays, osmDeckPolygons, profiledBridgeIndex, type BridgeIndex, type BridgedLine, type DeckFeature } from './traffic-bridges';
+import { BRIDGE_DECK_MIN_ZOOM, ROAD_CLASSES as OVERLAY_ROAD_CLASSES, ROAD_LINE_COLOR, ROAD_WIDTH_M } from './ga-roads-overlay';
+import { CAR_DIMS_M, carMesh } from './car-mesh';
 
 export const TRAFFIC_SIM_PARAM = 'traffic';
 const ROAD_SOURCE = 'ofm-buildings';
 const ROAD_CLASSES = ['motorway', 'trunk'];
-/** CubeGeometry spans -1..1, so scale is half the car size: 4 m long, 2 m wide, 1.5 m tall. */
-const HALF = { length: 2, width: 1, height: 0.75 };
-/** Lifts the car body 5 cm off the road (centre at 0.8 m) so it doesn't z-fight with the flow line. */
+/** Lifts the car mesh (wheels-down origin, lib/car-mesh.ts) 5 cm off the road so it doesn't z-fight with the flow line or deck stripe. */
 const ROAD_CLEARANCE_M = 0.05;
 const bound = new WeakSet<MapLibreMap>();
 const trafficCanvases = new WeakMap<MapLibreMap, () => HTMLCanvasElement | null>();
@@ -21,14 +21,48 @@ export const gaTrafficCanvas = (map: MapLibreMap): HTMLCanvasElement | null => t
 export const BRIDGE_DECK_SOURCE = 'ga-bridge-decks';
 export const BRIDGE_DECK_LAYER = 'ga-bridge-decks-3d';
 
-/** OSM bridges (`brunnel=bridge`, `layer` ≥ 1) in the loaded OpenFreeMap road tiles. */
-function bridgeIndex(map: MapLibreMap): BridgeIndex {
-  if (!map.getSource(ROAD_SOURCE)) return buildBridgeIndex([]);
+/**
+ * Every OSM road bridge (`brunnel=bridge`) of the drawn road classes in the loaded OpenFreeMap tiles, joined across
+ * tile cuts and profiled abutment to abutment on the drawn terrain. Empty below BRIDGE_DECK_MIN_ZOOM, where the
+ * draped road line still covers bridges.
+ */
+function osmBridgeProfiles(map: MapLibreMap, groundAt: (c: LngLat) => number): { cls: string; line: BridgedLine }[] {
+  if (!map.getSource(ROAD_SOURCE) || map.getZoom() < BRIDGE_DECK_MIN_ZOOM) return [];
   const feats = map.querySourceFeatures(ROAD_SOURCE, { sourceLayer: 'transportation', filter: ['==', ['get', 'brunnel'], 'bridge'] as never });
-  return buildBridgeIndex(bridgeSegments(feats));
+  return mergeBridgeWays(bridgeWays(feats, OVERLAY_ROAD_CLASSES)).map((w) => ({ cls: w.cls, line: deckProfile(w, groundAt) }));
 }
 
-/** Grey deck slabs under lifted car lines, with TomTom flow-colour stripes on top, drawn below the 3D buildings. */
+export const FLOW_GROUND_SOURCE = 'ga-traffic-flow-ground';
+export const FLOW_GROUND_LAYER = 'ga-traffic-flow-ground-line';
+
+/**
+ * From BRIDGE_DECK_MIN_ZOOM the TomTom flow is drawn from the car lines with bridge spans cut out (those spans get
+ * stripes on the deck), so a flow line no longer drapes into the valley under a bridge. Below that zoom the tile layer draws as before.
+ */
+function setFlowGround(map: MapLibreMap, features: unknown[]): void {
+  const data = { type: 'FeatureCollection' as const, features };
+  const src = map.getSource(FLOW_GROUND_SOURCE) as { setData?: (d: unknown) => void } | undefined;
+  if (src?.setData) src.setData(data);
+  else map.addSource(FLOW_GROUND_SOURCE, { type: 'geojson', data: data as never });
+  if (map.getLayer(FLOW_GROUND_LAYER) || !map.getLayer(GA_TRAFFIC_FLOW_LAYER)) return;
+  const order = map.getLayersOrder();
+  map.addLayer(
+    {
+      id: FLOW_GROUND_LAYER,
+      type: 'line',
+      source: FLOW_GROUND_SOURCE,
+      minzoom: BRIDGE_DECK_MIN_ZOOM,
+      layout: { 'line-join': 'round', 'line-cap': 'round' },
+      paint: { 'line-color': ['get', 'color'] as never, 'line-opacity': FLOW_LINE_OPACITY, 'line-width': FLOW_LINE_WIDTH },
+    },
+    order[order.indexOf(GA_TRAFFIC_FLOW_LAYER) + 1],
+  );
+  const flow = map.getLayer(GA_TRAFFIC_FLOW_LAYER) as { minzoom?: number } | undefined;
+  map.setLayerZoomRange(GA_TRAFFIC_FLOW_LAYER, flow?.minzoom ?? 0, BRIDGE_DECK_MIN_ZOOM);
+  enableSegmentReadout(map, FLOW_GROUND_LAYER);
+}
+
+/** OSM road-bridge deck slabs in the road colour, with TomTom flow-colour stripes on top, drawn below the 3D buildings. */
 function setBridgeDecks(map: MapLibreMap, decks: DeckFeature[]): void {
   const data = { type: 'FeatureCollection' as const, features: decks };
   const src = map.getSource(BRIDGE_DECK_SOURCE) as { setData?: (d: unknown) => void } | undefined;
@@ -88,8 +122,8 @@ function motorwayLines(map: MapLibreMap): LngLat[][] {
   return out;
 }
 
-/** Road lines (the 2,000 longest) from the loaded TomTom flow tiles with each line's `traffic_level` / `road_closure`, de-duplicated across tiles. */
-export function tomtomFlowLines(map: MapLibreMap): { lines: LngLat[][]; flows: LineFlow[]; keys: string[] } {
+/** Road lines (the `cap` longest, default 2,000) from the loaded TomTom flow tiles with each line's `traffic_level` / `road_closure`, de-duplicated across tiles. */
+export function tomtomFlowLines(map: MapLibreMap, cap = MAX_FLOW_EDGES): { lines: LngLat[][]; flows: LineFlow[]; keys: string[] } {
   const lines: LngLat[][] = [];
   const flows: LineFlow[] = [];
   const keys: string[] = [];
@@ -109,10 +143,15 @@ export function tomtomFlowLines(map: MapLibreMap): { lines: LngLat[][]; flows: L
       keys.push(key);
     }
   }
-  if (lines.length <= MAX_FLOW_EDGES) return { lines, flows, keys };
-  const len = (l: LngLat[]) => l.reduce((s, c, i) => (i ? s + haversineM(l[i - 1], c) : 0), 0);
-  const keep = lines.map((l, i) => [len(l), i] as const).sort((a, b) => b[0] - a[0]).slice(0, MAX_FLOW_EDGES).map(([, i]) => i);
+  if (lines.length <= cap) return { lines, flows, keys };
+  const keep = longest(lines, cap);
   return { lines: keep.map((i) => lines[i]), flows: keep.map((i) => flows[i]), keys: keep.map((i) => keys[i]) };
+}
+
+/** Indices of the `cap` longest lines. */
+function longest(lines: LngLat[][], cap: number): number[] {
+  const len = (l: LngLat[]) => l.reduce((s, c, i) => (i ? s + haversineM(l[i - 1], c) : 0), 0);
+  return lines.map((l, i) => [len(l), i] as const).sort((a, b) => b[0] - a[0]).slice(0, cap).map(([, i]) => i);
 }
 
 /**
@@ -132,8 +171,8 @@ export async function addGaTrafficSim(map: MapLibreMap): Promise<void> {
     return;
   }
   const cap = window.matchMedia('(pointer: coarse)').matches ? MAX_AGENTS_TOUCH : MAX_AGENTS_DESKTOP;
-  const [{ Popup: PopupCtor }, { MapLibreOverlay }, { SimpleMeshLayer }, { TextLayer }, { CubeGeometry }] = await Promise.all([import('maplibre-gl'), import('@deck.gl/maplibre'), import('@deck.gl/mesh-layers'), import('@deck.gl/layers'), import('@luma.gl/engine')]);
-  const mesh = new CubeGeometry();
+  const [{ Popup: PopupCtor }, { MapLibreOverlay }, { SimpleMeshLayer }, { TextLayer }] = await Promise.all([import('maplibre-gl'), import('@deck.gl/maplibre'), import('@deck.gl/mesh-layers'), import('@deck.gl/layers')]);
+  const mesh = carMesh();
   const touch = isTouchDevice();
   const webglAttrs = overlayContextAttributes(touch, window.location.search);
   const overlay = new MapLibreOverlay({ interleaved: false, layers: [], useDevicePixels: qualityTouch() ? cappedPixelRatio(window.devicePixelRatio || 1, true) : true, ...(webglAttrs ? { deviceProps: { webgl: webglAttrs } } : {}) });
@@ -178,27 +217,55 @@ export async function addGaTrafficSim(map: MapLibreMap): Promise<void> {
     });
   };
 
+  const terrainAt = (c: LngLat) => map.queryTerrainElevation(c) ?? 0;
+  let bridges: BridgeIndex = buildBridgeIndex([]);
+  let osmDecks: DeckFeature[] = [];
+  /** Lifts every TomTom line onto the OSM decks, then redraws the draped flow (bridge spans cut out) and the deck stripes. */
+  const drawFlow = (tt: ReturnType<typeof tomtomFlowLines>): BridgedLine[] => {
+    const lifted = levelSharedDecks(tt.lines.map((l) => bridgeLine(bridges, l, terrainAt)));
+    const color = (i: number) => FLOW_COLORS[flowBand(tt.flows[i].level, tt.flows[i].closed)];
+    const stripes = lifted.flatMap((b, i) => (b.onBridge ? flowStripePolygons(b, color(i), undefined, terrainAt, true) : []));
+    setBridgeDecks(map, [...osmDecks, ...stripes]);
+    if (tt.lines.length)
+      setFlowGround(map, lifted.flatMap((b, i) => groundRuns(b).map((coordinates) => ({ type: 'Feature', geometry: { type: 'LineString', coordinates }, properties: { color: color(i) } }))));
+    flowStripeCount = stripes.length;
+    return lifted;
+  };
+  let flowStripeCount = 0;
+
   const rebuild = () => {
-    const tt = tomtomFlowLines(map);
-    const onFlow = tt.lines.length > 0;
-    const bridges = bridgeIndex(map);
-    const terrainAt = (c: LngLat) => map.queryTerrainElevation(c) ?? 0;
-    const lifted = levelSharedDecks((onFlow ? tt.lines : motorwayLines(map)).map((l) => bridgeLine(bridges, l, terrainAt)));
+    const ttAll = tomtomFlowLines(map, Infinity);
+    const onFlow = ttAll.lines.length > 0;
+    const profiles = osmBridgeProfiles(map, terrainAt);
+    bridges = profiledBridgeIndex(profiles.map((p) => p.line));
+    osmDecks = profiles.flatMap((p) => osmDeckPolygons(p.line, ROAD_WIDTH_M[p.cls] ?? ROAD_WIDTH_M.minor, ROAD_LINE_COLOR[p.cls] ?? '#94a3b8', terrainAt));
+    let lifted: BridgedLine[];
+    let tt = ttAll;
+    if (onFlow) {
+      const all = drawFlow(ttAll);
+      const keep = all.length > MAX_FLOW_EDGES ? longest(ttAll.lines, MAX_FLOW_EDGES) : all.map((_, i) => i);
+      lifted = keep.map((i) => all[i]);
+      tt = { lines: keep.map((i) => ttAll.lines[i]), flows: keep.map((i) => ttAll.flows[i]), keys: keep.map((i) => ttAll.keys[i]) };
+    } else {
+      lifted = levelSharedDecks(motorwayLines(map).map((l) => bridgeLine(bridges, l, terrainAt)));
+      setBridgeDecks(map, osmDecks);
+      flowStripeCount = 0;
+    }
     const lines = lifted.map((b) => b.coords);
     const elev = lifted.map((b) => b.ground.map((g, j) => g + b.offsets[j]));
     const onBridge = lifted.filter((b) => b.onBridge);
-    const decks = onBridge.flatMap((b) => deckPolygons(b, INTERSTATE_DECK_WIDTH_M, terrainAt));
-    const stripes = onFlow ? lifted.flatMap((b, i) => (b.onBridge ? flowStripePolygons(b, FLOW_COLORS[flowBand(tt.flows[i].level, tt.flows[i].closed)], undefined, terrainAt) : [])) : [];
-    setBridgeDecks(map, [...decks, ...stripes]);
     const bridgeDiag = {
       lineSource: onFlow ? 'tomtom-flow' : 'osm-motorway-fallback',
-      flowLines: tt.lines.length,
+      flowLines: ttAll.lines.length,
+      simLines: lines.length,
+      osmBridges: profiles.length,
       osmBridgeSegments: bridges.count,
       liftedLines: onBridge.length,
-      deckSlabs: decks.length,
-      flowStripes: stripes.length,
-      maxDeckM: +onBridge.reduce((m, b) => b.offsets.reduce((n, o) => Math.max(n, o), m), 0).toFixed(1),
+      deckSlabs: osmDecks.length,
+      flowStripes: flowStripeCount,
+      maxDeckM: +profiles.reduce((m, p) => p.line.offsets.reduce((n, o) => Math.max(n, o), m), 0).toFixed(1),
       deckLayer: !!map.getLayer(BRIDGE_DECK_LAYER),
+      flowGroundLayer: !!map.getLayer(FLOW_GROUND_LAYER),
       zoom: +map.getZoom().toFixed(2),
     };
     (window as unknown as { __gaBridges?: typeof bridgeDiag }).__gaBridges = bridgeDiag;
@@ -216,7 +283,7 @@ export async function addGaTrafficSim(map: MapLibreMap): Promise<void> {
         (onFlow
           ? `${sim.edges.length} TomTom flow lines in view · speed = 100 km/h nominal × TomTom speed ratio, 35–200/km by jamFactor · cap ${cap}`
           : `${sim.edges.length} motorway lines in view · 30% of each line jammed (200/km, 15 km/h), rest 35/km at 100 km/h · cap ${cap}`) +
-        ` · ${onBridge.length} lines lifted onto ${bridges.count} OSM bridge segments (layer × ${BRIDGE_LAYER_M} m, estimate)`,
+        ` · ${onBridge.length} lines on ${profiles.length} OSM road-bridge decks (deck height estimated: chord between abutments, ≤ layer × ${BRIDGE_LAYER_M} m over the lowest ground)`,
       updatedAt: new Date().toISOString(),
       sourceUrl: onFlow ? TOMTOM_FLOW_DOCS_URL : 'https://openfreemap.org/',
       swatches: [
@@ -264,9 +331,8 @@ export async function addGaTrafficSim(map: MapLibreMap): Promise<void> {
           id: 'ga-traffic-sim-cars',
           data: cars,
           mesh,
-          getPosition: (d) => [d.position[0], d.position[1], d.elevM + HALF.height + ROAD_CLEARANCE_M],
+          getPosition: (d) => [d.position[0], d.position[1], d.elevM + ROAD_CLEARANCE_M],
           getOrientation: (d) => [0, -d.bearing, 0],
-          getScale: [HALF.width, HALF.length, HALF.height],
           getColor: (d) => (d.speed < SLOW_MS ? [255, 0, 0, 255] : [0, 255, 255, 255]),
           material: { ambient: 0.5, diffuse: 0.6, shininess: 32, specularColor: [60, 64, 70] },
           updateTriggers: { getPosition: frame, getOrientation: frame, getColor: frame },
@@ -281,7 +347,7 @@ export async function addGaTrafficSim(map: MapLibreMap): Promise<void> {
           id: 'ga-traffic-sim-labels',
           data: labelled,
           visible: labelled.length > 0,
-          getPosition: (d) => [d.position[0], d.position[1], d.elevM + 2.5],
+          getPosition: (d) => [d.position[0], d.position[1], d.elevM + CAR_DIMS_M.height + 1],
           getText: carLabel,
           getSize: 12,
           getColor: [255, 255, 255, 255],
@@ -307,9 +373,10 @@ export async function addGaTrafficSim(map: MapLibreMap): Promise<void> {
   let refreshTimer: ReturnType<typeof setTimeout> | undefined;
   const refreshFlows = () => {
     if (!simKeys.length) return;
-    const tt = tomtomFlowLines(map);
+    const tt = tomtomFlowLines(map, Infinity);
     const byKey = new Map(tt.keys.map((k, i) => [k, tt.flows[i]] as const));
     sim.updateFlows(simKeys.map((k) => byKey.get(k)));
+    drawFlow(tt);
   };
   const onFlowRefresh = (e: { sourceId?: string; isSourceLoaded?: boolean }) => {
     if (e.sourceId !== GA_TRAFFIC_FLOW_SOURCE || !e.isSourceLoaded) return;
