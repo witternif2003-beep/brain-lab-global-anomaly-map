@@ -80,7 +80,11 @@ Done means: each change measured in a phone-sized browser, `npx tsc --noEmit -p 
    RESULT: ?rain=off ALSO never set window.__map in 300 s -> probe-harness problem, not the drops (unresolved). Visual check UNVERIFIED.
    DEPLOY: vercel deploy --prod exit 0; live /godseye-telemetry 200, /api/health 200, /api/ga-precip returns baseRule + metarStations 89
    (2026-11-26T02:36Z, 131,786 rain cells). Client chunk hashes differ from local build (remote build), so the drops on screen are UNVERIFIED.
-   NEXT for this item: user iPhone check; if drops are invisible or slow, fix probe harness (map 'load' never fires in rain_view.mjs).
+0k. [x] DONE (user 22:19-22:25: drops visible on whole Georgia map, 32K, sun-shower sparkle): drops drawn LAST in deck createLayers (above Census
+   dots/markers/labels), head dot (ScatterplotLayer 'ga-deck-rain-heads', 1.6 px) + 2 px streak, 32,768 on every device (latch no longer cuts to 8,192),
+   per-drop glint colour (sparkle() in lib/ga-precip-layer.ts, visual only). Probe (probe_rain2.mjs, local prod): drawn 32,768 at z6.6 and z8.5/pitch 65,
+   0 page errors; z6.6 screenshot shows white drops over the map. Probe-harness failure earlier = stale `next start` serving an old .next after rebuild
+   (fix: `fuser -k 3217/tcp` before restarting; never `pkill -f` a pattern that appears in your own shell command).
    Root cause measured in run8.log: 9 layer stacks x 22 terrain tiles = 198 pooled 512² drapes, 0 held by tiles.
 1. Ask user to retest on iPhone (Turner County, 100 m scale, hold 60 s; zoom 1 km -> 500 m) and send a recording.
 2. Terrain drapes: 512x512 render-to-texture tiles hold ~144 MB on phones (lib/map/terrain-rtt.ts, lib/map/horizon-lod.ts). Test touch LOD variants one at a time (parallel probes starve CPU): `node /home/ubuntu/gpuprobe/probe_lod.mjs <url> '[5,3]' B`.

@@ -139,7 +139,7 @@ interface DeckState {
   /** NOAA MRMS rain/snow/hail cells, drawn above the Census density dots so the dots do not hide them. */
   precip: GaDeckPrecipCell[];
   /** Falling-drop streaks (xyz pairs) and the per-frame updater the pulse loop calls. */
-  rain: { n: number; src: Float32Array; dst: Float32Array; color: [number, number, number, number] } | null;
+  rain: { n: number; src: Float32Array; dst: Float32Array; colors: Uint8Array } | null;
   rainTick: ((now: number) => boolean) | null;
   /** GOES satellite cloud image on the GOES cloud-top-height mesh. */
   cloudSheet: GaCloudSheet | null;
@@ -754,18 +754,6 @@ function createLayers(state: DeckState): Layer[] {
       parameters: DEPTH_PARAMETERS,
     }));
   }
-  if (state.rain && state.rain.n) {
-    const r = state.rain;
-    layers.push(new LineLayer({
-      id: 'ga-deck-rain',
-      data: { length: r.n, attributes: { getSourcePosition: { value: r.src, size: 3 }, getTargetPosition: { value: r.dst, size: 3 } } },
-      getColor: r.color,
-      getWidth: 1.2,
-      widthUnits: 'pixels',
-      pickable: false,
-      parameters: { depthWriteEnabled: false },
-    }));
-  }
   if (state.precip.length) {
     layers.push(new SolidPolygonLayer<GaDeckPrecipCell>({
       id: 'ga-deck-precip',
@@ -947,6 +935,28 @@ function createLayers(state: DeckState): Layer[] {
       billboard: true,
       pickable: false,
       parameters: DEPTH_PARAMETERS,
+    }));
+  }
+  // Drops go last so they fall in front of the Census dots, markers and labels.
+  if (state.rain && state.rain.n) {
+    const r = state.rain;
+    layers.push(new LineLayer({
+      id: 'ga-deck-rain',
+      data: { length: r.n, attributes: { getSourcePosition: { value: r.src, size: 3 }, getTargetPosition: { value: r.dst, size: 3 }, getColor: { value: r.colors, size: 4 } } },
+      getWidth: 2,
+      widthUnits: 'pixels',
+      pickable: false,
+      parameters: { depthCompare: 'always', depthWriteEnabled: false },
+    }));
+    // A vertical streak seen from above has no length, so each drop also gets a dot at its head.
+    layers.push(new ScatterplotLayer({
+      id: 'ga-deck-rain-heads',
+      data: { length: r.n, attributes: { getPosition: { value: r.dst, size: 3 }, getFillColor: { value: r.colors, size: 4 } } },
+      getRadius: 1.6,
+      radiusUnits: 'pixels',
+      stroked: false,
+      pickable: false,
+      parameters: { depthCompare: 'always', depthWriteEnabled: false },
     }));
   }
   return layers;

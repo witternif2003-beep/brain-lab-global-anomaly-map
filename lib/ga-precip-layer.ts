@@ -58,8 +58,8 @@ function popup(map: MapLibreMap, e: MapLayerMouseEvent) {
 }
 
 const rainBase = () => typeof location !== 'undefined' && new URLSearchParams(location.search).get('rainbase') === 'on';
-/** Drawn drops in view: 32,768, or 8,192 with the phone-safe settings. */
-const dropBudget = () => (qualityTouch() ? 8_192 : 32_768);
+/** Drawn drops in view: 32,768 on every device (≈0.8 MB of vertex data), per the user's 32K requirement. */
+const dropBudget = () => 32_768;
 const STREAK_PX = 14;
 const cells = new WeakMap<MapLibreMap, RainCell[]>();
 const drops = new WeakMap<MapLibreMap, Droplets>();
@@ -71,6 +71,15 @@ function toCells(fc: GeoJSON.FeatureCollection): RainCell[] {
     const p = f.properties ?? {};
     return [{ west: r[0][0], north: r[0][1], east: r[1][0], south: r[2][1], rateMmH: Number(p.rateMmH) || 0, phase: (p.phase as RainCell['phase']) ?? 'rain', baseM: Number(p.baseM) || DEFAULT_BASE_M }];
   });
+}
+
+/** Sun-shower glint: each drop flashes white at its own rate (visual effect only, not measured). */
+function sparkle(d: Droplets, t: number, out: Uint8Array) {
+  for (let i = 0; i < d.n; i++) {
+    const g = Math.max(0, Math.sin(t * (2 + d.speed[i]) + d.phase[i] * 6.283)) ** 12;
+    const j = i * 4;
+    out[j] = 185 + 70 * g; out[j + 1] = 215 + 40 * g; out[j + 2] = 255; out[j + 3] = 200 + 55 * g;
+  }
 }
 
 function reseed(map: MapLibreMap) {
@@ -87,11 +96,14 @@ function reseed(map: MapLibreMap) {
   const d = seedDroplets(list, { west: b.getWest(), south: b.getSouth(), east: b.getEast(), north: b.getNorth() }, dropBudget(), groundAt);
   drops.set(map, d);
   const src = new Float32Array(d.n * 3), dst = new Float32Array(d.n * 3);
-  const rain = { n: d.n, src, dst, color: [190, 215, 255, 190] as [number, number, number, number] };
+  const colors = new Uint8Array(d.n * 4);
+  const rain = { n: d.n, src, dst, colors };
   const tick = () => {
     const c = map.getCenter();
     const mpp = (40_075_016 * Math.cos((c.lat * Math.PI) / 180)) / (512 * 2 ** map.getZoom());
-    dropletPositions(d, performance.now() / 1000, STREAK_PX * mpp, map.getTerrain()?.exaggeration ?? 1, src, dst);
+    const t = performance.now() / 1000;
+    dropletPositions(d, t, STREAK_PX * mpp, map.getTerrain()?.exaggeration ?? 1, src, dst);
+    sparkle(d, t, colors);
     rain.src = src; rain.dst = dst;
     return d.n > 0;
   };
