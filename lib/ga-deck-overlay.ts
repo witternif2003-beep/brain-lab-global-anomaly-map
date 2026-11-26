@@ -56,6 +56,7 @@ type DeckModules = {
   IconLayer: typeof import('@deck.gl/layers').IconLayer;
   TextLayer: typeof import('@deck.gl/layers').TextLayer;
   LineLayer: typeof import('@deck.gl/layers').LineLayer;
+  SolidPolygonLayer: typeof import('@deck.gl/layers').SolidPolygonLayer;
   SimpleMeshLayer: typeof import('@deck.gl/mesh-layers').SimpleMeshLayer;
   CloudSheetLayer: typeof import('@deck.gl/mesh-layers').SimpleMeshLayer;
   CloudSheetGlobeLayer: typeof import('@deck.gl/mesh-layers').SimpleMeshLayer;
@@ -135,6 +136,8 @@ interface DeckState {
   groundTimer: ReturnType<typeof setTimeout> | null;
   /** Radar cloud puffs; z in metres above sea level before terrain exaggeration. */
   clouds: CloudPuff[];
+  /** NOAA MRMS rain/snow/hail cells, drawn above the Census density dots so the dots do not hide them. */
+  precip: GaDeckPrecipCell[];
   /** GOES satellite cloud image on the GOES cloud-top-height mesh. */
   cloudSheet: GaCloudSheet | null;
   /** Census 2020 populated blocks, drawn under every marker group while the density toggle is on. */
@@ -245,6 +248,7 @@ function getState(map: MapLibreMap): DeckState {
     ground: new Map(),
     groundVersion: 0,
     clouds: [],
+    precip: [],
     cloudSheet: null,
     density: null,
     densityView: null,
@@ -684,7 +688,7 @@ const LABEL_FONT = '"JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospa
 
 function createLayers(state: DeckState): Layer[] {
   if (!state.modules) return [];
-  const { ScatterplotLayer, IconLayer, TextLayer, LineLayer, SimpleMeshLayer, CloudSheetLayer, CloudSheetGlobeLayer } = state.modules;
+  const { ScatterplotLayer, IconLayer, TextLayer, LineLayer, SimpleMeshLayer, CloudSheetLayer, CloudSheetGlobeLayer, SolidPolygonLayer } = state.modules;
   const scale = modelScale(state.zoom);
   const layers: Layer[] = [];
   const labelLayers: Layer[] = [];
@@ -743,6 +747,16 @@ function createLayers(state: DeckState): Layer[] {
       getLineWidth: DENSITY_RING_PX,
       pickable: false,
       parameters: DEPTH_PARAMETERS,
+    }));
+  }
+  if (state.precip.length) {
+    layers.push(new SolidPolygonLayer<GaDeckPrecipCell>({
+      id: 'ga-deck-precip',
+      data: state.precip,
+      getPolygon: (c) => c.polygon,
+      getFillColor: (c) => c.color,
+      pickable: false,
+      parameters: { depthCompare: 'always', depthWriteEnabled: false },
     }));
   }
   for (const [key, group] of [...state.groups.entries()].sort((a, b) => a[1].z - b[1].z)) {
@@ -986,6 +1000,7 @@ async function loadModules(): Promise<DeckModules> {
     IconLayer: layers.IconLayer,
     TextLayer: layers.TextLayer,
     LineLayer: layers.LineLayer,
+    SolidPolygonLayer: layers.SolidPolygonLayer,
     SimpleMeshLayer: meshLayers.SimpleMeshLayer,
     CloudSheetLayer: cloudSheetLayer(meshLayers.SimpleMeshLayer) as unknown as typeof meshLayers.SimpleMeshLayer,
     CloudSheetGlobeLayer: cloudSheetLayer(meshLayers.SimpleMeshLayer, true) as unknown as typeof meshLayers.SimpleMeshLayer,
@@ -1304,6 +1319,15 @@ export function setGaDeckDensityPaused(map: MapLibreMap, paused: boolean): void 
 }
 
 /** Replaces the radar cloud puffs (drawn under every marker group). */
+export interface GaDeckPrecipCell { polygon: [number, number][]; color: [number, number, number, number] }
+
+export function setGaDeckPrecip(map: MapLibreMap, cells: GaDeckPrecipCell[]): void {
+  const state = getState(map);
+  state.precip = cells;
+  if (state.overlay) updateLayers(state);
+  if (!state.initPromise) state.initPromise = initialize(map, state);
+}
+
 export function setGaDeckClouds(map: MapLibreMap, puffs: CloudPuff[]): void {
   const state = getState(map);
   state.clouds = puffs;

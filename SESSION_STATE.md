@@ -53,6 +53,12 @@ Done means: each change measured in a phone-sized browser, `npx tsc --noEmit -p 
    frames into the 'anomalies' source, replacing 6 valid features with 1 invalid one (0 rendered at +60 s). Fix: callbacks in refs, isAnomalyFeature filter;
    local: 1 connection, 0 aborts, 6/6 features kept and rendered at +60 s. tests/anomaly-stream.test.ts. 500/500 tests, tsc 0, build 0.
    Also measured: map.loaded()/areTilesLoaded() never true because 14 animated GeoJSON sources update continuously (not changed).
+0i. [x] Rain/snow/hail layer (user: "the rain/snow isn't being seen", "Proof grade rain layer"). No precipitation layer existed (MRMS only shaped clouds).
+   app/api/ga-precip/route.ts: NOAA MRMS PrecipFlag + PrecipRate (mm/h) + RadarOnly_QPE_01H (mm), 0.01° grid, 2-min, retry once on truncated .latest.
+   lib/ga-precip/precip-cells.ts (flag table from NSSL MRMS product table, archived copy), lib/ga-precip-layer.ts (MapLibre fill + popup + feed status
+   'precip', stale after 10 min), deck SolidPolygonLayer 'ga-deck-precip' above the cyan Census dots (which hid MapLibre layers). tests/ga-precip.test.ts.
+   Local 2026-11-25 23:18Z: 140,024 wet cells (all rain), peak 49.6 mm/h, peak 1-h 23.9 mm, 6,897 features at 0.02° (1.79 MB), screenshot precip-deck2.png.
+   505/505 tests, tsc 0, build 0.
    Root cause measured in run8.log: 9 layer stacks x 22 terrain tiles = 198 pooled 512² drapes, 0 held by tiles.
 1. Ask user to retest on iPhone (Turner County, 100 m scale, hold 60 s; zoom 1 km -> 500 m) and send a recording.
 2. Terrain drapes: 512x512 render-to-texture tiles hold ~144 MB on phones (lib/map/terrain-rtt.ts, lib/map/horizon-lod.ts). Test touch LOD variants one at a time (parallel probes starve CPU): `node /home/ubuntu/gpuprobe/probe_lod.mjs <url> '[5,3]' B`.

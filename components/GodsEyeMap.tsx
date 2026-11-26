@@ -34,6 +34,7 @@ import { addGaTrafficSim } from '../lib/traffic-overlay';
 import { addGaTrafficIncidents } from '../lib/ga-traffic-incidents-layer';
 import { addGaTrafficCountLayers } from '../lib/ga-traffic-counts-layer';
 import { addGaHydrometLayers } from '../lib/ga-hydromet-layer';
+import { addGaPrecipLayer } from '../lib/ga-precip-layer';
 import { addGaAnomalyBulbs } from '../lib/ga-anomaly-bulbs';
 import { addGaChangeLayer } from '../lib/ga-change-layer';
 import { addGaOrbitalLayers } from '../lib/ga-orbital-layer';
@@ -1056,6 +1057,7 @@ export default function GodsEyeMap({
     addLabelInspector(map);
     addGaH3Telemetry(map);
     addGaHydrometLayers(map);
+    addGaPrecipLayer(map);
     addGaTrafficLayers(map);
     void addGaTrafficFlowLayer(map);
     void addGaTrafficIncidents(map);
